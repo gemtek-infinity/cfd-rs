@@ -6,7 +6,7 @@ use serde_json::Value;
 use crate::credentials::{CredentialSurface, OriginCertLocator, OriginCertToken, TunnelReference};
 use crate::discovery::{ConfigSource, DiscoveryAction, DiscoveryOutcome};
 use crate::error::ConfigError;
-use crate::ingress::{IngressRule, IngressService, OriginRequestConfig};
+use crate::ingress::{IngressRule, IngressService, NormalizedIngress, OriginRequestConfig};
 use crate::normalized::{NormalizationWarning, NormalizedConfig};
 use crate::raw_config::WarpRoutingConfig;
 
@@ -31,12 +31,26 @@ pub struct FixtureSpec {
     pub discovery_case: Option<DiscoveryCase>,
     #[serde(default)]
     pub origin_cert_source: Option<String>,
+    #[serde(default)]
+    pub ordering_case: Option<OrderingCase>,
+    #[serde(default)]
+    pub cli_ingress_case: Option<CliIngressCase>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DiscoveryCase {
     pub explicit_config: bool,
     pub present: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct OrderingCase {
+    pub input: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct CliIngressCase {
+    pub flags: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -74,6 +88,15 @@ pub struct CredentialReportPayload {
     pub api_token: String,
     pub endpoint: Option<String>,
     pub is_fed_endpoint: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct IngressReportPayload {
+    pub source_kind: &'static str,
+    pub rule_count: usize,
+    pub catch_all_rule_index: usize,
+    pub defaults: OriginRequestConfig,
+    pub rules: Vec<IngressRulePayload>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -201,6 +224,22 @@ pub fn credential_envelope(
     })
 }
 
+pub fn ingress_envelope(
+    fixture: &FixtureSpec,
+    source_kind: &'static str,
+    normalized: &NormalizedIngress,
+) -> Result<ArtifactEnvelope, serde_json::Error> {
+    Ok(ArtifactEnvelope {
+        schema_version: SCHEMA_VERSION,
+        fixture_id: fixture.fixture_id.clone(),
+        producer: "rust-actual",
+        report_kind: "ingress-report.v1",
+        comparison: fixture.comparison.clone(),
+        source_refs: fixture.source_refs.clone(),
+        payload: serde_json::to_value(IngressReportPayload::from_ingress(source_kind, normalized))?,
+    })
+}
+
 impl DiscoveryReportPayload {
     pub fn from_outcome(outcome: &DiscoveryOutcome, sandbox_root: &Path) -> Self {
         Self {
@@ -316,9 +355,16 @@ impl IngressRulePayload {
 impl IngressServicePayload {
     fn from_service(service: &IngressService) -> Self {
         match service {
-            IngressService::Uri(uri) => Self {
-                kind: "uri",
-                uri: Some(uri.to_string()),
+            IngressService::Http(uri) => Self {
+                kind: "http",
+                uri: Some(display_origin_url(uri)),
+                path: None,
+                name: None,
+                status_code: None,
+            },
+            IngressService::TcpOverWebsocket(uri) => Self {
+                kind: "tcp-over-websocket",
+                uri: Some(display_origin_url(uri)),
                 path: None,
                 name: None,
                 status_code: None,
@@ -346,6 +392,20 @@ impl IngressServicePayload {
             },
             IngressService::HelloWorld => Self {
                 kind: "hello-world",
+                uri: None,
+                path: None,
+                name: None,
+                status_code: None,
+            },
+            IngressService::Bastion => Self {
+                kind: "bastion",
+                uri: None,
+                path: None,
+                name: None,
+                status_code: None,
+            },
+            IngressService::SocksProxy => Self {
+                kind: "socks-proxy",
                 uri: None,
                 path: None,
                 name: None,
@@ -387,10 +447,35 @@ impl CredentialReportPayload {
     }
 }
 
+impl IngressReportPayload {
+    fn from_ingress(source_kind: &'static str, normalized: &NormalizedIngress) -> Self {
+        Self {
+            source_kind,
+            rule_count: normalized.rules.len(),
+            catch_all_rule_index: normalized.rules.len().saturating_sub(1),
+            defaults: normalized.defaults.clone(),
+            rules: normalized
+                .rules
+                .iter()
+                .map(IngressRulePayload::from_rule)
+                .collect(),
+        }
+    }
+}
+
 fn display_path(path: &Path, sandbox_root: &Path) -> String {
     if let Ok(relative) = path.strip_prefix(sandbox_root) {
         format!("/{}", relative.display())
     } else {
         path.display().to_string()
+    }
+}
+
+fn display_origin_url(url: &url::Url) -> String {
+    let rendered = url.to_string();
+    if url.path() == "/" && url.query().is_none() && url.fragment().is_none() {
+        rendered.trim_end_matches('/').to_owned()
+    } else {
+        rendered
     }
 }

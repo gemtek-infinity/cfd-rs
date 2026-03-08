@@ -20,6 +20,7 @@ RUST_ACTUAL_DIR = FIXTURE_ROOT / "golden" / "rust-actual"
 SUPPORTED_RUST_ACTUAL_CATEGORIES = {
     "config-discovery",
     "credentials-origin-cert",
+    "ingress-normalization",
     "yaml-config",
     "invalid-input",
     "ordering-defaulting",
@@ -333,6 +334,10 @@ def build_emission_fixture(fixture: Fixture) -> dict[str, object]:
         payload["discovery_case"] = load_discovery_case(fixture.fixture_id)
     if fixture.category == "credentials-origin-cert":
         payload["origin_cert_source"] = load_origin_cert_source(fixture.fixture_id)
+    if fixture.category == "ordering-defaulting":
+        payload["ordering_case"] = load_ordering_case(fixture.fixture_id)
+    if fixture.category == "ingress-normalization":
+        payload["cli_ingress_case"] = load_cli_ingress_case(fixture.fixture_id)
     return payload
 
 
@@ -361,6 +366,34 @@ def load_origin_cert_source(fixture_id: str) -> str:
             return str(source["path"])
 
     raise SystemExit(f"missing credentials source for fixture {fixture_id}")
+
+
+def load_ordering_case(fixture_id: str) -> dict[str, object]:
+    cases_path = FIXTURE_ROOT / "ordering-defaulting" / "cases.toml"
+    with cases_path.open("rb") as handle:
+        raw = tomllib.load(handle)
+
+    for case in raw.get("case", []):
+        if case.get("id") == fixture_id:
+            return {
+                "input": str(case["input"]),
+            }
+
+    raise SystemExit(f"missing ordering/defaulting case for fixture {fixture_id}")
+
+
+def load_cli_ingress_case(fixture_id: str) -> dict[str, object]:
+    cases_path = FIXTURE_ROOT / "ingress-normalization" / "cases.toml"
+    with cases_path.open("rb") as handle:
+        raw = tomllib.load(handle)
+
+    for case in raw.get("case", []):
+        if case.get("id") == fixture_id:
+            return {
+                "flags": list(case.get("flags", [])),
+            }
+
+    raise SystemExit(f"missing ingress-normalization case for fixture {fixture_id}")
 
 
 def display_repo_relative(path: Path) -> str:

@@ -85,6 +85,12 @@ pub enum ConfigError {
     )]
     OriginCertNeedsRefresh { path: PathBuf },
 
+    #[error(
+        "No ingress rules were defined in provided config (if any) nor from the cli, cloudflared will \
+         return 503 for all incoming HTTP requests"
+    )]
+    NoIngressRulesCli,
+
     #[error("the last ingress rule must match all URLs")]
     IngressLastRuleNotCatchAll,
 
@@ -213,6 +219,7 @@ impl ConfigError {
             Self::OriginCertMultipleTokens => "origin-cert-multiple-tokens",
             Self::OriginCertMissingToken => "origin-cert-missing-token",
             Self::OriginCertNeedsRefresh { .. } => "origin-cert-needs-refresh",
+            Self::NoIngressRulesCli => "no-ingress-rules-cli",
             Self::IngressLastRuleNotCatchAll => "ingress-last-rule-not-catch-all",
             Self::IngressBadWildcard => "ingress-bad-wildcard",
             Self::IngressHostnameContainsPort => "ingress-hostname-contains-port",
