@@ -172,6 +172,30 @@ Implication:
 - `cloudflared-config` is now a real owning crate for the accepted first slice
 - the crate still must not be described as a completed first-slice port
 
+## Phase 1B.2 Config Loading Path
+
+Phase 1B.2 behavior now exists for the targeted config-loading fixtures.
+
+What exists now:
+
+- deterministic config discovery with default search order and auto-create side effects
+- YAML file loading into the crate's raw config representation
+- raw-to-normalized conversion for the currently targeted config surface
+- narrow ingress validation for the current invalid and unicode config fixtures
+- Rust actual artifact emission for targeted config discovery and config loading fixtures
+
+What does not exist yet:
+
+- Go truth outputs for comparison
+- full credentials and origin-cert behavior parity
+- full ingress validation and deterministic matching behavior
+- CLI-origin ingress normalization artifacts
+
+Implication:
+
+- the accepted first slice now has a real config-loading path in Rust
+- the repository still must not claim first-slice parity is complete
+
 ## First Implementation Gate
 
 No large-scale subsystem implementation should begin until all of the following

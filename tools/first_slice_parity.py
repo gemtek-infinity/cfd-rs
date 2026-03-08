@@ -17,6 +17,12 @@ FIXTURE_ROOT = (
 INDEX_PATH = FIXTURE_ROOT / "fixture-index.toml"
 GO_TRUTH_DIR = FIXTURE_ROOT / "golden" / "go-truth"
 RUST_ACTUAL_DIR = FIXTURE_ROOT / "golden" / "rust-actual"
+SUPPORTED_RUST_ACTUAL_CATEGORIES = {
+    "config-discovery",
+    "yaml-config",
+    "invalid-input",
+    "ordering-defaulting",
+}
 
 
 @dataclass(frozen=True)
@@ -87,6 +93,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Limit comparison to one or more fixture IDs.",
     )
     compare.set_defaults(func=cmd_compare)
+
+    emit_rust_actual = subparsers.add_parser(
+        "emit-rust-actual",
+        help="Generate Rust-side actual artifacts for the targeted Phase 1B.2 fixtures.",
+    )
+    emit_rust_actual.add_argument(
+        "--fixture-id",
+        action="append",
+        default=[],
+        help="Limit emission to one or more fixture IDs.",
+    )
+    emit_rust_actual.add_argument(
+        "--output-dir",
+        default=str(RUST_ACTUAL_DIR),
+        help="Directory where Rust actual JSON files should be written.",
+    )
+    emit_rust_actual.set_defaults(func=cmd_emit_rust_actual)
 
     return parser
 
@@ -208,6 +231,72 @@ def cmd_compare(args: argparse.Namespace, fixtures: list[Fixture]) -> int:
     return 0
 
 
+def cmd_emit_rust_actual(args: argparse.Namespace, fixtures: list[Fixture]) -> int:
+    selected = select_fixtures(fixtures, args.fixture_id)
+    targeted = [
+        fixture
+        for fixture in selected
+        if fixture.category in SUPPORTED_RUST_ACTUAL_CATEGORIES
+    ]
+    skipped = [
+        fixture
+        for fixture in selected
+        if fixture.category not in SUPPORTED_RUST_ACTUAL_CATEGORIES
+    ]
+
+    if not targeted:
+        print("no Phase 1B.2-targeted fixtures were selected", file=sys.stderr)
+        return 1
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    plan = {
+        "fixture_root": str(FIXTURE_ROOT),
+        "output_dir": str(output_dir),
+        "fixtures": [build_emission_fixture(fixture) for fixture in targeted],
+    }
+
+    import subprocess
+
+    completed = subprocess.run(
+        [
+            "cargo",
+            "run",
+            "-q",
+            "-p",
+            "cloudflared-config",
+            "--example",
+            "first_slice_emit",
+        ],
+        cwd=REPO_ROOT,
+        input=json.dumps(plan),
+        text=True,
+        capture_output=True,
+    )
+
+    if skipped:
+        for fixture in skipped:
+            print(
+                f"skipping unsupported Phase 1B.2 category for {fixture.fixture_id}: {fixture.category}",
+                file=sys.stderr,
+            )
+
+    if completed.returncode != 0:
+        if completed.stderr:
+            print(completed.stderr, file=sys.stderr, end="")
+        if completed.stdout:
+            print(completed.stdout, file=sys.stderr, end="")
+        return completed.returncode
+
+    print(
+        f"emitted {len(targeted)} Rust actual artifacts into {display_repo_relative(output_dir)}"
+    )
+    for fixture in targeted:
+        print(f"- {fixture.fixture_id}")
+    return 0
+
+
 def select_fixtures(fixtures: list[Fixture], fixture_ids: list[str]) -> list[Fixture]:
     if not fixture_ids:
         return fixtures
@@ -228,6 +317,41 @@ def comparison_status(fixture: Fixture) -> str:
     if not go_truth_exists:
         return "blocked-missing-go-truth"
     return "waiting-for-rust-actual"
+
+
+def build_emission_fixture(fixture: Fixture) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "fixture_id": fixture.fixture_id,
+        "category": fixture.category,
+        "comparison": fixture.comparison,
+        "input": fixture.input_path.relative_to(FIXTURE_ROOT).as_posix(),
+        "source_refs": list(fixture.go_truth),
+    }
+    if fixture.category == "config-discovery":
+        payload["discovery_case"] = load_discovery_case(fixture.fixture_id)
+    return payload
+
+
+def load_discovery_case(fixture_id: str) -> dict[str, object]:
+    cases_path = FIXTURE_ROOT / "config-discovery" / "cases.toml"
+    with cases_path.open("rb") as handle:
+        raw = tomllib.load(handle)
+
+    for case in raw.get("case", []):
+        if case.get("id") == fixture_id:
+            return {
+                "explicit_config": bool(case.get("explicit_config", False)),
+                "present": list(case.get("present", [])),
+            }
+
+    raise SystemExit(f"missing config discovery case for fixture {fixture_id}")
+
+
+def display_repo_relative(path: Path) -> str:
+    try:
+        return path.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return str(path)
 
 
 if __name__ == "__main__":

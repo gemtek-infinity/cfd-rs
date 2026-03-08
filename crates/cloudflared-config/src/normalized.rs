@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
@@ -7,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::credentials::{CredentialSurface, TunnelReference};
 use crate::discovery::ConfigSource;
 use crate::error::Result;
-use crate::ingress::IngressRule;
+use crate::ingress::{IngressRule, default_no_ingress_rule};
 use crate::raw_config::{RawConfig, WarpRoutingConfig};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -37,11 +35,16 @@ impl NormalizedConfig {
         };
         let tunnel = raw.tunnel.map(TunnelReference::from_raw);
 
-        let ingress = raw
-            .ingress
-            .into_iter()
-            .map(IngressRule::from_raw)
-            .collect::<Result<Vec<_>>>()?;
+        let ingress = if raw.ingress.is_empty() {
+            vec![default_no_ingress_rule()]
+        } else {
+            let total_rules = raw.ingress.len();
+            raw.ingress
+                .into_iter()
+                .enumerate()
+                .map(|(rule_index, rule)| IngressRule::from_raw(rule, rule_index, total_rules))
+                .collect::<Result<Vec<_>>>()?
+        };
 
         Ok(Self {
             source,
@@ -60,6 +63,7 @@ impl NormalizedConfig {
 mod tests {
     use crate::credentials::TunnelReference;
     use crate::discovery::ConfigSource;
+    use crate::ingress::IngressService;
     use crate::normalized::{NormalizationWarning, NormalizedConfig};
     use crate::raw_config::RawConfig;
 
@@ -93,6 +97,29 @@ mod tests {
                 raw: "config-file-test".to_owned(),
                 uuid: None,
             })
+        );
+    }
+
+    #[test]
+    fn normalization_creates_default_503_ingress_when_missing() {
+        let raw = ok(RawConfig::from_yaml_str(
+            "fixture.yaml",
+            "tunnel: config-file-test\noriginRequest:\n  connectTimeout: 30s\n",
+        ));
+        let normalized = ok(NormalizedConfig::from_raw(
+            ConfigSource::DiscoveredPath("/tmp/config.yml".into()),
+            raw,
+        ));
+
+        assert_eq!(normalized.ingress.len(), 1);
+        assert_eq!(normalized.ingress[0].service, IngressService::HttpStatus(503));
+        assert_eq!(
+            normalized
+                .origin_request
+                .connect_timeout
+                .as_ref()
+                .map(|value| value.0.as_str()),
+            Some("30s")
         );
     }
 }

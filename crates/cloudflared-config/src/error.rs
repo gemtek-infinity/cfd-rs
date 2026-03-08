@@ -1,11 +1,12 @@
-#![forbid(unsafe_code)]
-
 use std::path::PathBuf;
 
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
+    #[error("no config file could be resolved")]
+    NoConfigFile,
+
     #[error("failed to read {path}")]
     Io {
         path: PathBuf,
@@ -44,9 +45,47 @@ pub enum ConfigError {
         #[source]
         source: uuid::Error,
     },
+
+    #[error("failed to create directory {path}")]
+    CreateDirectory {
+        path: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
+
+    #[error("failed to create file {path}")]
+    CreateFile {
+        path: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
+
+    #[error("failed to write file {path}")]
+    WriteFile {
+        path: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
+
+    #[error("the last ingress rule must match all URLs")]
+    IngressLastRuleNotCatchAll,
+
+    #[error("hostname wildcard must appear only at the start")]
+    IngressBadWildcard,
+
+    #[error("hostname cannot contain a port")]
+    IngressHostnameContainsPort,
+
+    #[error("rule #{index} is a catch-all before the final rule")]
+    IngressCatchAllNotLast { index: usize, hostname: String },
+
+    #[error("invalid ingress service {value}: {reason}")]
+    InvalidIngressService { value: String, reason: String },
+
     #[error("{message}")]
     InvariantViolation { message: String },
-    #[error("{operation} is deferred beyond phase 1B.1")]
+
+    #[error("{operation} is deferred beyond phase 1B.2")]
     Deferred { operation: &'static str },
 }
 
@@ -91,6 +130,34 @@ impl ConfigError {
         }
     }
 
+    pub fn create_directory(path: impl Into<PathBuf>, source: std::io::Error) -> Self {
+        Self::CreateDirectory {
+            path: path.into(),
+            source,
+        }
+    }
+
+    pub fn create_file(path: impl Into<PathBuf>, source: std::io::Error) -> Self {
+        Self::CreateFile {
+            path: path.into(),
+            source,
+        }
+    }
+
+    pub fn write_file(path: impl Into<PathBuf>, source: std::io::Error) -> Self {
+        Self::WriteFile {
+            path: path.into(),
+            source,
+        }
+    }
+
+    pub fn invalid_ingress_service(value: impl Into<String>, reason: impl Into<String>) -> Self {
+        Self::InvalidIngressService {
+            value: value.into(),
+            reason: reason.into(),
+        }
+    }
+
     pub fn invariant(message: impl Into<String>) -> Self {
         Self::InvariantViolation {
             message: message.into(),
@@ -99,5 +166,27 @@ impl ConfigError {
 
     pub fn deferred(operation: &'static str) -> Self {
         Self::Deferred { operation }
+    }
+
+    pub fn category(&self) -> &'static str {
+        match self {
+            Self::NoConfigFile => "no-config-file",
+            Self::Io { .. } => "io",
+            Self::Yaml { .. } => "yaml-parse",
+            Self::JsonParse { .. } => "json-parse",
+            Self::JsonSerialize { .. } => "json-serialize",
+            Self::InvalidUrl { .. } => "invalid-url",
+            Self::InvalidUuid { .. } => "invalid-uuid",
+            Self::CreateDirectory { .. } => "create-directory",
+            Self::CreateFile { .. } => "create-file",
+            Self::WriteFile { .. } => "write-file",
+            Self::IngressLastRuleNotCatchAll => "ingress-last-rule-not-catch-all",
+            Self::IngressBadWildcard => "ingress-bad-wildcard",
+            Self::IngressHostnameContainsPort => "ingress-hostname-contains-port",
+            Self::IngressCatchAllNotLast { .. } => "ingress-catch-all-not-last",
+            Self::InvalidIngressService { .. } => "invalid-ingress-service",
+            Self::InvariantViolation { .. } => "invariant-violation",
+            Self::Deferred { .. } => "deferred",
+        }
     }
 }
