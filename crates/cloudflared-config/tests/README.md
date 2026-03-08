@@ -15,8 +15,9 @@ Current state:
 - Phase 1A fixture taxonomy and harness scaffolding exist
 - Phase 1B.2 can emit Rust actual artifacts for config discovery/loading fixtures
 - Phase 1B.3 can emit Rust actual artifacts for credentials/origin-cert fixtures
+- Phase 1B.4 can emit Rust actual artifacts for ingress normalization and ordering/defaulting fixtures
 - Go truth capture is not checked in yet
-- config and credentials behavior is only partially implemented
+- config, credentials, and ingress behavior are only partially implemented
 - Rust-versus-Go parity is not complete yet
 
 Phase 1A outputs in this directory:
@@ -25,7 +26,7 @@ Phase 1A outputs in this directory:
 - a checked-in golden artifact contract for future Go truth and Rust actuals
 - Rust-side helper scaffolding and ignored parity test entrypoints
 - an external runner entrypoint at `tools/first_slice_parity.py`
-- a Rust actual emission path for targeted Phase 1B.2 and Phase 1B.3 fixture categories
+- a Rust actual emission path for the currently implemented first-slice fixture categories
 
 Current execution model:
 
@@ -33,7 +34,7 @@ Current execution model:
 - `python3 tools/first_slice_parity.py check-go-truth` fails until Go truth JSON
  is captured under `tests/fixtures/first-slice/golden/go-truth/`
 - `python3 tools/first_slice_parity.py emit-rust-actual` writes readable JSON
- artifacts for the currently implemented config and credentials fixtures
+ artifacts for the currently implemented config, credentials, and ingress fixtures
 - `cargo test -p cloudflared-config` validates the fixture inventory and keeps
  ignored parity tests visible without claiming passing parity
 

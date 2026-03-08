@@ -7,11 +7,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use cloudflared_config::artifact::{
     DiscoveryCase, DiscoveryReportPayload, EmissionPlan, FixtureSpec, credential_envelope,
-    discovery_envelope, error_envelope, normalized_config_envelope,
+    discovery_envelope, error_envelope, ingress_envelope, normalized_config_envelope,
 };
 use cloudflared_config::{
-    ConfigSource, DiscoveryDefaults, DiscoveryRequest, OriginCertToken, discover_config,
-    load_normalized_config,
+    ConfigSource, DiscoveryDefaults, DiscoveryRequest, NormalizedIngress, OriginCertToken, discover_config,
+    load_normalized_config, parse_cli_ingress,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,10 +21,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for fixture in &plan.fixtures {
         let envelope = match fixture.category.as_str() {
             "config-discovery" => emit_discovery_fixture(fixture)?,
-            "yaml-config" | "ordering-defaulting" | "invalid-input" => {
-                emit_config_fixture(&plan.fixture_root, fixture)?
-            }
+            "yaml-config" | "invalid-input" => emit_config_fixture(&plan.fixture_root, fixture)?,
+            "ordering-defaulting" => emit_ordering_fixture(&plan.fixture_root, fixture)?,
             "credentials-origin-cert" => emit_origin_cert_fixture(&plan, fixture)?,
+            "ingress-normalization" => emit_cli_ingress_fixture(fixture)?,
             other => {
                 return Err(format!("unsupported fixture category for current first slice: {other}").into());
             }
@@ -97,6 +97,46 @@ fn emit_origin_cert_fixture(
         Ok(token) => Ok(credential_envelope(fixture, source_path, &token)?),
         Err(error) => Ok(error_envelope(fixture, &error)?),
     }
+}
+
+fn emit_ordering_fixture(
+    fixture_root: &Path,
+    fixture: &FixtureSpec,
+) -> Result<cloudflared_config::artifact::ArtifactEnvelope, Box<dyn std::error::Error>> {
+    let Some(ordering_case) = fixture.ordering_case.as_ref() else {
+        return Err(format!("fixture {} is missing ordering case data", fixture.fixture_id).into());
+    };
+
+    let input_path = fixture_root.join(&ordering_case.input);
+    let source = ConfigSource::DiscoveredPath(PathBuf::from(&ordering_case.input));
+    match load_normalized_config(&input_path, source) {
+        Ok(normalized) => Ok(normalized_config_envelope(
+            fixture,
+            Path::new(&ordering_case.input),
+            &normalized,
+        )?),
+        Err(error) => Ok(error_envelope(fixture, &error)?),
+    }
+}
+
+fn emit_cli_ingress_fixture(
+    fixture: &FixtureSpec,
+) -> Result<cloudflared_config::artifact::ArtifactEnvelope, Box<dyn std::error::Error>> {
+    let Some(cli_case) = fixture.cli_ingress_case.as_ref() else {
+        return Err(format!("fixture {} is missing cli ingress case data", fixture.fixture_id).into());
+    };
+
+    match parse_cli_ingress(&cli_case.flags) {
+        Ok(normalized) => emit_cli_ingress_envelope(fixture, &normalized),
+        Err(error) => Ok(error_envelope(fixture, &error)?),
+    }
+}
+
+fn emit_cli_ingress_envelope(
+    fixture: &FixtureSpec,
+    normalized: &NormalizedIngress,
+) -> Result<cloudflared_config::artifact::ArtifactEnvelope, Box<dyn std::error::Error>> {
+    Ok(ingress_envelope(fixture, "cli-single-origin", normalized)?)
 }
 
 fn build_discovery_sandbox(case: &DiscoveryCase) -> Result<PathBuf, Box<dyn std::error::Error>> {

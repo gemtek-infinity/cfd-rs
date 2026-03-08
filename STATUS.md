@@ -8,7 +8,8 @@ implementation and an intentionally narrow Rust first slice.
 It is not yet a parity-complete Rust implementation workspace. The repository
 now contains a Cargo workspace skeleton plus early first-slice behavior in
 `crates/cloudflared-config/` for config discovery/loading and credentials
-origin-cert decoding, but most subsystem behavior is still unported.
+origin-cert decoding, plus narrow ingress normalization and matching behavior,
+but most subsystem behavior is still unported.
 
 The scaffold is intentionally real but minimal:
 
@@ -222,6 +223,35 @@ What does not exist yet:
 Implication:
 
 - the accepted first slice now has a real credentials/origin-cert path in Rust
+- the repository still must not claim first-slice parity is complete
+
+## Phase 1B.4 Ingress Normalization And Matching Path
+
+Phase 1B.4 behavior now exists for the targeted ingress normalization,
+ordering/defaulting, and CLI single-origin fixtures.
+
+What exists now:
+
+- semantic ingress service normalization for the current fixture surface
+- deterministic user-rule matching with host:port stripping and catch-all fallback
+- punycode-aware hostname matching for the current IDN ingress fixture surface
+- preserved no-ingress default 503 contract through normalized config output
+- narrow CLI single-origin synthesis for `--hello-world`, `--bastion`, `--url`,
+  and `--unix-socket`
+- Rust actual artifact emission for targeted ingress-related fixture categories
+
+What does not exist yet:
+
+- Go truth outputs for comparison
+- internal ingress-rule matching and negative rule-index behavior
+- full regex-path semantics for general ingress matching
+- full tunnel credential JSON artifact coverage
+- full first-slice parity comparisons
+
+Implication:
+
+- the accepted first slice now has a real ingress normalization and matching
+  path in Rust for the current fixture surface
 - the repository still must not claim first-slice parity is complete
 
 ## First Implementation Gate
