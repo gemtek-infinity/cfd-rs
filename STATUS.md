@@ -6,8 +6,9 @@ This repository is currently a rewrite planning and scaffolding repository with
 a frozen Go reference implementation.
 
 It is not yet a Rust implementation workspace in the substantive sense. The
-repository now contains a Cargo workspace skeleton, but no subsystem behavior
-has been ported yet.
+repository now contains a Cargo workspace skeleton plus a first-slice domain
+skeleton in `crates/cloudflared-config/`, but no subsystem behavior has been
+ported yet.
 
 The scaffold is intentionally real but minimal:
 
@@ -70,8 +71,9 @@ The following top-level rewrite decisions are part of the active scaffold:
 Current crate intent:
 
 - `crates/cloudflared-cli`: runnable binary scaffold only
-- `crates/cloudflared-config`: future config, credentials, and ingress
-  normalization boundary
+- `crates/cloudflared-config`: owning crate for the accepted first-slice
+  domain skeleton and future config, credentials, and ingress normalization
+  behavior
 - `crates/cloudflared-config/tests/`: first-slice parity harness and fixtures
 - `crates/cloudflared-core`: future shared types and cross-cutting primitives
 - `crates/cloudflared-proto`: future wire-format and RPC boundary
@@ -144,6 +146,31 @@ Implication:
 - the repo can now inventory and mechanically gate the first-slice parity
   contract
 - the repo still must not claim first-slice parity is complete
+
+## Phase 1B.1 Domain Skeleton
+
+Phase 1B.1 groundwork now exists in `crates/cloudflared-config/`.
+
+What exists now:
+
+- admitted first-slice crate dependencies only in `crates/cloudflared-config/Cargo.toml`
+- explicit module layout for discovery, raw config, normalized config,
+  credentials, ingress, and error taxonomy
+- honest public APIs for raw YAML loading, credential JSON loading, and raw to
+  normalized config conversion boundaries
+- narrow unit tests covering shape-level parsing and invariants
+
+What does not exist yet:
+
+- parity-complete config discovery behavior
+- origin-cert PEM decoding behavior
+- ingress validation and deterministic matching behavior
+- Rust actual artifact emission for the Phase 1A harness
+
+Implication:
+
+- `cloudflared-config` is now a real owning crate for the accepted first slice
+- the crate still must not be described as a completed first-slice port
 
 ## First Implementation Gate
 
