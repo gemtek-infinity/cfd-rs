@@ -1,0 +1,121 @@
+schema = 1
+
+[[fixture]]
+category = "config-discovery"
+comparison = "exact"
+go_truth = ["baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §1-§2"]
+id = "discover-home-cloudflared"
+input = "discovery-cases.toml"
+
+[[fixture]]
+category = "config-discovery"
+comparison = "structural"
+go_truth = ["baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §1.4"]
+id = "discover-auto-create-default"
+input = "discovery-cases.toml"
+
+[[fixture]]
+category = "config-loading-valid"
+comparison = "exact-json"
+go_truth = [
+  "baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §3-§7",
+  "baseline-2026.2.0/old-impl/config/configuration_test.go::TestConfigFileSettings",
+]
+id = "config-basic-named-tunnel"
+input = "config-loading/valid/basic_named_tunnel.yaml"
+
+[[fixture]]
+category = "config-loading-valid"
+comparison = "exact-json"
+go_truth = [
+  "baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §4.2",
+  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Unicode domain",
+]
+id = "config-unicode-ingress"
+input = "config-loading/valid/unicode_ingress.yaml"
+
+[[fixture]]
+category = "config-loading-invalid"
+comparison = "error-category"
+go_truth = [
+  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Last rule isn't catchall",
+]
+id = "config-missing-catch-all"
+input = "config-loading/invalid/missing_catch_all.yaml"
+
+[[fixture]]
+category = "config-loading-invalid"
+comparison = "error-category"
+go_truth = [
+  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Wildcard not at start",
+]
+id = "config-invalid-wildcard"
+input = "config-loading/invalid/invalid_wildcard.yaml"
+
+[[fixture]]
+category = "config-loading-edge"
+comparison = "semantic"
+go_truth = [
+  "baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §4.4",
+  "baseline-2026.2.0/old-impl/component-tests/test_tunnel.py::test_tunnel_no_ingress",
+]
+id = "config-no-ingress-minimal"
+input = "config-loading/edge/no_ingress_minimal.yaml"
+
+[[fixture]]
+category = "config-loading-edge"
+comparison = "warning-or-report"
+go_truth = ["baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §2.2"]
+id = "config-unknown-top-level-key"
+input = "config-loading/edge/unknown_top_level_key.yaml"
+
+[[fixture]]
+category = "credentials"
+comparison = "exact-json"
+go_truth = [
+  "baseline-2026.2.0/old-impl/credentials/credentials_test.go::TestCredentialsRead",
+  "baseline-2026.2.0/old-impl/credentials/origin_cert_test.go::TestJSONArgoTunnelToken",
+]
+id = "origin-cert-json-token"
+input = "credentials/sources.toml"
+
+[[fixture]]
+category = "credentials"
+comparison = "error-category"
+go_truth = [
+  "baseline-2026.2.0/old-impl/credentials/origin_cert_test.go::TestJSONArgoTunnelTokenEmpty",
+]
+id = "origin-cert-missing-token"
+input = "credentials/sources.toml"
+
+[[fixture]]
+category = "credentials"
+comparison = "error-category"
+go_truth = ["baseline-2026.2.0/old-impl/credentials/origin_cert_test.go::TestLoadOriginCert"]
+id = "origin-cert-unknown-block"
+input = "credentials/sources.toml"
+
+[[fixture]]
+category = "ingress-cli"
+comparison = "exact-json"
+go_truth = [
+  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/Valid hello-world",
+]
+id = "cli-origin-hello-world"
+input = "ingress-cli/cases.toml"
+
+[[fixture]]
+category = "ingress-cli"
+comparison = "exact-json"
+go_truth = ["baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices_URL/http"]
+id = "cli-origin-url-http"
+input = "ingress-cli/cases.toml"
+
+[[fixture]]
+category = "ingress-cli"
+comparison = "error-category"
+go_truth = [
+  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/No origins defined",
+]
+id = "cli-origin-no-origin"
+input = "ingress-cli/cases.toml"

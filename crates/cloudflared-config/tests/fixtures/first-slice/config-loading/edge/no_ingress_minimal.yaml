@@ -1,0 +1,3 @@
+tunnel: config-file-test
+originRequest:
+  connectTimeout: 30s

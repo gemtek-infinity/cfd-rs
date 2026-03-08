@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    "EditorConfig.EditorConfig",
+    "davidanson.vscode-markdownlint",
+    "fill-labs.dependi",
+    "foxundermoon.shell-format",
+    "mads-hartmann.bash-ide-vscode",
+    "ms-python.black-formatter",
+    "ms-python.vscode-pylance",
+    "redhat.vscode-yaml",
+    "rust-lang.rust-analyzer",
+    "tamasfe.even-better-toml",
+    "timonwong.shellcheck"
+  ]
+}

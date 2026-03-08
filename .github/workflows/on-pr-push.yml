@@ -1,0 +1,50 @@
+name: On PR Push - Validate
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+
+concurrency:
+  group: on-pr-push-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  validate:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install stable toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup component add clippy --toolchain stable
+          rustup default stable
+          rustc -Vv
+          cargo -V
+      - name: Install nightly rustfmt
+        run: |
+          rustup toolchain install nightly --profile minimal --no-self-update
+          rustup component add rustfmt --toolchain nightly
+          rustup run nightly rustfmt -V
+      - name: Format (nightly rustfmt)
+        run: cargo +nightly fmt --all --check
+      - name: Check (stable)
+        run: cargo check --workspace --locked
+      - name: Clippy (stable)
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test (stable)
+        run: cargo test --workspace --locked

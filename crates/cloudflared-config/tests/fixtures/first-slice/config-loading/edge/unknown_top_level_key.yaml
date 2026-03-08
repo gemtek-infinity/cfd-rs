@@ -1,0 +1,4 @@
+ingress:
+  - hostname: "*"
+    service: https://localhost:8000
+extraKey: extraValue

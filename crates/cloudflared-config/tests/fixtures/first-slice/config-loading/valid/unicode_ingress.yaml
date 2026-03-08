@@ -1,0 +1,4 @@
+ingress:
+  - hostname: môô.cloudflare.com
+    service: https://localhost:8000
+  - service: https://localhost:8001

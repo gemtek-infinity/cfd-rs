@@ -1,0 +1,22 @@
+tunnel: config-file-test
+originRequest:
+  ipRules:
+    - prefix: "10.0.0.0/8"
+      ports:
+        - 80
+        - 8080
+      allow: false
+    - prefix: "fc00::/7"
+      ports:
+        - 443
+        - 4443
+      allow: true
+ingress:
+  - hostname: tunnel1.example.com
+    path: /id
+    service: https://localhost:8000
+  - hostname: "*"
+    service: https://localhost:8001
+warp-routing:
+  connectTimeout: 2s
+  tcpKeepAlive: 10s

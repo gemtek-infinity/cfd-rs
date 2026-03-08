@@ -1,0 +1,3 @@
+ingress:
+  - hostname: test.*.example.com
+    service: https://localhost:8000

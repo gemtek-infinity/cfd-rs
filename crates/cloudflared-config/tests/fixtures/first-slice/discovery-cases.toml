@@ -1,0 +1,34 @@
+schema = 1
+
+[[case]]
+expected_action = "use-existing"
+expected_path = "home/.cloudflared/config.yml"
+explicit_config = false
+id = "discover-home-cloudflared"
+present = ["home/.cloudflared/config.yml"]
+
+[[case]]
+expected_action = "use-existing"
+expected_path = "home/.cloudflare-warp/config.yaml"
+explicit_config = false
+id = "discover-home-cloudflare-warp"
+present = ["home/.cloudflare-warp/config.yaml"]
+
+[[case]]
+expected_action = "use-existing"
+expected_path = "home/cloudflare-warp/config.yml"
+explicit_config = false
+id = "discover-home-cloudflare-warp-legacy"
+present = ["home/cloudflare-warp/config.yml"]
+
+[[case]]
+expected_action = "create-default-config"
+expected_path = "/usr/local/etc/cloudflared/config.yml"
+expected_side_effects = [
+  "/usr/local/etc/cloudflared",
+  "/usr/local/etc/cloudflared/config.yml",
+  "/var/log/cloudflared",
+]
+explicit_config = false
+id = "discover-auto-create-default"
+present = []

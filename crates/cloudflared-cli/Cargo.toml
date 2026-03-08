@@ -1,0 +1,17 @@
+[package]
+edition.workspace = true
+license.workspace = true
+name = "cloudflared-cli"
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+mimalloc.workspace = true
+
+[[bin]]
+name = "cloudflared"
+path = "src/main.rs"

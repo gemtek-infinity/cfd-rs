@@ -1,0 +1,65 @@
+name: On PR Merge - Build & Push
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+concurrency:
+  group: on-pr-merge-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  TARGET: x86_64-unknown-linux-gnu
+  PACKAGE_NAME: cloudflared-cli
+  BIN_NAME: cloudflared
+  ARTIFACT_BASENAME: cloudflared-${{ github.sha }}-x86_64-unknown-linux-gnu
+
+jobs:
+  build-preview:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install stable toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustup component add clippy --toolchain stable
+          rustc -Vv
+          cargo -V
+      - name: Test (stable)
+        run: cargo test --workspace --locked
+      - name: Build release binary (stable)
+        env:
+          RUSTFLAGS: -C target-cpu=x86-64-v2 -C strip=symbols
+        run: |
+          cargo build --release --locked --target "${TARGET}" -p "${PACKAGE_NAME}"
+      - name: Package tgz
+        run: |
+          rm -rf dist
+          mkdir -p dist
+          install -Dm755 "target/${TARGET}/release/${BIN_NAME}" "dist/${BIN_NAME}"
+          if [ -f README.md ]; then
+            cp README.md dist/
+          fi
+          if [ -f LICENSE ]; then
+            cp LICENSE dist/
+          fi
+          tar -C dist -czf "${ARTIFACT_BASENAME}.tgz" .
+          sha256sum "${ARTIFACT_BASENAME}.tgz" > "${ARTIFACT_BASENAME}.sha256"
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_BASENAME }}
+          path: |
+            ${{ env.ARTIFACT_BASENAME }}.tgz
+            ${{ env.ARTIFACT_BASENAME }}.sha256
+          retention-days: 30
