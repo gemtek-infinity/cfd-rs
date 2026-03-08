@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 #![allow(unused_crate_dependencies)]
 
 use cloudflared_config as _;

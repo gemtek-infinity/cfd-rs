@@ -1,10 +1,17 @@
 # Rust Actual Outputs
 
-This directory is intentionally empty in Phase 1A.
+This directory is reserved for canonical JSON emitted by the Rust-side first
+slice harness path.
 
-Phase 1B work in `crates/cloudflared-config/` will eventually emit canonical
-JSON reports here, either as checked-in review artifacts or temporary compare
-outputs depending on the owning test flow.
+Current state in Phase 1B.2:
 
-Phase 1A reserves the path and format only. It does not claim any Rust-side
-parity output exists yet.
+- config discovery and config loading fixtures can now emit Rust actual reports
+- the files are generated via `python3 tools/first_slice_parity.py emit-rust-actual`
+- the output remains incomplete for first-slice categories that are still out of
+ scope for this phase
+
+The directory should remain reviewable and stable:
+
+- one JSON file per emitted fixture id
+- envelope shape must follow `golden/schema/README.md`
+- no file here should imply Go parity unless the corresponding Go truth exists

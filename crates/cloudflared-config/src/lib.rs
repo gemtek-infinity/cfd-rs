@@ -14,6 +14,9 @@
 //! Externally visible first-slice behavior is still incomplete. This crate is a
 //! synchronous domain skeleton, not a parity-complete implementation.
 
+use std::path::Path;
+
+pub mod artifact;
 pub mod credentials;
 pub mod discovery;
 pub mod error;
@@ -25,8 +28,9 @@ pub use crate::credentials::{
     CredentialSurface, OriginCertLocator, OriginCertToken, TunnelCredentialsFile, TunnelReference,
 };
 pub use crate::discovery::{
-    ConfigSource, DiscoveryCandidate, DiscoveryDefaults, DiscoveryOrigin, DiscoveryPlan, DiscoveryRequest,
-    default_nix_log_directory, default_nix_primary_config_path, default_nix_search_directories,
+    ConfigSource, DiscoveryAction, DiscoveryCandidate, DiscoveryDefaults, DiscoveryOrigin, DiscoveryOutcome,
+    DiscoveryPlan, DiscoveryRequest, default_nix_log_directory, default_nix_primary_config_path,
+    default_nix_search_directories,
 };
 pub use crate::error::{ConfigError, Result};
 pub use crate::ingress::{
@@ -40,6 +44,19 @@ pub fn parse_raw_config(source_name: &str, contents: &str) -> Result<RawConfig> 
     RawConfig::from_yaml_str(source_name, contents)
 }
 
+pub fn load_raw_config(path: &Path) -> Result<RawConfig> {
+    RawConfig::from_yaml_path(path)
+}
+
 pub fn normalize_config(source: ConfigSource, raw: RawConfig) -> Result<NormalizedConfig> {
     NormalizedConfig::from_raw(source, raw)
+}
+
+pub fn load_normalized_config(path: &Path, source: ConfigSource) -> Result<NormalizedConfig> {
+    let raw = load_raw_config(path)?;
+    normalize_config(source, raw)
+}
+
+pub fn discover_config(request: &DiscoveryRequest) -> Result<DiscoveryOutcome> {
+    request.find_or_create_config_path()
 }

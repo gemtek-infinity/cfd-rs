@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use std::fs;
 use std::path::{Path, PathBuf};
 
