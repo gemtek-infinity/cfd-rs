@@ -118,8 +118,32 @@ These items are still missing before MCP-assisted or large-scale subsystem work
 should begin:
 
 - accepted compatibility-scope decision for FIPS/compliance
-- executable parity harness runner for Go-versus-Rust comparisons
 - captured Go truth outputs and passing first-slice parity tests
+
+## Phase 1A Groundwork
+
+Phase 1A groundwork now exists for the accepted first slice.
+
+What exists now:
+
+- explicit first-slice fixture taxonomy under `crates/cloudflared-config/tests/fixtures/first-slice/`
+- executable harness entrypoint at `tools/first_slice_parity.py`
+- checked-in JSON golden artifact contract for Go truth and Rust actual reports
+- Rust-side helper scaffolding and ignored parity tests in
+  `crates/cloudflared-config/tests/`
+
+What does not exist yet:
+
+- captured Go truth outputs
+- Rust-emitted parity reports
+- implemented config, credential, or ingress behavior
+- passing first-slice parity comparisons
+
+Implication:
+
+- the repo can now inventory and mechanically gate the first-slice parity
+  contract
+- the repo still must not claim first-slice parity is complete
 
 ## First Implementation Gate
 

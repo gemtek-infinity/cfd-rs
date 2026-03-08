@@ -12,9 +12,25 @@ subsystems start.
 
 Current state:
 
-- fixture inventory and seed fixtures exist
+- Phase 1A fixture taxonomy and harness scaffolding exist
+- Go truth capture is not checked in yet
 - no subsystem behavior is implemented yet
-- no executable parity runner exists yet
+- Rust-versus-Go parity is not complete yet
+
+Phase 1A outputs in this directory:
+
+- explicit fixture taxonomy under `tests/fixtures/first-slice/`
+- a checked-in golden artifact contract for future Go truth and Rust actuals
+- Rust-side helper scaffolding and ignored parity test entrypoints
+- an external runner entrypoint at `tools/first_slice_parity.py`
+
+Current execution model:
+
+- `python3 tools/first_slice_parity.py inventory` shows the accepted fixture set
+- `python3 tools/first_slice_parity.py check-go-truth` fails until Go truth JSON
+ is captured under `tests/fixtures/first-slice/golden/go-truth/`
+- `cargo test -p cloudflared-config` validates the fixture inventory and keeps
+ ignored parity tests visible without claiming passing parity
 
 Source-of-truth rule:
 
