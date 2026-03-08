@@ -1,19 +1,22 @@
 # Golden Output Rules
 
-Final checked-in parity goldens should use canonical JSON emitted by the
-first-slice harness report kinds:
+This directory holds the checked-in artifact contract for the accepted
+first-slice parity harness.
 
-- `discovery-report.v1.json`
-- `normalized-config.v1.json`
-- `credential-report.v1.json`
-- `ingress-report.v1.json`
-- `error-report.v1.json`
+Layout:
+
+- `schema/` documents the JSON envelope and report kinds
+- `go-truth/` will hold captured Go outputs, one file per fixture
+- `rust-actual/` will hold future Rust-emitted reports during comparison runs
 
 Rules:
 
-- prefer explicit checked-in golden files over approval-style snapshots
-- keep one golden file per fixture ID
+- prefer explicit checked-in goldens over approval-style snapshots
+- keep one JSON artifact per fixture ID per producer side
+- use the same canonical envelope for both Go truth and Rust actual reports
 - compare exact canonical JSON when a harness report schema exists
 - use structural or error-category comparison only where this is documented in
   `crates/cloudflared-config/tests/fixtures/first-slice/fixture-index.toml`
-  and the applicable owning test code
+  and the applicable owning harness code
+- Phase 1A intentionally leaves `go-truth/` and `rust-actual/` empty; the
+  harness must fail clearly rather than pretend those outputs exist

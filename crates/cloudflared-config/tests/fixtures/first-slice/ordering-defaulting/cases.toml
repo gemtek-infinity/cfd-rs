@@ -1,0 +1,17 @@
+schema = 1
+
+[[case]]
+id = "ordering-catch-all-last"
+input = "yaml-config/valid/basic_named_tunnel.yaml"
+notes = [
+  "Catch-all ingress rule should remain last after normalization.",
+  "Comparison will use normalized-config.v1.json once Go truth is captured.",
+]
+
+[[case]]
+id = "default-no-ingress-contract"
+input = "yaml-config/edge/no_ingress_minimal.yaml"
+notes = [
+  "Comparison remains semantic until the Rust report shape is implemented.",
+  "No ingress should normalize into the documented no-ingress contract outcome.",
+]

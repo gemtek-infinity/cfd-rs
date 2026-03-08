@@ -1,29 +1,65 @@
 #![forbid(unsafe_code)]
 
 use cloudflared_config as _;
-use std::path::Path;
+
+#[path = "support/mod.rs"]
+#[allow(dead_code)]
+mod support;
 
 #[test]
 fn first_slice_fixture_inventory_exists() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/first-slice");
+    let root = support::fixtures_root();
 
     for relative in [
         "README.md",
         "fixture-index.toml",
-        "discovery-cases.toml",
-        "credentials/sources.toml",
-        "ingress-cli/cases.toml",
-        "config-loading/valid/basic_named_tunnel.yaml",
-        "config-loading/valid/unicode_ingress.yaml",
-        "config-loading/invalid/missing_catch_all.yaml",
-        "config-loading/invalid/invalid_wildcard.yaml",
-        "config-loading/edge/no_ingress_minimal.yaml",
-        "config-loading/edge/unknown_top_level_key.yaml",
+        "config-discovery/cases.toml",
+        "yaml-config/valid/basic_named_tunnel.yaml",
+        "yaml-config/valid/unicode_ingress.yaml",
+        "yaml-config/edge/no_ingress_minimal.yaml",
+        "yaml-config/edge/unknown_top_level_key.yaml",
+        "credentials-origin-cert/sources.toml",
+        "ingress-normalization/cases.toml",
+        "ordering-defaulting/cases.toml",
+        "invalid-input/ingress/missing_catch_all.yaml",
+        "invalid-input/ingress/invalid_wildcard.yaml",
         "golden/README.md",
+        "golden/schema/README.md",
+        "golden/go-truth/README.md",
+        "golden/rust-actual/README.md",
     ] {
         assert!(
             root.join(relative).exists(),
             "missing first-slice parity fixture: {relative}"
         );
     }
+}
+
+#[test]
+fn fixture_index_ids_are_unique() {
+    let ids = support::fixture_ids();
+    let mut sorted = ids.clone();
+
+    sorted.sort();
+    sorted.dedup();
+
+    assert_eq!(ids.len(), sorted.len(), "fixture ids must remain unique");
+}
+
+#[test]
+fn fixture_index_entries_use_existing_inputs() {
+    for entry in support::fixture_entries() {
+        let input_path = root_input_path(&entry.input);
+
+        assert!(
+            input_path.exists(),
+            "fixture {} points to missing input {}",
+            entry.id,
+            entry.input
+        );
+    }
+}
+
+fn root_input_path(relative: &str) -> std::path::PathBuf {
+    support::fixtures_root().join(relative)
 }
