@@ -14,6 +14,19 @@ pub(crate) fn fixtures_root() -> PathBuf {
 }
 
 #[allow(dead_code)]
+pub(crate) fn repo_root() -> PathBuf {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+    for ancestor in manifest_dir.ancestors() {
+        if ancestor.join("Cargo.toml").exists() && ancestor.join("baseline-2026.2.0").exists() {
+            return ancestor.to_path_buf();
+        }
+    }
+
+    panic!("failed to locate repo root from {}", manifest_dir.display());
+}
+
+#[allow(dead_code)]
 pub(crate) fn fixture_entries() -> Vec<FixtureEntry> {
     let index_path = fixtures_root().join("fixture-index.toml");
     let contents = fs::read_to_string(&index_path)

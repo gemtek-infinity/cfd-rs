@@ -3,9 +3,10 @@
 This directory is reserved for canonical JSON emitted by the Rust-side first
 slice harness path.
 
-Current state in Phase 1B.2:
+Current state after Phase 1B.3:
 
-- config discovery and config loading fixtures can now emit Rust actual reports
+- config discovery and config loading fixtures can emit Rust actual reports
+- credentials/origin-cert fixtures can emit Rust actual reports
 - the files are generated via `python3 tools/first_slice_parity.py emit-rust-actual`
 - the output remains incomplete for first-slice categories that are still out of
  scope for this phase

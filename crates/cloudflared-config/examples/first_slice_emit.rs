@@ -6,11 +6,12 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cloudflared_config::artifact::{
-    DiscoveryCase, DiscoveryReportPayload, EmissionPlan, FixtureSpec, discovery_envelope, error_envelope,
-    normalized_config_envelope,
+    DiscoveryCase, DiscoveryReportPayload, EmissionPlan, FixtureSpec, credential_envelope,
+    discovery_envelope, error_envelope, normalized_config_envelope,
 };
 use cloudflared_config::{
-    ConfigSource, DiscoveryDefaults, DiscoveryRequest, discover_config, load_normalized_config,
+    ConfigSource, DiscoveryDefaults, DiscoveryRequest, OriginCertToken, discover_config,
+    load_normalized_config,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -23,7 +24,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "yaml-config" | "ordering-defaulting" | "invalid-input" => {
                 emit_config_fixture(&plan.fixture_root, fixture)?
             }
-            other => return Err(format!("unsupported fixture category for Phase 1B.2: {other}").into()),
+            "credentials-origin-cert" => emit_origin_cert_fixture(&plan, fixture)?,
+            other => {
+                return Err(format!("unsupported fixture category for current first slice: {other}").into());
+            }
         };
 
         let output_path = plan.output_dir.join(format!("{}.json", fixture.fixture_id));
@@ -72,6 +76,25 @@ fn emit_config_fixture(
             Path::new(&fixture.input),
             &normalized,
         )?),
+        Err(error) => Ok(error_envelope(fixture, &error)?),
+    }
+}
+
+fn emit_origin_cert_fixture(
+    plan: &EmissionPlan,
+    fixture: &FixtureSpec,
+) -> Result<cloudflared_config::artifact::ArtifactEnvelope, Box<dyn std::error::Error>> {
+    let Some(source_path) = fixture.origin_cert_source.as_ref() else {
+        return Err(format!(
+            "fixture {} is missing origin cert source data",
+            fixture.fixture_id
+        )
+        .into());
+    };
+
+    let input_path = plan.repo_root.join(source_path);
+    match OriginCertToken::from_pem_path(&input_path) {
+        Ok(token) => Ok(credential_envelope(fixture, source_path, &token)?),
         Err(error) => Ok(error_envelope(fixture, &error)?),
     }
 }
