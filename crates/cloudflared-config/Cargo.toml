@@ -6,5 +6,13 @@ publish.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["std"] }
+serde_yaml = "0.9"
+thiserror = "2.0"
+url = { version = "2.5", features = ["serde"] }
+uuid = { version = "1.17", default-features = false, features = ["serde", "std"] }
+
 [lints]
 workspace = true
