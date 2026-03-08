@@ -19,6 +19,7 @@ GO_TRUTH_DIR = FIXTURE_ROOT / "golden" / "go-truth"
 RUST_ACTUAL_DIR = FIXTURE_ROOT / "golden" / "rust-actual"
 SUPPORTED_RUST_ACTUAL_CATEGORIES = {
     "config-discovery",
+    "credentials-origin-cert",
     "yaml-config",
     "invalid-input",
     "ordering-defaulting",
@@ -96,7 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     emit_rust_actual = subparsers.add_parser(
         "emit-rust-actual",
-        help="Generate Rust-side actual artifacts for the targeted Phase 1B.2 fixtures.",
+        help="Generate Rust-side actual artifacts for the targeted first-slice fixtures.",
     )
     emit_rust_actual.add_argument(
         "--fixture-id",
@@ -245,13 +246,14 @@ def cmd_emit_rust_actual(args: argparse.Namespace, fixtures: list[Fixture]) -> i
     ]
 
     if not targeted:
-        print("no Phase 1B.2-targeted fixtures were selected", file=sys.stderr)
+        print("no targeted first-slice fixtures were selected", file=sys.stderr)
         return 1
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     plan = {
+        "repo_root": str(REPO_ROOT),
         "fixture_root": str(FIXTURE_ROOT),
         "output_dir": str(output_dir),
         "fixtures": [build_emission_fixture(fixture) for fixture in targeted],
@@ -278,7 +280,7 @@ def cmd_emit_rust_actual(args: argparse.Namespace, fixtures: list[Fixture]) -> i
     if skipped:
         for fixture in skipped:
             print(
-                f"skipping unsupported Phase 1B.2 category for {fixture.fixture_id}: {fixture.category}",
+                f"skipping unsupported first-slice category for {fixture.fixture_id}: {fixture.category}",
                 file=sys.stderr,
             )
 
@@ -329,6 +331,8 @@ def build_emission_fixture(fixture: Fixture) -> dict[str, object]:
     }
     if fixture.category == "config-discovery":
         payload["discovery_case"] = load_discovery_case(fixture.fixture_id)
+    if fixture.category == "credentials-origin-cert":
+        payload["origin_cert_source"] = load_origin_cert_source(fixture.fixture_id)
     return payload
 
 
@@ -345,6 +349,18 @@ def load_discovery_case(fixture_id: str) -> dict[str, object]:
             }
 
     raise SystemExit(f"missing config discovery case for fixture {fixture_id}")
+
+
+def load_origin_cert_source(fixture_id: str) -> str:
+    sources_path = FIXTURE_ROOT / "credentials-origin-cert" / "sources.toml"
+    with sources_path.open("rb") as handle:
+        raw = tomllib.load(handle)
+
+    for source in raw.get("source", []):
+        if source.get("id") == fixture_id:
+            return str(source["path"])
+
+    raise SystemExit(f"missing credentials source for fixture {fixture_id}")
 
 
 def display_repo_relative(path: Path) -> str:

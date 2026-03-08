@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::credentials::{CredentialSurface, OriginCertLocator, TunnelReference};
+use crate::credentials::{CredentialSurface, OriginCertLocator, OriginCertToken, TunnelReference};
 use crate::discovery::{ConfigSource, DiscoveryAction, DiscoveryOutcome};
 use crate::error::ConfigError;
 use crate::ingress::{IngressRule, IngressService, OriginRequestConfig};
@@ -14,6 +14,7 @@ pub const SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct EmissionPlan {
+    pub repo_root: PathBuf,
     pub fixture_root: PathBuf,
     pub output_dir: PathBuf,
     pub fixtures: Vec<FixtureSpec>,
@@ -28,6 +29,8 @@ pub struct FixtureSpec {
     pub source_refs: Vec<String>,
     #[serde(default)]
     pub discovery_case: Option<DiscoveryCase>,
+    #[serde(default)]
+    pub origin_cert_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -60,6 +63,17 @@ pub struct DiscoveryReportPayload {
 pub struct ErrorReportPayload {
     pub category: &'static str,
     pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CredentialReportPayload {
+    pub kind: &'static str,
+    pub source_path: String,
+    pub zone_id: String,
+    pub account_id: String,
+    pub api_token: String,
+    pub endpoint: Option<String>,
+    pub is_fed_endpoint: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -168,6 +182,22 @@ pub fn error_envelope(
             category: error.category(),
             message: error.to_string(),
         })?,
+    })
+}
+
+pub fn credential_envelope(
+    fixture: &FixtureSpec,
+    source_path: &str,
+    token: &OriginCertToken,
+) -> Result<ArtifactEnvelope, serde_json::Error> {
+    Ok(ArtifactEnvelope {
+        schema_version: SCHEMA_VERSION,
+        fixture_id: fixture.fixture_id.clone(),
+        producer: "rust-actual",
+        report_kind: "credential-report.v1",
+        comparison: fixture.comparison.clone(),
+        source_refs: fixture.source_refs.clone(),
+        payload: serde_json::to_value(CredentialReportPayload::from_origin_cert(source_path, token))?,
     })
 }
 
@@ -339,6 +369,20 @@ impl WarningPayload {
                 kind: "unknown-top-level-keys",
                 keys: keys.clone(),
             },
+        }
+    }
+}
+
+impl CredentialReportPayload {
+    fn from_origin_cert(source_path: &str, token: &OriginCertToken) -> Self {
+        Self {
+            kind: "origin-cert-pem",
+            source_path: source_path.to_owned(),
+            zone_id: token.zone_id.clone(),
+            account_id: token.account_id.clone(),
+            api_token: token.api_token.clone(),
+            endpoint: token.endpoint.clone(),
+            is_fed_endpoint: token.is_fed_endpoint(),
         }
     }
 }

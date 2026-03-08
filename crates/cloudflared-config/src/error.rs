@@ -67,6 +67,24 @@ pub enum ConfigError {
         source: std::io::Error,
     },
 
+    #[error("cannot decode empty certificate")]
+    OriginCertEmpty,
+
+    #[error("unknown block {block_type} in the certificate")]
+    OriginCertUnknownBlock { block_type: String },
+
+    #[error("found multiple tokens in the certificate")]
+    OriginCertMultipleTokens,
+
+    #[error("missing token in the certificate")]
+    OriginCertMissingToken,
+
+    #[error(
+        "Origin certificate needs to be refreshed before creating new tunnels.\nDelete {path} and run \
+         \"cloudflared login\" to obtain a new cert."
+    )]
+    OriginCertNeedsRefresh { path: PathBuf },
+
     #[error("the last ingress rule must match all URLs")]
     IngressLastRuleNotCatchAll,
 
@@ -151,6 +169,16 @@ impl ConfigError {
         }
     }
 
+    pub fn origin_cert_unknown_block(block_type: impl Into<String>) -> Self {
+        Self::OriginCertUnknownBlock {
+            block_type: block_type.into(),
+        }
+    }
+
+    pub fn origin_cert_needs_refresh(path: impl Into<PathBuf>) -> Self {
+        Self::OriginCertNeedsRefresh { path: path.into() }
+    }
+
     pub fn invalid_ingress_service(value: impl Into<String>, reason: impl Into<String>) -> Self {
         Self::InvalidIngressService {
             value: value.into(),
@@ -180,6 +208,11 @@ impl ConfigError {
             Self::CreateDirectory { .. } => "create-directory",
             Self::CreateFile { .. } => "create-file",
             Self::WriteFile { .. } => "write-file",
+            Self::OriginCertEmpty => "origin-cert-empty",
+            Self::OriginCertUnknownBlock { .. } => "origin-cert-unknown-block",
+            Self::OriginCertMultipleTokens => "origin-cert-multiple-tokens",
+            Self::OriginCertMissingToken => "origin-cert-missing-token",
+            Self::OriginCertNeedsRefresh { .. } => "origin-cert-needs-refresh",
             Self::IngressLastRuleNotCatchAll => "ingress-last-rule-not-catch-all",
             Self::IngressBadWildcard => "ingress-bad-wildcard",
             Self::IngressHostnameContainsPort => "ingress-hostname-contains-port",

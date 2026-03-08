@@ -2,17 +2,17 @@
 
 ## Classification
 
-This repository is currently a rewrite planning and scaffolding repository with
-a frozen Go reference implementation.
+This repository is currently a rewrite workspace with a frozen Go reference
+implementation and an intentionally narrow Rust first slice.
 
-It is not yet a Rust implementation workspace in the substantive sense. The
-repository now contains a Cargo workspace skeleton plus a first-slice domain
-skeleton in `crates/cloudflared-config/`, but no subsystem behavior has been
-ported yet.
+It is not yet a parity-complete Rust implementation workspace. The repository
+now contains a Cargo workspace skeleton plus early first-slice behavior in
+`crates/cloudflared-config/` for config discovery/loading and credentials
+origin-cert decoding, but most subsystem behavior is still unported.
 
 The scaffold is intentionally real but minimal:
 
-- the workspace builds as a Rust scaffold
+- the workspace builds as a Rust scaffold with partial first-slice behavior
 - the runnable binary exists
 - policy and governance documents define the rewrite boundary
 - manifests should reflect only code that exists today, not speculative future
@@ -137,8 +137,8 @@ What exists now:
 What does not exist yet:
 
 - captured Go truth outputs
-- Rust-emitted parity reports
-- implemented config, credential, or ingress behavior
+- passing Rust-versus-Go parity reports
+- complete config, credential, or ingress behavior
 - passing first-slice parity comparisons
 
 Implication:
@@ -196,6 +196,34 @@ Implication:
 - the accepted first slice now has a real config-loading path in Rust
 - the repository still must not claim first-slice parity is complete
 
+## Phase 1B.3 Credentials And Origin-Cert Path
+
+Phase 1B.3 behavior now exists for the targeted credentials/origin-cert
+fixtures.
+
+What exists now:
+
+- source-backed PEM scanning for origin certificates
+- tolerance for legacy `PRIVATE KEY` and `CERTIFICATE` blocks during scanning
+- rejection for unknown PEM block types and multiple token blocks
+- origin-cert JSON token extraction with endpoint lowercasing
+- account-id refresh validation through the `OriginCertUser` read path
+- Rust actual artifact emission for the targeted `credentials-origin-cert`
+  fixtures
+
+What does not exist yet:
+
+- Go truth outputs for comparison
+- default origin-cert search-path resolution behavior
+- tunnel credential file artifact fixtures
+- full ingress normalization artifact coverage
+- full first-slice parity comparisons
+
+Implication:
+
+- the accepted first slice now has a real credentials/origin-cert path in Rust
+- the repository still must not claim first-slice parity is complete
+
 ## First Implementation Gate
 
 No large-scale subsystem implementation should begin until all of the following
@@ -235,9 +263,10 @@ Scope boundary for the first slice:
 
 Current scaffold implication:
 
-- no subsystem implementation code is present yet
-- the crate layout already reserves the correct boundaries for this first slice
-- manifests should stay sparse until this slice starts landing
+- narrow first-slice implementation code is now present
+- the crate layout still reserves the correct boundaries for the remainder of
+  this first slice
+- manifests should stay sparse while the remaining slice behavior lands
 
 ## Done Means
 
