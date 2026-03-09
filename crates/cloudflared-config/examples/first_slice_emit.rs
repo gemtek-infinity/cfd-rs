@@ -103,16 +103,18 @@ fn emit_ordering_fixture(
     fixture_root: &Path,
     fixture: &FixtureSpec,
 ) -> Result<cloudflared_config::artifact::ArtifactEnvelope, Box<dyn std::error::Error>> {
-    let Some(ordering_case) = fixture.ordering_case.as_ref() else {
-        return Err(format!("fixture {} is missing ordering case data", fixture.fixture_id).into());
-    };
+    let input = fixture
+        .ordering_case
+        .as_ref()
+        .map(|ordering_case| ordering_case.input.as_str())
+        .unwrap_or(fixture.input.as_str());
 
-    let input_path = fixture_root.join(&ordering_case.input);
-    let source = ConfigSource::DiscoveredPath(PathBuf::from(&ordering_case.input));
+    let input_path = fixture_root.join(input);
+    let source = ConfigSource::DiscoveredPath(PathBuf::from(input));
     match load_normalized_config(&input_path, source) {
         Ok(normalized) => Ok(normalized_config_envelope(
             fixture,
-            Path::new(&ordering_case.input),
+            Path::new(input),
             &normalized,
         )?),
         Err(error) => Ok(error_envelope(fixture, &error)?),

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "fixture_id": "origin-cert-json-token",
+  "producer": "go-truth",
+  "report_kind": "credential-report.v1",
+  "comparison": "exact-json",
+  "source_refs": [
+    "baseline-2026.2.0/old-impl/credentials/credentials_test.go::TestCredentialsRead",
+    "baseline-2026.2.0/old-impl/credentials/origin_cert_test.go::TestJSONArgoTunnelToken"
+  ],
+  "payload": {
+    "kind": "origin-cert-pem",
+    "source_path": "baseline-2026.2.0/old-impl/credentials/test-cloudflare-tunnel-cert-json.pem",
+    "zone_id": "7b0a4d77dfb881c1a3b7d61ea9443e19",
+    "account_id": "abcdabcdabcdabcd1234567890abcdef",
+    "api_token": "test-service-key",
+    "endpoint": null,
+    "is_fed_endpoint": false
+  }
+}

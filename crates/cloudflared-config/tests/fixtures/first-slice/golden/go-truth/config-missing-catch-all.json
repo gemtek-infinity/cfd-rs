@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "fixture_id": "config-missing-catch-all",
+  "producer": "go-truth",
+  "report_kind": "error-report.v1",
+  "comparison": "error-category",
+  "source_refs": [
+    "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Last rule isn't catchall"
+  ],
+  "payload": {
+    "category": "ingress-last-rule-not-catch-all",
+    "message": "The last ingress rule must match all URLs (i.e. it should not have a hostname or path filter)"
+  }
+}

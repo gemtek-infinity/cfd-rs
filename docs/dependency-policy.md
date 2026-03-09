@@ -27,7 +27,8 @@ Dependencies are admitted only when all of the following are true:
 
 ## Current Workspace Rule
 
-The current workspace is a scaffold, not a partial runtime.
+The current workspace is still intentionally narrow, but it is no longer an
+empty scaffold.
 
 That means:
 
@@ -35,20 +36,26 @@ That means:
   manifests before code using them exists
 - placeholder crates may remain dependency-free when they contain only module
   docs
-- policy documents may describe later-approved libraries without preloading them
-  into `Cargo.toml`
+- admitted dependencies should stay confined to the crates that own the active
+  slice rather than being preloaded repo-wide
 
 ## Current Admitted Dependencies
 
-The current scaffold admits only one external runtime dependency in manifests:
+The current manifests admit only the dependencies needed by the binary runtime
+baseline and the active first-slice config implementation:
 
-- `mimalloc` in the runnable binary crate
+- `mimalloc` in `cloudflared-cli`
+- `serde`, `serde_json`, `serde_yaml`, `url`, `uuid`, and `thiserror` in
+  `cloudflared-config`
 
 Reason:
 
-- allocator policy is a process-wide runtime baseline
-- the binary exists today and can own allocator choice honestly
-- libraries must not set the global allocator
+- allocator policy is still a process-wide runtime baseline owned by the binary
+- config, credential, and ingress normalization work is active in
+  `cloudflared-config`, so its admitted slice dependencies now exist honestly in
+  manifests
+- libraries still must not set the global allocator or preload later-slice
+  dependencies speculatively
 
 ## Deferred Dependency Buckets
 

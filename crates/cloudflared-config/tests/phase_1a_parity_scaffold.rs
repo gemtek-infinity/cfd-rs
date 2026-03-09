@@ -13,8 +13,7 @@ fn harness_runner_exists() {
 }
 
 #[test]
-#[ignore = "Phase 1A establishes scaffolding only; Go truth capture is pending"]
-fn go_truth_capture_gate_is_explicit() {
+fn go_truth_capture_gate_is_real() {
     let output = Command::new("python3")
         .arg(support::tool_path())
         .arg("check-go-truth")
@@ -29,19 +28,24 @@ fn go_truth_capture_gate_is_explicit() {
 }
 
 #[test]
-#[ignore = "Phase 1B will start emitting Rust-side reports for comparison"]
-fn rust_parity_compare_entrypoint_is_reserved() {
+fn rust_parity_compare_entrypoint_is_real_for_matching_subset() {
     let output = Command::new("python3")
         .arg(support::tool_path())
         .arg("compare")
         .arg("--require-go-truth")
         .arg("--require-rust-actual")
+        .arg("--fixture-id")
+        .arg("discover-home-cloudflared")
+        .arg("--fixture-id")
+        .arg("origin-cert-json-token")
+        .arg("--fixture-id")
+        .arg("cli-origin-no-origin")
         .output()
         .expect("python3 should be available to run the first-slice parity harness");
 
     assert!(
         output.status.success(),
-        "expected compare mode to pass once Go truth and Rust actual reports exist; stderr:\n{}",
+        "expected compare mode to pass for a matching subset; stderr:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
 }

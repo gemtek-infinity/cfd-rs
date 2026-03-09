@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "fixture_id": "origin-cert-unknown-block",
+  "producer": "go-truth",
+  "report_kind": "error-report.v1",
+  "comparison": "error-category",
+  "source_refs": [
+    "baseline-2026.2.0/old-impl/credentials/origin_cert_test.go::TestLoadOriginCert"
+  ],
+  "payload": {
+    "category": "origin-cert-unknown-block",
+    "message": "Error decoding origin cert: unknown block RSA PRIVATE KEY in the certificate"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "fixture_id": "config-invalid-wildcard",
+  "producer": "go-truth",
+  "report_kind": "error-report.v1",
+  "comparison": "error-category",
+  "source_refs": [
+    "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Wildcard not at start"
+  ],
+  "payload": {
+    "category": "ingress-bad-wildcard",
+    "message": "Hostname patterns can have at most one wildcard character (\"*\") and it can only be used for subdomains, e.g. \"*.example.com\""
+  }
+}

@@ -177,9 +177,10 @@ pub fn minimal_auto_create_config(log_directory: &std::path::Path) -> String {
 }
 
 pub fn default_nix_search_directories() -> Vec<PathBuf> {
+    let home_directory = home_directory();
     DEFAULT_NIX_SEARCH_DIRECTORIES
         .into_iter()
-        .map(PathBuf::from)
+        .map(|directory| expand_leading_tilde(directory, home_directory.as_deref()))
         .collect()
 }
 
@@ -191,12 +192,38 @@ pub fn default_nix_log_directory() -> PathBuf {
     PathBuf::from(DEFAULT_NIX_PRIMARY_LOG_DIR)
 }
 
+fn home_directory() -> Option<PathBuf> {
+    std::env::var_os("HOME")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+}
+
+fn expand_leading_tilde(path: &str, home_directory: Option<&std::path::Path>) -> PathBuf {
+    if path == "~"
+        && let Some(home_directory) = home_directory
+    {
+        return home_directory.to_path_buf();
+    }
+
+    if let Some(remainder) = path.strip_prefix("~/")
+        && let Some(home_directory) = home_directory
+    {
+        return home_directory.join(remainder);
+    }
+
+    PathBuf::from(path)
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    use super::{DiscoveryAction, DiscoveryDefaults, DiscoveryOrigin, DiscoveryRequest};
+    use super::{
+        DiscoveryAction, DiscoveryDefaults, DiscoveryOrigin, DiscoveryRequest,
+        default_nix_search_directories, expand_leading_tilde, home_directory,
+    };
 
     fn temp_dir(name: &str) -> std::path::PathBuf {
         let unique = SystemTime::now()
@@ -212,13 +239,54 @@ mod tests {
     fn candidate_paths_follow_known_search_order() {
         let request = DiscoveryRequest::default();
         let candidates = request.candidate_paths();
+        let home_directory = home_directory();
 
         assert_eq!(candidates[0].origin, DiscoveryOrigin::Search);
-        assert_eq!(candidates[0].path.to_string_lossy(), "~/.cloudflared/config.yml");
-        assert_eq!(candidates[1].path.to_string_lossy(), "~/.cloudflared/config.yaml");
         assert_eq!(
-            candidates[2].path.to_string_lossy(),
-            "~/.cloudflare-warp/config.yml"
+            candidates[0].path,
+            expand_leading_tilde("~/.cloudflared", home_directory.as_deref()).join("config.yml")
+        );
+        assert_eq!(
+            candidates[1].path,
+            expand_leading_tilde("~/.cloudflared", home_directory.as_deref()).join("config.yaml")
+        );
+        assert_eq!(
+            candidates[2].path,
+            expand_leading_tilde("~/.cloudflare-warp", home_directory.as_deref()).join("config.yml")
+        );
+    }
+
+    #[test]
+    fn default_search_directories_expand_home_prefix_only() {
+        let directories = default_nix_search_directories();
+        if let Some(home_directory) = home_directory() {
+            assert_eq!(directories[0], home_directory.join(".cloudflared"));
+            assert_eq!(directories[1], home_directory.join(".cloudflare-warp"));
+            assert_eq!(directories[2], home_directory.join("cloudflare-warp"));
+        } else {
+            assert_eq!(directories[0], PathBuf::from("~/.cloudflared"));
+            assert_eq!(directories[1], PathBuf::from("~/.cloudflare-warp"));
+            assert_eq!(directories[2], PathBuf::from("~/cloudflare-warp"));
+        }
+        assert_eq!(directories[3], PathBuf::from("/etc/cloudflared"));
+        assert_eq!(directories[4], PathBuf::from("/usr/local/etc/cloudflared"));
+    }
+
+    #[test]
+    fn expand_leading_tilde_does_not_expand_other_patterns() {
+        let home_directory = PathBuf::from("/tmp/home");
+
+        assert_eq!(
+            expand_leading_tilde("~/.cloudflared", Some(home_directory.as_path())),
+            home_directory.join(".cloudflared")
+        );
+        assert_eq!(
+            expand_leading_tilde("~other/.cloudflared", Some(home_directory.as_path())),
+            PathBuf::from("~other/.cloudflared")
+        );
+        assert_eq!(
+            expand_leading_tilde("/etc/cloudflared", Some(home_directory.as_path())),
+            PathBuf::from("/etc/cloudflared")
         );
     }
 
