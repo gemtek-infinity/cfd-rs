@@ -41,17 +41,16 @@ Rules:
 
 ## Runtime Baseline
 
-The current scaffold does not initialize an async runtime yet.
-
-That is intentional.
+The current scaffold now initializes Tokio only at the binary boundary for the
+admitted Phase 3.2 runtime/lifecycle shell.
 
 Rules:
 
-- do not start Tokio merely because the workspace contains a CLI crate
-- do not add detached background runtime behavior to make the scaffold look more
-  complete than it is
-- keep the current binary message explicit that no runtime behavior has been
-  implemented yet
+- keep Tokio ownership at the runnable binary boundary
+- do not add detached background runtime behavior to make later slices look
+  more complete than they are
+- keep runtime-owned lifecycle behavior explicit and bounded to the admitted
+  shell rather than smuggling in later transport or proxy work
 
 ## Async Runtime Admission Rule
 
@@ -82,10 +81,12 @@ The accepted model is:
 
 ## Scaffold Honesty Rule
 
-The scaffold must remain visibly a scaffold.
+The scaffold must remain visibly partial.
 
-Until subsystem code lands:
+At the current 3.2 state:
 
-- no runtime initialization should pretend the daemon exists
-- no allocator or runtime code should imply compatibility already exists
+- runtime initialization may own lifecycle and supervision, but it must still
+  stop honestly before transport, Pingora, wire/protocol, security/compliance,
+  or standard-format integration slices exist
+- no allocator or runtime code should imply broader compatibility already exists
 - manifests should remain sparse enough that `cargo check` reflects reality

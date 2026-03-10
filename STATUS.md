@@ -10,15 +10,17 @@ now contains a Cargo workspace skeleton plus accepted first-slice behavior in
 `crates/cloudflared-config/` for config discovery/loading, credentials
 origin-cert decoding, ingress normalization and matching, and a real
 first-slice Go-truth compare harness whose accepted fixture surface currently
-compares green. It also now contains a narrow Phase 3.1 executable surface in
-`crates/cloudflared-cli/` that can resolve config, validate startup inputs,
-and stop honestly before later runtime slices. Most broader production-alpha
-subsystem behavior is still unported.
+compares green. It also now contains a narrow Phase 3.2 runtime/lifecycle shell
+in `crates/cloudflared-cli/` that owns startup, supervision, shutdown, and
+runtime config handoff while still stopping honestly before later transport and
+proxy slices. Most broader production-alpha subsystem behavior is still
+unported.
 
 The scaffold is intentionally real but minimal:
 
 - the workspace builds as a Rust scaffold with partial first-slice behavior
-- the runnable binary now exposes only the admitted Phase 3.1 entry surface
+- the runnable binary now exposes only the admitted Phase 3.2 launch and
+  runtime/lifecycle surface
 - policy and governance documents define the rewrite boundary
 - manifests should reflect only code that exists today, not speculative future
   subsystem work
@@ -72,7 +74,7 @@ The following top-level rewrite decisions are part of the active scaffold:
   - tasks 2.0 through 2.6 are complete at the governance level
 - Big Phase 3 is current:
   - purpose: build the minimum runnable alpha on the frozen lane
-  - active task: 3.1 CLI and process surface
+  - active task: 3.2 runtime and lifecycle core
 - Big Phase 4 is later:
   - harden, validate, measure, and prove the alpha in real use
 - Big Phase 5 is later:
@@ -103,7 +105,8 @@ The following top-level rewrite decisions are part of the active scaffold:
 Current crate intent:
 
 - `crates/cloudflared-cli`: narrow admitted alpha entry surface for help,
-  version, config-backed startup validation, and an honest deferred run handoff
+  version, config-backed startup validation, and the current runtime/lifecycle
+  owner
 - `crates/cloudflared-config`: owning crate for the accepted first-slice
   domain skeleton and future config, credentials, and ingress normalization
   behavior
@@ -132,39 +135,42 @@ the Rust workspace instead of modifying the frozen reference material.
   - `local_dynamic_tls`
   - `extended`
 - Allocator choice belongs only at the runnable binary boundary.
+- Tokio is now admitted at the binary boundary for the active Phase 3.2
+  runtime/lifecycle shell only.
 - Async runtime choice is governed by
   `docs/allocator-runtime-baseline.md` and
   `docs/adr/0001-hybrid-concurrency-model.md`.
 
-## Active Phase 3.1 Focus
+## Active Phase 3.2 Focus
 
-Phase 3.1 now owns the admitted CLI and process surface for the frozen Linux
+Phase 3.2 now owns the runtime and lifecycle core for the frozen Linux
 production-alpha lane.
 
 What it covers now:
 
-- a real `cloudflared` process entrypoint exists for the alpha lane
-- the admitted command surface is explicit and narrow: `help`, `version`,
-  `validate`, and `run`
-- only the current config-backed startup path is admitted at the executable
-  boundary
-- startup/help/error behavior is explicit
-- `run` performs admitted startup validation and then stops with a clear
-  deferred-runtime error instead of pretending later slices exist
+- `run` now enters a real runtime/lifecycle owner at the binary boundary
+- process lifecycle, startup sequencing, supervision, and shutdown sequencing
+  are explicit
+- runtime-owned config handoff now exists between startup validation and later
+  service consumers
+- reconnect/restart policy boundaries are now owned by runtime policy rather
+  than left implicit in the CLI shell
+- the current primary service boundary remains an honest deferred placeholder
+  for the later QUIC tunnel-core slice
 
 What it still must not imply:
 
-- that runtime or lifecycle supervision is complete
 - that quiche transport exists
 - that Pingora integration exists
-- that FIPS operational behavior exists
+- that wire/protocol behavior exists beyond the runtime-owned boundary
+- that security/compliance operational behavior exists
+- that standard-format crate integration beyond active-slice need exists
 - that packaging, installers, updaters, or deployment tooling already exist
 
 ## Deferred Within Big Phase 3
 
 The following later Big Phase 3 slices remain intentionally deferred:
 
-- 3.2 runtime and lifecycle core
 - 3.3 QUIC tunnel core on the frozen quiche lane
 - 3.4 Pingora integration path above that transport lane
 - 3.5 wire/protocol boundary
@@ -177,7 +183,6 @@ The following remain intentionally out of the current executable-surface task:
 
 - broader platform parity beyond Linux
 - broader artifact scope beyond GNU `x86-64-v2` and `x86-64-v4`
-- broad runtime implementation beyond the admitted entry boundary
 - transport, Pingora, wire/protocol, security/compliance, and
   standard-format integration work outside their later owning slices
 - packaging, deployment tooling, container support, and

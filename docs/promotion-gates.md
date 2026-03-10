@@ -252,6 +252,22 @@ runtime work.
 
 Land the minimum runtime and lifecycle core required after the entry boundary.
 
+#### Required conditions
+
+- `run` enters a real runtime/lifecycle owner rather than only a CLI shell
+- runtime-owned config handoff exists after startup validation
+- startup sequencing is explicit
+- shutdown sequencing is explicit
+- supervision and restart policy boundaries are explicit
+- later transport and proxy slices plug into explicit runtime-owned service
+  boundaries instead of ad hoc process logic
+
+#### Exit condition
+
+Phase 3.2 is complete when the binary owns a real runtime/lifecycle shell that
+can supervise deferred service boundaries, shut down cleanly, and fail honestly
+before 3.3+ subsystem work exists.
+
 ### Phase 3.3 — QUIC Tunnel Core
 
 #### Purpose
@@ -334,5 +350,5 @@ At the current repo state:
 - Big Phase 1 is done
 - Big Phase 2 is closed and frozen
 - Big Phase 3 is current
-- Phase 3.1 is the active task
-- Phases 3.2 through 3.7 are deferred within Big Phase 3
+- Phase 3.2 is the active task
+- Phases 3.3 through 3.7 are deferred within Big Phase 3
