@@ -55,6 +55,7 @@ The following top-level rewrite decisions are part of the active scaffold:
 - `docs/adr/0001-hybrid-concurrency-model.md`
 - `docs/adr/0002-transport-tls-crypto-lane.md`
 - `docs/adr/0003-pingora-critical-path.md`
+- `docs/adr/0004-fips-in-alpha-definition.md`
 
 ### Active Phase Model
 
@@ -64,7 +65,7 @@ The following top-level rewrite decisions are part of the active scaffold:
   - broader subsystem work remains mostly unported
 - Big Phase 2 is current:
   - purpose: freeze the Linux production-alpha lane
-  - active task: 2.3 Pingora critical-path ADR
+  - active task: 2.4 FIPS-in-alpha definition
 - Big Phase 3 is later:
   - build the minimum runnable alpha on the frozen lane
 - Big Phase 4 is later:
@@ -129,32 +130,29 @@ the Rust workspace instead of modifying the frozen reference material.
   `docs/allocator-runtime-baseline.md` and
   `docs/adr/0001-hybrid-concurrency-model.md`.
 
-## Active Phase 2.3 Focus
+## Active Phase 2.4 Focus
 
-Phase 2.3 now owns Pingora critical-path scope freeze for the frozen Linux
-production-alpha lane.
+Phase 2.4 now owns the governance definition of FIPS-in-alpha for the frozen
+Linux production-alpha lane.
 
 What it covers now:
 
-- Pingora's relationship to the quiche transport lane is explicitly frozen
-- Pingora's initial responsibilities in the production-alpha path are explicit
-- Pingora's explicit non-responsibilities are stated
-- the first admitted Pingora crates are explicit
+- FIPS is explicitly part of the production-alpha lane as a governance
+  commitment
+- the runtime crypto boundary is explicit
+- the build/link boundary is explicit
+- the validation posture is explicit
 
 What it still must not imply:
 
-- that 2.4 through 2.5 are already done
-- that broader runtime, transport, Pingora, FIPS operational, or deployment
-  implementation already exists
+- that 2.5 is already done
+- that broader runtime, transport, Pingora, FIPS operational, deployment, or
+  certification work already exists
 
 ## Deferred Within Big Phase 2
 
-The following lane-freeze work is intentionally deferred beyond 2.3:
+The following lane-freeze work is intentionally deferred beyond 2.4:
 
-- 2.4 FIPS-in-alpha definition:
-  - runtime crypto boundary
-  - build/link boundary
-  - validation posture
 - 2.5 deployment contract:
   - glibc assumptions
   - systemd/service expectations
@@ -168,7 +166,8 @@ The following remain intentionally out of the current lane-freeze task:
 - broader platform parity beyond Linux
 - broader artifact scope beyond GNU `x86-64-v2` and `x86-64-v4`
 - broad runtime implementation outside the accepted first slice
-- transport, Pingora, FIPS operational, and deployment implementation work
+- transport, Pingora, FIPS operational, deployment, and certification-proving
+  implementation work
 
 ## Phase 1A Groundwork
 
