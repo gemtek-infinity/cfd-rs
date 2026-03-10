@@ -54,6 +54,7 @@ The following top-level rewrite decisions are part of the active scaffold:
 - `docs/allocator-runtime-baseline.md`
 - `docs/adr/0001-hybrid-concurrency-model.md`
 - `docs/adr/0002-transport-tls-crypto-lane.md`
+- `docs/adr/0003-pingora-critical-path.md`
 
 ### Active Phase Model
 
@@ -63,7 +64,7 @@ The following top-level rewrite decisions are part of the active scaffold:
   - broader subsystem work remains mostly unported
 - Big Phase 2 is current:
   - purpose: freeze the Linux production-alpha lane
-  - active task: 2.2 transport / TLS / crypto ADR
+  - active task: 2.3 Pingora critical-path ADR
 - Big Phase 3 is later:
   - build the minimum runnable alpha on the frozen lane
 - Big Phase 4 is later:
@@ -128,32 +129,28 @@ the Rust workspace instead of modifying the frozen reference material.
   `docs/allocator-runtime-baseline.md` and
   `docs/adr/0001-hybrid-concurrency-model.md`.
 
-## Active Phase 2.2 Focus
+## Active Phase 2.3 Focus
 
-Phase 2.2 now owns transport / TLS / crypto lane freeze for the frozen Linux
+Phase 2.3 now owns Pingora critical-path scope freeze for the frozen Linux
 production-alpha lane.
 
 What it covers now:
 
-- 0-RTT is explicitly required for the alpha lane
-- quiche is explicitly chosen as the first transport implementation direction
-- quiche + BoringSSL is explicitly chosen for the alpha lane
-- quiche + OpenSSL is explicitly out for the alpha lane
-- the PQC-compatible QUIC direction is explicitly part of the chosen lane
+- Pingora's relationship to the quiche transport lane is explicitly frozen
+- Pingora's initial responsibilities in the production-alpha path are explicit
+- Pingora's explicit non-responsibilities are stated
+- the first admitted Pingora crates are explicit
 
 What it still must not imply:
 
-- that 2.3 through 2.5 are already done
+- that 2.4 through 2.5 are already done
 - that broader runtime, transport, Pingora, FIPS operational, or deployment
   implementation already exists
 
 ## Deferred Within Big Phase 2
 
-The following lane-freeze work is intentionally deferred beyond 2.2:
+The following lane-freeze work is intentionally deferred beyond 2.3:
 
-- 2.3 Pingora critical-path ADR:
-  - initial critical-path responsibilities
-  - first admitted Pingora crates
 - 2.4 FIPS-in-alpha definition:
   - runtime crypto boundary
   - build/link boundary
