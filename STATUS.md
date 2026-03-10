@@ -48,6 +48,7 @@ If sources disagree, use this precedence order:
 The following top-level rewrite decisions are part of the active scaffold:
 
 - `docs/compatibility-scope.md`
+- `docs/build-artifact-policy.md`
 - `docs/go-rust-semantic-mapping.md`
 - `docs/dependency-policy.md`
 - `docs/allocator-runtime-baseline.md`
@@ -61,7 +62,7 @@ The following top-level rewrite decisions are part of the active scaffold:
   - broader subsystem work remains mostly unported
 - Big Phase 2 is current:
   - purpose: freeze the Linux production-alpha lane
-  - active task: 2.0 governance realignment only
+  - active task: 2.1 build and artifact policy
 - Big Phase 3 is later:
   - build the minimum runnable alpha on the frozen lane
 - Big Phase 4 is later:
@@ -126,13 +127,29 @@ the Rust workspace instead of modifying the frozen reference material.
   `docs/allocator-runtime-baseline.md` and
   `docs/adr/0001-hybrid-concurrency-model.md`.
 
+## Active Phase 2.1 Focus
+
+Phase 2.1 now owns build and artifact policy for the frozen Linux
+production-alpha lane.
+
+What it covers now:
+
+- local developer builds remain generic by default
+- PR CI validates the generic Linux workspace rather than silently hardcoding a
+  shipped CPU lane
+- shipped artifact policy is GNU only and lane-explicit
+- artifact naming, checksum naming, and workflow matrix policy are explicit
+
+What it still must not imply:
+
+- that 2.2 through 2.5 are already done
+- that broader runtime, transport, Pingora, FIPS operational, or deployment
+  implementation already exists
+
 ## Deferred Within Big Phase 2
 
-The following lane-freeze work is intentionally deferred beyond 2.0:
+The following lane-freeze work is intentionally deferred beyond 2.1:
 
-- 2.1 build and artifact policy:
-  - CI/build alignment for the real alpha lane
-  - exact GNU artifact naming, checksum naming, and matrix policy
 - 2.2 transport / TLS / crypto ADR:
   - quiche + BoringSSL
   - 0-RTT requirement

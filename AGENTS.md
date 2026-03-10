@@ -20,6 +20,11 @@ Do not turn this file into a status report, architecture dump, dependency catalo
 - `docs/compatibility-scope.md`
   - what "compatible" means
 
+- `docs/build-artifact-policy.md`
+  - local dev build expectations
+  - CI validation policy
+  - shipped artifact policy
+
 - `docs/promotion-gates.md`
   - current big-phase model
   - active phase/task
@@ -58,6 +63,7 @@ Before answering or patching, classify the task:
 2. current repository state: use `STATUS.md`
 3. phase model / promotion boundaries: use `docs/promotion-gates.md`
 4. scope / lane / non-negotiables: use `REWRITE_CHARTER.md`
-5. dependency / allocator / runtime policy: use the matching file under `docs/`
+5. build / artifact policy: use `docs/build-artifact-policy.md`
+6. dependency / allocator / runtime policy: use the matching file under `docs/`
 
 If evidence is missing or conflicting, say so explicitly.

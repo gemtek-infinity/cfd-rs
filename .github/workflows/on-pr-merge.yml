@@ -1,4 +1,4 @@
-name: On PR Merge - Build & Push
+name: On PR Merge - Build Preview Artifacts
 
 on:
   pull_request:
@@ -6,6 +6,7 @@ on:
       - main
     types:
       - closed
+  workflow_dispatch:
 
 concurrency:
   group: on-pr-merge-${{ github.ref }}
@@ -19,12 +20,19 @@ env:
   TARGET: x86_64-unknown-linux-gnu
   PACKAGE_NAME: cloudflared-cli
   BIN_NAME: cloudflared
-  ARTIFACT_BASENAME: cloudflared-${{ github.sha }}-x86_64-unknown-linux-gnu
 
 jobs:
   build-preview:
-    if: github.event.pull_request.merged == true
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - lane: x86-64-v2
+            rustflags: -C target-cpu=x86-64-v2 -C strip=symbols
+          - lane: x86-64-v4
+            rustflags: -C target-cpu=x86-64-v4 -C strip=symbols
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,13 +45,14 @@ jobs:
           cargo -V
       - name: Test (stable)
         run: cargo test --workspace --locked
-      - name: Build release binary (stable)
+      - name: Build release binary (${{ matrix.lane }})
         env:
-          RUSTFLAGS: -C target-cpu=x86-64-v2 -C strip=symbols
+          RUSTFLAGS: ${{ matrix.rustflags }}
         run: |
           cargo build --release --locked --target "${TARGET}" -p "${PACKAGE_NAME}"
-      - name: Package tgz
+      - name: Package preview artifact (${{ matrix.lane }})
         run: |
+          ARTIFACT_BASENAME="cloudflared-${GITHUB_SHA}-linux-x86_64-gnu-${{ matrix.lane }}"
           rm -rf dist
           mkdir -p dist
           install -Dm755 "target/${TARGET}/release/${BIN_NAME}" "dist/${BIN_NAME}"
@@ -53,13 +62,13 @@ jobs:
           if [ -f LICENSE ]; then
             cp LICENSE dist/
           fi
-          tar -C dist -czf "${ARTIFACT_BASENAME}.tgz" .
-          sha256sum "${ARTIFACT_BASENAME}.tgz" > "${ARTIFACT_BASENAME}.sha256"
+          tar -C dist -czf "${ARTIFACT_BASENAME}.tar.gz" .
+          sha256sum "${ARTIFACT_BASENAME}.tar.gz" > "${ARTIFACT_BASENAME}.tar.gz.sha256"
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ARTIFACT_BASENAME }}
+          name: cloudflared-${{ github.sha }}-linux-x86_64-gnu-${{ matrix.lane }}
           path: |
-            ${{ env.ARTIFACT_BASENAME }}.tgz
-            ${{ env.ARTIFACT_BASENAME }}.sha256
+            cloudflared-${{ github.sha }}-linux-x86_64-gnu-${{ matrix.lane }}.tar.gz
+            cloudflared-${{ github.sha }}-linux-x86_64-gnu-${{ matrix.lane }}.tar.gz.sha256
           retention-days: 30
