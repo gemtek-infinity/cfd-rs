@@ -86,9 +86,8 @@ fn render_help() -> String {
     text.push_str("  HOME  Expands the leading ~ in default config search directories.\n\n");
     text.push_str("Deferred beyond current phase:\n");
     text.push_str(
-        "  Broader origin support, registration RPC, incoming stream handling,\n\x20\x20security/compliance \
-         operational boundary, standard-format crate integration,\n\x20\x20packaging, and deployment \
-         tooling\n",
+        "  Broader origin support, registration RPC, incoming stream handling,\n\x20\x20standard-format \
+         crate integration, packaging, and deployment tooling\n",
     );
     text
 }

@@ -95,6 +95,12 @@ fn run_exits_nonzero_when_quic_transport_inputs_are_missing() {
     assert!(stdout.contains("config-source: explicit"));
     assert!(stdout.contains("runtime-owner: initialized"));
     assert!(stdout.contains("config-ownership: runtime-owned"));
+    assert!(stdout.contains("security-boundary: runtime-crypto-surface=transport-tls-only"));
+    assert!(
+        stdout
+            .contains("security-boundary-claims: bounded-surface-only, not-whole-program, not-certification")
+    );
+    assert!(stdout.contains("security-deployment-contract: linux-gnu-glibc"));
     assert!(
         stdout.contains("proxy-seam: origin-proxy admitted"),
         "run output should report the admitted Pingora proxy seam"

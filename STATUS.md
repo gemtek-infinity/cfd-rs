@@ -21,6 +21,9 @@ What exists now:
 - a Phase 3.5 wire/protocol boundary between transport and proxy in
   `crates/cloudflared-cli/src/protocol.rs` with explicit transport-to-proxy
   handoff through the runtime-managed protocol bridge
+- a Phase 3.6 security/compliance operational boundary that reports the bounded
+  crypto surface (quiche + BoringSSL lane only) and enforces Linux GNU/glibc
+  deployment-contract assumptions at runtime startup
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 
@@ -28,7 +31,7 @@ What does not exist yet:
 
 - broader Pingora proxy completeness beyond the narrow admitted origin path
 - registration RPC content (capnp) and incoming request stream handling
-- later security/compliance and standard-format integration slices
+- later standard-format integration slices and broader compliance proof work
 - parity-complete broader subsystem coverage
 - broader platform scope beyond the frozen Linux lane
 

@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
+use std::{env, fs};
 
 use crate::protocol::{self, ProtocolReceiver};
 use crate::proxy::PingoraProxySeam;
@@ -18,6 +19,14 @@ use tokio_util::sync::CancellationToken;
 use tokio::signal::unix::{SignalKind, signal};
 
 const PRIMARY_SERVICE_NAME: &str = "quic-tunnel-core";
+const FROZEN_TARGET_TRIPLE: &str = "x86_64-unknown-linux-gnu";
+const TRANSPORT_CRYPTO_LANE: &str = "quiche+boringssl";
+const GLIBC_RUNTIME_MARKERS: &[&str] = &[
+    "/lib64/ld-linux-x86-64.so.2",
+    "/lib/x86_64-linux-gnu/libc.so.6",
+    "/usr/lib64/libc.so.6",
+];
+
 #[derive(Debug, Clone)]
 pub(crate) struct RuntimeConfig {
     discovery: DiscoveryOutcome,
@@ -281,6 +290,11 @@ where
             self.policy.restart_backoff.as_millis(),
             self.policy.shutdown_grace_period.as_millis()
         ));
+
+        if let Err(detail) = self.record_security_compliance_boundary() {
+            return self.finish(RuntimeExit::Failed { detail }).await;
+        }
+
         self.record_state(LifecycleState::Starting, "startup sequencing entered");
 
         self.spawn_signal_bridge();
@@ -304,6 +318,74 @@ where
                 return self.finish(exit).await;
             }
         }
+    }
+
+    fn record_security_compliance_boundary(&mut self) -> Result<(), String> {
+        self.summary_lines.push(format!(
+            "security-boundary: runtime-crypto-surface=transport-tls-only lane={TRANSPORT_CRYPTO_LANE}"
+        ));
+        self.summary_lines.push(
+            "security-boundary-claims: bounded-surface-only, not-whole-program, not-certification".to_owned(),
+        );
+        self.summary_lines.push(format!(
+            "security-build-contract: target={FROZEN_TARGET_TRIPLE} \
+             pingora-role=application-layer-above-transport"
+        ));
+        self.summary_lines.push(
+            "security-deployment-contract: linux-gnu-glibc supervised-host-service systemd-expected \
+             bare-metal-first"
+                .to_owned(),
+        );
+
+        self.validate_deployment_contract()?;
+        let systemd = if is_systemd_supervision_detected() {
+            "detected"
+        } else {
+            "not-detected"
+        };
+        self.summary_lines.push(format!(
+            "security-supervision-signal: {systemd} (systemd expected by deployment contract)"
+        ));
+
+        Ok(())
+    }
+
+    fn validate_deployment_contract(&mut self) -> Result<(), String> {
+        if !cfg!(target_os = "linux") {
+            return Err(format!(
+                "security/compliance operational boundary requires Linux host runtime, current target_os={} ",
+                env::consts::OS
+            ));
+        }
+
+        if !cfg!(target_arch = "x86_64") {
+            return Err(format!(
+                "security/compliance operational boundary requires x86_64 host runtime, current \
+                 target_arch={} ",
+                env::consts::ARCH
+            ));
+        }
+
+        if !cfg!(target_env = "gnu") {
+            return Err(
+                "security/compliance operational boundary requires GNU/glibc build contract for the \
+                 admitted lane"
+                    .to_owned(),
+            );
+        }
+
+        if !glibc_runtime_marker_present(GLIBC_RUNTIME_MARKERS) {
+            return Err(format!(
+                "security/compliance operational boundary requires GNU/glibc host runtime markers; none \
+                 found in {}",
+                GLIBC_RUNTIME_MARKERS.join(", ")
+            ));
+        }
+
+        self.summary_lines
+            .push("security-host-contract: linux-x86_64-gnu-glibc markers present".to_owned());
+
+        Ok(())
     }
 
     async fn handle_command(&mut self, command: RuntimeCommand) -> Option<RuntimeExit> {
@@ -548,6 +630,16 @@ where
     }
 }
 
+fn glibc_runtime_marker_present(candidates: &[&str]) -> bool {
+    candidates.iter().any(|path| fs::metadata(path).is_ok())
+}
+
+fn is_systemd_supervision_detected() -> bool {
+    env::var_os("INVOCATION_ID").is_some()
+        || env::var_os("NOTIFY_SOCKET").is_some()
+        || env::var_os("JOURNAL_STREAM").is_some()
+}
+
 pub(crate) fn run(config: RuntimeConfig) -> RuntimeExecution {
     let (protocol_sender, protocol_receiver) = protocol::protocol_bridge();
     run_with_factory(
@@ -766,6 +858,38 @@ mod tests {
         assert!(matches!(execution.exit, RuntimeExit::Failed { .. }));
         assert!(summary_contains(&execution, "primary-service=quic-tunnel-core"));
         assert!(summary_contains(&execution, "lifecycle-state: failed"));
+    }
+
+    #[test]
+    fn runtime_reports_security_compliance_boundary_as_bounded() {
+        let execution = run_with_factory(
+            runtime_config(),
+            TestFactory::new([TestBehavior::WaitForShutdown]),
+            RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+            None,
+        );
+
+        assert_eq!(execution.exit, RuntimeExit::Clean);
+        assert!(summary_contains(
+            &execution,
+            "security-boundary: runtime-crypto-surface=transport-tls-only"
+        ));
+        assert!(summary_contains(
+            &execution,
+            "security-boundary-claims: bounded-surface-only, not-whole-program, not-certification"
+        ));
+        assert!(summary_contains(
+            &execution,
+            "security-host-contract: linux-x86_64-gnu-glibc markers present"
+        ));
+    }
+
+    #[test]
+    fn glibc_marker_probe_is_false_for_missing_markers() {
+        assert!(!super::glibc_runtime_marker_present(&[
+            "/this/path/does/not/exist/libc.so.6",
+            "/this/path/also/does/not/exist/ld-linux.so",
+        ]));
     }
 
     #[test]

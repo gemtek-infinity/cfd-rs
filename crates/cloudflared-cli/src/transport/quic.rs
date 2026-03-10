@@ -352,7 +352,7 @@ impl QuicTunnelService {
 
         Ok(ServiceExit::Deferred {
             service: self.name(),
-            phase: "Big Phase 3.6+",
+            phase: "Big Phase 3.7+",
             detail: format!(
                 "{} for tunnel {} against {}",
                 WIRE_PROTOCOL_DEFERRED_DETAIL, identity.tunnel_id, target.connect_addr
@@ -828,12 +828,12 @@ mod tests {
             Some(protocol_receiver),
         );
 
-        // 3.5: deferral moves from "Big Phase 3.5" to "Big Phase 3.6+"
+        // 3.6: deferral now moves from "Big Phase 3.6" to "Big Phase 3.7+"
         // because the wire/protocol boundary is now crossed.
         assert!(matches!(
             execution.exit,
             RuntimeExit::Deferred {
-                phase: "Big Phase 3.6+",
+                phase: "Big Phase 3.7+",
                 ..
             }
         ));
