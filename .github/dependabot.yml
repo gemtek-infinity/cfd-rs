@@ -1,0 +1,19 @@
+version: 2
+
+updates:
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "gomod"
+    directory: "/"
+    exclude-paths:
+      - "baseline-*/**"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "pip"
+    directory: "/"
+    exclude-paths:
+      - "baseline-*/**"
+    schedule:
+      interval: "daily"
