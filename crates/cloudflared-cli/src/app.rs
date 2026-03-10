@@ -51,7 +51,7 @@ fn execute_runtime_command(startup: StartupSurface) -> CliOutput {
 fn render_help() -> String {
     let mut text = String::new();
     text.push_str(&format!("{PROGRAM_NAME} {}\n", env!("CARGO_PKG_VERSION")));
-    text.push_str("Linux production-alpha QUIC tunnel core for Big Phase 3.3\n\n");
+    text.push_str("Linux production-alpha QUIC tunnel core with Pingora proxy seam\n\n");
     text.push_str("Usage:\n");
     text.push_str("  cloudflared [--config FILEPATH] validate\n");
     text.push_str("  cloudflared [--config FILEPATH] run\n");
@@ -62,8 +62,10 @@ fn render_help() -> String {
         "  validate  Resolve config, load YAML, normalize ingress, and report startup readiness.\n",
     );
     text.push_str(
-        "  run       Enter the runtime-owned QUIC transport core, establish the quiche lane, and stop \
-         honestly where later wire and proxy slices are still unimplemented.\n",
+        "  run       Enter the runtime-owned QUIC transport core with a Pingora proxy \
+         seam.\n\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20The admitted origin path is http_status \
+         only. Broader origin support,\n\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20wire/protocol \
+         behavior, and general proxy completeness remain later slices.\n",
     );
     text.push_str("  version   Print the workspace version.\n");
     text.push_str("  help      Print this help text.\n\n");
@@ -79,10 +81,10 @@ fn render_help() -> String {
     );
     text.push_str("Admitted environment:\n");
     text.push_str("  HOME  Expands the leading ~ in default config search directories.\n\n");
-    text.push_str("Deferred beyond Phase 3.3:\n");
+    text.push_str("Deferred beyond current phase:\n");
     text.push_str(
-        "  Pingora integration, wire/protocol boundary, security/compliance operational boundary, \
-         standard-format crate integration, packaging, and deployment tooling\n",
+        "  Broader origin support, wire/protocol boundary, security/compliance operational \
+         boundary,\n\x20\x20standard-format crate integration, packaging, and deployment tooling\n",
     );
     text
 }
@@ -109,7 +111,7 @@ impl AppError {
     fn into_output(self) -> CliOutput {
         match self {
             Self::Usage(message) => CliOutput::usage_failure(format!(
-                "error: {message}\nRun `cloudflared help` for the admitted Phase 3.3 surface.\n"
+                "error: {message}\nRun `cloudflared help` for the admitted command surface.\n"
             )),
             Self::Config(error) => CliOutput::failure(
                 String::new(),

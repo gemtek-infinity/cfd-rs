@@ -3,6 +3,7 @@
 mod app;
 mod cli;
 mod output;
+mod proxy;
 mod runtime;
 mod startup;
 mod transport;

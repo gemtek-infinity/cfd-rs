@@ -33,15 +33,17 @@ fn run_cloudflared(args: &[&str]) -> Output {
 }
 
 #[test]
-fn help_lists_only_admitted_phase_3_3_surface() {
+fn help_lists_admitted_surface() {
     let output = run_cloudflared(&["--help"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(output.status.success());
-    assert!(stdout.contains("Big Phase 3.3"));
+    assert!(stdout.contains("Pingora proxy seam"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] validate"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] run"));
     assert!(stdout.contains("HOME"));
+    assert!(stdout.contains("http_status only"));
+    assert!(stdout.contains("Broader origin support"));
     assert!(!stdout.contains("cloudflared tunnel"));
 }
 
@@ -90,6 +92,10 @@ fn run_exits_nonzero_when_quic_transport_inputs_are_missing() {
     assert!(stdout.contains("config-source: explicit"));
     assert!(stdout.contains("runtime-owner: initialized"));
     assert!(stdout.contains("config-ownership: runtime-owned"));
+    assert!(
+        stdout.contains("proxy-seam: origin-proxy admitted"),
+        "run output should report the admitted Pingora proxy seam"
+    );
     assert!(stderr.contains("quic tunnel core requires credentials-file or origincert"));
 
     fs::remove_dir_all(root).expect("temp directory should be removable");
