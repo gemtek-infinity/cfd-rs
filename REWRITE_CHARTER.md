@@ -6,7 +6,7 @@ If any plan, prompt, note, or AI output drifts from this file, this file wins un
 
 ## Objective
 
-Build a production-grade, parity-backed, Linux-first Rust rewrite.
+Build a production-grade, parity-backed Rust rewrite on the frozen Linux production-alpha lane.
 
 ## Compatibility baseline
 
@@ -28,6 +28,7 @@ Build a production-grade, parity-backed, Linux-first Rust rewrite.
 - quiche + BoringSSL
 - Pingora is in the production-alpha critical path
 - FIPS belongs in the production-alpha lane
+- Cloudflare-owned crates are preferred where they genuinely fit, but are not mandatory by default
 
 ## Source-of-truth routing
 

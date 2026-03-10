@@ -1,9 +1,9 @@
 # Promotion Gates
 
-This document defines the rewrite phases, their exit conditions, and the rules
-for promotion from one phase to the next.
+This document defines the current rewrite phase model, the active task inside
+that model, and the gates for promotion from one stage to the next.
 
-A later phase must not begin in substance until the earlier phase's gate is
+A later stage must not begin in substance until the earlier stage's gate is
 satisfied or explicitly waived.
 
 ## Purpose
@@ -11,270 +11,232 @@ satisfied or explicitly waived.
 The rewrite should progress by evidence, not by excitement.
 
 This file exists so that humans and AI assistants cannot silently skip from
-planning to broad implementation without closing the required gates.
+accepted evidence to broader scope without closing the required gates.
 
-## Phase 0 — Baseline Lock And Doctrine Freeze
+## Big Phase 1 — Truth Freeze And Accepted First-Slice Parity
 
 ### Purpose
 
-Freeze the rewrite's governing doctrine so the program stops renegotiating its
-foundations.
+Freeze the rewrite doctrine, accept the first implementation slice, and close
+the first-slice Rust-versus-Go compare loop.
 
 ### Required conditions
 
 - compatibility baseline is explicitly frozen
 - source precedence is explicit
 - frozen inputs are explicit
-- target platform is explicit
+- active Linux production-alpha lane is explicit
 - active and deferred scope are explicit
 - current workspace honesty rule is explicit
 - first accepted implementation slice is explicit
-- dependency posture is explicit
-- runtime doctrine is explicit
+- first-slice Go-truth capture and compare loop is real
+- accepted first-slice compare is green
 - "done means parity" is explicit
 
 ### Evidence
 
 - `STATUS.md`
 - `docs/compatibility-scope.md`
-- `docs/go-rust-semantic-mapping.md`
-- `docs/dependency-policy.md`
-- `docs/allocator-runtime-baseline.md`
-- `docs/adr/0001-hybrid-concurrency-model.md`
 - `REWRITE_CHARTER.md`
 - `docs/first-slice-freeze.md`
 
 ### Exit condition
 
-Phase 0 is complete when the rewrite doctrine is frozen in governance docs and
-the anti-drift lock layer exists.
+Big Phase 1 is complete when the rewrite doctrine is frozen and the accepted
+first-slice compare is green against checked-in Go truth.
 
 ### Not allowed before exit
 
 - broad subsystem porting
-- dependency expansion based on future intent
-- transport/runtime-heavy implementation
-- ungoverned crate proliferation
+- claiming accepted parity without a real compare loop
+- treating the rewrite as operationally real beyond the accepted first slice
 
-## Phase 1 — Parity Harness Activation
+## Big Phase 2 — Linux Production-Alpha Lane Freeze
 
 ### Purpose
 
-Make the rewrite capable of producing executable parity evidence for the first
-slice.
+Freeze the Linux production-alpha lane before broad implementation resumes.
 
-### Required conditions
+This big phase is governance-first. It is not the stage for broad runtime,
+transport, Pingora, FIPS operational, or deployment implementation work.
 
-- first-slice fixture inventory is accepted
-- executable parity harness runner exists
-- Go truth outputs for first-slice cases are captured
-- Rust-side comparison path exists
-- first-slice parity cases can pass or fail mechanically
-- the FIPS/compliance boundary for current work is explicitly recorded
+### Phase 2.0 — Governance Realignment
 
-### Primary owner area
+#### Purpose
 
-- `crates/cloudflared-config/tests/`
+Align repo truth to the chosen lane, remove contradictions, and keep the docs
+honest.
+
+#### Required conditions
+
+- charter, status, and compatibility wording agree on the active lane
+- the current phase is stated as Big Phase 2 with 2.0 as the active task
+- no governance doc implies that broader implementation is already complete
+- no governance doc implies broader platform or artifact scope than intended
+
+#### Exit condition
+
+Phase 2.0 is complete when governance docs consistently describe the same Linux
+production-alpha lane and current task.
+
+### Phase 2.1 — Build And Artifact Policy
+
+#### Purpose
+
+Define the real production-alpha build and shipped-artifact policy.
+
+#### Required conditions
+
+- CI/build policy reflects the Linux-only alpha lane
+- shipped GNU artifacts are defined as exactly:
+  - `x86-64-v2`
+  - `x86-64-v4`
+- artifact naming and checksum naming are explicit
+- build matrix policy is explicit
+
+#### Exit condition
+
+Phase 2.1 is complete when build and artifact policy is explicit in governance.
+
+### Phase 2.2 — Transport / TLS / Crypto ADR
+
+#### Purpose
+
+Freeze the transport and crypto direction for the alpha lane.
+
+#### Required conditions
+
+- 0-RTT is explicitly required
+- quiche is explicitly first
+- quiche + BoringSSL is explicitly chosen for the alpha lane
+- quiche + OpenSSL is explicitly out for the alpha lane
+- the PQC-compatible QUIC direction is explicit
+
+#### Exit condition
+
+Phase 2.2 is complete when the transport / TLS / crypto lane is frozen in ADRs.
+
+### Phase 2.3 — Pingora Critical-Path ADR
+
+#### Purpose
+
+Define Pingora's place in the production-alpha critical path.
+
+#### Required conditions
+
+- the critical-path relationship between Pingora and quiche is explicit
+- Pingora's initial responsibilities are explicit
+- the first admitted Pingora crates are explicit
+
+#### Exit condition
+
+Phase 2.3 is complete when Pingora scope is frozen at the governance level.
+
+### Phase 2.4 — FIPS-In-Alpha Definition
+
+#### Purpose
+
+Define what FIPS-in-alpha means in this repository without implying that the
+implementation already exists.
+
+#### Required conditions
+
+- FIPS is explicitly part of the production-alpha lane
+- runtime crypto boundary is explicit
+- build/link boundary is explicit
+- validation posture is explicit
+- deferred detail beyond the alpha lane is explicit
+
+#### Exit condition
+
+Phase 2.4 is complete when the repo has a clear governance definition for
+FIPS-in-alpha.
+
+### Phase 2.5 — Deployment Contract
+
+#### Purpose
+
+Freeze the deployment assumptions for the Linux production-alpha lane.
+
+#### Required conditions
+
+- glibc assumptions are explicit
+- systemd/service expectations are explicit
+- container vs bare-metal assumptions are explicit
+- filesystem/layout expectations are explicit
+
+#### Exit condition
+
+Phase 2.5 is complete when deployment-contract assumptions are explicit in
+governance.
 
 ### Exit condition
 
-Phase 1 is complete when first-slice parity can be evaluated mechanically
-against captured Go truth.
+Big Phase 2 is complete when Phases 2.0 through 2.5 have frozen the Linux
+production-alpha lane well enough to start building the minimum runnable alpha.
 
 ### Not allowed before exit
 
-- claiming the rewrite process is parity-backed
-- broadening into runtime-heavy subsystem work
-- using subjective "looks compatible" judgments as a substitute for harness
-  evidence
+- pretending that 2.1 through 2.5 are already done when they are not
+- broadening platform scope beyond Linux
+- broadening shipped artifact scope beyond GNU `x86-64-v2` and `x86-64-v4`
+- treating transport, Pingora, FIPS operational, or deployment implementation
+  as already landed
 
-## Phase 2 — First Slice Implementation
+## Big Phase 3 — Minimum Runnable Alpha
 
 ### Purpose
 
-Implement the first accepted slice and prove parity for it.
-
-### Required conditions
-
-- config discovery behavior implemented
-- config parsing behavior implemented
-- credential surface behavior for the slice implemented
-- ingress parsing/validation implemented
-- ingress normalization implemented
-- deterministic matching implemented
-- thin CLI-origin synthesis implemented where required
-- all accepted first-slice parity tests passing
-
-### Primary owner area
-
-- `crates/cloudflared-config/`
-- `crates/cloudflared-config/tests/`
+Build the minimum runnable alpha on the frozen Linux lane.
 
 ### Exit condition
 
-Phase 2 is complete when the accepted first slice is parity-backed and passing.
+The minimum runnable alpha exists on the frozen Linux production-alpha lane.
 
 ### Not allowed before exit
 
-- calling cloudflared "ported"
-- widening into transport/runtime orchestration as if external input behavior
-  were already frozen
-- admitting future-slice dependencies without active owning need
+- calling the alpha hardened or production-proven
+- widening platform or artifact scope as a shortcut around missing evidence
 
-## Phase 3 — Foundation Layer Expansion
+## Big Phase 4 — Hardening, Validation, And Proof
 
 ### Purpose
 
-Freeze the broader externally visible foundation above the first slice.
-
-### Expected areas
-
-- CLI framework
-- logging
-- metrics server
-- readiness behavior
-- validation and TLS-related behavior
+Harden, validate, measure, and prove the alpha in real use.
 
 ### Exit condition
 
-The foundation layer is parity-backed on Linux for the promoted scope.
+The promoted alpha scope is validated well enough to be credible in real use.
 
-### Not allowed before exit
-
-- hand-waving over CLI/env/default behavior
-- claiming operational readiness without metrics/readiness parity where promoted
-
-## Phase 4 — Network And Protocol Parity
+## Big Phase 5 — Intentional Widening
 
 ### Purpose
 
-Port wire-visible transports and protocol machinery.
-
-### Expected areas
-
-- edge discovery
-- QUIC transport
-- HTTP/2 transport
-- datagram V2
-- datagram V3
-- Cap'n Proto RPC
-- connection abstraction
+Widen scope only after the alpha is credible and the reason for widening is
+explicit.
 
 ### Exit condition
 
-Wire-visible behavior and byte-critical contracts are parity-backed for the
-promoted protocol scope.
-
-### Not allowed before exit
-
-- claiming protocol compatibility without byte-level evidence
-- hiding wire differences behind internal architecture changes
-
-## Phase 5 — Runtime Core Parity
-
-### Purpose
-
-Port the runtime control plane and data-plane behavior that makes the daemon
-operationally real.
-
-### Expected areas
-
-- ingress runtime behavior
-- proxy runtime behavior
-- orchestrator
-- supervisor
-- datagram session lifecycle
-- flow control
-- management service
-
-### Exit condition
-
-Linux runtime behavior is parity-backed for promoted request, reconnect,
-shutdown, and management semantics.
-
-### Not allowed before exit
-
-- calling the daemon operationally equivalent
-- relying on speculative runtime topology without parity evidence
-
-## Phase 6 — Auxiliary Linux Completeness
-
-### Purpose
-
-Complete Linux-relevant auxiliary behavior needed for a credible production
-story.
-
-### Expected areas
-
-- SOCKS proxy
-- IP access rules
-- carrier
-- access commands
-- tail command
-- Linux service install
-- hello server
-- tracing, when promoted by owning slices
-
-### Exit condition
-
-The Linux-targeted port is functionally whole enough for the intended deployment
-and review story.
-
-## Phase 7 — Production Hardening
-
-### Purpose
-
-Prove that the port is not only parity-oriented but also operationally viable
-for the intended Linux deployment story.
-
-### Required conditions
-
-- soak/load/failure testing completed for promoted scope
-- operational runbooks exist
-- compatibility gaps and waivers are documented
-- security-sensitive surfaces reviewed
-- deployment evidence exists for the promoted scope
-
-### Exit condition
-
-The promoted Linux scope is trusted for real use with explicit known gaps and
-waivers.
-
-## Phase 8 — Review Package
-
-### Purpose
-
-Turn the technical result into a credible, reviewable engineering artifact.
-
-### Required conditions
-
-- parity report exists
-- architecture report exists
-- production evidence report exists
-- explicit compatibility matrix exists
-- demo path exists for the promoted scope
-- known waivers and deferred items are stated clearly
-
-### Exit condition
-
-A serious technical reviewer can see that the project is parity-governed,
-production-shaped, and externally reviewable.
+Additional platforms, artifacts, or subsystem scope are admitted intentionally,
+not by drift.
 
 ## Promotion Rule
 
-A phase may be promoted only when:
+A stage may be promoted only when:
 
 1. its exit condition is met, or
 2. an explicit written waiver is added in governance docs explaining why the
    promotion is acceptable despite incomplete evidence
 
-Silently behaving as though a phase is complete is not allowed.
+Silently behaving as though a stage is complete is not allowed.
 
 ## Current Phase Reading
 
 At the current repo state:
 
-- Phase 0 is effectively frozen in doctrine
-- the anti-drift lock layer is what closes it cleanly
-- Phase 1 is the next active execution phase
-- Phase 2 begins only after the parity harness is truly operational
+- Big Phase 1 is done
+- Big Phase 2 is current
+- Phase 2.0 is the active task
+- Phases 2.1 through 2.5 remain intentionally deferred
+- Big Phase 3 begins only after the Linux production-alpha lane is frozen in
+  governance
