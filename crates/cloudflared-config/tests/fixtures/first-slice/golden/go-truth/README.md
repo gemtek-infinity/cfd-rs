@@ -22,5 +22,6 @@ Current truthfulness rule:
 
 - these artifacts make the compare loop real
 - they do not imply that Rust parity is complete
-- the full compare still reports live mismatches for part of the accepted
- first-slice surface
+- the accepted first-slice compare is currently green against these artifacts
+- they still do not imply broader Phase 1 or full-rewrite parity beyond the
+ accepted fixture surface

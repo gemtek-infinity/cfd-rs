@@ -6,11 +6,11 @@ This repository is currently a rewrite workspace with a frozen Go reference
 implementation and an intentionally narrow Rust first slice.
 
 It is not yet a parity-complete Rust implementation workspace. The repository
-now contains a Cargo workspace skeleton plus early first-slice behavior in
-`crates/cloudflared-config/` for config discovery/loading and credentials
-origin-cert decoding, narrow ingress normalization and matching behavior, and a
-real first-slice Go-truth and compare harness path, but most subsystem
-behavior is still unported.
+now contains a Cargo workspace skeleton plus accepted first-slice behavior in
+`crates/cloudflared-config/` for config discovery/loading, credentials
+origin-cert decoding, ingress normalization and matching, and a real
+first-slice Go-truth compare harness whose accepted fixture surface currently
+compares green, but most Phase 1 subsystem behavior is still unported.
 
 The scaffold is intentionally real but minimal:
 
@@ -122,7 +122,6 @@ These items are still missing before MCP-assisted or large-scale subsystem work
 should begin:
 
 - accepted compatibility-scope decision for FIPS/compliance
-- passing first-slice parity tests
 
 ## Phase 1A Groundwork
 
@@ -138,15 +137,13 @@ What exists now:
 
 What does not exist yet:
 
-- passing Rust-versus-Go parity reports
-- complete config, credential, or ingress behavior
-- passing first-slice parity comparisons
+- complete Phase 1 behavior outside the accepted first slice
 
 Implication:
 
 - the repo can now inventory and mechanically gate the first-slice parity
   contract
-- the repo still must not claim first-slice parity is complete
+- the repo still must not claim broader Phase 1 parity is complete
 
 ## Phase 1B.1 Domain Skeleton
 
@@ -275,26 +272,43 @@ What exists now:
 
 What does not exist yet:
 
-- all-green first-slice parity
-- reconciled exact JSON parity for several config and CLI ingress fixtures
-- a promoted policy for canonicalizing representation-only differences such as
-  `90s` versus `1m30s` in artifact comparison
-
-Current mismatch clusters from the full compare run:
-
-- config-backed ingress fixtures still diverge because Rust does not yet carry
-  Go effective `originRequest` defaults and inherited IP rules into the per-rule
-  normalized artifact shape
-- CLI single-origin ingress fixtures still diverge on default field
-  representation, including `false` versus `null`, `0` versus `null`, and
-  `1m30s` versus `90s`
+- closed first-slice Rust-versus-Go parity mismatches
 
 Implication:
 
 - the repository now has a real first-slice parity loop rather than a Rust-only
   artifact scaffold
-- the repository still must not claim first-slice parity is complete while the
-  full compare continues to report live mismatches
+- the repository still must not claim broader rewrite parity while most Phase 1
+  subsystems remain unported
+
+## Phase 1B.6 First-Slice Parity Closure
+
+Phase 1B.6 behavior now closes the known accepted first-slice Rust-versus-Go
+parity mismatches.
+
+What exists now:
+
+- config-backed normalized ingress payloads now materialize Go-effective
+  `originRequest` defaults and carry inherited IP rules into each rule payload
+- CLI single-origin ingress normalization now matches Go truth for default-field
+  representation, including `false`, `0`, and `1m30s`
+- normalized-config artifact emission now matches Go truth for `warnings: null`
+  when no warnings are present
+- the full accepted first-slice compare is green: 21 compared, 21 matched,
+  0 mismatched
+
+What does not exist yet:
+
+- internal ingress-rule matching and negative rule-index behavior
+- full regex-path semantics for general ingress matching
+- tunnel credential JSON fixture coverage
+- any Phase 1 behavior outside the accepted first slice
+
+Implication:
+
+- the accepted first slice is now parity-backed against the checked-in Go truth
+  fixture surface
+- the repository still must not claim full Phase 1 or full-rewrite completion
 
 ## First Implementation Gate
 

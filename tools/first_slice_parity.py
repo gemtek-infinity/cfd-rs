@@ -182,7 +182,7 @@ def cmd_inventory(args: argparse.Namespace, fixtures: list[Fixture]) -> int:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
 
-    print("Phase 1A fixture inventory")
+    print("First-slice fixture inventory")
     print(f"fixture root: {FIXTURE_ROOT.relative_to(REPO_ROOT).as_posix()}")
     print(f"fixtures: {len(fixtures)}")
     for fixture in fixtures:
@@ -271,7 +271,7 @@ def cmd_compare(args: argparse.Namespace, fixtures: list[Fixture]) -> int:
         fixture for fixture in selected if not fixture.go_truth_path.exists()
     ]
 
-    print("Phase 1B.5 Rust-vs-Go comparison")
+    print("First-slice Rust-vs-Go comparison")
     print(f"selected fixtures: {len(selected)}")
     print(f"missing Go truth: {len(missing_go_truth)}")
 

@@ -73,6 +73,17 @@ fn cli_origin_url_http_normalizes_to_http_service() {
         }
         other => panic!("expected HTTP service, found {other:?}"),
     }
+
+    assert_eq!(
+        ingress
+            .defaults
+            .keep_alive_timeout
+            .as_ref()
+            .map(|value| value.0.as_str()),
+        Some("1m30s")
+    );
+    assert_eq!(ingress.defaults.proxy_port, Some(0));
+    assert_eq!(ingress.defaults.bastion_mode, Some(false));
 }
 
 #[test]
@@ -115,6 +126,9 @@ fn harness_can_emit_ingress_related_rust_actual_artifacts() {
         cli_payload["payload"]["rules"][0]["service"]["kind"],
         "hello-world"
     );
+    assert_eq!(cli_payload["payload"]["defaults"]["keepAliveTimeout"], "1m30s");
+    assert_eq!(cli_payload["payload"]["defaults"]["proxyPort"], 0);
+    assert_eq!(cli_payload["payload"]["defaults"]["bastionMode"], false);
 
     let cli_error_artifact = output_dir.join("cli-origin-no-origin.json");
     let cli_error_payload: serde_json::Value = serde_json::from_str(
@@ -133,6 +147,21 @@ fn harness_can_emit_ingress_related_rust_actual_artifacts() {
     assert_eq!(
         ordering_payload["payload"]["ingress"][1]["service"]["kind"],
         "http"
+    );
+    assert!(ordering_payload["payload"]["warnings"].is_null());
+    assert_eq!(
+        ordering_payload["payload"]["ingress"][0]["origin_request"]["keepAliveTimeout"],
+        "1m30s"
+    );
+    assert_eq!(
+        ordering_payload["payload"]["ingress"][0]["origin_request"]["proxyPort"],
+        0
+    );
+    assert_eq!(
+        ordering_payload["payload"]["ingress"][0]["origin_request"]["ipRules"]
+            .as_array()
+            .map(|rules| rules.len()),
+        Some(2)
     );
 
     fs::remove_dir_all(output_dir).expect("temp directory should be removable");

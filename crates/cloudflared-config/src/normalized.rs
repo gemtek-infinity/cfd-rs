@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::credentials::{CredentialSurface, TunnelReference};
 use crate::discovery::ConfigSource;
 use crate::error::Result;
-use crate::ingress::{IngressRule, default_no_ingress_rule};
+use crate::ingress::{IngressRule, OriginRequestConfig, default_no_ingress_rule};
 use crate::raw_config::{RawConfig, WarpRoutingConfig};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -34,6 +34,7 @@ impl NormalizedConfig {
             vec![NormalizationWarning::UnknownTopLevelKeys(unknown_top_level_keys)]
         };
         let tunnel = raw.tunnel.map(TunnelReference::from_raw);
+        let inherited_origin_request = OriginRequestConfig::materialized_config_defaults(&raw.origin_request);
 
         let ingress = if raw.ingress.is_empty() {
             vec![default_no_ingress_rule()]
@@ -42,7 +43,9 @@ impl NormalizedConfig {
             raw.ingress
                 .into_iter()
                 .enumerate()
-                .map(|(rule_index, rule)| IngressRule::from_raw(rule, rule_index, total_rules))
+                .map(|(rule_index, rule)| {
+                    IngressRule::from_raw(rule, &inherited_origin_request, rule_index, total_rules)
+                })
                 .collect::<Result<Vec<_>>>()?
         };
 
@@ -51,7 +54,7 @@ impl NormalizedConfig {
             tunnel: tunnel.clone(),
             credentials: CredentialSurface::configured(raw.credentials_file, raw.origin_cert, tunnel),
             ingress,
-            origin_request: raw.origin_request,
+            origin_request: inherited_origin_request,
             warp_routing: raw.warp_routing,
             log_directory: raw.log_directory,
             warnings,
@@ -121,5 +124,39 @@ mod tests {
                 .map(|value| value.0.as_str()),
             Some("30s")
         );
+        assert_eq!(
+            normalized
+                .origin_request
+                .keep_alive_timeout
+                .as_ref()
+                .map(|value| value.0.as_str()),
+            Some("1m30s")
+        );
+    }
+
+    #[test]
+    fn normalization_propagates_materialized_origin_request_to_rules() {
+        let raw = ok(RawConfig::from_yaml_str(
+            "fixture.yaml",
+            "originRequest:\n  ipRules:\n    - prefix: 10.0.0.0/8\n      ports: [80, 8080]\n      allow: false\ningress:\n  - hostname: tunnel1.example.com\n    service: https://localhost:8080\n  - service: https://localhost:8001\n",
+        ));
+        let normalized = ok(NormalizedConfig::from_raw(
+            ConfigSource::DiscoveredPath("/tmp/config.yml".into()),
+            raw,
+        ));
+
+        assert_eq!(normalized.ingress.len(), 2);
+        assert_eq!(
+            normalized.ingress[0]
+                .origin_request
+                .keep_alive_timeout
+                .as_ref()
+                .map(|value| value.0.as_str()),
+            Some("1m30s")
+        );
+        assert_eq!(normalized.ingress[0].origin_request.proxy_port, Some(0));
+        assert_eq!(normalized.ingress[0].origin_request.bastion_mode, Some(false));
+        assert_eq!(normalized.ingress[0].origin_request.ip_rules.len(), 1);
+        assert_eq!(normalized.ingress[1].origin_request.ip_rules.len(), 1);
     }
 }

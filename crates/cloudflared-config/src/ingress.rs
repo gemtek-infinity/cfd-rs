@@ -12,7 +12,7 @@ pub const NO_INGRESS_RULES_CLI_MESSAGE: &str = "No ingress rules were defined in
 const DEFAULT_HTTP_CONNECT_TIMEOUT: &str = "30s";
 const DEFAULT_TLS_TIMEOUT: &str = "10s";
 const DEFAULT_TCP_KEEP_ALIVE: &str = "30s";
-const DEFAULT_KEEP_ALIVE_TIMEOUT: &str = "90s";
+const DEFAULT_KEEP_ALIVE_TIMEOUT: &str = "1m30s";
 const DEFAULT_PROXY_ADDRESS: &str = "127.0.0.1";
 const DEFAULT_KEEP_ALIVE_CONNECTIONS: u32 = 100;
 
@@ -82,6 +82,114 @@ pub struct OriginRequestConfig {
     pub http2_origin: Option<bool>,
     #[serde(default)]
     pub access: Option<AccessConfig>,
+}
+
+impl OriginRequestConfig {
+    pub fn materialized_config_defaults(raw: &Self) -> Self {
+        Self {
+            connect_timeout: raw
+                .connect_timeout
+                .clone()
+                .or_else(|| Some(DurationSpec(DEFAULT_HTTP_CONNECT_TIMEOUT.to_owned()))),
+            tls_timeout: raw
+                .tls_timeout
+                .clone()
+                .or_else(|| Some(DurationSpec(DEFAULT_TLS_TIMEOUT.to_owned()))),
+            tcp_keep_alive: raw
+                .tcp_keep_alive
+                .clone()
+                .or_else(|| Some(DurationSpec(DEFAULT_TCP_KEEP_ALIVE.to_owned()))),
+            no_happy_eyeballs: Some(raw.no_happy_eyeballs.unwrap_or(false)),
+            keep_alive_connections: Some(
+                raw.keep_alive_connections
+                    .unwrap_or(DEFAULT_KEEP_ALIVE_CONNECTIONS),
+            ),
+            keep_alive_timeout: raw
+                .keep_alive_timeout
+                .clone()
+                .or_else(|| Some(DurationSpec(DEFAULT_KEEP_ALIVE_TIMEOUT.to_owned()))),
+            http_host_header: raw.http_host_header.clone(),
+            origin_server_name: raw.origin_server_name.clone(),
+            match_sni_to_host: Some(raw.match_sni_to_host.unwrap_or(false)),
+            ca_pool: raw.ca_pool.clone(),
+            no_tls_verify: Some(raw.no_tls_verify.unwrap_or(false)),
+            disable_chunked_encoding: Some(raw.disable_chunked_encoding.unwrap_or(false)),
+            bastion_mode: Some(raw.bastion_mode.unwrap_or(false)),
+            proxy_address: raw
+                .proxy_address
+                .clone()
+                .or_else(|| Some(DEFAULT_PROXY_ADDRESS.to_owned())),
+            proxy_port: Some(raw.proxy_port.unwrap_or(0)),
+            proxy_type: raw.proxy_type.clone(),
+            ip_rules: raw.ip_rules.clone(),
+            http2_origin: Some(raw.http2_origin.unwrap_or(false)),
+            access: raw.access.clone(),
+        }
+    }
+
+    pub fn with_overrides(&self, overrides: &Self) -> Self {
+        let mut merged = self.clone();
+
+        if let Some(value) = overrides.connect_timeout.clone() {
+            merged.connect_timeout = Some(value);
+        }
+        if let Some(value) = overrides.tls_timeout.clone() {
+            merged.tls_timeout = Some(value);
+        }
+        if let Some(value) = overrides.tcp_keep_alive.clone() {
+            merged.tcp_keep_alive = Some(value);
+        }
+        if let Some(value) = overrides.no_happy_eyeballs {
+            merged.no_happy_eyeballs = Some(value);
+        }
+        if let Some(value) = overrides.keep_alive_connections {
+            merged.keep_alive_connections = Some(value);
+        }
+        if let Some(value) = overrides.keep_alive_timeout.clone() {
+            merged.keep_alive_timeout = Some(value);
+        }
+        if let Some(value) = overrides.http_host_header.clone() {
+            merged.http_host_header = Some(value);
+        }
+        if let Some(value) = overrides.origin_server_name.clone() {
+            merged.origin_server_name = Some(value);
+        }
+        if let Some(value) = overrides.match_sni_to_host {
+            merged.match_sni_to_host = Some(value);
+        }
+        if let Some(value) = overrides.ca_pool.clone() {
+            merged.ca_pool = Some(value);
+        }
+        if let Some(value) = overrides.no_tls_verify {
+            merged.no_tls_verify = Some(value);
+        }
+        if let Some(value) = overrides.disable_chunked_encoding {
+            merged.disable_chunked_encoding = Some(value);
+        }
+        if let Some(value) = overrides.bastion_mode {
+            merged.bastion_mode = Some(value);
+        }
+        if let Some(value) = overrides.proxy_address.clone() {
+            merged.proxy_address = Some(value);
+        }
+        if let Some(value) = overrides.proxy_port {
+            merged.proxy_port = Some(value);
+        }
+        if let Some(value) = overrides.proxy_type.clone() {
+            merged.proxy_type = Some(value);
+        }
+        if !overrides.ip_rules.is_empty() {
+            merged.ip_rules = overrides.ip_rules.clone();
+        }
+        if let Some(value) = overrides.http2_origin {
+            merged.http2_origin = Some(value);
+        }
+        if let Some(value) = overrides.access.clone() {
+            merged.access = Some(value);
+        }
+
+        merged
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
@@ -203,7 +311,12 @@ impl IngressService {
 }
 
 impl IngressRule {
-    pub fn from_raw(raw: RawIngressRule, rule_index: usize, total_rules: usize) -> Result<Self> {
+    pub fn from_raw(
+        raw: RawIngressRule,
+        inherited_origin_request: &OriginRequestConfig,
+        rule_index: usize,
+        total_rules: usize,
+    ) -> Result<Self> {
         let service = match raw.service {
             Some(service) => IngressService::parse("service", &service)?,
             None => return Err(ConfigError::invariant("ingress rule is missing service")),
@@ -224,7 +337,7 @@ impl IngressRule {
                 path: raw.path,
             },
             service,
-            origin_request: raw.origin_request,
+            origin_request: inherited_origin_request.with_overrides(&raw.origin_request),
         })
     }
 
@@ -378,9 +491,9 @@ fn default_single_origin_origin_request(request: &CliIngressRequest) -> OriginRe
         ca_pool: None,
         no_tls_verify: Some(false),
         disable_chunked_encoding: Some(false),
-        bastion_mode: request.bastion.then_some(true),
+        bastion_mode: Some(request.bastion),
         proxy_address: Some(DEFAULT_PROXY_ADDRESS.to_owned()),
-        proxy_port: None,
+        proxy_port: Some(0),
         proxy_type: None,
         ip_rules: Vec::new(),
         http2_origin: Some(false),
@@ -480,8 +593,8 @@ fn strip_port(hostname: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::{
-        CliIngressRequest, IngressRule, IngressService, NormalizedIngress, RawIngressRule,
-        default_no_ingress_rule, find_matching_rule, parse_cli_ingress,
+        CliIngressRequest, DurationSpec, IngressIpRule, IngressRule, IngressService, NormalizedIngress,
+        OriginRequestConfig, RawIngressRule, default_no_ingress_rule, find_matching_rule, parse_cli_ingress,
     };
     use crate::error::ConfigError;
 
@@ -519,6 +632,7 @@ mod tests {
                 service: Some("https://localhost:8080".to_owned()),
                 ..RawIngressRule::default()
             },
+            &OriginRequestConfig::default(),
             0,
             1,
         ));
@@ -534,6 +648,7 @@ mod tests {
                 service: Some("https://localhost:8080".to_owned()),
                 ..RawIngressRule::default()
             },
+            &OriginRequestConfig::default(),
             0,
             1,
         )
@@ -555,6 +670,7 @@ mod tests {
                 service: Some("https://localhost:8080".to_owned()),
                 ..RawIngressRule::default()
             },
+            &OriginRequestConfig::default(),
             0,
             2,
         ));
@@ -574,6 +690,7 @@ mod tests {
                     service: Some("https://localhost:8080".to_owned()),
                     ..RawIngressRule::default()
                 },
+                &OriginRequestConfig::default(),
                 0,
                 3,
             )),
@@ -584,6 +701,7 @@ mod tests {
                     service: Some("https://localhost:8081".to_owned()),
                     ..RawIngressRule::default()
                 },
+                &OriginRequestConfig::default(),
                 1,
                 3,
             )),
@@ -592,6 +710,7 @@ mod tests {
                     service: Some("http_status:404".to_owned()),
                     ..RawIngressRule::default()
                 },
+                &OriginRequestConfig::default(),
                 2,
                 3,
             )),
@@ -621,6 +740,7 @@ mod tests {
                     service: Some("https://localhost:8080".to_owned()),
                     ..RawIngressRule::default()
                 },
+                &OriginRequestConfig::default(),
                 0,
                 2,
             )),
@@ -629,6 +749,7 @@ mod tests {
                     service: Some("http_status:404".to_owned()),
                     ..RawIngressRule::default()
                 },
+                &OriginRequestConfig::default(),
                 1,
                 2,
             )),
@@ -676,6 +797,52 @@ mod tests {
 
         assert_eq!(ingress.rules[0].service, IngressService::Bastion);
         assert_eq!(ingress.defaults.bastion_mode, Some(true));
+    }
+
+    #[test]
+    fn cli_ingress_materializes_go_default_representation() {
+        let ingress = ok(parse_cli_ingress(&["--hello-world".to_owned()]));
+
+        assert_eq!(
+            ingress.defaults.keep_alive_timeout,
+            Some(DurationSpec("1m30s".to_owned()))
+        );
+        assert_eq!(ingress.defaults.proxy_port, Some(0));
+        assert_eq!(ingress.defaults.bastion_mode, Some(false));
+        assert_eq!(ingress.rules[0].origin_request, ingress.defaults);
+    }
+
+    #[test]
+    fn inherited_origin_request_defaults_materialize_and_merge() {
+        let inherited = OriginRequestConfig::materialized_config_defaults(&OriginRequestConfig {
+            ip_rules: vec![IngressIpRule {
+                prefix: Some("10.0.0.0/8".to_owned()),
+                ports: vec![80, 8080],
+                allow: false,
+            }],
+            ..OriginRequestConfig::default()
+        });
+        let rule = ok(IngressRule::from_raw(
+            RawIngressRule {
+                service: Some("https://localhost:8080".to_owned()),
+                ..RawIngressRule::default()
+            },
+            &inherited,
+            0,
+            1,
+        ));
+
+        assert_eq!(
+            rule.origin_request.connect_timeout,
+            Some(DurationSpec("30s".to_owned()))
+        );
+        assert_eq!(
+            rule.origin_request.keep_alive_timeout,
+            Some(DurationSpec("1m30s".to_owned()))
+        );
+        assert_eq!(rule.origin_request.proxy_port, Some(0));
+        assert_eq!(rule.origin_request.bastion_mode, Some(false));
+        assert_eq!(rule.origin_request.ip_rules, inherited.ip_rules);
     }
 
     #[test]
