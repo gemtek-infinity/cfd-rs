@@ -109,7 +109,7 @@ pub struct NormalizedConfigPayload {
     pub origin_request: OriginRequestConfig,
     pub warp_routing: WarpRoutingConfig,
     pub log_directory: Option<String>,
-    pub warnings: Vec<WarningPayload>,
+    pub warnings: Option<Vec<WarningPayload>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -288,11 +288,17 @@ impl NormalizedConfigPayload {
                 .log_directory
                 .as_ref()
                 .map(|path| path.display().to_string()),
-            warnings: normalized
-                .warnings
-                .iter()
-                .map(WarningPayload::from_warning)
-                .collect(),
+            warnings: if normalized.warnings.is_empty() {
+                None
+            } else {
+                Some(
+                    normalized
+                        .warnings
+                        .iter()
+                        .map(WarningPayload::from_warning)
+                        .collect(),
+                )
+            },
         }
     }
 }

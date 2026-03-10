@@ -16,10 +16,10 @@ Current state:
 - Phase 1B.2 can emit Rust actual artifacts for config discovery/loading fixtures
 - Phase 1B.3 can emit Rust actual artifacts for credentials/origin-cert fixtures
 - Phase 1B.4 can emit Rust actual artifacts for ingress normalization and ordering/defaulting fixtures
-- Phase 1B.5 has checked-in Go truth artifacts for the accepted first-slice fixture surface
-- Phase 1B.5 compare mode now runs a real Rust-versus-Go comparison for that surface
-- config, credentials, and ingress behavior are only partially implemented
-- Rust-versus-Go parity is not complete yet
+- checked-in Go truth artifacts exist for the accepted first-slice fixture surface
+- Phase 1B.6 closes the accepted first-slice Rust-versus-Go mismatch set
+- Phase 1B.6 compare mode runs a real Rust-versus-Go comparison for that surface and is currently green
+- config, credentials, and ingress behavior are parity-backed only for the accepted first slice
 
 Phase 1A outputs in this directory:
 
@@ -40,8 +40,8 @@ Current execution model:
  artifacts for the currently implemented config, credentials, and ingress fixtures
 - `python3 tools/first_slice_parity.py compare --require-go-truth --require-rust-actual`
  now runs a real compare and exits nonzero when artifacts differ
-- `cargo test -p cloudflared-config` validates the fixture inventory and keeps
- the harness gate and a matching compare subset executable
+- `cargo test -p cloudflared-config` validates the fixture inventory, the Go-truth gate,
+ the narrow compare checks, and the full accepted first-slice compare closure
 
 Source-of-truth rule:
 

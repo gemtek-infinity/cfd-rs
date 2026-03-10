@@ -49,3 +49,20 @@ fn rust_parity_compare_entrypoint_is_real_for_matching_subset() {
         String::from_utf8_lossy(&output.stderr)
     );
 }
+
+#[test]
+fn full_first_slice_compare_is_green() {
+    let output = Command::new("python3")
+        .arg(support::tool_path())
+        .arg("compare")
+        .arg("--require-go-truth")
+        .arg("--require-rust-actual")
+        .output()
+        .expect("python3 should be available to run the first-slice parity harness");
+
+    assert!(
+        output.status.success(),
+        "expected full accepted first-slice compare to pass; stderr:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
