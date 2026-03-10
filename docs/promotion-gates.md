@@ -236,7 +236,7 @@ At the current repo state:
 
 - Big Phase 1 is done
 - Big Phase 2 is current
-- Phase 2.1 is the active task
-- Phases 2.2 through 2.5 remain intentionally deferred
+- Phase 2.2 is the active task
+- Phases 2.3 through 2.5 remain intentionally deferred
 - Big Phase 3 begins only after the Linux production-alpha lane is frozen in
   governance

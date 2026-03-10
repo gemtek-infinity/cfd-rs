@@ -53,6 +53,7 @@ The following top-level rewrite decisions are part of the active scaffold:
 - `docs/dependency-policy.md`
 - `docs/allocator-runtime-baseline.md`
 - `docs/adr/0001-hybrid-concurrency-model.md`
+- `docs/adr/0002-transport-tls-crypto-lane.md`
 
 ### Active Phase Model
 
@@ -62,7 +63,7 @@ The following top-level rewrite decisions are part of the active scaffold:
   - broader subsystem work remains mostly unported
 - Big Phase 2 is current:
   - purpose: freeze the Linux production-alpha lane
-  - active task: 2.1 build and artifact policy
+  - active task: 2.2 transport / TLS / crypto ADR
 - Big Phase 3 is later:
   - build the minimum runnable alpha on the frozen lane
 - Big Phase 4 is later:
@@ -127,33 +128,29 @@ the Rust workspace instead of modifying the frozen reference material.
   `docs/allocator-runtime-baseline.md` and
   `docs/adr/0001-hybrid-concurrency-model.md`.
 
-## Active Phase 2.1 Focus
+## Active Phase 2.2 Focus
 
-Phase 2.1 now owns build and artifact policy for the frozen Linux
+Phase 2.2 now owns transport / TLS / crypto lane freeze for the frozen Linux
 production-alpha lane.
 
 What it covers now:
 
-- local developer builds remain generic by default
-- PR CI validates the generic Linux workspace rather than silently hardcoding a
-  shipped CPU lane
-- shipped artifact policy is GNU only and lane-explicit
-- artifact naming, checksum naming, and workflow matrix policy are explicit
+- 0-RTT is explicitly required for the alpha lane
+- quiche is explicitly chosen as the first transport implementation direction
+- quiche + BoringSSL is explicitly chosen for the alpha lane
+- quiche + OpenSSL is explicitly out for the alpha lane
+- the PQC-compatible QUIC direction is explicitly part of the chosen lane
 
 What it still must not imply:
 
-- that 2.2 through 2.5 are already done
+- that 2.3 through 2.5 are already done
 - that broader runtime, transport, Pingora, FIPS operational, or deployment
   implementation already exists
 
 ## Deferred Within Big Phase 2
 
-The following lane-freeze work is intentionally deferred beyond 2.1:
+The following lane-freeze work is intentionally deferred beyond 2.2:
 
-- 2.2 transport / TLS / crypto ADR:
-  - quiche + BoringSSL
-  - 0-RTT requirement
-  - PQC-compatible QUIC path
 - 2.3 Pingora critical-path ADR:
   - initial critical-path responsibilities
   - first admitted Pingora crates

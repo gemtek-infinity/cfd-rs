@@ -42,6 +42,9 @@ Do not turn this file into a status report, architecture dump, dependency catalo
 - `docs/adr/0001-hybrid-concurrency-model.md`
   - ADR-level runtime decision
 
+- `docs/adr/0002-transport-tls-crypto-lane.md`
+  - transport / TLS / crypto lane decision
+
 - `SKILLS.md`
   - repeatable porting workflow
 
@@ -64,6 +67,7 @@ Before answering or patching, classify the task:
 3. phase model / promotion boundaries: use `docs/promotion-gates.md`
 4. scope / lane / non-negotiables: use `REWRITE_CHARTER.md`
 5. build / artifact policy: use `docs/build-artifact-policy.md`
-6. dependency / allocator / runtime policy: use the matching file under `docs/`
+6. transport / TLS / crypto lane: use `docs/adr/0002-transport-tls-crypto-lane.md`
+7. dependency / allocator / runtime policy: use the matching file under `docs/`
 
 If evidence is missing or conflicting, say so explicitly.
