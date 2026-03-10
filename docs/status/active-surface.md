@@ -3,12 +3,14 @@
 This file captures the currently admitted executable surface and the immediate
 deferred scope around it.
 
-## Active Phase 3.5 Focus
+## Active Phase 3.6 Focus
 
 Phase 3.3 owns the QUIC tunnel core. Phase 3.4 adds the Pingora proxy seam
-above it. Phase 3.5 adds the wire/protocol boundary between them.
+above it. Phase 3.5 adds the wire/protocol boundary between them. Phase 3.6
+adds a narrow security/compliance operational boundary around the admitted
+quiche + BoringSSL lane.
 
-What exists now (3.3 + 3.4a–c + 3.5):
+What exists now (3.3 + 3.4a–c + 3.5 + 3.6):
 
 - `run` enters a real quiche-based transport service under the runtime boundary
 - connection/session ownership and QUIC handshake state are explicit
@@ -29,13 +31,19 @@ What exists now (3.3 + 3.4a–c + 3.5):
 - the proxy layer receives and acknowledges the registration event
 - the runtime creates and distributes the protocol bridge endpoints
   to transport (sender) and proxy (receiver)
+- runtime startup now reports the bounded security/compliance operational
+  boundary for the admitted lane and keeps claims explicit and narrow
+- runtime startup now enforces Linux GNU/glibc deployment-contract assumptions
+  for the admitted lane and fails honestly when required host assumptions are
+  missing
 
-What 3.5 does not imply:
+What the current surface does not imply:
 
 - that registration RPC content (capnp) is implemented
 - that incoming request stream handling exists
 - that the admitted origin path is general proxy completeness
-- that security/compliance operational behavior exists
+- that the bounded security/compliance operational boundary constitutes
+  certification, whole-program compliance, or validated FIPS implementation
 - that standard-format crate integration beyond active-slice need exists
 - that packaging, installers, updaters, or deployment tooling already exist
 
@@ -43,7 +51,6 @@ What 3.5 does not imply:
 
 The following later Big Phase 3 slices remain intentionally deferred:
 
-- 3.6 security/compliance operational boundary
 - 3.7 standard-format crate integration boundary
 
 ## Deferred Beyond Big Phase 3
@@ -62,8 +69,11 @@ The following remain intentionally out of the current executable-surface task:
 
 Phase 3.6 (security/compliance operational boundary):
 
-- FIPS is part of the production-alpha lane but no operational crypto
-  boundary exists yet in the Rust workspace
+- the bounded operational crypto/TLS surface is now explicitly reported at
+  runtime startup and scoped to the quiche + BoringSSL transport lane only
+- Linux GNU/glibc deployment-contract assumptions are now enforced at startup
+- the operational boundary is not certification, not whole-program FIPS, and
+  not validated compliance proof — those remain Big Phase 4 work
 
 Phase 3.7 (standard-format crate integration boundary):
 

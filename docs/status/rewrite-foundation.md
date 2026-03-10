@@ -85,7 +85,8 @@ The following top-level rewrite decisions are part of the active scaffold:
   - purpose: build the minimum runnable alpha on the frozen lane
   - Phase 3.3 QUIC tunnel core is admitted
   - Phase 3.4 Pingora proxy seam (3.4a–c) is admitted
-  - active task: 3.4d docs/tests/status reconciliation
+  - Phase 3.5 wire/protocol boundary is admitted
+  - active task: 3.6 security/compliance operational boundary
 - Big Phase 4 is later:
   - harden, validate, measure, and prove the alpha in real use
 - Big Phase 5 is later:
