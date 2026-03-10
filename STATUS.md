@@ -18,14 +18,17 @@ What exists now:
 - a Phase 3.4 Pingora proxy seam with runtime lifecycle participation and a
   first admitted origin/proxy path (`http_status` routing) in
   `crates/cloudflared-cli/src/proxy.rs`
+- a Phase 3.5 wire/protocol boundary between transport and proxy in
+  `crates/cloudflared-cli/src/protocol.rs` with explicit transport-to-proxy
+  handoff through the runtime-managed protocol bridge
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 
 What does not exist yet:
 
 - broader Pingora proxy completeness beyond the narrow admitted origin path
-- later wire/protocol slices
-- security/compliance operational behavior
+- registration RPC content (capnp) and incoming request stream handling
+- later security/compliance and standard-format integration slices
 - parity-complete broader subsystem coverage
 - broader platform scope beyond the frozen Linux lane
 

@@ -367,5 +367,5 @@ At the current repo state:
 - Big Phase 3 is current
 - Phase 3.3 QUIC tunnel core is admitted
 - Phase 3.4 Pingora proxy seam (3.4a–c) is admitted
-- Phase 3.4d docs/tests/status reconciliation is active
-- Phases 3.5 through 3.7 are deferred within Big Phase 3
+- Phase 3.5 wire/protocol boundary is admitted
+- Phases 3.6 through 3.7 are deferred within Big Phase 3

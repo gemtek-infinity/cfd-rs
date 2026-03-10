@@ -3,12 +3,12 @@
 This file captures the currently admitted executable surface and the immediate
 deferred scope around it.
 
-## Active Phase 3.4 Focus
+## Active Phase 3.5 Focus
 
 Phase 3.3 owns the QUIC tunnel core. Phase 3.4 adds the Pingora proxy seam
-above it.
+above it. Phase 3.5 adds the wire/protocol boundary between them.
 
-What exists now (3.3 + 3.4a–c):
+What exists now (3.3 + 3.4a–c + 3.5):
 
 - `run` enters a real quiche-based transport service under the runtime boundary
 - connection/session ownership and QUIC handshake state are explicit
@@ -20,13 +20,21 @@ What exists now (3.3 + 3.4a–c):
 - the first admitted origin/proxy path routes `http_status` ingress rules
   through the Pingora-owned seam
 - origin services not yet implemented return 502 honestly
-- the transport core still stops honestly after QUIC establishment where
-  later wire/protocol registration does not yet exist
+- the wire/protocol boundary is owned by
+  `crates/cloudflared-cli/src/protocol.rs`
+- after QUIC establishment, the transport opens the control stream
+  (client-initiated bidi stream 0) at the wire/protocol boundary
+- the transport sends a protocol registration event to the proxy layer
+  through an explicit protocol bridge
+- the proxy layer receives and acknowledges the registration event
+- the runtime creates and distributes the protocol bridge endpoints
+  to transport (sender) and proxy (receiver)
 
-What 3.4 does not imply:
+What 3.5 does not imply:
 
+- that registration RPC content (capnp) is implemented
+- that incoming request stream handling exists
 - that the admitted origin path is general proxy completeness
-- that wire/protocol behavior beyond the transport-owned boundary exists
 - that security/compliance operational behavior exists
 - that standard-format crate integration beyond active-slice need exists
 - that packaging, installers, updaters, or deployment tooling already exist
@@ -35,7 +43,6 @@ What 3.4 does not imply:
 
 The following later Big Phase 3 slices remain intentionally deferred:
 
-- 3.5 wire/protocol boundary
 - 3.6 security/compliance operational boundary
 - 3.7 standard-format crate integration boundary
 
@@ -46,19 +53,12 @@ The following remain intentionally out of the current executable-surface task:
 - broader platform parity beyond Linux
 - broader artifact scope beyond GNU `x86-64-v2` and `x86-64-v4`
 - broader Pingora proxy completeness beyond the narrow admitted origin path
-- wire/protocol, security/compliance, and standard-format integration work
+- registration RPC, incoming stream handling, and broader protocol work
   outside their later owning slices
 - packaging, deployment tooling, container support, and
   certification-proving work beyond the current numbered Big Phase 3 slice list
 
 ## Follow-On Constraints For Later Slices
-
-Phase 3.5 (wire/protocol boundary):
-
-- the proxy seam currently has no wire-level integration with the QUIC
-  transport; 3.5 must bridge the transport session to the proxy layer
-- the transport core still stops at QUIC establishment; 3.5 must carry
-  protocol registration through that boundary
 
 Phase 3.6 (security/compliance operational boundary):
 
@@ -76,3 +76,5 @@ Immediate narrowness caveat:
   types return 502 until later slices implement real origin connections
 - `PingoraProxySeam` is not a general Pingora proxy; it is a confined
   entry point for the first admitted path
+- the protocol bridge carries registration events only; incoming request
+  streams and registration RPC content remain deferred

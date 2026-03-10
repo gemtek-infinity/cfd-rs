@@ -1,5 +1,5 @@
-//! Phase 3.4a–c: Pingora proxy-layer seam with lifecycle participation and
-//! first admitted origin/proxy path.
+//! Phase 3.4a–c + 3.5: Pingora proxy-layer seam with lifecycle participation,
+//! first admitted origin/proxy path, and wire/protocol bridge reception.
 //!
 //! This module is the owned entry point for Pingora in the production-alpha
 //! path. All direct Pingora types and API usage are confined here. The rest
@@ -11,6 +11,8 @@
 //! 3.4a admitted: dependency path and seam location.
 //! 3.4b admitted: runtime lifecycle participation (startup/shutdown).
 //! 3.4c admitted: first origin/proxy path (http_status ingress routing).
+//! 3.5 admitted: receives protocol registration events from the transport
+//!     layer through the explicit wire/protocol bridge.
 
 use cloudflared_config::{IngressRule, IngressService, find_matching_rule};
 use pingora_http::{RequestHeader, ResponseHeader};
@@ -18,6 +20,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
+use crate::protocol::{ProtocolEvent, ProtocolReceiver};
 use crate::runtime::{ChildTask, RuntimeCommand};
 
 pub(crate) const PROXY_SEAM_NAME: &str = "pingora-proxy-seam";
@@ -67,10 +70,12 @@ impl PingoraProxySeam {
     /// Spawn the proxy seam as a runtime-owned lifecycle participant.
     ///
     /// Reports the admitted origin/proxy path and ingress rule count at
-    /// startup, then holds position until shutdown.
+    /// startup. When a protocol bridge is provided, waits for
+    /// registration events from the transport layer before shutdown.
     pub(crate) fn spawn(
         self,
         command_tx: mpsc::Sender<RuntimeCommand>,
+        protocol_rx: Option<ProtocolReceiver>,
         shutdown: CancellationToken,
         child_tasks: &mut JoinSet<ChildTask>,
     ) {
@@ -86,7 +91,35 @@ impl PingoraProxySeam {
                 })
                 .await;
 
-            shutdown.cancelled().await;
+            if let Some(mut rx) = protocol_rx {
+                // Wait for protocol registration from the transport
+                // layer, or shutdown, whichever comes first.
+                // Biased: prefer processing a protocol event that
+                // arrived just before shutdown over missing it.
+                loop {
+                    tokio::select! {
+                        biased;
+                        event = rx.recv() => {
+                            match event {
+                                Some(ProtocolEvent::Registered { peer }) => {
+                                    let _ = command_tx
+                                        .send(RuntimeCommand::ServiceStatus {
+                                            service: PROXY_SEAM_NAME,
+                                            detail: format!(
+                                                "protocol-bridge: session registered, peer={peer}"
+                                            ),
+                                        })
+                                        .await;
+                                }
+                                None => break,
+                            }
+                        }
+                        _ = shutdown.cancelled() => break,
+                    }
+                }
+            } else {
+                shutdown.cancelled().await;
+            }
 
             let _ = command_tx
                 .send(RuntimeCommand::ServiceStatus {
@@ -249,7 +282,7 @@ mod tests {
         let mut child_tasks = JoinSet::new();
 
         let seam = PingoraProxySeam::new(vec![catch_all_rule(503)]);
-        seam.spawn(command_tx, shutdown.clone(), &mut child_tasks);
+        seam.spawn(command_tx, None, shutdown.clone(), &mut child_tasks);
 
         // Seam should report the admitted origin/proxy path on startup.
         let msg = command_rx.recv().await.expect("should receive origin status");
@@ -287,6 +320,105 @@ mod tests {
         {
             ChildTask::ProxySeam => {}
             other => panic!("expected ChildTask::ProxySeam, got: {other:?}"),
+        }
+    }
+
+    // -- Wire/protocol bridge (3.5) --
+
+    #[tokio::test]
+    async fn proxy_seam_receives_protocol_registration() {
+        let (command_tx, mut command_rx) = mpsc::channel(16);
+        let (protocol_sender, protocol_receiver) = crate::protocol::protocol_bridge();
+        let shutdown = CancellationToken::new();
+        let mut child_tasks = JoinSet::new();
+
+        let seam = PingoraProxySeam::new(vec![catch_all_rule(503)]);
+        seam.spawn(
+            command_tx,
+            Some(protocol_receiver),
+            shutdown.clone(),
+            &mut child_tasks,
+        );
+
+        // Startup status.
+        let msg = command_rx.recv().await.expect("should receive startup status");
+        assert!(matches!(msg, RuntimeCommand::ServiceStatus { .. }));
+
+        // Simulate transport sending registration event.
+        protocol_sender
+            .send(ProtocolEvent::Registered {
+                peer: "127.0.0.1:7844".to_owned(),
+            })
+            .await;
+
+        // Proxy should report the protocol bridge registration.
+        let msg = command_rx
+            .recv()
+            .await
+            .expect("should receive protocol bridge status");
+        match msg {
+            RuntimeCommand::ServiceStatus { service, detail } => {
+                assert_eq!(service, PROXY_SEAM_NAME);
+                assert!(
+                    detail.contains("protocol-bridge: session registered"),
+                    "expected protocol bridge registration, got: {detail}"
+                );
+                assert!(
+                    detail.contains("peer=127.0.0.1:7844"),
+                    "expected peer address, got: {detail}"
+                );
+            }
+            other => panic!("expected ServiceStatus for protocol bridge, got: {other:?}"),
+        }
+
+        shutdown.cancel();
+
+        let msg = command_rx.recv().await.expect("should receive shutdown status");
+        match msg {
+            RuntimeCommand::ServiceStatus { service, detail } => {
+                assert_eq!(service, PROXY_SEAM_NAME);
+                assert!(detail.contains("shutdown acknowledged"));
+            }
+            other => panic!("expected ServiceStatus for shutdown, got: {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn proxy_seam_handles_bridge_closure_without_registration() {
+        let (command_tx, mut command_rx) = mpsc::channel(16);
+        let (protocol_sender, protocol_receiver) = crate::protocol::protocol_bridge();
+        let shutdown = CancellationToken::new();
+        let mut child_tasks = JoinSet::new();
+
+        let seam = PingoraProxySeam::new(vec![catch_all_rule(503)]);
+        seam.spawn(
+            command_tx,
+            Some(protocol_receiver),
+            shutdown.clone(),
+            &mut child_tasks,
+        );
+
+        // Startup status.
+        let _ = command_rx.recv().await;
+
+        // Drop sender without sending registration — simulates
+        // transport failure before reaching the protocol boundary.
+        drop(protocol_sender);
+
+        // Proxy should still exit cleanly after bridge closure.
+        let msg = command_rx
+            .recv()
+            .await
+            .expect("should receive shutdown status after bridge closure");
+        match msg {
+            RuntimeCommand::ServiceStatus { service, detail } => {
+                assert_eq!(service, PROXY_SEAM_NAME);
+                assert!(
+                    detail.contains("shutdown acknowledged"),
+                    "expected shutdown ack after bridge closure, got: {detail}"
+                );
+            }
+            other => panic!("expected ServiceStatus for shutdown, got: {other:?}"),
         }
     }
 }

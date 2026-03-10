@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::protocol::{self, ProtocolReceiver};
 use crate::proxy::PingoraProxySeam;
 use crate::startup::config_source_label;
 use crate::transport::QuicTunnelServiceFactory;
@@ -226,13 +227,19 @@ struct ApplicationRuntime<F> {
     summary_lines: Vec<String>,
     lifecycle_state: LifecycleState,
     restart_attempts: u32,
+    protocol_receiver: Option<ProtocolReceiver>,
 }
 
 impl<F> ApplicationRuntime<F>
 where
     F: RuntimeServiceFactory,
 {
-    fn new(config: RuntimeConfig, factory: F, harness: RuntimeHarness) -> Self {
+    fn new(
+        config: RuntimeConfig,
+        factory: F,
+        harness: RuntimeHarness,
+        protocol_receiver: Option<ProtocolReceiver>,
+    ) -> Self {
         let (command_tx, command_rx) = mpsc::channel(16);
 
         Self {
@@ -247,6 +254,7 @@ where
             summary_lines: Vec::new(),
             lifecycle_state: LifecycleState::Starting,
             restart_attempts: 0,
+            protocol_receiver,
         }
     }
 
@@ -394,12 +402,14 @@ where
     fn spawn_proxy_seam(&mut self) {
         let ingress = self.config.normalized().ingress.clone();
         let seam = PingoraProxySeam::new(ingress);
+        let protocol_rx = self.protocol_receiver.take();
         self.summary_lines.push(format!(
             "proxy-seam: origin-proxy admitted, ingress-rules={}",
             seam.ingress_count()
         ));
         seam.spawn(
             self.command_tx.clone(),
+            protocol_rx,
             self.shutdown.child_token(),
             &mut self.child_tasks,
         );
@@ -539,10 +549,12 @@ where
 }
 
 pub(crate) fn run(config: RuntimeConfig) -> RuntimeExecution {
+    let (protocol_sender, protocol_receiver) = protocol::protocol_bridge();
     run_with_factory(
         config,
-        QuicTunnelServiceFactory::production(),
+        QuicTunnelServiceFactory::production(protocol_sender),
         RuntimeHarness::production(),
+        Some(protocol_receiver),
     )
 }
 
@@ -550,6 +562,7 @@ pub(crate) fn run_with_factory<F>(
     config: RuntimeConfig,
     factory: F,
     harness: RuntimeHarness,
+    protocol_receiver: Option<ProtocolReceiver>,
 ) -> RuntimeExecution
 where
     F: RuntimeServiceFactory,
@@ -559,7 +572,7 @@ where
         .build()
         .expect("tokio runtime should build for the admitted production-alpha shell");
 
-    runtime.block_on(ApplicationRuntime::new(config, factory, harness).run())
+    runtime.block_on(ApplicationRuntime::new(config, factory, harness, protocol_receiver).run())
 }
 
 #[cfg(test)]
@@ -700,6 +713,7 @@ mod tests {
             runtime_config(),
             TestFactory::new([TestBehavior::WaitForShutdown]),
             RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+            None,
         );
 
         assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -717,6 +731,7 @@ mod tests {
             runtime_config(),
             TestFactory::new([TestBehavior::WaitForShutdown]),
             RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+            None,
         );
 
         assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -733,6 +748,7 @@ mod tests {
             runtime_config(),
             TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
             RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(50)),
+            None,
         );
 
         assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -758,6 +774,7 @@ mod tests {
             runtime_config(),
             TestFactory::new([TestBehavior::FatalFailure]),
             RuntimeHarness::for_tests(),
+            None,
         );
 
         assert!(matches!(execution.exit, RuntimeExit::Failed { .. }));
@@ -774,6 +791,7 @@ mod tests {
             runtime_config(),
             TestFactory::new([TestBehavior::WaitForShutdown]),
             RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+            None,
         );
 
         assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -791,6 +809,7 @@ mod tests {
             runtime_config(),
             TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
             RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(50)),
+            None,
         );
 
         assert_eq!(execution.exit, RuntimeExit::Clean);
