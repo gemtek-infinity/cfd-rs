@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::startup::config_source_label;
+
 use cloudflared_config::{ConfigSource, DiscoveryOutcome, NormalizedConfig};
 use tokio::runtime::Builder;
 use tokio::sync::mpsc;
@@ -567,14 +569,6 @@ where
         .expect("tokio runtime should build for the admitted Phase 3.2 shell");
 
     runtime.block_on(ApplicationRuntime::new(config, factory, harness).run())
-}
-
-fn config_source_label(source: &ConfigSource) -> &'static str {
-    match source {
-        ConfigSource::ExplicitPath(_) => "explicit",
-        ConfigSource::DiscoveredPath(_) => "discovered",
-        ConfigSource::AutoCreatedPath(_) => "auto-created",
-    }
 }
 
 #[cfg(test)]

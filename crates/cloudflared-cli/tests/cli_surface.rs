@@ -19,7 +19,7 @@ fn write_config(root: &std::path::Path) -> PathBuf {
     let path = root.join("config.yml");
     fs::write(
         &path,
-        "tunnel: phase-3-1\ningress:\n  - hostname: tunnel.example.com\n    service: https://localhost:8080\n  - service: http_status:503\n",
+        "tunnel: phase-3-2\ningress:\n  - hostname: tunnel.example.com\n    service: https://localhost:8080\n  - service: http_status:503\n",
     )
     .expect("config fixture should be written");
     path
@@ -33,7 +33,7 @@ fn run_cloudflared(args: &[&str]) -> Output {
 }
 
 #[test]
-fn help_lists_only_admitted_phase_3_1_surface() {
+fn help_lists_only_admitted_phase_3_2_surface() {
     let output = run_cloudflared(&["--help"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
 
