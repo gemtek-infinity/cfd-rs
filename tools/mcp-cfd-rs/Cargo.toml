@@ -1,0 +1,15 @@
+[package]
+edition.workspace = true
+license.workspace = true
+name = "cfd-rs-memory"
+publish = false
+rust-version.workspace = true
+version = "0.1.0"
+
+[dependencies]
+mimalloc.workspace = true
+rmcp = { version = "1.1.1", features = ["schemars", "server", "transport-io"] }
+schemars = "1.2.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["fs", "io-std", "macros", "rt-multi-thread"] }

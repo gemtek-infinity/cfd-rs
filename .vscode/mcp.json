@@ -1,0 +1,15 @@
+{
+  "servers": {
+    "cfd-rs-memory": {
+      "type": "stdio",
+      "command": "cargo",
+      "args": [
+        "run",
+        "--manifest-path",
+        "${workspaceFolder}/tools/mcp-cfd-rs/Cargo.toml",
+        "--release"
+      ],
+      "cwd": "${workspaceFolder}"
+    }
+  }
+}

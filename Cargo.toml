@@ -4,6 +4,7 @@ members = [
   "crates/cloudflared-config",
   "crates/cloudflared-core",
   "crates/cloudflared-proto",
+  "tools/mcp-cfd-rs",
 ]
 resolver = "3"
 
