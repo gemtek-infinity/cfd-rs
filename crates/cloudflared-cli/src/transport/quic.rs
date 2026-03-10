@@ -12,6 +12,7 @@ use tokio::time;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
+use crate::protocol::{CONTROL_STREAM_ID, ProtocolEvent, ProtocolSender};
 use crate::runtime::{
     ChildTask, RuntimeCommand, RuntimeConfig, RuntimeService, RuntimeServiceFactory, ServiceExit,
 };
@@ -24,23 +25,29 @@ const EDGE_QUIC_ALPN: &[&[u8]] = &[b"argotunnel"];
 const QUIC_ESTABLISH_TIMEOUT: Duration = Duration::from_secs(5);
 const QUIC_IDLE_TIMEOUT_MS: u64 = 30_000;
 const MAX_DATAGRAM_SIZE: usize = 1350;
-const PHASE_35_DEFERRED_DETAIL: &str = "QUIC transport session is established, but tunnel registration and \
-                                        control-stream wire behavior remain deferred";
+const WIRE_PROTOCOL_DEFERRED_DETAIL: &str = "wire/protocol boundary crossed (control stream opened, proxy \
+                                             notified), but registration RPC and incoming stream handling \
+                                             remain deferred";
 
 #[derive(Debug, Clone)]
 pub(crate) struct QuicTunnelServiceFactory {
     test_target: Option<QuicEdgeTarget>,
+    protocol_sender: ProtocolSender,
 }
 
 impl QuicTunnelServiceFactory {
-    pub(crate) fn production() -> Self {
-        Self { test_target: None }
+    pub(crate) fn production(protocol_sender: ProtocolSender) -> Self {
+        Self {
+            test_target: None,
+            protocol_sender,
+        }
     }
 
     #[cfg(test)]
-    fn with_test_target(target: QuicEdgeTarget) -> Self {
+    fn with_test_target(protocol_sender: ProtocolSender, target: QuicEdgeTarget) -> Self {
         Self {
             test_target: Some(target),
+            protocol_sender,
         }
     }
 }
@@ -51,6 +58,7 @@ impl RuntimeServiceFactory for QuicTunnelServiceFactory {
             config,
             attempt,
             test_target: self.test_target.clone(),
+            protocol_sender: self.protocol_sender.clone(),
         })
     }
 }
@@ -59,6 +67,7 @@ struct QuicTunnelService {
     config: Arc<RuntimeConfig>,
     attempt: u32,
     test_target: Option<QuicEdgeTarget>,
+    protocol_sender: ProtocolSender,
 }
 
 impl RuntimeService for QuicTunnelService {
@@ -291,7 +300,48 @@ impl QuicTunnelService {
             .send(RuntimeCommand::ServiceReady { service: self.name() })
             .await;
 
-        let _ = connection.close(true, 0x00, b"deferred wire/protocol boundary");
+        // Phase 3.5: Cross the wire/protocol boundary.
+        // Open the control stream on the established QUIC session.
+        // This proves wire-level protocol behavior exists beyond
+        // transport establishment. Registration RPC content and
+        // incoming request stream handling remain deferred.
+        match connection.stream_send(CONTROL_STREAM_ID, &[], false) {
+            Ok(_) | Err(quiche::Error::Done) => {
+                send_status(
+                    command_tx,
+                    self.name(),
+                    format!("protocol-boundary: control-stream-{CONTROL_STREAM_ID} opened"),
+                )
+                .await;
+            }
+            Err(error) => {
+                return Ok(ServiceExit::RetryableFailure {
+                    service: self.name(),
+                    detail: format!("failed to open control stream at wire/protocol boundary: {error}"),
+                });
+            }
+        }
+
+        flush_egress(&socket, &mut connection, &mut send_buffer)
+            .await
+            .map_err(|error| format!("failed to flush control stream at wire/protocol boundary: {error}"))?;
+
+        // Notify the proxy layer through the explicit protocol bridge.
+        self.protocol_sender
+            .send(ProtocolEvent::Registered {
+                peer: target.connect_addr.to_string(),
+            })
+            .await;
+
+        send_status(
+            command_tx,
+            self.name(),
+            "protocol-boundary: registration event sent to proxy layer".to_owned(),
+        )
+        .await;
+
+        // Graceful close — the wire/protocol boundary has been crossed.
+        let _ = connection.close(true, 0x00, b"protocol boundary crossed");
         let _ = flush_egress(&socket, &mut connection, &mut send_buffer).await;
         send_status(
             command_tx,
@@ -302,10 +352,10 @@ impl QuicTunnelService {
 
         Ok(ServiceExit::Deferred {
             service: self.name(),
-            phase: "Big Phase 3.5",
+            phase: "Big Phase 3.6+",
             detail: format!(
                 "{} for tunnel {} against {}",
-                PHASE_35_DEFERRED_DETAIL, identity.tunnel_id, target.connect_addr
+                WIRE_PROTOCOL_DEFERRED_DETAIL, identity.tunnel_id, target.connect_addr
             ),
         })
     }
@@ -531,6 +581,7 @@ mod tests {
         EDGE_QUIC_ALPN, QuicEdgeTarget, QuicTunnelServiceFactory, build_quiche_config,
         default_ca_bundle_path, edge_host_label,
     };
+    use crate::protocol;
     use crate::runtime::{RuntimeExit, run_with_factory};
     use cloudflared_config::{ConfigSource, DiscoveryAction, DiscoveryOutcome, NormalizedConfig, RawConfig};
     use std::fs;
@@ -756,26 +807,33 @@ mod tests {
     }
 
     #[test]
-    fn runtime_establishes_real_quic_transport_before_wire_boundary() {
+    fn runtime_crosses_wire_protocol_boundary_after_quic_establish() {
         let root = temp_dir("quic-runtime");
         let server_addr = spawn_test_server(&root);
         let runtime_config = runtime_config(&root, server_addr);
+        let (protocol_sender, protocol_receiver) = protocol::protocol_bridge();
         let execution = run_with_factory(
             runtime_config,
-            QuicTunnelServiceFactory::with_test_target(QuicEdgeTarget {
-                connect_addr: server_addr,
-                host_label: "localhost".to_owned(),
-                server_name: "localhost".to_owned(),
-                verify_peer: false,
-                ca_bundle_path: None,
-            }),
+            QuicTunnelServiceFactory::with_test_target(
+                protocol_sender,
+                QuicEdgeTarget {
+                    connect_addr: server_addr,
+                    host_label: "localhost".to_owned(),
+                    server_name: "localhost".to_owned(),
+                    verify_peer: false,
+                    ca_bundle_path: None,
+                },
+            ),
             crate::runtime::RuntimeHarness::for_tests(),
+            Some(protocol_receiver),
         );
 
+        // 3.5: deferral moves from "Big Phase 3.5" to "Big Phase 3.6+"
+        // because the wire/protocol boundary is now crossed.
         assert!(matches!(
             execution.exit,
             RuntimeExit::Deferred {
-                phase: "Big Phase 3.5",
+                phase: "Big Phase 3.6+",
                 ..
             }
         ));
@@ -783,13 +841,29 @@ mod tests {
             execution
                 .summary_lines
                 .iter()
-                .any(|line| line.contains("transport-session-state: established"))
+                .any(|line| line.contains("transport-session-state: established")),
+            "should report QUIC session establishment"
         );
         assert!(
             execution
                 .summary_lines
                 .iter()
-                .any(|line| line.contains("quic-0rtt-policy:"))
+                .any(|line| line.contains("protocol-boundary: control-stream-0 opened")),
+            "should report control stream opened at wire/protocol boundary"
+        );
+        assert!(
+            execution
+                .summary_lines
+                .iter()
+                .any(|line| line.contains("protocol-boundary: registration event sent to proxy layer")),
+            "should report registration event sent through protocol bridge"
+        );
+        assert!(
+            execution
+                .summary_lines
+                .iter()
+                .any(|line| line.contains("quic-0rtt-policy:")),
+            "should report 0-RTT policy"
         );
 
         fs::remove_dir_all(root).expect("temp directory should be removable");
