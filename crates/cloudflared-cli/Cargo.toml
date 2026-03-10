@@ -12,8 +12,10 @@ workspace = true
 [dependencies]
 cloudflared-config = { path = "../cloudflared-config" }
 mimalloc.workspace = true
+quiche.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
+uuid.workspace = true
 
 [[bin]]
 name = "cloudflared"

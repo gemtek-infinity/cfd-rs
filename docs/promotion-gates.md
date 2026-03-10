@@ -274,6 +274,21 @@ before 3.3+ subsystem work exists.
 
 Realize the frozen quiche-first tunnel core without widening scope.
 
+#### Required conditions
+
+- the runtime-owned primary service is a real quiche-based QUIC transport
+- connection and session ownership are explicit under the runtime boundary
+- dial, establish, and teardown behavior are explicit
+- transport failures map back into runtime supervision honestly
+- the transport shape preserves the quiche-first, 0-RTT-required lane
+- later Pingora and broader wire/protocol behavior remain explicitly deferred
+
+#### Exit condition
+
+Phase 3.3 is complete when the binary owns a real QUIC tunnel core that can
+establish the quiche lane, report transport lifecycle honestly, and stop
+explicitly before 3.4+ layers are implemented.
+
 ### Phase 3.4 — Pingora Integration Path
 
 #### Purpose
@@ -350,5 +365,5 @@ At the current repo state:
 - Big Phase 1 is done
 - Big Phase 2 is closed and frozen
 - Big Phase 3 is current
-- Phase 3.2 is the active task
-- Phases 3.3 through 3.7 are deferred within Big Phase 3
+- Phase 3.3 is the active task
+- Phases 3.4 through 3.7 are deferred within Big Phase 3

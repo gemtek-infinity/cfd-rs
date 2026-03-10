@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::startup::config_source_label;
+use crate::transport::QuicTunnelServiceFactory;
 
 use cloudflared_config::{ConfigSource, DiscoveryOutcome, NormalizedConfig};
 use tokio::runtime::Builder;
@@ -17,10 +18,6 @@ use tokio_util::sync::CancellationToken;
 use tokio::signal::unix::{SignalKind, signal};
 
 const PRIMARY_SERVICE_NAME: &str = "quic-tunnel-core";
-const PRIMARY_SERVICE_DEFERRED_PHASE: &str = "Big Phase 3.3";
-const PRIMARY_SERVICE_DEFERRED_DETAIL: &str =
-    "runtime ownership exists, but QUIC tunnel core realization is deferred";
-
 #[derive(Debug, Clone)]
 pub(crate) struct RuntimeConfig {
     discovery: DiscoveryOutcome,
@@ -120,15 +117,16 @@ impl LifecycleState {
 }
 
 #[derive(Debug)]
-enum RuntimeCommand {
+pub(crate) enum RuntimeCommand {
     ServiceReady { service: &'static str },
+    ServiceStatus { service: &'static str, detail: String },
     ServiceExited(ServiceExit),
     ShutdownRequested(ShutdownReason),
     ControlPlaneFailure { detail: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum ShutdownReason {
+pub(crate) enum ShutdownReason {
     Signal(&'static str),
     Harness,
     ServiceFailure(&'static str),
@@ -146,7 +144,7 @@ impl ShutdownReason {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(not(test), allow(dead_code))]
-enum ServiceExit {
+pub(crate) enum ServiceExit {
     Completed {
         service: &'static str,
     },
@@ -166,17 +164,17 @@ enum ServiceExit {
 }
 
 #[derive(Debug)]
-enum ChildTask {
+pub(crate) enum ChildTask {
     Service(&'static str),
     SignalBridge,
     HarnessBridge,
 }
 
-trait RuntimeServiceFactory: Send + Sync + 'static {
+pub(crate) trait RuntimeServiceFactory: Send + Sync + 'static {
     fn create_primary(&self, config: Arc<RuntimeConfig>, attempt: u32) -> Box<dyn RuntimeService>;
 }
 
-trait RuntimeService: Send + 'static {
+pub(crate) trait RuntimeService: Send + 'static {
     fn name(&self) -> &'static str;
 
     fn spawn(
@@ -187,50 +185,8 @@ trait RuntimeService: Send + 'static {
     );
 }
 
-#[derive(Debug, Clone)]
-struct DeferredQuicServiceFactory;
-
-impl RuntimeServiceFactory for DeferredQuicServiceFactory {
-    fn create_primary(&self, _config: Arc<RuntimeConfig>, _attempt: u32) -> Box<dyn RuntimeService> {
-        Box::new(DeferredQuicService)
-    }
-}
-
-#[derive(Debug)]
-struct DeferredQuicService;
-
-impl RuntimeService for DeferredQuicService {
-    fn name(&self) -> &'static str {
-        PRIMARY_SERVICE_NAME
-    }
-
-    fn spawn(
-        self: Box<Self>,
-        command_tx: mpsc::Sender<RuntimeCommand>,
-        _shutdown: CancellationToken,
-        child_tasks: &mut JoinSet<ChildTask>,
-    ) {
-        child_tasks.spawn(async move {
-            let _ = command_tx
-                .send(RuntimeCommand::ServiceReady {
-                    service: PRIMARY_SERVICE_NAME,
-                })
-                .await;
-            tokio::task::yield_now().await;
-            let _ = command_tx
-                .send(RuntimeCommand::ServiceExited(ServiceExit::Deferred {
-                    service: PRIMARY_SERVICE_NAME,
-                    phase: PRIMARY_SERVICE_DEFERRED_PHASE,
-                    detail: PRIMARY_SERVICE_DEFERRED_DETAIL.to_owned(),
-                }))
-                .await;
-            ChildTask::Service(PRIMARY_SERVICE_NAME)
-        });
-    }
-}
-
 #[derive(Debug, Clone, Default)]
-struct RuntimeHarness {
+pub(crate) struct RuntimeHarness {
     enable_signals: bool,
     injected_shutdown_after: Option<Duration>,
 }
@@ -244,7 +200,7 @@ impl RuntimeHarness {
     }
 
     #[cfg(test)]
-    fn for_tests() -> Self {
+    pub(crate) fn for_tests() -> Self {
         Self {
             enable_signals: false,
             injected_shutdown_after: None,
@@ -344,6 +300,11 @@ where
                 if self.lifecycle_state == LifecycleState::Starting {
                     self.record_state(LifecycleState::Running, format!("service ready: {service}"));
                 }
+                None
+            }
+            RuntimeCommand::ServiceStatus { service, detail } => {
+                self.summary_lines
+                    .push(format!("service-status[{service}]: {detail}"));
                 None
             }
             RuntimeCommand::ServiceExited(ServiceExit::Completed { service }) => Some(RuntimeExit::Failed {
@@ -556,10 +517,18 @@ where
 }
 
 pub(crate) fn run(config: RuntimeConfig) -> RuntimeExecution {
-    run_with_factory(config, DeferredQuicServiceFactory, RuntimeHarness::production())
+    run_with_factory(
+        config,
+        QuicTunnelServiceFactory::production(),
+        RuntimeHarness::production(),
+    )
 }
 
-fn run_with_factory<F>(config: RuntimeConfig, factory: F, harness: RuntimeHarness) -> RuntimeExecution
+pub(crate) fn run_with_factory<F>(
+    config: RuntimeConfig,
+    factory: F,
+    harness: RuntimeHarness,
+) -> RuntimeExecution
 where
     F: RuntimeServiceFactory,
 {
@@ -575,7 +544,7 @@ where
 mod tests {
     use super::{
         ChildTask, RuntimeCommand, RuntimeConfig, RuntimeExecution, RuntimeExit, RuntimeHarness,
-        RuntimeService, RuntimeServiceFactory, ServiceExit, ShutdownReason, run_with_factory,
+        RuntimeService, RuntimeServiceFactory, ServiceExit, run_with_factory,
     };
     use std::collections::VecDeque;
     use std::path::PathBuf;
@@ -753,23 +722,12 @@ mod tests {
     }
 
     #[test]
-    fn runtime_surfaces_deferred_quic_boundary_honestly() {
+    fn runtime_requires_transport_identity_for_real_quic_core() {
         let execution = super::run(runtime_config());
 
-        assert!(matches!(
-            execution.exit,
-            RuntimeExit::Deferred {
-                phase: "Big Phase 3.3",
-                ..
-            }
-        ));
+        assert!(matches!(execution.exit, RuntimeExit::Failed { .. }));
         assert!(summary_contains(&execution, "primary-service=quic-tunnel-core"));
-        assert!(summary_contains(&execution, "lifecycle-state: running"));
         assert!(summary_contains(&execution, "lifecycle-state: failed"));
-        assert!(summary_contains(
-            &execution,
-            &ShutdownReason::ServiceFailure("quic-tunnel-core").as_str()
-        ));
     }
 
     #[test]

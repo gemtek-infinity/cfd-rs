@@ -5,6 +5,7 @@ mod cli;
 mod output;
 mod runtime;
 mod startup;
+mod transport;
 
 use std::env;
 use std::process::ExitCode;
