@@ -10,7 +10,44 @@ When editing Rust code or Cargo manifests in this repository:
 - preserve externally visible behavior over stylistic rewrites
 - do not add dependencies unless the active owning slice justifies them
 - follow `docs/dependency-policy.md` before changing manifests
+- use `[workspace.dependencies]` as the default review surface for normal workspace-managed third-party dependencies
+- keep crate-local dependency truth only when the dependency is intentionally private, tool-specific, experimental, or slice-isolated
 - for first-slice work, prefer synchronous and deterministic code
 - do not introduce async/runtime structure early unless the accepted slice requires it
 - avoid repo-wide refactors unless explicitly requested
 - if evidence is incomplete, say so explicitly
+
+## Local code style
+
+- prefer explicit names, explicit intermediate variables, and straightforward control flow
+- avoid dense one-liners or clever chaining when a few named steps are easier to review
+- prefer early returns, `match`, `if let`, and `let else` over deep nesting
+- keep blank lines tight; use them to separate real steps, not to add visual padding
+- use one blank line before a multi-line final expression when setup and the final return or construction are both meaningful
+- prefer `self::` for sibling module items when that makes local ownership clearer
+- prefer `Self` and `Self::` inside `impl` blocks rather than repeating the type name
+- prefer associated constants in the owning `impl` for type-local values, and avoid non-trivial magic numbers in function bodies
+- make parse and conversion targets explicit at the operation site when that improves scanability
+- keep imports specific and tidy; avoid glob imports and noisy aliasing unless there is a strong reason
+- comments should explain why, compatibility constraints, or non-obvious invariants, not obvious syntax
+- normalize AI-generated code until it reads like repository-owned code rather than mechanically valid Rust
+- avoid `unwrap` in production code; use error propagation or `expect` only for real invariants
+- keep public doc comments practical and plain about behavior, assumptions, and caller obligations
+- prefer meaningful error type and variant names over generic failure labels
+- keep test names behavior-oriented and specific
+
+## Local engineering structure
+
+- keep one primary responsibility per crate or module
+- keep public surfaces narrower than their supporting internals
+- admit third-party APIs through owned seams rather than scattering them through unrelated crates
+- prefer direct upstream loaders or mature standard-format crates over bespoke parsing when the active slice really needs that format today
+- keep parsing, encoding, and security-relevant third-party types behind local boundaries when that keeps ownership clearer
+- prefer concrete code first; add abstraction only when a second real need or clear boundary justifies it
+- keep runtime and lifecycle ownership explicit rather than hidden in background work
+- split modules by reviewable reasoning units, not by arbitrary line count alone
+
+## Review preference
+
+When multiple valid Rust shapes exist, prefer the one that is easier to understand in one pass,
+easier to review in small slices, and more consistent with surrounding repository-owned code.

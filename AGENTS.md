@@ -5,7 +5,14 @@ This file is the short operating guide for coding agents in this repository.
 Keep it short.
 Do not turn this file into a status report, architecture dump, dependency catalog, or command manual.
 
+Start cold reads with `docs/ai-context-routing.md`.
+Use this file as the short operating guide, not as the full routing map.
+
 ## Use the right file
+
+- `docs/ai-context-routing.md`
+  - minimum-file routing for cold starts
+  - staged retrieval order
 
 - `REWRITE_CHARTER.md`
   - shortest non-negotiables
@@ -72,23 +79,8 @@ Do not turn this file into a status report, architecture dump, dependency catalo
 
 ## Question routing
 
-Before answering or patching, classify the task:
+Use `docs/ai-context-routing.md` for the detailed task-to-file map.
 
-1. behavior / parity: use Go code/tests first, then design-audit
-2. current repository state: use `STATUS.md`
-3. phase model / promotion boundaries: use `docs/promotion-gates.md`
-4. scope / lane / non-negotiables: use `REWRITE_CHARTER.md`
-5. build / artifact policy: use `docs/build-artifact-policy.md`
-6. transport / TLS / crypto lane: use `docs/adr/0002-transport-tls-crypto-lane.md`
-7. Pingora critical path: use `docs/adr/0003-pingora-critical-path.md`
-8. FIPS-in-alpha boundary: use `docs/adr/0004-fips-in-alpha-definition.md`
-9. deployment contract: use `docs/adr/0005-deployment-contract.md`
-10. dependency admission and workspace-dependency policy: use
-  `docs/dependency-policy.md` and
-  `docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md`
-  Treat the root manifest as the first review surface for normal workspace-
-  managed third-party dependency truth unless isolation is intentionally
-  documented.
-11. dependency / allocator / runtime policy: use the matching file under `docs/`
+For repo-state, active-phase, scope-lane, runtime-deps, lane-decisions, behavior-baseline, and governing-files questions, prefer the local MCP snapshot surface first before loading larger docs or frozen trees.
 
 If evidence is missing or conflicting, say so explicitly.
