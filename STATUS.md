@@ -8,8 +8,9 @@ implementation and an intentionally narrow Rust first slice.
 It is not yet a parity-complete Rust implementation workspace. The repository
 now contains a Cargo workspace skeleton plus early first-slice behavior in
 `crates/cloudflared-config/` for config discovery/loading and credentials
-origin-cert decoding, plus narrow ingress normalization and matching behavior,
-but most subsystem behavior is still unported.
+origin-cert decoding, narrow ingress normalization and matching behavior, and a
+real first-slice Go-truth and compare harness path, but most subsystem
+behavior is still unported.
 
 The scaffold is intentionally real but minimal:
 
@@ -121,7 +122,7 @@ These items are still missing before MCP-assisted or large-scale subsystem work
 should begin:
 
 - accepted compatibility-scope decision for FIPS/compliance
-- captured Go truth outputs and passing first-slice parity tests
+- passing first-slice parity tests
 
 ## Phase 1A Groundwork
 
@@ -137,7 +138,6 @@ What exists now:
 
 What does not exist yet:
 
-- captured Go truth outputs
 - passing Rust-versus-Go parity reports
 - complete config, credential, or ingress behavior
 - passing first-slice parity comparisons
@@ -253,6 +253,48 @@ Implication:
 - the accepted first slice now has a real ingress normalization and matching
   path in Rust for the current fixture surface
 - the repository still must not claim first-slice parity is complete
+
+## Phase 1B.5 Go Truth Capture And Real Compare Path
+
+Phase 1B.5 harness behavior now exists for the accepted first-slice fixture
+surface.
+
+What exists now:
+
+- checked-in Go truth artifacts under
+  `crates/cloudflared-config/tests/fixtures/first-slice/golden/go-truth/` for
+  all 21 accepted first-slice fixtures
+- a source-backed `capture-go-truth` workflow that stages a small Go helper in
+  a temporary module and imports the frozen Go baseline via `replace`
+- a real `compare` workflow that emits fresh Rust actual artifacts and compares
+  them against the checked-in Go truth artifacts
+- explicit mismatch reporting for exact, error-category, structural, semantic,
+  and warning-or-report comparison modes
+- a passing Go-truth presence gate and a passing real-compare smoke subset in
+  the Rust test suite
+
+What does not exist yet:
+
+- all-green first-slice parity
+- reconciled exact JSON parity for several config and CLI ingress fixtures
+- a promoted policy for canonicalizing representation-only differences such as
+  `90s` versus `1m30s` in artifact comparison
+
+Current mismatch clusters from the full compare run:
+
+- config-backed ingress fixtures still diverge because Rust does not yet carry
+  Go effective `originRequest` defaults and inherited IP rules into the per-rule
+  normalized artifact shape
+- CLI single-origin ingress fixtures still diverge on default field
+  representation, including `false` versus `null`, `0` versus `null`, and
+  `1m30s` versus `90s`
+
+Implication:
+
+- the repository now has a real first-slice parity loop rather than a Rust-only
+  artifact scaffold
+- the repository still must not claim first-slice parity is complete while the
+  full compare continues to report live mismatches
 
 ## First Implementation Gate
 

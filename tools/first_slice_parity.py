@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+import tempfile
 import tomllib
 
 
@@ -17,6 +21,10 @@ FIXTURE_ROOT = (
 INDEX_PATH = FIXTURE_ROOT / "fixture-index.toml"
 GO_TRUTH_DIR = FIXTURE_ROOT / "golden" / "go-truth"
 RUST_ACTUAL_DIR = FIXTURE_ROOT / "golden" / "rust-actual"
+GO_CAPTURE_RUNNER = REPO_ROOT / "tools" / "first_slice_go_capture" / "main.go"
+LOCAL_GO_BINARY = (
+    Path.home() / ".local" / "go-toolchain" / "usr" / "lib" / "go-1.22" / "bin" / "go"
+)
 SUPPORTED_RUST_ACTUAL_CATEGORIES = {
     "config-discovery",
     "credentials-origin-cert",
@@ -25,6 +33,7 @@ SUPPORTED_RUST_ACTUAL_CATEGORIES = {
     "invalid-input",
     "ordering-defaulting",
 }
+SUPPORTED_GO_TRUTH_CATEGORIES = set(SUPPORTED_RUST_ACTUAL_CATEGORIES)
 
 
 @dataclass(frozen=True)
@@ -53,7 +62,7 @@ def main() -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Phase 1A parity harness entrypoint for the accepted first slice."
+        description="Parity harness entrypoint for the accepted first-slice surface."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -74,9 +83,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check_go_truth.set_defaults(func=cmd_check_go_truth)
 
+    capture_go_truth = subparsers.add_parser(
+        "capture-go-truth",
+        help="Generate checked-in Go truth artifacts for the supported first-slice fixtures.",
+    )
+    capture_go_truth.add_argument(
+        "--fixture-id",
+        action="append",
+        default=[],
+        help="Limit capture to one or more fixture IDs.",
+    )
+    capture_go_truth.add_argument(
+        "--output-dir",
+        default=str(GO_TRUTH_DIR),
+        help="Directory where Go truth JSON files should be written.",
+    )
+    capture_go_truth.set_defaults(func=cmd_capture_go_truth)
+
     compare = subparsers.add_parser(
         "compare",
-        help="Describe or execute the Go-versus-Rust comparison contract.",
+        help="Run real Go-versus-Rust comparison for the selected first-slice fixtures.",
     )
     compare.add_argument(
         "--require-go-truth",
@@ -192,45 +218,139 @@ def cmd_check_go_truth(_args: argparse.Namespace, fixtures: list[Fixture]) -> in
     return 1
 
 
+def cmd_capture_go_truth(args: argparse.Namespace, fixtures: list[Fixture]) -> int:
+    selected = select_fixtures(fixtures, args.fixture_id)
+    targeted = [
+        fixture
+        for fixture in selected
+        if fixture.category in SUPPORTED_GO_TRUTH_CATEGORIES
+    ]
+    skipped = [
+        fixture
+        for fixture in selected
+        if fixture.category not in SUPPORTED_GO_TRUTH_CATEGORIES
+    ]
+
+    if not targeted:
+        print(
+            "no supported first-slice fixtures were selected for Go truth capture",
+            file=sys.stderr,
+        )
+        return 1
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    completed = run_go_capture(targeted, output_dir)
+
+    if skipped:
+        for fixture in skipped:
+            print(
+                f"skipping unsupported Go truth category for {fixture.fixture_id}: {fixture.category}",
+                file=sys.stderr,
+            )
+
+    if completed.returncode != 0:
+        if completed.stderr:
+            print(completed.stderr, file=sys.stderr, end="")
+        if completed.stdout:
+            print(completed.stdout, file=sys.stderr, end="")
+        return completed.returncode
+
+    print(
+        f"captured {len(targeted)} Go truth artifacts into {display_repo_relative(output_dir)}"
+    )
+    for fixture in targeted:
+        print(f"- {fixture.fixture_id}")
+    return 0
+
+
 def cmd_compare(args: argparse.Namespace, fixtures: list[Fixture]) -> int:
     selected = select_fixtures(fixtures, args.fixture_id)
     missing_go_truth = [
         fixture for fixture in selected if not fixture.go_truth_path.exists()
     ]
-    missing_rust_actual = [
-        fixture for fixture in selected if not fixture.rust_actual_path.exists()
-    ]
-    comparable = [
-        fixture
-        for fixture in selected
-        if fixture.go_truth_path.exists() and fixture.rust_actual_path.exists()
-    ]
 
-    print("Phase 1A comparison contract")
+    print("Phase 1B.5 Rust-vs-Go comparison")
     print(f"selected fixtures: {len(selected)}")
-    print(f"comparable today: {len(comparable)}")
     print(f"missing Go truth: {len(missing_go_truth)}")
-    print(f"missing Rust actual: {len(missing_rust_actual)}")
-
-    for fixture in selected:
-        status = comparison_status(fixture)
-        print(f"- {fixture.fixture_id}: {status}")
 
     if args.require_go_truth and missing_go_truth:
         print(
             "compare failed because Go truth artifacts are still missing.",
             file=sys.stderr,
         )
+        for fixture in missing_go_truth:
+            print(
+                f"- {fixture.fixture_id}: expected {fixture.go_truth_path.relative_to(REPO_ROOT).as_posix()}",
+                file=sys.stderr,
+            )
         return 1
 
-    if args.require_rust_actual and missing_rust_actual:
-        print(
-            "compare failed because Rust actual artifacts are still missing.",
-            file=sys.stderr,
-        )
-        return 1
+    with tempfile.TemporaryDirectory(prefix="cloudflared-rust-actual-") as temp_dir:
+        rust_actual_dir = Path(temp_dir)
+        completed = run_rust_emitter(selected, rust_actual_dir)
+        if completed.returncode != 0:
+            if completed.stderr:
+                print(completed.stderr, file=sys.stderr, end="")
+            if completed.stdout:
+                print(completed.stdout, file=sys.stderr, end="")
+            return completed.returncode
 
-    return 0
+        missing_rust_actual = [
+            fixture
+            for fixture in selected
+            if not rust_actual_path_for_dir(rust_actual_dir, fixture).exists()
+        ]
+        compared = 0
+        matched = 0
+        mismatches: list[tuple[Fixture, list[str]]] = []
+
+        for fixture in selected:
+            if not fixture.go_truth_path.exists():
+                print(f"- {fixture.fixture_id}: missing-go-truth")
+                continue
+
+            rust_actual_path = rust_actual_path_for_dir(rust_actual_dir, fixture)
+            if not rust_actual_path.exists():
+                print(f"- {fixture.fixture_id}: missing-rust-actual")
+                continue
+
+            compared += 1
+            go_truth = load_json_artifact(fixture.go_truth_path)
+            rust_actual = load_json_artifact(rust_actual_path)
+            differences = compare_artifacts(fixture, go_truth, rust_actual)
+            if differences:
+                mismatches.append((fixture, differences))
+                print(f"- {fixture.fixture_id}: mismatch")
+                for difference in differences:
+                    print(f"  {difference}")
+            else:
+                matched += 1
+                print(f"- {fixture.fixture_id}: match")
+
+        print(f"compared: {compared}")
+        print(f"matched: {matched}")
+        print(f"mismatched: {len(mismatches)}")
+        print(f"missing Rust actual: {len(missing_rust_actual)}")
+
+        if args.require_rust_actual and missing_rust_actual:
+            print(
+                "compare failed because Rust actual artifacts are still missing.",
+                file=sys.stderr,
+            )
+            return 1
+        if mismatches:
+            print(
+                "compare failed because one or more fixture artifacts differ.",
+                file=sys.stderr,
+            )
+            return 1
+        if args.require_go_truth and missing_go_truth:
+            return 1
+        if args.require_rust_actual and missing_rust_actual:
+            return 1
+        return 0
 
 
 def cmd_emit_rust_actual(args: argparse.Namespace, fixtures: list[Fixture]) -> int:
@@ -260,23 +380,7 @@ def cmd_emit_rust_actual(args: argparse.Namespace, fixtures: list[Fixture]) -> i
         "fixtures": [build_emission_fixture(fixture) for fixture in targeted],
     }
 
-    import subprocess
-
-    completed = subprocess.run(
-        [
-            "cargo",
-            "run",
-            "-q",
-            "-p",
-            "cloudflared-config",
-            "--example",
-            "first_slice_emit",
-        ],
-        cwd=REPO_ROOT,
-        input=json.dumps(plan),
-        text=True,
-        capture_output=True,
-    )
+    completed = run_rust_emitter(targeted, output_dir)
 
     if skipped:
         for fixture in skipped:
@@ -334,11 +438,298 @@ def build_emission_fixture(fixture: Fixture) -> dict[str, object]:
         payload["discovery_case"] = load_discovery_case(fixture.fixture_id)
     if fixture.category == "credentials-origin-cert":
         payload["origin_cert_source"] = load_origin_cert_source(fixture.fixture_id)
-    if fixture.category == "ordering-defaulting":
+    if (
+        fixture.category == "ordering-defaulting"
+        and fixture.input_path.name == "cases.toml"
+    ):
         payload["ordering_case"] = load_ordering_case(fixture.fixture_id)
     if fixture.category == "ingress-normalization":
         payload["cli_ingress_case"] = load_cli_ingress_case(fixture.fixture_id)
     return payload
+
+
+def run_rust_emitter(
+    fixtures: list[Fixture], output_dir: Path
+) -> subprocess.CompletedProcess[str]:
+    plan = {
+        "repo_root": str(REPO_ROOT),
+        "fixture_root": str(FIXTURE_ROOT),
+        "output_dir": str(output_dir),
+        "fixtures": [build_emission_fixture(fixture) for fixture in fixtures],
+    }
+
+    return subprocess.run(
+        [
+            "cargo",
+            "run",
+            "-q",
+            "-p",
+            "cloudflared-config",
+            "--example",
+            "first_slice_emit",
+        ],
+        cwd=REPO_ROOT,
+        input=json.dumps(plan),
+        text=True,
+        capture_output=True,
+    )
+
+
+def run_go_capture(
+    fixtures: list[Fixture], output_dir: Path
+) -> subprocess.CompletedProcess[str]:
+    plan = {
+        "repo_root": str(REPO_ROOT),
+        "fixture_root": str(FIXTURE_ROOT),
+        "output_dir": str(output_dir),
+        "fixtures": [build_emission_fixture(fixture) for fixture in fixtures],
+    }
+
+    with tempfile.TemporaryDirectory(prefix="cloudflared-go-truth-") as temp_dir:
+        temp_root = Path(temp_dir)
+        write_go_capture_module(temp_root)
+        try:
+            go_binary = str(go_executable())
+            tidy = subprocess.run(
+                [go_binary, "mod", "tidy"],
+                cwd=temp_root,
+                text=True,
+                capture_output=True,
+            )
+            if tidy.returncode != 0:
+                return tidy
+            return subprocess.run(
+                [go_binary, "run", "."],
+                cwd=temp_root,
+                input=json.dumps(plan),
+                text=True,
+                capture_output=True,
+            )
+        except FileNotFoundError as error:
+            raise SystemExit(
+                "go toolchain not found on PATH; install Go to run capture-go-truth"
+            ) from error
+
+
+def write_go_capture_module(temp_root: Path) -> None:
+    shutil.copy2(GO_CAPTURE_RUNNER, temp_root / "main.go")
+    go_mod = f"""module firstslicecapture
+
+go 1.24.0
+
+require (
+    github.com/cloudflare/cloudflared v0.0.0
+    github.com/rs/zerolog v1.20.0
+    github.com/urfave/cli/v2 v2.3.0
+    golang.org/x/net v0.40.0
+    gopkg.in/yaml.v3 v3.0.1
+)
+
+replace github.com/cloudflare/cloudflared => {REPO_ROOT / 'baseline-2026.2.0' / 'old-impl'}
+"""
+    (temp_root / "go.mod").write_text(go_mod)
+
+
+def go_executable() -> Path:
+    configured = os.environ.get("GO_BINARY") or shutil.which("go")
+    if configured:
+        return Path(configured)
+    if LOCAL_GO_BINARY.exists():
+        return LOCAL_GO_BINARY
+    raise FileNotFoundError("go")
+
+
+def load_json_artifact(path: Path) -> dict[str, object]:
+    return json.loads(path.read_text())
+
+
+def rust_actual_path_for_dir(output_dir: Path, fixture: Fixture) -> Path:
+    return output_dir / f"{fixture.fixture_id}.json"
+
+
+def compare_artifacts(
+    fixture: Fixture,
+    go_truth: dict[str, object],
+    rust_actual: dict[str, object],
+) -> list[str]:
+    differences: list[str] = []
+    for field in [
+        "schema_version",
+        "fixture_id",
+        "report_kind",
+        "comparison",
+        "source_refs",
+    ]:
+        if go_truth.get(field) != rust_actual.get(field):
+            differences.append(
+                f"envelope.{field}: go={render_value(go_truth.get(field))} rust={render_value(rust_actual.get(field))}"
+            )
+
+    comparison = fixture.comparison
+    if comparison in {"exact", "exact-json"}:
+        differences.extend(
+            diff_json(
+                go_truth.get("payload"), rust_actual.get("payload"), path="payload"
+            )
+        )
+    elif comparison == "error-category":
+        differences.extend(compare_error_category(go_truth, rust_actual))
+    elif comparison == "structural":
+        differences.extend(compare_structural(go_truth, rust_actual))
+    elif comparison == "semantic":
+        differences.extend(compare_semantic(go_truth, rust_actual))
+    elif comparison == "warning-or-report":
+        differences.extend(compare_warning_or_report(go_truth, rust_actual))
+    else:
+        differences.append(f"unsupported comparison mode: {comparison}")
+
+    return differences
+
+
+def compare_error_category(
+    go_truth: dict[str, object], rust_actual: dict[str, object]
+) -> list[str]:
+    differences: list[str] = []
+    if go_truth.get("report_kind") != "error-report.v1":
+        differences.append(
+            f"go report_kind must be error-report.v1, found {go_truth.get('report_kind')!r}"
+        )
+    if rust_actual.get("report_kind") != "error-report.v1":
+        differences.append(
+            f"rust report_kind must be error-report.v1, found {rust_actual.get('report_kind')!r}"
+        )
+    go_payload = as_dict(go_truth.get("payload"))
+    rust_payload = as_dict(rust_actual.get("payload"))
+    if go_payload.get("category") != rust_payload.get("category"):
+        differences.append(
+            f"payload.category: go={render_value(go_payload.get('category'))} rust={render_value(rust_payload.get('category'))}"
+        )
+    return differences
+
+
+def compare_structural(
+    go_truth: dict[str, object], rust_actual: dict[str, object]
+) -> list[str]:
+    differences: list[str] = []
+    go_payload = as_dict(go_truth.get("payload"))
+    rust_payload = as_dict(rust_actual.get("payload"))
+    for key in ["action", "source_kind", "resolved_path", "created_paths"]:
+        if go_payload.get(key) != rust_payload.get(key):
+            differences.append(
+                f"payload.{key}: go={render_value(go_payload.get(key))} rust={render_value(rust_payload.get(key))}"
+            )
+    return differences
+
+
+def compare_semantic(
+    go_truth: dict[str, object], rust_actual: dict[str, object]
+) -> list[str]:
+    go_contract = extract_no_ingress_contract(go_truth)
+    rust_contract = extract_no_ingress_contract(rust_actual)
+    if go_contract == rust_contract:
+        return []
+    return [
+        f"semantic no-ingress contract: go={render_value(go_contract)} rust={render_value(rust_contract)}"
+    ]
+
+
+def extract_no_ingress_contract(artifact: dict[str, object]) -> dict[str, object]:
+    payload = as_dict(artifact.get("payload"))
+    ingress_rules = payload.get("ingress")
+    if not isinstance(ingress_rules, list) or not ingress_rules:
+        return {"report_kind": artifact.get("report_kind"), "ingress": None}
+    last_rule = as_dict(ingress_rules[-1])
+    service = as_dict(last_rule.get("service"))
+    return {
+        "report_kind": artifact.get("report_kind"),
+        "ingress_count": len(ingress_rules),
+        "last_service_kind": service.get("kind"),
+        "last_status_code": service.get("status_code"),
+    }
+
+
+def compare_warning_or_report(
+    go_truth: dict[str, object], rust_actual: dict[str, object]
+) -> list[str]:
+    if go_truth.get("report_kind") != rust_actual.get("report_kind"):
+        return [
+            f"report_kind: go={render_value(go_truth.get('report_kind'))} rust={render_value(rust_actual.get('report_kind'))}"
+        ]
+
+    if go_truth.get("report_kind") == "error-report.v1":
+        return compare_error_category(go_truth, rust_actual)
+
+    go_payload = as_dict(go_truth.get("payload"))
+    rust_payload = as_dict(rust_actual.get("payload"))
+    if go_payload.get("warnings") == rust_payload.get("warnings"):
+        return []
+    return [
+        f"payload.warnings: go={render_value(go_payload.get('warnings'))} rust={render_value(rust_payload.get('warnings'))}"
+    ]
+
+
+def diff_json(
+    go_value: object,
+    rust_value: object,
+    *,
+    path: str,
+    limit: int = 20,
+) -> list[str]:
+    differences: list[str] = []
+
+    def walk(left: object, right: object, current_path: str) -> None:
+        if len(differences) >= limit:
+            return
+        if type(left) is not type(right):
+            differences.append(
+                f"{current_path}: go={render_value(left)} rust={render_value(right)}"
+            )
+            return
+        if isinstance(left, dict):
+            assert isinstance(right, dict)
+            keys = sorted(set(left) | set(right))
+            for key in keys:
+                if len(differences) >= limit:
+                    return
+                if key not in left:
+                    differences.append(
+                        f"{current_path}.{key}: missing in go, rust={render_value(right[key])}"
+                    )
+                    continue
+                if key not in right:
+                    differences.append(
+                        f"{current_path}.{key}: go={render_value(left[key])}, missing in rust"
+                    )
+                    continue
+                walk(left[key], right[key], f"{current_path}.{key}")
+            return
+        if isinstance(left, list):
+            assert isinstance(right, list)
+            if len(left) != len(right):
+                differences.append(
+                    f"{current_path}.length: go={len(left)} rust={len(right)}"
+                )
+                return
+            for index, (left_item, right_item) in enumerate(zip(left, right)):
+                walk(left_item, right_item, f"{current_path}[{index}]")
+            return
+        if left != right:
+            differences.append(
+                f"{current_path}: go={render_value(left)} rust={render_value(right)}"
+            )
+
+    walk(go_value, rust_value, path)
+    return differences
+
+
+def as_dict(value: object) -> dict[str, object]:
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+def render_value(value: object) -> str:
+    return json.dumps(value, sort_keys=True)
 
 
 def load_discovery_case(fixture_id: str) -> dict[str, object]:

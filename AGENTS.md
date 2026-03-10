@@ -1,7 +1,7 @@
 # Cloudflared — Go → Rust Rewrite
 
-Cloudflare's command-line tunneling daemon. This branch (`fork/rust-rewrite`)
-tracks the production-grade rewrite from Go to Rust.
+Cloudflare's command-line tunneling daemon. This branch (`main`) tracks the
+production-grade rewrite from Go to Rust.
 
 - **Reference version**: `2026.2.0` (Go implementation in `baseline-2026.2.0/old-impl/`)
 - **Primary target**: `x86_64-unknown-linux-gnu`

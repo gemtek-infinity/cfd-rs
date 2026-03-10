@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "fixture_id": "config-no-ingress-minimal",
+  "producer": "go-truth",
+  "report_kind": "normalized-config.v1",
+  "comparison": "semantic",
+  "source_refs": [
+    "baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §4.4",
+    "baseline-2026.2.0/old-impl/component-tests/test_tunnel.py::test_tunnel_no_ingress"
+  ],
+  "payload": {
+    "source_kind": "discovered-path",
+    "source_path": "yaml-config/edge/no_ingress_minimal.yaml",
+    "tunnel": {
+      "raw": "config-file-test",
+      "uuid": null
+    },
+    "credentials": {
+      "credentials_file": null,
+      "origin_cert": null,
+      "tunnel": {
+        "raw": "config-file-test",
+        "uuid": null
+      }
+    },
+    "ingress": [
+      {
+        "hostname": null,
+        "punycode_hostname": null,
+        "path": null,
+        "service": {
+          "kind": "http-status",
+          "status_code": 503
+        },
+        "origin_request": {
+          "connectTimeout": null,
+          "tlsTimeout": null,
+          "tcpKeepAlive": null,
+          "noHappyEyeballs": false,
+          "keepAliveConnections": 0,
+          "keepAliveTimeout": null,
+          "httpHostHeader": null,
+          "originServerName": null,
+          "matchSNItoHost": false,
+          "caPool": null,
+          "noTLSVerify": false,
+          "disableChunkedEncoding": false,
+          "bastionMode": false,
+          "proxyAddress": null,
+          "proxyPort": 0,
+          "proxyType": null,
+          "ipRules": [],
+          "http2Origin": false,
+          "access": null
+        }
+      }
+    ],
+    "origin_request": {
+      "connectTimeout": "30s",
+      "tlsTimeout": "10s",
+      "tcpKeepAlive": "30s",
+      "noHappyEyeballs": false,
+      "keepAliveConnections": 100,
+      "keepAliveTimeout": "1m30s",
+      "httpHostHeader": null,
+      "originServerName": null,
+      "matchSNItoHost": false,
+      "caPool": null,
+      "noTLSVerify": false,
+      "disableChunkedEncoding": false,
+      "bastionMode": false,
+      "proxyAddress": "127.0.0.1",
+      "proxyPort": 0,
+      "proxyType": null,
+      "ipRules": [],
+      "http2Origin": false,
+      "access": null
+    },
+    "warp_routing": {
+      "connectTimeout": null,
+      "maxActiveFlows": null,
+      "tcpKeepAlive": null
+    },
+    "log_directory": null,
+    "warnings": null
+  }
+}
