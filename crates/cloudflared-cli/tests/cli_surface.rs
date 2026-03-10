@@ -39,11 +39,14 @@ fn help_lists_admitted_surface() {
 
     assert!(output.status.success());
     assert!(stdout.contains("Pingora proxy seam"));
+    assert!(stdout.contains("wire/protocol boundary"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] validate"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] run"));
     assert!(stdout.contains("HOME"));
     assert!(stdout.contains("http_status only"));
     assert!(stdout.contains("Broader origin support"));
+    assert!(stdout.contains("registration RPC"));
+    assert!(stdout.contains("incoming stream handling"));
     assert!(!stdout.contains("cloudflared tunnel"));
 }
 
