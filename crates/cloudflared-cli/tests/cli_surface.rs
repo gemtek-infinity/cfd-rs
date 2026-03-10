@@ -33,12 +33,12 @@ fn run_cloudflared(args: &[&str]) -> Output {
 }
 
 #[test]
-fn help_lists_only_admitted_phase_3_3_surface() {
+fn help_lists_admitted_surface() {
     let output = run_cloudflared(&["--help"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(output.status.success());
-    assert!(stdout.contains("Big Phase 3.3"));
+    assert!(stdout.contains("Pingora proxy seam"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] validate"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] run"));
     assert!(stdout.contains("HOME"));

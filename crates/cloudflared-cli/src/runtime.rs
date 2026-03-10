@@ -277,8 +277,9 @@ where
 
         self.spawn_signal_bridge();
         self.spawn_harness_shutdown();
-        // 3.4b: proxy seam enters lifecycle before the primary transport service,
-        // so it is ready to receive the transport→proxy handoff in later slices.
+        // 3.4b+c: proxy seam enters lifecycle before the primary transport
+        // service, receives ingress rules from the runtime, and provides the
+        // first admitted origin/proxy path (http_status routing).
         self.spawn_proxy_seam();
         self.spawn_primary_service(0);
 
@@ -391,9 +392,12 @@ where
     }
 
     fn spawn_proxy_seam(&mut self) {
-        let seam = PingoraProxySeam::new();
-        self.summary_lines
-            .push("proxy-seam: lifecycle participant admitted".to_owned());
+        let ingress = self.config.normalized().ingress.clone();
+        let seam = PingoraProxySeam::new(ingress);
+        self.summary_lines.push(format!(
+            "proxy-seam: origin-proxy admitted, ingress-rules={}",
+            seam.ingress_count()
+        ));
         seam.spawn(
             self.command_tx.clone(),
             self.shutdown.child_token(),
@@ -553,7 +557,7 @@ where
     let runtime = Builder::new_current_thread()
         .enable_all()
         .build()
-        .expect("tokio runtime should build for the admitted Phase 3.3 shell");
+        .expect("tokio runtime should build for the admitted production-alpha shell");
 
     runtime.block_on(ApplicationRuntime::new(config, factory, harness).run())
 }
@@ -765,7 +769,7 @@ mod tests {
     }
 
     #[test]
-    fn runtime_admits_proxy_seam_lifecycle_participant() {
+    fn runtime_admits_proxy_seam_with_origin_path() {
         let execution = run_with_factory(
             runtime_config(),
             TestFactory::new([TestBehavior::WaitForShutdown]),
@@ -773,13 +777,10 @@ mod tests {
         );
 
         assert_eq!(execution.exit, RuntimeExit::Clean);
+        assert!(summary_contains(&execution, "proxy-seam: origin-proxy admitted"));
         assert!(summary_contains(
             &execution,
-            "proxy-seam: lifecycle participant admitted"
-        ));
-        assert!(summary_contains(
-            &execution,
-            "service-status[pingora-proxy-seam]:"
+            "service-status[pingora-proxy-seam]: origin-proxy-admitted"
         ));
         assert!(summary_contains(&execution, "child-task-stopped: proxy-seam"));
     }
@@ -794,10 +795,7 @@ mod tests {
 
         assert_eq!(execution.exit, RuntimeExit::Clean);
         // Proxy seam admitted once, persists across primary service restarts.
-        assert!(summary_contains(
-            &execution,
-            "proxy-seam: lifecycle participant admitted"
-        ));
+        assert!(summary_contains(&execution, "proxy-seam: origin-proxy admitted"));
         assert!(summary_contains(&execution, "supervision-restart-attempt: 1"));
         assert!(summary_contains(&execution, "child-task-stopped: proxy-seam"));
     }
