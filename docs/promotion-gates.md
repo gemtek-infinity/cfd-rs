@@ -220,6 +220,64 @@ production-alpha lane well enough to start building the minimum runnable alpha.
 
 Build the minimum runnable alpha on the frozen Linux lane.
 
+This big phase starts by making the executable boundary real without
+pretending that later runtime, transport, Pingora, FIPS operational, or
+packaging slices already exist.
+
+### Phase 3.1 — CLI And Process Surface
+
+#### Purpose
+
+Make the admitted executable boundary real for the alpha lane.
+
+#### Required conditions
+
+- a real Linux alpha process entrypoint exists
+- admitted command behavior is explicit and narrow
+- admitted startup/help/error behavior is explicit
+- admitted flags, environment, and defaults are explicit only for the current
+  alpha path
+- the executable stays honest about what is implemented now versus later
+  deferred slices
+
+#### Exit condition
+
+Phase 3.1 is complete when `cloudflared` has a narrow executable surface that
+can resolve config, validate startup inputs, and fail honestly before later
+runtime work.
+
+### Phase 3.2 — Runtime / Lifecycle Core
+
+#### Purpose
+
+Land the minimum runtime and lifecycle core required after the entry boundary.
+
+### Phase 3.3 — Transport Realization
+
+#### Purpose
+
+Realize the frozen quiche-first transport lane without widening scope.
+
+### Phase 3.4 — Pingora Critical-Path Realization
+
+#### Purpose
+
+Realize the admitted Pingora critical path above the frozen transport lane.
+
+### Phase 3.5 — FIPS Operational Realization
+
+#### Purpose
+
+Realize the admitted FIPS-in-alpha operational boundary without claiming proof
+that is not yet earned.
+
+### Phase 3.6 — Packaging And Deployment Tooling Surface
+
+#### Purpose
+
+Add only the packaging and deployment tooling surface required for the Linux
+alpha contract.
+
 ### Exit condition
 
 The minimum runnable alpha exists on the frozen Linux production-alpha lane.
@@ -266,7 +324,7 @@ Silently behaving as though a stage is complete is not allowed.
 At the current repo state:
 
 - Big Phase 1 is done
-- Big Phase 2 is current
-- Phase 2.6 is the active task
-- Big Phase 3 begins only after the Linux production-alpha lane is frozen in
-  governance
+- Big Phase 2 is closed and frozen
+- Big Phase 3 is current
+- Phase 3.1 is the active task
+- Phases 3.2 through 3.6 are deferred within Big Phase 3

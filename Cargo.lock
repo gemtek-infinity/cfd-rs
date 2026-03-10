@@ -104,6 +104,7 @@ dependencies = [
 name = "cloudflared-cli"
 version = "2026.2.0-alpha.202603"
 dependencies = [
+ "cloudflared-config",
  "mimalloc",
 ]
 
