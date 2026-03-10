@@ -25,6 +25,41 @@ Dependencies are admitted only when all of the following are true:
 4. the dependency does not quietly redesign externally visible behavior
 5. a standard-library alternative is not sufficient
 
+## Phase 2.6 Default Rules
+
+The default dependency truth for the workspace is now:
+
+- normal workspace-managed third-party dependency truth should normally be
+  declared in `[workspace.dependencies]`
+- reviewers should expect to inspect the root manifest first when evaluating
+  normal third-party dependency version and feature choices
+- per-crate version declarations are exceptions and should stay local only when
+  the dependency is intentionally crate-private, tool-private, experimental, or
+  clearly slice-isolated
+- dependency admission remains tied to active slices only; policy examples do
+  not authorize future crates in advance
+- root-manifest-first review is the default model even when a dependency is not
+  yet widely shared across many workspace members
+- centralization for reviewability and consistency is allowed before a normal
+  third-party dependency is reused across many members, provided ownership and
+  scope stay explicit
+
+## Mature Standard-Format Handling
+
+For mature, standard, security-relevant formats:
+
+- prefer mature crates over hand-rolled parsing or encoding when the active
+  slice really needs the format today
+- prefer direct upstream loaders or APIs before adding extra parsing layers
+  that only duplicate an existing upstream boundary
+- standard-format or container crates are not the same thing as
+  crypto-implementation crates
+- convenience parsing or container crates must not be used to silently widen
+  application-level crypto behavior
+
+If a change chooses bespoke parsing instead of a mature crate or a direct
+upstream loader, that choice should be justified explicitly.
+
 ## Current Workspace Rule
 
 The current workspace is still intentionally narrow, but it is no longer an
@@ -38,15 +73,22 @@ That means:
   docs
 - admitted dependencies should stay confined to the crates that own the active
   slice rather than being preloaded repo-wide
+- normal workspace-managed third-party dependency truth should normally live in
+  `[workspace.dependencies]`, with the root manifest acting as the first review
+  surface for version and feature choices
+- crate-local dependency truth remains acceptable when isolation is intentional,
+  justified, and clearer than forced centralization
 
 ## Current Admitted Dependencies
 
 The current manifests admit only the dependencies needed by the binary runtime
-baseline and the active first-slice config implementation:
+baseline, the active first-slice config implementation, and the existing
+workspace tool surface:
 
 - `mimalloc` in `cloudflared-cli`
-- `serde`, `serde_json`, `serde_yaml`, `url`, `uuid`, and `thiserror` in
-  `cloudflared-config`
+- shared workspace truth for `serde`, `serde_json`, `serde_yaml`, `thiserror`,
+  `url`, and `uuid`
+- `rmcp`, `schemars`, and `tokio` in `tools/mcp-cfd-rs`
 
 Reason:
 
@@ -54,8 +96,25 @@ Reason:
 - config, credential, and ingress normalization work is active in
   `cloudflared-config`, so its admitted slice dependencies now exist honestly in
   manifests
+- several first-slice crates are centralized in the root manifest already
+  because root-manifest-first review and feature consistency are part of the
+  accepted Phase 2.6 policy, not merely an after-the-fact consequence of broad
+  sharing
+- `tools/mcp-cfd-rs` is a real workspace tool, so its private dependencies may
+  exist locally without authorizing those crates for rewrite crates by default
 - libraries still must not set the global allocator or preload later-slice
   dependencies speculatively
+
+## Boundary Rules
+
+- keep third-party APIs behind local boundaries or adapters when the concern is
+  security-relevant, protocol-relevant, or likely to churn
+- parsing and encoding crates should not leak through unrelated public APIs
+  when a local boundary keeps ownership and later review clearer
+- direct upstream APIs should be used where they already solve the problem
+  cleanly; extra abstraction layers should be justified, not assumed
+- standard-format/container crates remain distinct from crypto-implementation
+  crates and must not be treated as blanket permission for new crypto behavior
 
 ## Deferred Dependency Buckets
 
@@ -91,6 +150,8 @@ Rules:
 
 - their admission must follow `docs/go-rust-semantic-mapping.md`
 - do not add alternative channel/runtime frameworks by default
+- do not use convenience crates to bypass the explicit crypto and transport
+  governance already frozen elsewhere
 
 ### Protocol And Wire Slices
 
@@ -163,6 +224,16 @@ Current crate intent is:
 Do not accumulate dependencies in `cloudflared-core` just because it looks like
 shared infrastructure.
 
+Do not centralize a dependency into `[workspace.dependencies]` merely because it
+could exist someday; centralize normal workspace-managed third-party dependency
+truth there by default, but keep crate-local declarations when isolation is the
+clearer and more intentional choice.
+
+An important case for centralization is true multi-member sharing, but that is
+not the only valid reason; reviewability and consistent feature truth are also
+valid reasons when the dependency is a normal workspace-managed third-party
+crate and the owning scope remains clear.
+
 ## Dependency Change Checklist
 
 Before adding a dependency, document all of the following in the change:
@@ -173,5 +244,9 @@ Before adding a dependency, document all of the following in the change:
 4. why the standard library is insufficient
 5. whether the dependency affects external behavior, wire bytes, config
    semantics, or shutdown behavior
+6. whether the dependency should live in `[workspace.dependencies]` or remain
+  intentionally crate-local, and why
+7. whether the change relies on a mature crate, a direct upstream loader, or an
+  explicitly justified bespoke boundary
 
 If any of those answers are unclear, the dependency should not be added yet.
