@@ -170,9 +170,32 @@ Freeze the deployment assumptions for the Linux production-alpha lane.
 Phase 2.5 is complete when deployment-contract assumptions are explicit in
 governance.
 
+### Phase 2.6 — Standard-Format And Workspace-Dependency Admission
+
+#### Purpose
+
+Freeze repository-wide policy for mature standard-format handling and shared
+dependency truth without turning this phase into blanket dependency expansion.
+
+#### Required conditions
+
+- mature standard-format handling policy is explicit
+- direct-upstream-loader preference is explicit
+- `[workspace.dependencies]` is stated as the default truth for shared
+  third-party crates
+- active-slice ownership and minimum-feature rules are explicit
+- exception handling is explicit
+- the phase wording makes clear that this is governance, not speculative
+  dependency expansion
+
+#### Exit condition
+
+Phase 2.6 is complete when standard-format admission and workspace-dependency
+policy are explicit enough to prevent reinvention and scattered manifest truth.
+
 ### Exit condition
 
-Big Phase 2 is complete when Phases 2.0 through 2.5 have frozen the Linux
+Big Phase 2 is complete when Phases 2.0 through 2.6 have frozen the Linux
 production-alpha lane well enough to start building the minimum runnable alpha.
 
 ### Not allowed before exit
@@ -182,6 +205,10 @@ production-alpha lane well enough to start building the minimum runnable alpha.
 - broadening shipped artifact scope beyond GNU `x86-64-v2` and `x86-64-v4`
 - treating transport, Pingora, FIPS operational, or deployment implementation
   as already landed
+- reinventing mature standard-format handling by default where a direct
+  upstream loader or a mature crate is the clearer active-slice choice
+- silently scattering shared dependency truth across crate manifests by default
+- using convenience dependencies to imply new application-level crypto behavior
 
 ## Big Phase 3 — Minimum Runnable Alpha
 
@@ -236,6 +263,6 @@ At the current repo state:
 
 - Big Phase 1 is done
 - Big Phase 2 is current
-- Phase 2.5 is the active task
+- Phase 2.6 is the active task
 - Big Phase 3 begins only after the Linux production-alpha lane is frozen in
   governance

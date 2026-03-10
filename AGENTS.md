@@ -54,6 +54,9 @@ Do not turn this file into a status report, architecture dump, dependency catalo
 - `docs/adr/0005-deployment-contract.md`
   - Linux deployment contract definition
 
+- `docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md`
+  - standard-format and workspace-dependency admission policy
+
 - `SKILLS.md`
   - repeatable porting workflow
 
@@ -80,6 +83,9 @@ Before answering or patching, classify the task:
 7. Pingora critical path: use `docs/adr/0003-pingora-critical-path.md`
 8. FIPS-in-alpha boundary: use `docs/adr/0004-fips-in-alpha-definition.md`
 9. deployment contract: use `docs/adr/0005-deployment-contract.md`
-10. dependency / allocator / runtime policy: use the matching file under `docs/`
+10. dependency admission and workspace-dependency policy: use
+  `docs/dependency-policy.md` and
+  `docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md`
+11. dependency / allocator / runtime policy: use the matching file under `docs/`
 
 If evidence is missing or conflicting, say so explicitly.
