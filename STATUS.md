@@ -141,7 +141,8 @@ What it covers now:
 
 - mature standard-format handling policy is explicit
 - direct-upstream-loader preference is explicit
-- `[workspace.dependencies]` is the default truth for shared third-party crates
+- `[workspace.dependencies]` is the default truth and first review surface for
+  normal workspace-managed third-party dependencies
 - active-slice ownership, feature minimization, and exception handling are
   explicit
 
@@ -150,6 +151,11 @@ What it still must not imply:
 - that Big Phase 3 or later phases are already done
 - that adding policy examples authorizes speculative dependencies,
   application-level crypto behavior, or later runtime work
+
+What remains allowed within the policy:
+
+- intentionally isolated crate-local dependency declarations when that
+  isolation is justified and documented
 
 ## Deferred Within Big Phase 2
 

@@ -42,8 +42,15 @@ admission rules.
 
 ### Workspace Dependency Truth
 
-- `[workspace.dependencies]` is the default dependency truth for shared
-  third-party crates used in more than one workspace member
+- `[workspace.dependencies]` is the default dependency truth and first review
+  surface for normal workspace-managed third-party dependencies in this
+  workspace
+- root-manifest visibility is intentional because it makes dependency review
+  easier for humans and AI before version and feature truth drifts across crate
+  manifests
+- this default model applies even before every normal third-party dependency is
+  reused across multiple workspace members, as long as ownership and active
+  scope remain honest
 - per-crate version declarations are exceptions, not the norm, and should stay
   local only when the dependency is intentionally private, experimental,
   tool-specific, or slice-isolated
@@ -71,6 +78,9 @@ admission rules.
 
 - exceptions to these rules must be explicit and documented in the relevant
   change, policy update, or ADR
+- crate-local dependency truth remains valid when isolation is intentional and
+  justified, but it is no longer the default review model for normal
+  workspace-managed third-party crates
 
 This ADR is normative for standard-format handling and workspace-dependency
 admission across the repository.
@@ -111,11 +121,16 @@ This ADR does not:
 ## Consequences
 
 - future dependency changes must explain whether a dependency is shared
-  workspace truth or intentionally crate-local
+  workspace truth reviewed first in the root manifest or intentionally
+  crate-local
+- future dependency review should normally begin in the root manifest for
+  normal workspace-managed third-party crates, with crate-local exceptions
+  explained explicitly where isolation is intentional
 - future mature standard-format work must justify bespoke parsing explicitly if
   it does not use a mature crate or a direct upstream loader
 - shared dependency versions and feature choices should become easier to review
-  because the default truth is now centralized when appropriate
+  because the default truth is now centralized in the root manifest for normal
+  workspace-managed third-party crates
 - tools and rewrite crates may still keep private dependencies local when that
   isolation is intentional and documented
 

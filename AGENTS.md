@@ -86,6 +86,9 @@ Before answering or patching, classify the task:
 10. dependency admission and workspace-dependency policy: use
   `docs/dependency-policy.md` and
   `docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md`
+  Treat the root manifest as the first review surface for normal workspace-
+  managed third-party dependency truth unless isolation is intentionally
+  documented.
 11. dependency / allocator / runtime policy: use the matching file under `docs/`
 
 If evidence is missing or conflicting, say so explicitly.

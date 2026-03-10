@@ -29,13 +29,20 @@ Dependencies are admitted only when all of the following are true:
 
 The default dependency truth for the workspace is now:
 
-- shared third-party crates should normally be declared in
-  `[workspace.dependencies]`
+- normal workspace-managed third-party dependency truth should normally be
+  declared in `[workspace.dependencies]`
+- reviewers should expect to inspect the root manifest first when evaluating
+  normal third-party dependency version and feature choices
 - per-crate version declarations are exceptions and should stay local only when
   the dependency is intentionally crate-private, tool-private, experimental, or
   clearly slice-isolated
 - dependency admission remains tied to active slices only; policy examples do
   not authorize future crates in advance
+- root-manifest-first review is the default model even when a dependency is not
+  yet widely shared across many workspace members
+- centralization for reviewability and consistency is allowed before a normal
+  third-party dependency is reused across many members, provided ownership and
+  scope stay explicit
 
 ## Mature Standard-Format Handling
 
@@ -66,9 +73,11 @@ That means:
   docs
 - admitted dependencies should stay confined to the crates that own the active
   slice rather than being preloaded repo-wide
-- shared third-party dependency truth should normally live in
-  `[workspace.dependencies]` once more than one workspace member truly uses the
-  crate
+- normal workspace-managed third-party dependency truth should normally live in
+  `[workspace.dependencies]`, with the root manifest acting as the first review
+  surface for version and feature choices
+- crate-local dependency truth remains acceptable when isolation is intentional,
+  justified, and clearer than forced centralization
 
 ## Current Admitted Dependencies
 
@@ -77,8 +86,8 @@ baseline, the active first-slice config implementation, and the existing
 workspace tool surface:
 
 - `mimalloc` in `cloudflared-cli`
-- shared workspace truth for `serde` and `serde_json`
-- `serde_yaml`, `url`, `uuid`, and `thiserror` in `cloudflared-config`
+- shared workspace truth for `serde`, `serde_json`, `serde_yaml`, `thiserror`,
+  `url`, and `uuid`
 - `rmcp`, `schemars`, and `tokio` in `tools/mcp-cfd-rs`
 
 Reason:
@@ -87,6 +96,10 @@ Reason:
 - config, credential, and ingress normalization work is active in
   `cloudflared-config`, so its admitted slice dependencies now exist honestly in
   manifests
+- several first-slice crates are centralized in the root manifest already
+  because root-manifest-first review and feature consistency are part of the
+  accepted Phase 2.6 policy, not merely an after-the-fact consequence of broad
+  sharing
 - `tools/mcp-cfd-rs` is a real workspace tool, so its private dependencies may
   exist locally without authorizing those crates for rewrite crates by default
 - libraries still must not set the global allocator or preload later-slice
@@ -100,6 +113,8 @@ Reason:
   when a local boundary keeps ownership and later review clearer
 - direct upstream APIs should be used where they already solve the problem
   cleanly; extra abstraction layers should be justified, not assumed
+- standard-format/container crates remain distinct from crypto-implementation
+  crates and must not be treated as blanket permission for new crypto behavior
 
 ## Deferred Dependency Buckets
 
@@ -210,8 +225,14 @@ Do not accumulate dependencies in `cloudflared-core` just because it looks like
 shared infrastructure.
 
 Do not centralize a dependency into `[workspace.dependencies]` merely because it
-could be shared someday; centralize it when the dependency is actually shared
-and the ownership remains clear.
+could exist someday; centralize normal workspace-managed third-party dependency
+truth there by default, but keep crate-local declarations when isolation is the
+clearer and more intentional choice.
+
+An important case for centralization is true multi-member sharing, but that is
+not the only valid reason; reviewability and consistent feature truth are also
+valid reasons when the dependency is a normal workspace-managed third-party
+crate and the owning scope remains clear.
 
 ## Dependency Change Checklist
 
@@ -224,7 +245,7 @@ Before adding a dependency, document all of the following in the change:
 5. whether the dependency affects external behavior, wire bytes, config
    semantics, or shutdown behavior
 6. whether the dependency should live in `[workspace.dependencies]` or remain
-  intentionally crate-local
+  intentionally crate-local, and why
 7. whether the change relies on a mature crate, a direct upstream loader, or an
   explicitly justified bespoke boundary
 

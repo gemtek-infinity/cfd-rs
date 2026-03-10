@@ -174,15 +174,18 @@ governance.
 
 #### Purpose
 
-Freeze repository-wide policy for mature standard-format handling and shared
-dependency truth without turning this phase into blanket dependency expansion.
+Freeze repository-wide policy for mature standard-format handling and normal
+workspace-managed dependency truth without turning this phase into blanket
+dependency expansion.
 
 #### Required conditions
 
 - mature standard-format handling policy is explicit
 - direct-upstream-loader preference is explicit
-- `[workspace.dependencies]` is stated as the default truth for shared
-  third-party crates
+- `[workspace.dependencies]` is stated as the default truth and first review
+  surface for normal workspace-managed third-party dependencies
+- crate-local dependency declarations are explicit exceptions when isolation is
+  intentional and documented
 - active-slice ownership and minimum-feature rules are explicit
 - exception handling is explicit
 - the phase wording makes clear that this is governance, not speculative
@@ -207,7 +210,8 @@ production-alpha lane well enough to start building the minimum runnable alpha.
   as already landed
 - reinventing mature standard-format handling by default where a direct
   upstream loader or a mature crate is the clearer active-slice choice
-- silently scattering shared dependency truth across crate manifests by default
+- silently scattering normal workspace-managed dependency truth across crate
+  manifests by default
 - using convenience dependencies to imply new application-level crypto behavior
 
 ## Big Phase 3 — Minimum Runnable Alpha
