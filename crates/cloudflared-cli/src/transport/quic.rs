@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -40,7 +38,7 @@ impl QuicTunnelServiceFactory {
     }
 
     #[cfg(test)]
-    pub(crate) fn with_test_target(target: QuicEdgeTarget) -> Self {
+    fn with_test_target(target: QuicEdgeTarget) -> Self {
         Self {
             test_target: Some(target),
         }
@@ -394,7 +392,7 @@ impl ResumptionShape {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct QuicEdgeTarget {
+struct QuicEdgeTarget {
     connect_addr: SocketAddr,
     host_label: String,
     server_name: String,
@@ -542,53 +540,57 @@ mod tests {
     use std::thread;
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-    const TEST_CERT_PEM: &str = "-----BEGIN CERTIFICATE-----\\
-                                 nMIIDCTCCAfGgAwIBAgIUJb0Jfxu0MAeoFD0npL3VZBW2h+owDQYJKoZIhvcNAQEL\\
-                                 nBQAwFDESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI2MDMxMDA3MDYxNFoXDTI3MDMx\\
-                                 nMDA3MDYxNFowFDESMBAGA1UEAwwJbG9jYWxob3N0MIIBIjANBgkqhkiG9w0BAQEF\\
-                                 nAAOCAQ8AMIIBCgKCAQEArRtFsb0NMB9y09zu4KBt3h+lvJT0iHYFN46BFehJhD55\\
-                                 ner1h0cNJHTQ6s8x1cohQpfITM+03ZOMRRYj7rg+L+ylVpkYvTuXBVrK9xcAMwdYk\\
-                                 ntaL4uFHGc1kBs8awa7RfgFwqXEnaQ4sO7ie1FpJ0sViC3t9ZmJ2kJgOPKT6HGUS+\\
-                                 nmiYbZE2c+5FBb1OD0fWNRNakrQtgMIZuHKnG1Iq3CLG8IgQLvkBxL72CPEUyxeks\\
-                                 nZ7unQR95duwf1Vlz0UcEegfnAz+yNaZGvJ0VOgzountMCWahviCkXqoc3HJthR86\\
-                                 nfeNhWtoa+LEI27ERUFQljuDjxNjX1A3Q+EKcPt9HKwIDAQABo1MwUTAdBgNVHQ4E\\
-                                 nFgQU7FVi0ezFYdq1iLUAu8yqPYetntEwHwYDVR0jBBgwFoAU7FVi0ezFYdq1iLUA\\
-                                 nu8yqPYetntEwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAcwIp\\
-                                 n3w2Bx3vk9hYWrwGfWH/vvyqMrF6GUkcF8557rmO1uXnk9uzHDcjUT+9zmFA/gXxc\\
-                                 \
-                                 ncoCS3l+HjTk6InGq/Bncsc0WR/gdp8JCbOKJKCnTnK1zQdExJ4H2646ARxJNpxPl\nCv5/\
-                                 SL7LyJbQm/2H60V/urcIwtl/WnBgw58BZ1wOWXaVQYBaSp2m6A3TPCozrQ2N\\
-                                 nHu5tPOzkXjkSMdfOPvHdK3tvIn04gKxAe+kc05efsncWZdlgfpTT5SOfOMp+LQ6T\\
-                                 ngegfwgzYQzBwWZNUqprAGNyUsW5dxIAWYMkxHr3n4eZ83A8M8GPPKa8TOp6qFbza\\
-                                 nKWggdegvHvjpedAG8A==\n-----END CERTIFICATE-----\n";
-    const TEST_KEY_PEM: &str = "-----BEGIN PRIVATE \
-                                KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCtG0WxvQ0wH3LT\\
-                                n3O7goG3eH6W8lPSIdgU3joEV6EmEPnl6vWHRw0kdNDqzzHVyiFCl8hMz7Tdk4xFF\\
-                                niPuuD4v7KVWmRi9O5cFWsr3FwAzB1iS1ovi4UcZzWQGzxrBrtF+AXCpcSdpDiw7u\\
-                                nJ7UWknSxWILe31mYnaQmA48pPocZRL6aJhtkTZz7kUFvU4PR9Y1E1qStC2Awhm4c\\
-                                nqcbUircIsbwiBAu+QHEvvYI8RTLF6Sxnu6dBH3l27B/VWXPRRwR6B+cDP7I1pka8\\
-                                nnRU6DOi6e0wJZqG+IKReqhzccm2FHzp942Fa2hr4sQjbsRFQVCWO4OPE2NfUDdD4\\
-                                nQpw+30crAgMBAAECggEARe4NgpbXvAgIUDQhQBcvKxtnzb3y5ymeQ+pKlXoIMOc4\\
-                                nFfBpkt6sK6MMz9OZ4pHU2qTnQwPia9wa/xcubQuUxfrVwdz6gYnpR8ffSAKkZK3I\\
-                                nmKPkjDlkzPY47NIoNOph5i3VYwDmroB/oI/j5OF3SKlz/OsHe9K7HCw16jh7RSZI\\
-                                nuJ6BFkNZGjv/uKkzdW5u4kSoQQhE7gdnuO9B53w2J+Td6MgHuYqgXV8ASEwBK7YV\\
-                                nYRgHFdR1ZyFEjArjgUqxokPG0y05R9X4Dd0LigFdc/JnK4gwqo/tJXU2O6IoXDYs\\
-                                nzDOSkJ56VBEAFL6h/rY6VJMv2p433uQs3Q1smGCPsQKBgQDir7LB+3kiTVE0JKsb\\
-                                niapddkRuQcuK/v5cK9Yc8ZdFYCmUhm2uhimw37VKw4MJDLY9Q4JO8MzTH9ySd1Ci\\
-                                n1Ny0DRDb4h+ROCxm3OPxk6HOl/yxM9AgqxmUNLD1J8tnXweQxAeHnil95Vp921FA\\
-                                nPMrwNMchNKiI25kaaDjn70YsSQKBgQDDfdmqQihPbGFudDzI3+Sl+Jlm0Vqs+aN5\\
-                                n0R7nT0b4+2FBl9YP2RA0tFSNEqpD31ytLyMOF5E6gAiaXDFpzQ/T5H7SXDcg0MWF\\
-                                nIw+Fzf8eTJ3Eu58vfEi2Uif/RPJUhDrA5nD3VWPlckyNjoJPcZRReQdCE6oIeBo/\\
-                                \
-                                nZzhc8uyP0wKBgCDDRBLFRbyvcA0ZP6G7Q+Q+M6W73K86K4kmzMtiH3rnaxsMUs3m\nlh/\
-                                6NTmZCFdGfxBbsXm3U+Mvt7FzjTP7j+p1+PnOtMFIXSKAynEf5UL2tI7n7izK\\
-                                njefdtbW5CqzmDzHdIzl2ooiPnYSTLisanjoZZq5l7fXZx0cJyS+8ZWgBAoGBALsf\\
-                                n4BZFNWixCaI8yWJOTgNArzXn96/TVVPphHdNP1Zc6X9r449P619HrhdLYoeNapyr\\
-                                nnhaDIJSqsZFv5iysCRZ+hZa+hlZ3AFqscNNXl3hdRjdmkL1XbhJ3GaoTSRL1b3fu\\
-                                nHPvjVLfwbK6jVsDMq3hBLV1mjT+GFznRh/YQ4bfZAoGAOH5L1RIL+xtCa2wy5655\\
-                                ny8Kd6324XkVXi7qdftRP2Vm9XZAqJBzv21+lt5BhnZkoPw4U6Dl4kezw84zh/ePn\\
-                                njomEl8m65QUqTwpIA1c7fD9qptUGSVHTvz4ztJTR/hdIJ+zriqJnGjV8maCcwilg\\
-                                nUhs4xBjV47qq1Jr/4FCoeKw=\n-----END PRIVATE KEY-----\n";
+    const TEST_CERT_PEM: &str = concat!(
+        "-----BEGIN CERTIFICATE-----\n",
+        "MIIDCTCCAfGgAwIBAgIUJb0Jfxu0MAeoFD0npL3VZBW2h+owDQYJKoZIhvcNAQEL\n",
+        "BQAwFDESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI2MDMxMDA3MDYxNFoXDTI3MDMx\n",
+        "MDA3MDYxNFowFDESMBAGA1UEAwwJbG9jYWxob3N0MIIBIjANBgkqhkiG9w0BAQEF\n",
+        "AAOCAQ8AMIIBCgKCAQEArRtFsb0NMB9y09zu4KBt3h+lvJT0iHYFN46BFehJhD55\n",
+        "er1h0cNJHTQ6s8x1cohQpfITM+03ZOMRRYj7rg+L+ylVpkYvTuXBVrK9xcAMwdYk\n",
+        "taL4uFHGc1kBs8awa7RfgFwqXEnaQ4sO7ie1FpJ0sViC3t9ZmJ2kJgOPKT6HGUS+\n",
+        "miYbZE2c+5FBb1OD0fWNRNakrQtgMIZuHKnG1Iq3CLG8IgQLvkBxL72CPEUyxeks\n",
+        "Z7unQR95duwf1Vlz0UcEegfnAz+yNaZGvJ0VOgzountMCWahviCkXqoc3HJthR86\n",
+        "feNhWtoa+LEI27ERUFQljuDjxNjX1A3Q+EKcPt9HKwIDAQABo1MwUTAdBgNVHQ4E\n",
+        "FgQU7FVi0ezFYdq1iLUAu8yqPYetntEwHwYDVR0jBBgwFoAU7FVi0ezFYdq1iLUA\n",
+        "u8yqPYetntEwDwYDVR0TAQH/BAUwAwEB/zANBgkqhkiG9w0BAQsFAAOCAQEAcwIp\n",
+        "3w2Bx3vk9hYWrwGfWH/vvyqMrF6GUkcF8557rmO1uXnk9uzHDcjUT+9zmFA/gXxc\n",
+        "coCS3l+HjTk6InGq/Bncsc0WR/gdp8JCbOKJKCnTnK1zQdExJ4H2646ARxJNpxPl\n",
+        "Cv5/SL7LyJbQm/2H60V/urcIwtl/WnBgw58BZ1wOWXaVQYBaSp2m6A3TPCozrQ2N\n",
+        "Hu5tPOzkXjkSMdfOPvHdK3tvIn04gKxAe+kc05efsncWZdlgfpTT5SOfOMp+LQ6T\n",
+        "gegfwgzYQzBwWZNUqprAGNyUsW5dxIAWYMkxHr3n4eZ83A8M8GPPKa8TOp6qFbza\n",
+        "KWggdegvHvjpedAG8A==\n",
+        "-----END CERTIFICATE-----\n",
+    );
+    const TEST_KEY_PEM: &str = concat!(
+        "-----BEGIN PRIVATE KEY-----\n",
+        "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCtG0WxvQ0wH3LT\n",
+        "3O7goG3eH6W8lPSIdgU3joEV6EmEPnl6vWHRw0kdNDqzzHVyiFCl8hMz7Tdk4xFF\n",
+        "iPuuD4v7KVWmRi9O5cFWsr3FwAzB1iS1ovi4UcZzWQGzxrBrtF+AXCpcSdpDiw7u\n",
+        "J7UWknSxWILe31mYnaQmA48pPocZRL6aJhtkTZz7kUFvU4PR9Y1E1qStC2Awhm4c\n",
+        "qcbUircIsbwiBAu+QHEvvYI8RTLF6Sxnu6dBH3l27B/VWXPRRwR6B+cDP7I1pka8\n",
+        "nRU6DOi6e0wJZqG+IKReqhzccm2FHzp942Fa2hr4sQjbsRFQVCWO4OPE2NfUDdD4\n",
+        "Qpw+30crAgMBAAECggEARe4NgpbXvAgIUDQhQBcvKxtnzb3y5ymeQ+pKlXoIMOc4\n",
+        "FfBpkt6sK6MMz9OZ4pHU2qTnQwPia9wa/xcubQuUxfrVwdz6gYnpR8ffSAKkZK3I\n",
+        "mKPkjDlkzPY47NIoNOph5i3VYwDmroB/oI/j5OF3SKlz/OsHe9K7HCw16jh7RSZI\n",
+        "uJ6BFkNZGjv/uKkzdW5u4kSoQQhE7gdnuO9B53w2J+Td6MgHuYqgXV8ASEwBK7YV\n",
+        "YRgHFdR1ZyFEjArjgUqxokPG0y05R9X4Dd0LigFdc/JnK4gwqo/tJXU2O6IoXDYs\n",
+        "zDOSkJ56VBEAFL6h/rY6VJMv2p433uQs3Q1smGCPsQKBgQDir7LB+3kiTVE0JKsb\n",
+        "iapddkRuQcuK/v5cK9Yc8ZdFYCmUhm2uhimw37VKw4MJDLY9Q4JO8MzTH9ySd1Ci\n",
+        "1Ny0DRDb4h+ROCxm3OPxk6HOl/yxM9AgqxmUNLD1J8tnXweQxAeHnil95Vp921FA\n",
+        "PMrwNMchNKiI25kaaDjn70YsSQKBgQDDfdmqQihPbGFudDzI3+Sl+Jlm0Vqs+aN5\n",
+        "0R7nT0b4+2FBl9YP2RA0tFSNEqpD31ytLyMOF5E6gAiaXDFpzQ/T5H7SXDcg0MWF\n",
+        "Iw+Fzf8eTJ3Eu58vfEi2Uif/RPJUhDrA5nD3VWPlckyNjoJPcZRReQdCE6oIeBo/\n",
+        "Zzhc8uyP0wKBgCDDRBLFRbyvcA0ZP6G7Q+Q+M6W73K86K4kmzMtiH3rnaxsMUs3m\n",
+        "lh/6NTmZCFdGfxBbsXm3U+Mvt7FzjTP7j+p1+PnOtMFIXSKAynEf5UL2tI7n7izK\n",
+        "jefdtbW5CqzmDzHdIzl2ooiPnYSTLisanjoZZq5l7fXZx0cJyS+8ZWgBAoGBALsf\n",
+        "4BZFNWixCaI8yWJOTgNArzXn96/TVVPphHdNP1Zc6X9r449P619HrhdLYoeNapyr\n",
+        "nhaDIJSqsZFv5iysCRZ+hZa+hlZ3AFqscNNXl3hdRjdmkL1XbhJ3GaoTSRL1b3fu\n",
+        "HPvjVLfwbK6jVsDMq3hBLV1mjT+GFznRh/YQ4bfZAoGAOH5L1RIL+xtCa2wy5655\n",
+        "y8Kd6324XkVXi7qdftRP2Vm9XZAqJBzv21+lt5BhnZkoPw4U6Dl4kezw84zh/ePn\n",
+        "jomEl8m65QUqTwpIA1c7fD9qptUGSVHTvz4ztJTR/hdIJ+zriqJnGjV8maCcwilg\n",
+        "Uhs4xBjV47qq1Jr/4FCoeKw=\n",
+        "-----END PRIVATE KEY-----\n",
+    );
 
     fn runtime_config(root: &Path, server_addr: SocketAddr) -> crate::runtime::RuntimeConfig {
         let credentials_path = root.join("credentials.json");

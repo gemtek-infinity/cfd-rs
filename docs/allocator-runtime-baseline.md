@@ -42,7 +42,8 @@ Rules:
 ## Runtime Baseline
 
 The current scaffold now initializes Tokio only at the binary boundary for the
-admitted Phase 3.2 runtime/lifecycle shell.
+admitted runtime/lifecycle shell that now carries the Phase 3.3 QUIC tunnel
+core.
 
 Rules:
 
@@ -83,10 +84,11 @@ The accepted model is:
 
 The scaffold must remain visibly partial.
 
-At the current 3.2 state:
+At the current 3.3 state:
 
-- runtime initialization may own lifecycle and supervision, but it must still
-  stop honestly before transport, Pingora, wire/protocol, security/compliance,
-  or standard-format integration slices exist
+- runtime initialization may own lifecycle, supervision, and the admitted
+  QUIC transport core, but it must still stop honestly before Pingora,
+  wire/protocol, security/compliance, or standard-format integration slices
+  exist
 - no allocator or runtime code should imply broader compatibility already exists
 - manifests should remain sparse enough that `cargo check` reflects reality

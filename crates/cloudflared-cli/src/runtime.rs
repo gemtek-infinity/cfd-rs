@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -535,7 +533,7 @@ where
     let runtime = Builder::new_current_thread()
         .enable_all()
         .build()
-        .expect("tokio runtime should build for the admitted Phase 3.2 shell");
+        .expect("tokio runtime should build for the admitted Phase 3.3 shell");
 
     runtime.block_on(ApplicationRuntime::new(config, factory, harness).run())
 }

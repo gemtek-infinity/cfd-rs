@@ -19,8 +19,8 @@ subsystem behavior is still unported.
 The scaffold is intentionally real but minimal:
 
 - the workspace builds as a Rust scaffold with partial first-slice behavior
-- the runnable binary now exposes only the admitted Phase 3.2 launch and
-  runtime/lifecycle surface
+- the runnable binary now exposes only the admitted Phase 3.3 launch,
+  runtime/lifecycle, and QUIC tunnel-core surface
 - policy and governance documents define the rewrite boundary
 - manifests should reflect only code that exists today, not speculative future
   subsystem work
@@ -135,8 +135,8 @@ the Rust workspace instead of modifying the frozen reference material.
   - `local_dynamic_tls`
   - `extended`
 - Allocator choice belongs only at the runnable binary boundary.
-- Tokio is now admitted at the binary boundary for the active Phase 3.2
-  runtime/lifecycle shell only.
+  - Tokio is now admitted at the binary boundary for the active runtime/
+    lifecycle shell that underpins the current Phase 3.3 tunnel core.
 - Async runtime choice is governed by
   `docs/allocator-runtime-baseline.md` and
   `docs/adr/0001-hybrid-concurrency-model.md`.

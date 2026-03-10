@@ -33,7 +33,7 @@ fn run_cloudflared(args: &[&str]) -> Output {
 }
 
 #[test]
-fn help_lists_only_admitted_phase_3_2_surface() {
+fn help_lists_only_admitted_phase_3_3_surface() {
     let output = run_cloudflared(&["--help"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
 
