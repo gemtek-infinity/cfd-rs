@@ -56,6 +56,7 @@ The following top-level rewrite decisions are part of the active scaffold:
 - `docs/adr/0002-transport-tls-crypto-lane.md`
 - `docs/adr/0003-pingora-critical-path.md`
 - `docs/adr/0004-fips-in-alpha-definition.md`
+- `docs/adr/0005-deployment-contract.md`
 
 ### Active Phase Model
 
@@ -65,7 +66,7 @@ The following top-level rewrite decisions are part of the active scaffold:
   - broader subsystem work remains mostly unported
 - Big Phase 2 is current:
   - purpose: freeze the Linux production-alpha lane
-  - active task: 2.4 FIPS-in-alpha definition
+  - active task: 2.5 deployment contract
 - Big Phase 3 is later:
   - build the minimum runnable alpha on the frozen lane
 - Big Phase 4 is later:
@@ -130,34 +131,28 @@ the Rust workspace instead of modifying the frozen reference material.
   `docs/allocator-runtime-baseline.md` and
   `docs/adr/0001-hybrid-concurrency-model.md`.
 
-## Active Phase 2.4 Focus
+## Active Phase 2.5 Focus
 
-Phase 2.4 now owns the governance definition of FIPS-in-alpha for the frozen
-Linux production-alpha lane.
+Phase 2.5 now owns the governance deployment contract for the frozen Linux
+production-alpha lane.
 
 What it covers now:
 
-- FIPS is explicitly part of the production-alpha lane as a governance
-  commitment
-- the runtime crypto boundary is explicit
-- the build/link boundary is explicit
-- the validation posture is explicit
+- the Linux-only deployment baseline is explicit
+- the GNU/glibc operational baseline is explicit
+- service/supervisor expectations are explicit
+- the bare-metal-first deployment stance is explicit
+- filesystem/layout expectations are explicit
 
 What it still must not imply:
 
-- that 2.5 is already done
-- that broader runtime, transport, Pingora, FIPS operational, deployment, or
+- that Big Phase 3 or later phases are already done
+- that packaging, installer, container, deployment automation, runtime, or
   certification work already exists
 
 ## Deferred Within Big Phase 2
 
-The following lane-freeze work is intentionally deferred beyond 2.4:
-
-- 2.5 deployment contract:
-  - glibc assumptions
-  - systemd/service expectations
-  - container vs bare-metal assumptions
-  - filesystem/layout expectations
+No additional Big Phase 2 lane-freeze tasks remain after 2.5.
 
 ## Deferred Beyond Big Phase 2
 
@@ -166,8 +161,8 @@ The following remain intentionally out of the current lane-freeze task:
 - broader platform parity beyond Linux
 - broader artifact scope beyond GNU `x86-64-v2` and `x86-64-v4`
 - broad runtime implementation outside the accepted first slice
-- transport, Pingora, FIPS operational, deployment, and certification-proving
-  implementation work
+- transport, Pingora, FIPS operational, deployment, packaging, container, and
+  certification-proving implementation work
 
 ## Phase 1A Groundwork
 

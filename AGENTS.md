@@ -51,6 +51,9 @@ Do not turn this file into a status report, architecture dump, dependency catalo
 - `docs/adr/0004-fips-in-alpha-definition.md`
   - FIPS-in-alpha boundary and validation definition
 
+- `docs/adr/0005-deployment-contract.md`
+  - Linux deployment contract definition
+
 - `SKILLS.md`
   - repeatable porting workflow
 
@@ -76,6 +79,7 @@ Before answering or patching, classify the task:
 6. transport / TLS / crypto lane: use `docs/adr/0002-transport-tls-crypto-lane.md`
 7. Pingora critical path: use `docs/adr/0003-pingora-critical-path.md`
 8. FIPS-in-alpha boundary: use `docs/adr/0004-fips-in-alpha-definition.md`
-9. dependency / allocator / runtime policy: use the matching file under `docs/`
+9. deployment contract: use `docs/adr/0005-deployment-contract.md`
+10. dependency / allocator / runtime policy: use the matching file under `docs/`
 
 If evidence is missing or conflicting, say so explicitly.
