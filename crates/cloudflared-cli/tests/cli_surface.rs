@@ -19,7 +19,7 @@ fn write_config(root: &std::path::Path) -> PathBuf {
     let path = root.join("config.yml");
     fs::write(
         &path,
-        "tunnel: phase-3-2\ningress:\n  - hostname: tunnel.example.com\n    service: https://localhost:8080\n  - service: http_status:503\n",
+        "tunnel: 11111111-1111-1111-1111-111111111111\ningress:\n  - hostname: tunnel.example.com\n    service: https://localhost:8080\n  - service: http_status:503\n",
     )
     .expect("config fixture should be written");
     path
@@ -33,12 +33,12 @@ fn run_cloudflared(args: &[&str]) -> Output {
 }
 
 #[test]
-fn help_lists_only_admitted_phase_3_2_surface() {
+fn help_lists_only_admitted_phase_3_3_surface() {
     let output = run_cloudflared(&["--help"]);
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(output.status.success());
-    assert!(stdout.contains("Big Phase 3.2"));
+    assert!(stdout.contains("Big Phase 3.3"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] validate"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] run"));
     assert!(stdout.contains("HOME"));
@@ -77,7 +77,7 @@ fn validate_reports_admitted_startup_surface() {
 }
 
 #[test]
-fn run_exits_nonzero_at_deferred_quic_tunnel_boundary() {
+fn run_exits_nonzero_when_quic_transport_inputs_are_missing() {
     let root = temp_dir("run");
     let config = write_config(&root);
 
@@ -90,8 +90,7 @@ fn run_exits_nonzero_at_deferred_quic_tunnel_boundary() {
     assert!(stdout.contains("config-source: explicit"));
     assert!(stdout.contains("runtime-owner: initialized"));
     assert!(stdout.contains("config-ownership: runtime-owned"));
-    assert!(stdout.contains("lifecycle-state: running"));
-    assert!(stderr.contains("Big Phase 3.3"));
+    assert!(stderr.contains("quic tunnel core requires credentials-file or origincert"));
 
     fs::remove_dir_all(root).expect("temp directory should be removable");
 }
