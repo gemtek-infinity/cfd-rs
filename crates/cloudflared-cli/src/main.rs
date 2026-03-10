@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 
+mod runtime;
+
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
@@ -15,8 +17,6 @@ use mimalloc::MiMalloc;
 static GLOBAL_ALLOCATOR: MiMalloc = MiMalloc;
 
 const PROGRAM_NAME: &str = "cloudflared";
-const RUN_DEFERRED_MESSAGE: &str = "error: admitted alpha startup validation succeeded, but runtime and \
-                                    lifecycle handoff remain deferred to Big Phase 3.2";
 
 fn main() -> ExitCode {
     let output = execute(env::args_os());
@@ -47,11 +47,22 @@ fn execute_command(cli: Cli) -> CliOutput {
             Err(error) => error.into_output(),
         },
         Command::Run => match resolve_startup(cli.config_path) {
-            Ok(startup) => {
-                CliOutput::failure(render_run_output(&startup), format!("{RUN_DEFERRED_MESSAGE}\n"))
-            }
+            Ok(startup) => execute_runtime_command(startup),
             Err(error) => error.into_output(),
         },
+    }
+}
+
+fn execute_runtime_command(startup: StartupSurface) -> CliOutput {
+    let report = runtime::run(runtime::RuntimeConfig::new(
+        startup.discovery.clone(),
+        startup.normalized.clone(),
+    ));
+    let stdout = render_run_output(&startup, &report);
+
+    match report.exit.stderr_message() {
+        Some(stderr) => CliOutput::failure(stdout, stderr, report.exit.exit_code()),
+        None => CliOutput::success(stdout),
     }
 }
 
@@ -164,7 +175,7 @@ fn set_command(slot: &mut Option<Command>, command: Command) -> Result<(), CliEr
 fn render_help() -> String {
     let mut text = String::new();
     text.push_str(&format!("{PROGRAM_NAME} {}\n", env!("CARGO_PKG_VERSION")));
-    text.push_str("Linux production-alpha entry surface for Big Phase 3.1\n\n");
+    text.push_str("Linux production-alpha runtime/lifecycle shell for Big Phase 3.2\n\n");
     text.push_str("Usage:\n");
     text.push_str("  cloudflared [--config FILEPATH] validate\n");
     text.push_str("  cloudflared [--config FILEPATH] run\n");
@@ -175,8 +186,8 @@ fn render_help() -> String {
         "  validate  Resolve config, load YAML, normalize ingress, and report startup readiness.\n",
     );
     text.push_str(
-        "  run       Perform the same admitted startup validation, then stop at the deferred runtime \
-         boundary.\n",
+        "  run       Enter the real runtime/lifecycle owner, supervise the current deferred tunnel-core \
+         boundary, and exit honestly where later slices are still unimplemented.\n",
     );
     text.push_str("  version   Print the workspace version.\n");
     text.push_str("  help      Print this help text.\n\n");
@@ -192,10 +203,10 @@ fn render_help() -> String {
     );
     text.push_str("Admitted environment:\n");
     text.push_str("  HOME  Expands the leading ~ in default config search directories.\n\n");
-    text.push_str("Deferred beyond Phase 3.1:\n");
+    text.push_str("Deferred beyond Phase 3.2:\n");
     text.push_str(
-        "  runtime and lifecycle supervision, quiche transport, Pingora integration, FIPS operational \
-         behavior, packaging, and deployment tooling\n",
+        "  quiche tunnel core, Pingora integration, wire/protocol boundary, security/compliance operational \
+         boundary, standard-format crate integration, packaging, and deployment tooling\n",
     );
     text
 }
@@ -206,9 +217,10 @@ fn render_validate_output(startup: &StartupSurface) -> String {
     lines.join("\n") + "\n"
 }
 
-fn render_run_output(startup: &StartupSurface) -> String {
+fn render_run_output(startup: &StartupSurface, report: &runtime::RuntimeExecution) -> String {
     let mut lines = vec![String::from("Resolved admitted alpha startup surface")];
     lines.extend(render_startup_lines(startup));
+    lines.extend(report.summary_lines.iter().cloned());
     lines.join("\n") + "\n"
 }
 
@@ -294,7 +306,7 @@ struct Cli {
 }
 
 #[derive(Debug)]
-struct StartupSurface {
+pub(crate) struct StartupSurface {
     discovery: cloudflared_config::DiscoveryOutcome,
     normalized: cloudflared_config::NormalizedConfig,
 }
@@ -315,11 +327,11 @@ impl CliOutput {
         }
     }
 
-    fn failure(stdout: String, stderr: String) -> Self {
+    fn failure(stdout: String, stderr: String, exit_code: u8) -> Self {
         Self {
             stdout,
             stderr,
-            exit_code: 1,
+            exit_code,
         }
     }
 }
@@ -344,7 +356,7 @@ impl CliError {
             Self::Usage(message) => CliOutput {
                 stdout: String::new(),
                 stderr: format!(
-                    "error: {message}\nRun `cloudflared help` for the admitted Phase 3.1 surface.\n"
+                    "error: {message}\nRun `cloudflared help` for the admitted Phase 3.2 surface.\n"
                 ),
                 exit_code: 2,
             },

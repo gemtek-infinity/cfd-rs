@@ -85,7 +85,7 @@ The current manifests admit only the dependencies needed by the binary runtime
 baseline, the active first-slice config implementation, and the existing
 workspace tool surface:
 
-- `mimalloc` in `cloudflared-cli`
+- `mimalloc`, `tokio`, and `tokio-util` in `cloudflared-cli`
 - shared workspace truth for `serde`, `serde_json`, `serde_yaml`, `thiserror`,
   `url`, and `uuid`
 - `rmcp`, `schemars`, and `tokio` in `tools/mcp-cfd-rs`
@@ -93,6 +93,9 @@ workspace tool surface:
 Reason:
 
 - allocator policy is still a process-wide runtime baseline owned by the binary
+- Phase 3.2 has now started, so the admitted runtime/lifecycle shell in
+  `cloudflared-cli` may use `tokio` and `tokio-util` for owned task tracking,
+  bounded command flow, and cancellation at the binary boundary
 - config, credential, and ingress normalization work is active in
   `cloudflared-config`, so its admitted slice dependencies now exist honestly in
   manifests
