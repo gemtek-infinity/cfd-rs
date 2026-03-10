@@ -165,10 +165,11 @@ What it still must not imply:
 The following later Big Phase 3 slices remain intentionally deferred:
 
 - 3.2 runtime and lifecycle core
-- 3.3 transport realization on the frozen quiche lane
-- 3.4 Pingora critical-path realization
-- 3.5 FIPS operational realization on the admitted crypto boundary
-- 3.6 packaging and deployment tooling surface
+- 3.3 QUIC tunnel core on the frozen quiche lane
+- 3.4 Pingora integration path above that transport lane
+- 3.5 wire/protocol boundary
+- 3.6 security/compliance operational boundary
+- 3.7 standard-format crate integration boundary
 
 ## Deferred Beyond Big Phase 3
 
@@ -177,8 +178,10 @@ The following remain intentionally out of the current executable-surface task:
 - broader platform parity beyond Linux
 - broader artifact scope beyond GNU `x86-64-v2` and `x86-64-v4`
 - broad runtime implementation beyond the admitted entry boundary
-- transport, Pingora, FIPS operational, deployment, packaging, container, and
-  certification-proving implementation work outside their later owning slices
+- transport, Pingora, wire/protocol, security/compliance, and
+  standard-format integration work outside their later owning slices
+- packaging, deployment tooling, container support, and
+  certification-proving work beyond the current numbered Big Phase 3 slice list
 
 ## Phase 1A Groundwork
 

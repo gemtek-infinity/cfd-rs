@@ -252,31 +252,39 @@ runtime work.
 
 Land the minimum runtime and lifecycle core required after the entry boundary.
 
-### Phase 3.3 — Transport Realization
+### Phase 3.3 — QUIC Tunnel Core
 
 #### Purpose
 
-Realize the frozen quiche-first transport lane without widening scope.
+Realize the frozen quiche-first tunnel core without widening scope.
 
-### Phase 3.4 — Pingora Critical-Path Realization
-
-#### Purpose
-
-Realize the admitted Pingora critical path above the frozen transport lane.
-
-### Phase 3.5 — FIPS Operational Realization
+### Phase 3.4 — Pingora Integration Path
 
 #### Purpose
 
-Realize the admitted FIPS-in-alpha operational boundary without claiming proof
-that is not yet earned.
+Realize the admitted Pingora integration path above the frozen transport lane.
 
-### Phase 3.6 — Packaging And Deployment Tooling Surface
+### Phase 3.5 — Wire / Protocol Boundary
 
 #### Purpose
 
-Add only the packaging and deployment tooling surface required for the Linux
-alpha contract.
+Realize the wire and protocol boundary required beyond the launch surface
+without implying broader runtime or transport completion.
+
+### Phase 3.6 — Security / Compliance Operational Boundary
+
+#### Purpose
+
+Realize the admitted security and compliance operational boundary without
+claiming proof or enforcement that is not yet earned.
+
+### Phase 3.7 — Standard-Format Crate Integration Boundary
+
+#### Purpose
+
+Admit later standard-format crate integration only where an active later slice
+truly requires it and the Phase 2.6 dependency-policy baseline is still
+honored.
 
 ### Exit condition
 
@@ -327,4 +335,4 @@ At the current repo state:
 - Big Phase 2 is closed and frozen
 - Big Phase 3 is current
 - Phase 3.1 is the active task
-- Phases 3.2 through 3.6 are deferred within Big Phase 3
+- Phases 3.2 through 3.7 are deferred within Big Phase 3
