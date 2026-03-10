@@ -42,6 +42,8 @@ fn help_lists_admitted_surface() {
     assert!(stdout.contains("cloudflared [--config FILEPATH] validate"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] run"));
     assert!(stdout.contains("HOME"));
+    assert!(stdout.contains("http_status only"));
+    assert!(stdout.contains("Broader origin support"));
     assert!(!stdout.contains("cloudflared tunnel"));
 }
 
@@ -90,6 +92,10 @@ fn run_exits_nonzero_when_quic_transport_inputs_are_missing() {
     assert!(stdout.contains("config-source: explicit"));
     assert!(stdout.contains("runtime-owner: initialized"));
     assert!(stdout.contains("config-ownership: runtime-owned"));
+    assert!(
+        stdout.contains("proxy-seam: origin-proxy admitted"),
+        "run output should report the admitted Pingora proxy seam"
+    );
     assert!(stderr.contains("quic tunnel core requires credentials-file or origincert"));
 
     fs::remove_dir_all(root).expect("temp directory should be removable");

@@ -62,8 +62,10 @@ fn render_help() -> String {
         "  validate  Resolve config, load YAML, normalize ingress, and report startup readiness.\n",
     );
     text.push_str(
-        "  run       Enter the runtime-owned QUIC transport core with a Pingora proxy seam and stop \
-         honestly where later wire and origin slices are still unimplemented.\n",
+        "  run       Enter the runtime-owned QUIC transport core with a Pingora proxy \
+         seam.\n\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20The admitted origin path is http_status \
+         only. Broader origin support,\n\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20wire/protocol \
+         behavior, and general proxy completeness remain later slices.\n",
     );
     text.push_str("  version   Print the workspace version.\n");
     text.push_str("  help      Print this help text.\n\n");
@@ -81,8 +83,8 @@ fn render_help() -> String {
     text.push_str("  HOME  Expands the leading ~ in default config search directories.\n\n");
     text.push_str("Deferred beyond current phase:\n");
     text.push_str(
-        "  Wire/protocol boundary, security/compliance operational boundary, standard-format crate \
-         integration, packaging, and deployment tooling\n",
+        "  Broader origin support, wire/protocol boundary, security/compliance operational \
+         boundary,\n\x20\x20standard-format crate integration, packaging, and deployment tooling\n",
     );
     text
 }

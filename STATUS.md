@@ -15,12 +15,15 @@ What exists now:
   `crates/cloudflared-config/`
 - parity-backed accepted first-slice compare closure for the admitted fixture surface
 - a narrow Phase 3.3 QUIC tunnel core in `crates/cloudflared-cli/`
+- a Phase 3.4 Pingora proxy seam with runtime lifecycle participation and a
+  first admitted origin/proxy path (`http_status` routing) in
+  `crates/cloudflared-cli/src/proxy.rs`
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 
 What does not exist yet:
 
-- Pingora integration
+- broader Pingora proxy completeness beyond the narrow admitted origin path
 - later wire/protocol slices
 - security/compliance operational behavior
 - parity-complete broader subsystem coverage

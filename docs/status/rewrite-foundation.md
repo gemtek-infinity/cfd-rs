@@ -18,15 +18,18 @@ origin-cert decoding, ingress normalization and matching, and a real
 first-slice Go-truth compare harness whose accepted fixture surface currently
 compares green. It also now contains a narrow Phase 3.3 QUIC tunnel core in
 `crates/cloudflared-cli/` that owns startup, supervision, transport session
-establishment, and runtime config handoff while still stopping honestly before
-later Pingora and broader wire/protocol slices. Most broader production-alpha
-subsystem behavior is still unported.
+establishment, and runtime config handoff. Phase 3.4 adds a Pingora proxy seam
+with runtime lifecycle participation and a first admitted origin/proxy path
+(`http_status` routing) confined to `crates/cloudflared-cli/src/proxy.rs`. The
+admitted origin path is intentionally narrow. Broader wire/protocol behavior
+and general proxy completeness remain later slices. Most broader
+production-alpha subsystem behavior is still unported.
 
 The scaffold is intentionally real but minimal:
 
 - the workspace builds as a Rust scaffold with partial first-slice behavior
-- the runnable binary now exposes only the admitted Phase 3.3 launch,
-  runtime/lifecycle, and QUIC tunnel-core surface
+- the runnable binary now exposes the admitted Phase 3.3 QUIC tunnel-core
+  surface and the Phase 3.4 Pingora proxy seam with its first origin path
 - policy and governance documents define the rewrite boundary
 - manifests should reflect only code that exists today, not speculative future
   subsystem work
@@ -80,7 +83,9 @@ The following top-level rewrite decisions are part of the active scaffold:
   - tasks 2.0 through 2.6 are complete at the governance level
 - Big Phase 3 is current:
   - purpose: build the minimum runnable alpha on the frozen lane
-  - active task: 3.3 QUIC tunnel core
+  - Phase 3.3 QUIC tunnel core is admitted
+  - Phase 3.4 Pingora proxy seam (3.4a–c) is admitted
+  - active task: 3.4d docs/tests/status reconciliation
 - Big Phase 4 is later:
   - harden, validate, measure, and prove the alpha in real use
 - Big Phase 5 is later:
@@ -112,7 +117,7 @@ Current crate intent:
 
 - `crates/cloudflared-cli`: narrow admitted alpha entry surface for help,
   version, config-backed startup validation, the current runtime/lifecycle
-  owner, and the current QUIC transport core
+  owner, the current QUIC transport core, and the Pingora proxy seam
 - `crates/cloudflared-config`: owning crate for the accepted first-slice
   domain skeleton and future config, credentials, and ingress normalization
   behavior
