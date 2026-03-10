@@ -2,6 +2,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::proxy::PingoraProxySeam;
 use crate::startup::config_source_label;
 use crate::transport::QuicTunnelServiceFactory;
 
@@ -164,6 +165,7 @@ pub(crate) enum ServiceExit {
 #[derive(Debug)]
 pub(crate) enum ChildTask {
     Service(&'static str),
+    ProxySeam,
     SignalBridge,
     HarnessBridge,
 }
@@ -275,6 +277,9 @@ where
 
         self.spawn_signal_bridge();
         self.spawn_harness_shutdown();
+        // 3.4b: proxy seam enters lifecycle before the primary transport service,
+        // so it is ready to receive the transport→proxy handoff in later slices.
+        self.spawn_proxy_seam();
         self.spawn_primary_service(0);
 
         loop {
@@ -385,6 +390,17 @@ where
         }
     }
 
+    fn spawn_proxy_seam(&mut self) {
+        let seam = PingoraProxySeam::new();
+        self.summary_lines
+            .push("proxy-seam: lifecycle participant admitted".to_owned());
+        seam.spawn(
+            self.command_tx.clone(),
+            self.shutdown.child_token(),
+            &mut self.child_tasks,
+        );
+    }
+
     fn spawn_primary_service(&mut self, attempt: u32) {
         let service = self.factory.create_primary(self.config.clone(), attempt);
         self.summary_lines.push(format!(
@@ -475,6 +491,10 @@ where
                     ChildTask::Service(name) => {
                         self.summary_lines
                             .push(format!("child-task-stopped: service={name}"));
+                    }
+                    ChildTask::ProxySeam => {
+                        self.summary_lines
+                            .push("child-task-stopped: proxy-seam".to_owned());
                     }
                     ChildTask::SignalBridge => {
                         self.summary_lines
@@ -742,5 +762,43 @@ mod tests {
             "runtime failure: test-service: fatal lifecycle boundary triggered"
         ));
         assert!(!summary_contains(&execution, "supervision-restart-attempt:"));
+    }
+
+    #[test]
+    fn runtime_admits_proxy_seam_lifecycle_participant() {
+        let execution = run_with_factory(
+            runtime_config(),
+            TestFactory::new([TestBehavior::WaitForShutdown]),
+            RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+        );
+
+        assert_eq!(execution.exit, RuntimeExit::Clean);
+        assert!(summary_contains(
+            &execution,
+            "proxy-seam: lifecycle participant admitted"
+        ));
+        assert!(summary_contains(
+            &execution,
+            "service-status[pingora-proxy-seam]:"
+        ));
+        assert!(summary_contains(&execution, "child-task-stopped: proxy-seam"));
+    }
+
+    #[test]
+    fn proxy_seam_survives_primary_service_restart() {
+        let execution = run_with_factory(
+            runtime_config(),
+            TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
+            RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(50)),
+        );
+
+        assert_eq!(execution.exit, RuntimeExit::Clean);
+        // Proxy seam admitted once, persists across primary service restarts.
+        assert!(summary_contains(
+            &execution,
+            "proxy-seam: lifecycle participant admitted"
+        ));
+        assert!(summary_contains(&execution, "supervision-restart-attempt: 1"));
+        assert!(summary_contains(&execution, "child-task-stopped: proxy-seam"));
     }
 }
