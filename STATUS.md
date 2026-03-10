@@ -10,7 +10,8 @@ now contains a Cargo workspace skeleton plus accepted first-slice behavior in
 `crates/cloudflared-config/` for config discovery/loading, credentials
 origin-cert decoding, ingress normalization and matching, and a real
 first-slice Go-truth compare harness whose accepted fixture surface currently
-compares green, but most Phase 1 subsystem behavior is still unported.
+compares green, but most broader production-alpha subsystem behavior is still
+unported.
 
 The scaffold is intentionally real but minimal:
 
@@ -52,16 +53,36 @@ The following top-level rewrite decisions are part of the active scaffold:
 - `docs/allocator-runtime-baseline.md`
 - `docs/adr/0001-hybrid-concurrency-model.md`
 
-### Phase 1 Rewrite Scope
+### Active Phase Model
 
-- Primary platform: `x86_64-unknown-linux-gnu`
-- In scope:
-  - CLI behavior
-  - config and credentials behavior
-  - runtime behavior
-  - wire and protocol behavior
-  - metrics, readiness, and management behavior
-  - Linux-relevant service/runtime semantics that affect externally visible behavior
+- Big Phase 1 is done:
+  - truth freeze is in place
+  - the accepted first-slice compare is green
+  - broader subsystem work remains mostly unported
+- Big Phase 2 is current:
+  - purpose: freeze the Linux production-alpha lane
+  - active task: 2.0 governance realignment only
+- Big Phase 3 is later:
+  - build the minimum runnable alpha on the frozen lane
+- Big Phase 4 is later:
+  - harden, validate, measure, and prove the alpha in real use
+- Big Phase 5 is later:
+  - widen intentionally only after the alpha is credible
+
+### Active Lane
+
+- Linux only
+- target triple: `x86_64-unknown-linux-gnu`
+- shipped GNU artifacts only:
+  - `x86-64-v2`
+  - `x86-64-v4`
+- 0-RTT is required
+- quiche first
+- quiche + BoringSSL
+- Pingora is in the production-alpha critical path
+- FIPS belongs in the production-alpha lane
+- Cloudflare-owned crates are preferred where they genuinely fit, but are not
+  mandatory by default
 
 ### Current Workspace Shape
 
@@ -105,23 +126,38 @@ the Rust workspace instead of modifying the frozen reference material.
   `docs/allocator-runtime-baseline.md` and
   `docs/adr/0001-hybrid-concurrency-model.md`.
 
-## Deferred Later
+## Deferred Within Big Phase 2
 
-The following are intentionally deferred until explicitly promoted:
+The following lane-freeze work is intentionally deferred beyond 2.0:
 
-- macOS parity
-- Windows parity
-- packaging and installer parity
-- release automation parity
-- updater workflow parity
-- FIPS artifact and compliance parity
+- 2.1 build and artifact policy:
+  - CI/build alignment for the real alpha lane
+  - exact GNU artifact naming, checksum naming, and matrix policy
+- 2.2 transport / TLS / crypto ADR:
+  - quiche + BoringSSL
+  - 0-RTT requirement
+  - PQC-compatible QUIC path
+- 2.3 Pingora critical-path ADR:
+  - initial critical-path responsibilities
+  - first admitted Pingora crates
+- 2.4 FIPS-in-alpha definition:
+  - runtime crypto boundary
+  - build/link boundary
+  - validation posture
+- 2.5 deployment contract:
+  - glibc assumptions
+  - systemd/service expectations
+  - container vs bare-metal assumptions
+  - filesystem/layout expectations
 
-## Missing Before Large-Scale Porting
+## Deferred Beyond Big Phase 2
 
-These items are still missing before MCP-assisted or large-scale subsystem work
-should begin:
+The following remain intentionally out of the current lane-freeze task:
 
-- accepted compatibility-scope decision for FIPS/compliance
+- broader platform parity beyond Linux
+- broader artifact scope beyond GNU `x86-64-v2` and `x86-64-v4`
+- broad runtime implementation outside the accepted first slice
+- transport, Pingora, FIPS operational, and deployment implementation work
 
 ## Phase 1A Groundwork
 
@@ -137,13 +173,13 @@ What exists now:
 
 What does not exist yet:
 
-- complete Phase 1 behavior outside the accepted first slice
+- complete later-slice behavior outside the accepted first slice
 
 Implication:
 
 - the repo can now inventory and mechanically gate the first-slice parity
   contract
-- the repo still must not claim broader Phase 1 parity is complete
+- the repo still must not claim broader rewrite parity is complete
 
 ## Phase 1B.1 Domain Skeleton
 
@@ -278,7 +314,7 @@ Implication:
 
 - the repository now has a real first-slice parity loop rather than a Rust-only
   artifact scaffold
-- the repository still must not claim broader rewrite parity while most Phase 1
+- the repository still must not claim broader rewrite parity while most later-slice
   subsystems remain unported
 
 ## Phase 1B.6 First-Slice Parity Closure
@@ -302,13 +338,13 @@ What does not exist yet:
 - internal ingress-rule matching and negative rule-index behavior
 - full regex-path semantics for general ingress matching
 - tunnel credential JSON fixture coverage
-- any Phase 1 behavior outside the accepted first slice
+- any later-slice behavior outside the accepted first slice
 
 Implication:
 
 - the accepted first slice is now parity-backed against the checked-in Go truth
   fixture surface
-- the repository still must not claim full Phase 1 or full-rewrite completion
+- the repository still must not claim full-rewrite completion
 
 ## First Implementation Gate
 

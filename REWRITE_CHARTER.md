@@ -1,97 +1,77 @@
 # Rewrite Charter
 
-This file is the shortest possible statement of the rewrite program's
-non-negotiables.
+This file is the shortest possible statement of the rewrite program's non-negotiables.
 
-If any other planning note, prompt, AI output, or human interpretation drifts
-from this file, this file wins unless a governance update explicitly changes it.
+If any plan, prompt, note, or AI output drifts from this file, this file wins until governance is explicitly changed.
 
 ## Objective
 
-The objective of this repository is to produce a Rust rewrite of cloudflared
-that is production-grade, parity-backed, and credible for internal deployment
-and serious external technical review.
+Build a production-grade, parity-backed Rust rewrite on the frozen Linux production-alpha lane.
 
-This objective is subordinate to behavioral correctness. A rewrite that looks
-impressive but is not parity-backed does not satisfy the objective.
+## Compatibility baseline
 
-## Compatibility Baseline
-
-- Behavioral baseline: `baseline-2026.2.0/old-impl/`
-- Derived reference layer: `baseline-2026.2.0/design-audit/`
-- Target release baseline: `2026.2.0`
+- behavioral baseline: `baseline-2026.2.0/old-impl/`
+- derived reference layer: `baseline-2026.2.0/design-audit/`
+- target release baseline: `2026.2.0`
 - Rust workspace version rule: `-alpha.YYYYmm`
-- Current workspace version line: `2026.2.0-alpha.202603`
+- current workspace version line: `2026.2.0-alpha.202603`
 
-The Rust rewrite is coupled to the Go compatibility baseline. It is not an
-independent product line.
+## Active lane
 
-## Source Precedence
+- Linux only
+- target triple: `x86_64-unknown-linux-gnu`
+- shipped GNU artifacts:
+  - `x86-64-v2`
+  - `x86-64-v4`
+- 0-RTT is required
+- quiche first
+- quiche + BoringSSL
+- Pingora is in the production-alpha critical path
+- FIPS belongs in the production-alpha lane
+- Cloudflare-owned crates are preferred where they genuinely fit, but are not mandatory by default
 
-If sources disagree, use this order:
+## Source-of-truth routing
 
-1. `baseline-2026.2.0/old-impl/` code and tests
-2. `baseline-2026.2.0/design-audit/`
-3. `AGENTS.md`
-4. `SKILLS.md`
+Use the right source for the right question:
 
-Do not smooth over conflicts. Resolve them explicitly.
+- behavior and parity:
+  1. `baseline-2026.2.0/old-impl/` code and tests
+  2. `baseline-2026.2.0/design-audit/`
 
-## Frozen Inputs
+- non-negotiables and scope:
+  - `REWRITE_CHARTER.md`
 
-The following directories are frozen inputs and must not be modified during
-normal rewrite work:
+- current repository state:
+  - `STATUS.md`
+
+- dependency and runtime policy:
+  - `docs/*.md`
+
+- workflow notes:
+  - `AGENTS.md`
+  - `SKILLS.md`
+
+Do not smooth conflicts over.
+Resolve them explicitly.
+
+## Frozen inputs
+
+The following directories are frozen inputs and must not be modified during normal rewrite work:
 
 - `baseline-2026.2.0/old-impl/`
 - `baseline-2026.2.0/design-audit/`
 
-If those inputs appear inconsistent, fix the Rust workspace or the governance
-documents instead of editing the frozen baseline.
+If those inputs appear inconsistent, fix the Rust workspace or the governance docs instead of editing the frozen baseline.
 
-## Primary Platform
+## First accepted implementation slice
 
-The primary target platform is:
-
-- `x86_64-unknown-linux-gnu`
-
-Linux compatibility is the active target. Other platforms are deferred unless
-explicitly promoted.
-
-## Active Compatibility Scope
-
-Phase 1 compatibility includes externally visible behavior for:
-
-- command names, flags, env bindings, defaults, and empty-invocation behavior
-- config discovery, parsing, validation, and credential handling
-- wire formats and protocol constants
-- transport behavior that is externally visible
-- ingress, routing, and proxy behavior
-- metrics, readiness, and management behavior
-- graceful shutdown and reconnect behavior
-- Linux-visible runtime semantics
-
-## Deferred Scope
-
-The following are deferred unless explicitly promoted:
-
-- macOS parity
-- Windows parity
-- packaging and installer parity
-- release automation parity
-- updater workflow parity
-- distro-specific packaging parity
-- FIPS artifact and compliance parity
-
-## First Accepted Implementation Slice
-
-The first accepted implementation slice is narrower than all of Phase 1.
+The first accepted implementation slice is narrower than broader Phase 1 scope.
 
 It includes:
 
-- config discovery, parsing, validation, and credential handling
-- ingress parsing, validation, normalization, and deterministic matching
-- CLI-origin synthesis only to the extent required to normalize single-origin
-  ingress inputs
+- config discovery/loading/normalization
+- credentials surface
+- ingress normalization/ordering/defaulting
 
 It excludes:
 
@@ -102,60 +82,17 @@ It excludes:
 - metrics, readiness, and management servers
 - wire and RPC implementation
 
-## Current Workspace Honesty Rule
+## Workspace honesty rule
 
-The current Rust workspace is a scaffold.
+The current Rust workspace is real but partial.
 
-Therefore:
+Manifests, docs, and claims must describe:
 
-- manifests may prepare accepted work, but must not imply completed subsystem
-  ports that do not exist
-- placeholder crates must remain clearly placeholder crates
-- no dependency should be admitted solely because it will "probably be needed
-  later"
+- what exists now, or
+- the currently accepted next slice
 
-## Dependency Admission Rule
+Do not imply completed subsystem ports that do not exist.
 
-Dependencies may be added only when all of the following are true:
+## Done means checked
 
-1. the owning slice has started
-2. the owning crate is clear
-3. the dependency is needed by code that exists now
-4. the dependency is consistent with `docs/dependency-policy.md`
-
-Current baseline rule:
-
-- `mimalloc` belongs only at the runnable binary boundary
-- allocator settings must remain governed by
-  `docs/allocator-runtime-baseline.md`
-
-## Runtime Doctrine
-
-The accepted runtime doctrine is:
-
-- actor-inspired control plane
-- Tokio structured-async data plane
-- bounded queues only
-- explicit ownership and cancellation
-
-However, the accepted first slice should remain primarily synchronous and
-deterministic. Async/runtime machinery should not be introduced merely to mimic
-future daemon structure.
-
-## Done Means Parity
-
-A subsystem must not be called "ported" unless:
-
-- behavior matches `baseline-2026.2.0/old-impl/`
-- relevant CLI/config surface matches `baseline-2026.2.0/old-impl/`
-- relevant wire bytes match `baseline-2026.2.0/old-impl/` where applicable
-- documented quirks are either preserved or explicitly waived
-- parity tests are documented and passing
-
-## Anti-Drift Rule
-
-No plan, patch, prompt, AI output, or implementation note may silently widen
-scope, weaken the baseline, or bypass parity requirements.
-
-If a proposed change touches scope, baseline, phase order, dependency posture,
-or platform priority, it must update the appropriate governance document first.
+A subsystem is not "done" unless its relevant behavior is checked against the frozen Go baseline.
