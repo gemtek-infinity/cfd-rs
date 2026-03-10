@@ -220,6 +220,72 @@ production-alpha lane well enough to start building the minimum runnable alpha.
 
 Build the minimum runnable alpha on the frozen Linux lane.
 
+This big phase starts by making the executable boundary real without
+pretending that later runtime, transport, Pingora, FIPS operational, or
+packaging slices already exist.
+
+### Phase 3.1 — CLI And Process Surface
+
+#### Purpose
+
+Make the admitted executable boundary real for the alpha lane.
+
+#### Required conditions
+
+- a real Linux alpha process entrypoint exists
+- admitted command behavior is explicit and narrow
+- admitted startup/help/error behavior is explicit
+- admitted flags, environment, and defaults are explicit only for the current
+  alpha path
+- the executable stays honest about what is implemented now versus later
+  deferred slices
+
+#### Exit condition
+
+Phase 3.1 is complete when `cloudflared` has a narrow executable surface that
+can resolve config, validate startup inputs, and fail honestly before later
+runtime work.
+
+### Phase 3.2 — Runtime / Lifecycle Core
+
+#### Purpose
+
+Land the minimum runtime and lifecycle core required after the entry boundary.
+
+### Phase 3.3 — QUIC Tunnel Core
+
+#### Purpose
+
+Realize the frozen quiche-first tunnel core without widening scope.
+
+### Phase 3.4 — Pingora Integration Path
+
+#### Purpose
+
+Realize the admitted Pingora integration path above the frozen transport lane.
+
+### Phase 3.5 — Wire / Protocol Boundary
+
+#### Purpose
+
+Realize the wire and protocol boundary required beyond the launch surface
+without implying broader runtime or transport completion.
+
+### Phase 3.6 — Security / Compliance Operational Boundary
+
+#### Purpose
+
+Realize the admitted security and compliance operational boundary without
+claiming proof or enforcement that is not yet earned.
+
+### Phase 3.7 — Standard-Format Crate Integration Boundary
+
+#### Purpose
+
+Admit later standard-format crate integration only where an active later slice
+truly requires it and the Phase 2.6 dependency-policy baseline is still
+honored.
+
 ### Exit condition
 
 The minimum runnable alpha exists on the frozen Linux production-alpha lane.
@@ -266,7 +332,7 @@ Silently behaving as though a stage is complete is not allowed.
 At the current repo state:
 
 - Big Phase 1 is done
-- Big Phase 2 is current
-- Phase 2.6 is the active task
-- Big Phase 3 begins only after the Linux production-alpha lane is frozen in
-  governance
+- Big Phase 2 is closed and frozen
+- Big Phase 3 is current
+- Phase 3.1 is the active task
+- Phases 3.2 through 3.7 are deferred within Big Phase 3
