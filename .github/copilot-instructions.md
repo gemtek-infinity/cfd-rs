@@ -54,7 +54,8 @@ For refactor, hotspot, architecture-shaping, or medium/large code-change tasks:
    - then a narrow path prefix
    - only then broader hotspot queries if still needed
 4. use Debtmap as a hotspot and review aid, not as behavior truth
-5. ignore files with a Debtmap score below 15.0 — they carry negligible cognitive load
+5. use the file-level Debtmap score categories owned by `docs/ai-context-routing.md`
+6. treat file-level scores below `15.0` as negligible, `15.0-29.99` as `reviewable`, `30.0-44.99` as `reduce_when_touched`, and `45.0+` as the hard `refactor_now` limit
 
 If the MCP Debtmap surface is unavailable, inaccessible, or insufficient:
 1. say that explicitly

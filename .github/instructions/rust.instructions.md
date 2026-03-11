@@ -58,8 +58,12 @@ For medium or large Rust or manifest changes, before running checks:
 - keep the pass local; do not turn it into a repo-wide cleanup
 - consult the MCP Debtmap surface first when the task is a refactor, hotspot cleanup, ownership split, or medium/large control-flow change
 - when using Debtmap, prefer touched-files review first, then narrow path-prefix review, then broader hotspot review only if still needed
-- ignore files with a Debtmap score below 15.0 — they carry negligible cognitive load
-- treat a Debtmap score above 30.0 as needing further cognitive-load reduction, and aim to keep touched Rust files below 30.0 when feasible
+- use the file-level Debtmap score categories owned by `docs/ai-context-routing.md`
+- ignore file-level scores below `15.0` — they carry negligible cognitive load
+- treat file-level scores in `15.0-29.99` as `reviewable` — review when already in the file
+- treat file-level scores in `30.0-44.99` as `reduce_when_touched`, and aim to keep touched Rust files below `30.0` when feasible
+- treat file-level scores at `45.0+` as `refactor_now`
+- for per-function output, treat cognitive `25+`, cyclomatic `11+`, or total complexity `24+` as `refactor_now` on active-path code
 - if the MCP Debtmap surface is unavailable, inaccessible, or insufficient, say so explicitly and continue with bounded direct review
 
 Do not force this pass on trivial edits.

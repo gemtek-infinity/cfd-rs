@@ -12,9 +12,63 @@ fn round2(v: f64) -> f64 {
     (v * 100.0).round() / 100.0
 }
 
+const FILE_REVIEWABLE_SCORE: f64 = 15.0;
+const FILE_REDUCE_WHEN_TOUCHED_SCORE: f64 = 30.0;
+const FILE_REFACTOR_NOW_SCORE: f64 = 45.0;
+const FILE_CRITICAL_HOTSPOT_SCORE: f64 = 75.0;
+
+const FUNCTION_CYCLOMATIC_MODERATE: u32 = 5;
+const FUNCTION_CYCLOMATIC_HIGH: u32 = 8;
+const FUNCTION_CYCLOMATIC_VERY_HIGH: u32 = 11;
+
+const FUNCTION_COGNITIVE_MODERATE: u32 = 10;
+const FUNCTION_COGNITIVE_HIGH: u32 = 15;
+const FUNCTION_COGNITIVE_VERY_HIGH: u32 = 25;
+
+const FUNCTION_TOTAL_MODERATE: u32 = 8;
+const FUNCTION_TOTAL_HIGH: u32 = 16;
+const FUNCTION_TOTAL_EXCESSIVE: u32 = 24;
+
 // ---------------------------------------------------------------------------
 // Output types
 // ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FileScoreCategory {
+    Negligible,
+    Reviewable,
+    Hotspot,
+    HighHotspot,
+    CriticalHotspot,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RecommendedAction {
+    Ignore,
+    Review,
+    ReduceWhenTouched,
+    RefactorNow,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MetricComplexityCategory {
+    Low,
+    Moderate,
+    High,
+    VeryHigh,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TotalComplexityCategory {
+    Trivial,
+    Moderate,
+    High,
+    Excessive,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FileScore {
@@ -24,6 +78,8 @@ pub struct FileScore {
     pub todo_count: usize,
     pub max_indent_depth: usize,
     pub score: f64,
+    pub score_category: FileScoreCategory,
+    pub recommended_action: RecommendedAction,
     /// `"ast"` when the `debtmap` crate parsed the file, `"heuristic"`
     /// otherwise.
     pub analysis_method: &'static str,
@@ -46,6 +102,8 @@ pub struct FileSummary {
     pub todo_count: usize,
     pub max_indent_depth: usize,
     pub score: f64,
+    pub score_category: FileScoreCategory,
+    pub recommended_action: RecommendedAction,
     pub analysis_method: &'static str,
     pub top_todos: Vec<TodoEntry>,
     pub long_fn_lines: Vec<usize>,
@@ -90,8 +148,13 @@ pub struct FunctionEntry {
     pub line: usize,
     pub length: usize,
     pub cyclomatic: u32,
+    pub cyclomatic_category: MetricComplexityCategory,
     pub cognitive: u32,
+    pub cognitive_category: MetricComplexityCategory,
     pub nesting: u32,
+    pub total_complexity: u32,
+    pub total_complexity_category: TotalComplexityCategory,
+    pub recommended_action: RecommendedAction,
 }
 
 #[derive(Debug, Serialize)]
@@ -108,6 +171,116 @@ pub struct CodeSmellReport {
     pub path: String,
     pub smells: Vec<CodeSmellEntry>,
     pub total: usize,
+}
+
+fn categorize_file_score(score: f64) -> FileScoreCategory {
+    if score < FILE_REVIEWABLE_SCORE {
+        FileScoreCategory::Negligible
+    } else if score < FILE_REDUCE_WHEN_TOUCHED_SCORE {
+        FileScoreCategory::Reviewable
+    } else if score < FILE_REFACTOR_NOW_SCORE {
+        FileScoreCategory::Hotspot
+    } else if score < FILE_CRITICAL_HOTSPOT_SCORE {
+        FileScoreCategory::HighHotspot
+    } else {
+        FileScoreCategory::CriticalHotspot
+    }
+}
+
+fn recommended_action_for_file_score(score: f64) -> RecommendedAction {
+    if score < FILE_REVIEWABLE_SCORE {
+        RecommendedAction::Ignore
+    } else if score < FILE_REDUCE_WHEN_TOUCHED_SCORE {
+        RecommendedAction::Review
+    } else if score < FILE_REFACTOR_NOW_SCORE {
+        RecommendedAction::ReduceWhenTouched
+    } else {
+        RecommendedAction::RefactorNow
+    }
+}
+
+fn categorize_cyclomatic(value: u32) -> MetricComplexityCategory {
+    if value < FUNCTION_CYCLOMATIC_MODERATE {
+        MetricComplexityCategory::Low
+    } else if value < FUNCTION_CYCLOMATIC_HIGH {
+        MetricComplexityCategory::Moderate
+    } else if value < FUNCTION_CYCLOMATIC_VERY_HIGH {
+        MetricComplexityCategory::High
+    } else {
+        MetricComplexityCategory::VeryHigh
+    }
+}
+
+fn categorize_cognitive(value: u32) -> MetricComplexityCategory {
+    if value < FUNCTION_COGNITIVE_MODERATE {
+        MetricComplexityCategory::Low
+    } else if value < FUNCTION_COGNITIVE_HIGH {
+        MetricComplexityCategory::Moderate
+    } else if value < FUNCTION_COGNITIVE_VERY_HIGH {
+        MetricComplexityCategory::High
+    } else {
+        MetricComplexityCategory::VeryHigh
+    }
+}
+
+fn categorize_total_complexity(value: u32) -> TotalComplexityCategory {
+    if value < FUNCTION_TOTAL_MODERATE {
+        TotalComplexityCategory::Trivial
+    } else if value < FUNCTION_TOTAL_HIGH {
+        TotalComplexityCategory::Moderate
+    } else if value < FUNCTION_TOTAL_EXCESSIVE {
+        TotalComplexityCategory::High
+    } else {
+        TotalComplexityCategory::Excessive
+    }
+}
+
+fn recommended_action_for_function(cyclomatic: u32, cognitive: u32) -> RecommendedAction {
+    let total = cyclomatic + cognitive;
+
+    if cyclomatic >= FUNCTION_CYCLOMATIC_VERY_HIGH
+        || cognitive >= FUNCTION_COGNITIVE_VERY_HIGH
+        || total >= FUNCTION_TOTAL_EXCESSIVE
+    {
+        RecommendedAction::RefactorNow
+    } else if cyclomatic >= FUNCTION_CYCLOMATIC_HIGH
+        || cognitive >= FUNCTION_COGNITIVE_HIGH
+        || total >= FUNCTION_TOTAL_HIGH
+    {
+        RecommendedAction::ReduceWhenTouched
+    } else if cyclomatic >= FUNCTION_CYCLOMATIC_MODERATE
+        || cognitive >= FUNCTION_COGNITIVE_MODERATE
+        || total >= FUNCTION_TOTAL_MODERATE
+    {
+        RecommendedAction::Review
+    } else {
+        RecommendedAction::Ignore
+    }
+}
+
+fn build_function_entry(
+    name: String,
+    line: usize,
+    length: usize,
+    cyclomatic: u32,
+    cognitive: u32,
+    nesting: u32,
+) -> FunctionEntry {
+    let total_complexity = cyclomatic + cognitive;
+
+    FunctionEntry {
+        name,
+        line,
+        length,
+        cyclomatic,
+        cyclomatic_category: categorize_cyclomatic(cyclomatic),
+        cognitive,
+        cognitive_category: categorize_cognitive(cognitive),
+        nesting,
+        total_complexity,
+        total_complexity_category: categorize_total_complexity(total_complexity),
+        recommended_action: recommended_action_for_function(cyclomatic, cognitive),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -156,13 +329,15 @@ fn analyze_with_crate(content: &str, path: &Path) -> Option<CrateAnalysis> {
         .complexity
         .functions
         .iter()
-        .map(|f| FunctionEntry {
-            name: f.name.clone(),
-            line: f.line,
-            length: f.length,
-            cyclomatic: f.cyclomatic,
-            cognitive: f.cognitive,
-            nesting: f.nesting,
+        .map(|f| {
+            build_function_entry(
+                f.name.clone(),
+                f.line,
+                f.length,
+                f.cyclomatic,
+                f.cognitive,
+                f.nesting,
+            )
         })
         .collect();
 
@@ -224,6 +399,7 @@ fn compute_score_crate(a: &CrateAnalysis) -> f64 {
 
 fn file_score_from_crate(path: String, a: &CrateAnalysis) -> FileScore {
     let score = compute_score_crate(a);
+    let rounded_score = round2(score);
     let avg_cyc = if a.fn_count > 0 {
         Some(a.total_cyclomatic as f64 / a.fn_count as f64)
     } else {
@@ -241,7 +417,9 @@ fn file_score_from_crate(path: String, a: &CrateAnalysis) -> FileScore {
         fn_count: a.fn_count,
         todo_count: a.todo_count,
         max_indent_depth: a.max_nesting as usize,
-        score: round2(score),
+        score: rounded_score,
+        score_category: categorize_file_score(rounded_score),
+        recommended_action: recommended_action_for_file_score(rounded_score),
         analysis_method: "ast",
         avg_cyclomatic: avg_cyc,
         max_cyclomatic: Some(a.max_cyclomatic),
@@ -250,13 +428,17 @@ fn file_score_from_crate(path: String, a: &CrateAnalysis) -> FileScore {
 }
 
 fn file_score_from_manual(path: String, m: &ManualMetrics) -> FileScore {
+    let rounded_score = round2(compute_score_manual(m));
+
     FileScore {
         path,
         line_count: m.line_count,
         fn_count: m.fn_count,
         todo_count: m.todo_count,
         max_indent_depth: m.max_indent_depth,
-        score: round2(compute_score_manual(m)),
+        score: rounded_score,
+        score_category: categorize_file_score(rounded_score),
+        recommended_action: recommended_action_for_file_score(rounded_score),
         analysis_method: "heuristic",
         avg_cyclomatic: None,
         max_cyclomatic: None,
@@ -345,6 +527,8 @@ pub async fn file_summary(repo_root: &Path, file_path: &Path) -> Result<FileSumm
         todo_count: analysis.todo_count,
         max_indent_depth: analysis.max_indent_depth,
         score: analysis.score,
+        score_category: categorize_file_score(analysis.score),
+        recommended_action: recommended_action_for_file_score(analysis.score),
         analysis_method: analysis.analysis_method,
         top_todos,
         long_fn_lines,
@@ -960,5 +1144,66 @@ fn complex(a: i32, b: i32) -> i32 {
 
         assert_eq!(score.analysis_method, "heuristic");
         assert!(score.avg_cyclomatic.is_none());
+    }
+
+    #[test]
+    fn file_score_categories_match_thresholds() {
+        assert!(matches!(
+            categorize_file_score(14.99),
+            FileScoreCategory::Negligible
+        ));
+        assert!(matches!(
+            categorize_file_score(15.0),
+            FileScoreCategory::Reviewable
+        ));
+        assert!(matches!(categorize_file_score(30.0), FileScoreCategory::Hotspot));
+        assert!(matches!(
+            categorize_file_score(45.0),
+            FileScoreCategory::HighHotspot
+        ));
+        assert!(matches!(
+            categorize_file_score(75.0),
+            FileScoreCategory::CriticalHotspot
+        ));
+    }
+
+    #[test]
+    fn file_score_actions_match_operational_limits() {
+        assert!(matches!(
+            recommended_action_for_file_score(10.0),
+            RecommendedAction::Ignore
+        ));
+        assert!(matches!(
+            recommended_action_for_file_score(20.0),
+            RecommendedAction::Review
+        ));
+        assert!(matches!(
+            recommended_action_for_file_score(35.0),
+            RecommendedAction::ReduceWhenTouched
+        ));
+        assert!(matches!(
+            recommended_action_for_file_score(45.0),
+            RecommendedAction::RefactorNow
+        ));
+    }
+
+    #[test]
+    fn function_entry_carries_categories_and_action() {
+        let entry = build_function_entry("complex".to_string(), 10, 40, 11, 25, 4);
+
+        assert_eq!(entry.total_complexity, 36);
+        assert!(matches!(
+            entry.cyclomatic_category,
+            MetricComplexityCategory::VeryHigh
+        ));
+        assert!(matches!(
+            entry.cognitive_category,
+            MetricComplexityCategory::VeryHigh
+        ));
+        assert!(matches!(
+            entry.total_complexity_category,
+            TotalComplexityCategory::Excessive
+        ));
+        assert!(matches!(entry.recommended_action, RecommendedAction::RefactorNow));
     }
 }

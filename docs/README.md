@@ -21,6 +21,7 @@ Do not start with full-repo document loading or broad repo-wide Debtmap output w
   - minimum-file routing for AI and human cold starts
   - staged retrieval sequence
   - MCP routing and bounded Debtmap usage for refactor and hotspot work
+  - canonical file-level and function-level Debtmap score categories
 - `docs/compatibility-scope.md`
   - what "compatible" means
 - `docs/promotion-gates.md`

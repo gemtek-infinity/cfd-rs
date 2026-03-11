@@ -167,7 +167,7 @@ Choose the smallest MCP surface that fits the question:
 - use a bundle when you need a curated multi-file pack for a known question type
 - use search, listing, metadata, and line reads only after the smallest curated surface stops being enough
 - use Debtmap only for hotspot triage, touched-files review, or bounded cognitive-load inspection
-- ignore files with a Debtmap score below 15.0 — they carry negligible cognitive load
+- use the file-level Debtmap score categories below instead of inventing local thresholds per task
 
 Examples:
 
@@ -175,6 +175,47 @@ Examples:
 - use a brief for questions like "which file should I open first for repo state or parity work?"
 - use a bundle for questions like "give me the narrow file pack for runtime/dependency policy" or "give me the baseline files for behavior/parity routing"
 - use Debtmap for questions like "what are the top hotspots in this path?", "summarize this touched file's cognitive load", or "review only these changed files for hotspot concentration"
+
+## Debtmap Score Categories
+
+Treat the MCP Debtmap file score and the per-function complexity metrics as
+separate score families.
+
+### File-level MCP score
+
+Use these categories for `debtmap_top_hotspots`, `debtmap_file_summary`, and
+`debtmap_touched_files_review`:
+
+- `0.00-14.99` `negligible`
+  - below hotspot triage threshold; ignore in normal review
+- `15.00-29.99` `reviewable`
+  - visible cognitive load; review when already in the file
+- `30.00-44.99` `hotspot`
+  - reduce when touched
+- `45.00-74.99` `high_hotspot`
+  - refactor now
+- `75.00+` `critical_hotspot`
+  - stop-and-split territory before more feature work
+
+Operational rule:
+
+- below `15.0` is negligible cognitive load
+- `15.0-29.99` is `reviewable` — review when already in the file
+- `30.0-44.99` is `reduce_when_touched`
+- `45.0+` is the hard `refactor_now` limit
+
+### Function-level complexity metrics
+
+Use these categories for `debtmap_function_complexity` output:
+
+- cyclomatic complexity: `1-4` `low`, `5-7` `moderate`, `8-10` `high`, `11+` `very_high`
+- cognitive complexity: `0-9` `low`, `10-14` `moderate`, `15-24` `high`, `25+` `very_high`
+- total complexity (`cyclomatic + cognitive`): `<8` `trivial`, `8-15` `moderate`, `16-23` `high`, `24+` `excessive`
+
+Operational rule for active-path code:
+
+- cognitive `25+`, cyclomatic `11+`, or total complexity `24+` is `refactor_now`
+- cognitive `15-24`, cyclomatic `8-10`, or total complexity `16-23` is `reduce_when_touched`
 
 ## Anti-Drift Rules
 

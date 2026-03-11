@@ -441,8 +441,9 @@ impl CfdRsMemory {
     // -- debtmap tools ------------------------------------------------------
 
     #[tool(
-        description = "Return top cognitive-load hotspot files for the repo or a bounded path prefix. Use \
-                       for refactor triage, not as always-on context."
+        description = "Return top cognitive-load hotspot files for the repo or a bounded path prefix. \
+                       Includes additive file-level score categories and recommended-action labels; use for \
+                       refactor triage, not as always-on context."
     )]
     async fn debtmap_top_hotspots(
         &self,
@@ -472,7 +473,8 @@ impl CfdRsMemory {
 
     #[tool(
         description = "Return a focused Debtmap summary for one file, including TODO locations and \
-                       long-function line numbers."
+                       long-function line numbers. Includes file-level score category and \
+                       recommended-action labels."
     )]
     async fn debtmap_file_summary(
         &self,
@@ -502,7 +504,8 @@ impl CfdRsMemory {
 
     #[tool(
         description = "Score a provided list of touched files for bounded cognitive-load review. Use after \
-                       edits, not as always-on analysis."
+                       edits, not as always-on analysis. Includes file-level score categories and \
+                       recommended-action labels."
     )]
     async fn debtmap_touched_files_review(
         &self,
@@ -566,7 +569,9 @@ impl CfdRsMemory {
 
     #[tool(
         description = "Return per-function complexity breakdown for a single file. Uses AST analysis for \
-                       Rust, TypeScript, and JavaScript; heuristic fallback for other languages."
+                       Rust, TypeScript, and JavaScript; heuristic fallback for other languages. Includes \
+                       separate cyclomatic, cognitive, and total-complexity categories plus \
+                       recommended-action labels."
     )]
     async fn debtmap_function_complexity(
         &self,
