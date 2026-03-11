@@ -3,7 +3,7 @@
 This file captures the currently admitted executable surface and the immediate
 deferred scope around it.
 
-## Active Phase 4.3 Surface
+## Active Phase 4.4 Surface
 
 Phase 3.3 owns the QUIC tunnel core. Phase 3.4 adds the Pingora proxy seam
 above it. Phase 3.5 adds the wire/protocol boundary between them. Phase 3.6
@@ -13,10 +13,11 @@ boundary required by the active runtime path. Phase 4.1 adds the minimum
 observability and operability surface required to run and inspect that alpha
 honestly. Phase 4.2 adds deterministic performance validation with
 stage-transition timing evidence, cold vs resumed path distinction, and
-explicit regression thresholds. Phase 4.3 is the current admitted slice and
-adds deterministic failure-mode and recovery proof for the admitted alpha path.
+explicit regression thresholds. Phase 4.3 adds deterministic failure-mode and
+recovery proof for the admitted alpha path. Phase 4.4 is the current admitted
+slice and adds internal deployment proof for the admitted alpha lane.
 
-What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2 + 4.3):
+What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2 + 4.3 + 4.4):
 
 - `run` enters a real quiche-based transport service under the runtime boundary
 - connection/session ownership and QUIC handshake state are explicit
@@ -88,6 +89,22 @@ What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2 + 4.3):
 - failure evidence scope is honestly reported, distinguishing in-process
   harness failure proof from deferred real transport reconnect and
   deployment-level recovery
+- machine-readable deployment evidence (`deploy-*`) is emitted at runtime
+  finish alongside performance and failure evidence
+- the deployment contract (Linux, x86\_64, GNU/glibc, bare-metal-first,
+  systemd-expected) is validated at startup and reported in evidence
+- glibc runtime markers, systemd supervision, binary path, and config path
+  are reported in deployment evidence
+- known deployment gaps (no systemd unit, no installer, no container image,
+  no updater, no log rotation) are declared explicitly
+- operational caveats (alpha-only, narrow origin path, no RPC registration,
+  no incoming streams, no config reload) are declared explicitly
+- deployment evidence scope is honestly bounded to in-process contract
+  validation
+- operator-facing deployment notes exist in `docs/deployment-notes.md`
+  matching the declared deployment contract from ADR-0005
+- the CI merge workflow produces lane-specific preview artifacts for both
+  shipped GNU lanes (x86-64-v2 and x86-64-v4)
 
 What the current surface does not imply:
 
@@ -104,6 +121,8 @@ What the current surface does not imply:
   0-RTT session resumption savings, or end-to-end request latency
 - that failure-mode evidence implies real QUIC transport reconnect,
   deployment-level process recovery, or config-reload behavior
+- that deployment evidence implies real systemd integration, package-manager
+  delivery, container support, or log-rotation integration
 - that packaging, installers, updaters, or deployment tooling already exist
 
 ## Deferred Within Big Phase 3
@@ -121,8 +140,10 @@ The following remain intentionally out of the current executable-surface task:
   outside their later owning slices
 - packaging, deployment tooling, container support, and
   certification-proving work beyond the current numbered Big Phase 3 slice list
-- performance proof, and broader deployment/management
-  work beyond the admitted 4.3 failure-mode proof surface
+- broader deployment/management work beyond the admitted 4.4 deployment proof
+  surface (real systemd unit files, installers, container images, updaters,
+  log rotation)
+- broader performance proof beyond the admitted harness path
 
 ## Follow-On Constraints For Later Slices
 

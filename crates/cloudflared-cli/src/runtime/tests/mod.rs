@@ -1,4 +1,5 @@
 mod compliance;
+mod deployment;
 mod failure_recovery;
 mod fixtures;
 mod harness;

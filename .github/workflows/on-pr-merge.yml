@@ -1,109 +1,129 @@
 name: On PR Merge - Build Preview Artifacts
 
 on:
-  pull_request:
-    branches:
-      - main
-    types:
-      - closed
-  workflow_dispatch:
+    pull_request:
+        branches:
+            - main
+        types:
+            - closed
+    workflow_dispatch:
 
 concurrency:
-  group: on-pr-merge-${{ github.ref }}
-  cancel-in-progress: true
+    group: on-pr-merge-${{ github.ref }}
+    cancel-in-progress: true
 
 permissions:
-  contents: read
+    contents: read
 
 env:
-  CARGO_TERM_COLOR: always
-  TARGET: x86_64-unknown-linux-gnu
-  PACKAGE_NAME: cloudflared-cli
-  BIN_NAME: cloudflared
+    CARGO_TERM_COLOR: always
+    TARGET: x86_64-unknown-linux-gnu
+    PACKAGE_NAME: cloudflared-cli
+    BIN_NAME: cloudflared
 
 jobs:
-  # Run tests once before the matrix build to avoid redundant compilation.
-  test:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install stable toolchain
-        run: |
-          rustup toolchain install stable --profile minimal --no-self-update
-          rustup default stable
-          rustc -Vv
-          cargo -V
-      - name: Cache Cargo registry and build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-test-
-      - name: Test (stable)
-        run: cargo test --workspace --locked
+    # Run tests once before the matrix build to avoid redundant compilation.
+    test:
+        if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true }}
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+            - name: Install stable toolchain
+              run: |
+                  rustup toolchain install stable --profile minimal --no-self-update
+                  rustup default stable
+                  rustc -Vv
+                  cargo -V
+            - name: Cache Cargo registry and build
+              uses: actions/cache@v5
+              with:
+                  path: |
+                      ~/.cargo/registry/index
+                      ~/.cargo/registry/cache
+                      ~/.cargo/git/db
+                      target
+                  key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-test-
+            - name: Test (stable)
+              run: cargo test --workspace --locked
 
-  build-preview:
-    needs: test
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - lane: x86-64-v2
-            rustflags: -C target-cpu=x86-64-v2 -C strip=symbols
-          - lane: x86-64-v4
-            rustflags: -C target-cpu=x86-64-v4 -C strip=symbols
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install stable toolchain
-        run: |
-          rustup toolchain install stable --profile minimal --no-self-update
-          rustup default stable
-          rustc -Vv
-          cargo -V
-      - name: Cache Cargo registry and build
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-            target
-          key: ${{ runner.os }}-cargo-release-${{ matrix.lane }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-release-${{ matrix.lane }}-
-      - name: Build release binary (${{ matrix.lane }})
-        env:
-          RUSTFLAGS: ${{ matrix.rustflags }}
-        run: |
-          cargo build --release --locked --target "${TARGET}" -p "${PACKAGE_NAME}"
-      - name: Package preview artifact (${{ matrix.lane }})
-        run: |
-          ARTIFACT_BASENAME="cloudflared-${GITHUB_SHA}-linux-x86_64-gnu-${{ matrix.lane }}"
-          rm -rf dist
-          mkdir -p dist
-          install -Dm755 "target/${TARGET}/release/${BIN_NAME}" "dist/${BIN_NAME}"
-          if [ -f README.md ]; then
-            cp README.md dist/
-          fi
-          if [ -f LICENSE ]; then
-            cp LICENSE dist/
-          fi
-          tar -C dist -czf "${ARTIFACT_BASENAME}.tar.gz" .
-          sha256sum "${ARTIFACT_BASENAME}.tar.gz" > "${ARTIFACT_BASENAME}.tar.gz.sha256"
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cloudflared-${{ github.sha }}-linux-x86_64-gnu-${{ matrix.lane }}
-          path: |
-            cloudflared-${{ github.sha }}-linux-x86_64-gnu-${{ matrix.lane }}.tar.gz
-            cloudflared-${{ github.sha }}-linux-x86_64-gnu-${{ matrix.lane }}.tar.gz.sha256
-          retention-days: 30
+    build-preview:
+        needs: test
+        runs-on: ubuntu-24.04
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - lane: x86-64-v2
+                      rustflags: -C target-cpu=x86-64-v2 -C strip=symbols
+                    - lane: x86-64-v4
+                      rustflags: -C target-cpu=x86-64-v4 -C strip=symbols
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+            - name: Install stable toolchain
+              run: |
+                  rustup toolchain install stable --profile minimal --no-self-update
+                  rustup default stable
+                  rustc -Vv
+                  cargo -V
+            - name: Cache Cargo registry and build
+              uses: actions/cache@v5
+              with:
+                  path: |
+                      ~/.cargo/registry/index
+                      ~/.cargo/registry/cache
+                      ~/.cargo/git/db
+                      target
+                  key: ${{ runner.os }}-cargo-release-${{ matrix.lane }}-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-cargo-release-${{ matrix.lane }}-
+            - name: Build release binary (${{ matrix.lane }})
+              env:
+                  RUSTFLAGS: ${{ matrix.rustflags }}
+              run: |
+                  cargo build --release --locked --target "${TARGET}" -p "${PACKAGE_NAME}"
+            - name: Smoke-test deployment contract (${{ matrix.lane }})
+              run: |
+                  BINARY="target/${TARGET}/release/${BIN_NAME}"
+                  echo "tunnel: 00000000-0000-0000-0000-000000000000" > /tmp/smoke-config.yml
+                  echo "ingress:" >> /tmp/smoke-config.yml
+                  echo "  - service: http_status:503" >> /tmp/smoke-config.yml
+
+                  # validate subcommand should pass the deployment contract check
+                  "${BINARY}" --config /tmp/smoke-config.yml validate \
+                    | tee /tmp/validate-output.txt
+                  grep -q "OK: admitted alpha startup surface validated" /tmp/validate-output.txt
+
+                  # run subcommand will fail (no credentials) but should emit deploy-* evidence
+                  "${BINARY}" --config /tmp/smoke-config.yml run \
+                    > /tmp/run-output.txt 2>&1 || true
+                  grep -q "deploy-contract:" /tmp/run-output.txt
+                  grep -q "deploy-host-validation:" /tmp/run-output.txt
+                  grep -q "deploy-known-gaps:" /tmp/run-output.txt
+                  grep -q "deploy-evidence-scope:" /tmp/run-output.txt
+                  echo "Deployment evidence smoke test passed for ${{ matrix.lane }}"
+            - name: Package preview artifact (${{ matrix.lane }})
+              run: |
+                  ARTIFACT_BASENAME="cloudflared-${GITHUB_SHA}-linux-x86_64-gnu-${{ matrix.lane }}"
+                  rm -rf dist
+                  mkdir -p dist
+                  install -Dm755 "target/${TARGET}/release/${BIN_NAME}" "dist/${BIN_NAME}"
+                  if [ -f README.md ]; then
+                    cp README.md dist/
+                  fi
+                  if [ -f LICENSE ]; then
+                    cp LICENSE dist/
+                  fi
+                  tar -C dist -czf "${ARTIFACT_BASENAME}.tar.gz" .
+                  sha256sum "${ARTIFACT_BASENAME}.tar.gz" > "${ARTIFACT_BASENAME}.tar.gz.sha256"
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: cloudflared-${{ github.sha }}-linux-x86_64-gnu-${{ matrix.lane }}
+                  path: |
+                      cloudflared-${{ github.sha }}-linux-x86_64-gnu-${{ matrix.lane }}.tar.gz
+                      cloudflared-${{ github.sha }}-linux-x86_64-gnu-${{ matrix.lane }}.tar.gz.sha256
+                  retention-days: 30

@@ -87,6 +87,18 @@ pub(in crate::runtime) struct RuntimeStatus {
     pub(in crate::runtime) restart_budget_max: u32,
     pub(in crate::runtime) protocol_bridge_present: bool,
     pub(in crate::runtime) timing: StageTiming,
+    pub(in crate::runtime) deployment: DeploymentState,
+}
+
+/// Deployment contract validation state collected during startup.
+///
+/// Tracks whether the host passed deployment-contract checks so the
+/// evidence emitter can report accurate deployment proof at finish.
+pub(in crate::runtime) struct DeploymentState {
+    pub(in crate::runtime) host_validated: bool,
+    pub(in crate::runtime) glibc_present: bool,
+    pub(in crate::runtime) systemd_detected: bool,
+    pub(in crate::runtime) config_path: Option<String>,
 }
 
 impl RuntimeStatus {
@@ -106,6 +118,12 @@ impl RuntimeStatus {
             restart_budget_max: 0,
             protocol_bridge_present,
             timing: StageTiming::new(),
+            deployment: DeploymentState {
+                host_validated: false,
+                glibc_present: false,
+                systemd_detected: false,
+                config_path: None,
+            },
         }
     }
 

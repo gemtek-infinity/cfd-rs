@@ -41,6 +41,11 @@ What exists now:
   evidence, bounded reconnect/retry proof, shutdown proof, malformed-input
   boundary handling, dependency-boundary failure visibility, and honest
   config-reload non-support declaration for the admitted alpha harness path
+- a Phase 4.4 internal deployment proof surface in `crates/cloudflared-cli/`
+  that emits machine-readable deployment evidence, validates the deployment
+  contract at runtime startup, declares known deployment gaps and operational
+  caveats explicitly, and provides a documented repeatable build-to-run flow
+  for the declared Linux production-alpha lane
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 
@@ -50,8 +55,10 @@ What does not exist yet:
 - registration RPC content (capnp) and incoming request stream handling
 - broader standard-format integration beyond the active origin-cert path and
   broader compliance proof work
-- broad admin APIs, broader performance proof beyond the admitted harness
-  path, and deployment proof
+- broad admin APIs and broader performance proof beyond the admitted harness
+  path
+- real systemd unit files, installers, container images, updaters, and
+  log-rotation integration beyond the admitted deployment proof surface
 - parity-complete broader subsystem coverage
 - broader platform scope beyond the frozen Linux lane
 
