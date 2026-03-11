@@ -116,29 +116,10 @@ impl OriginCertToken {
 
         let mut token = None;
         for block in origin_cert_pem::parse_blocks(blocks)? {
-            match block.block_type() {
-                "PRIVATE KEY" | "CERTIFICATE" => {}
-                "ARGO TUNNEL TOKEN" => {
-                    if token.as_ref().is_some_and(|current: &OriginCertToken| {
-                        !current.zone_id.is_empty() || !current.api_token.is_empty()
-                    }) {
-                        return Err(ConfigError::OriginCertMultipleTokens);
-                    }
-
-                    if let Ok(decoded) = Self::from_json_bytes(block.contents()) {
-                        token = Some(decoded);
-                    }
-                }
-                other => return Err(ConfigError::origin_cert_unknown_block(other)),
-            }
+            Self::handle_pem_block(&mut token, &block)?;
         }
 
-        let token = token.ok_or(ConfigError::OriginCertMissingToken)?;
-        if token.zone_id.is_empty() || token.api_token.is_empty() {
-            return Err(ConfigError::OriginCertMissingToken);
-        }
-
-        Ok(token)
+        Self::validate_parsed_token(token)
     }
 
     pub fn from_pem_path(path: &Path) -> Result<Self> {
@@ -163,6 +144,39 @@ impl OriginCertToken {
         token.endpoint = token.endpoint.map(|value| value.to_ascii_lowercase());
         Ok(token)
     }
+
+    fn handle_pem_block(token: &mut Option<Self>, block: &origin_cert_pem::OriginCertPemBlock) -> Result<()> {
+        match block.block_type() {
+            "PRIVATE KEY" | "CERTIFICATE" => Ok(()),
+            "ARGO TUNNEL TOKEN" => Self::decode_token_block(token, block.contents()),
+            other => Err(ConfigError::origin_cert_unknown_block(other)),
+        }
+    }
+
+    fn decode_token_block(token: &mut Option<Self>, contents: &[u8]) -> Result<()> {
+        if token_contains_credentials(token.as_ref()) {
+            return Err(ConfigError::OriginCertMultipleTokens);
+        }
+
+        if let Ok(decoded) = Self::from_json_bytes(contents) {
+            *token = Some(decoded);
+        }
+
+        Ok(())
+    }
+
+    fn validate_parsed_token(token: Option<Self>) -> Result<Self> {
+        let token = token.ok_or(ConfigError::OriginCertMissingToken)?;
+        if token.zone_id.is_empty() || token.api_token.is_empty() {
+            return Err(ConfigError::OriginCertMissingToken);
+        }
+
+        Ok(token)
+    }
+}
+
+fn token_contains_credentials(token: Option<&OriginCertToken>) -> bool {
+    token.is_some_and(|current| !current.zone_id.is_empty() || !current.api_token.is_empty())
 }
 
 impl OriginCertUser {

@@ -80,7 +80,7 @@ fn parse_flag_origin_url(value: &str) -> Result<IngressService> {
         url.set_path("");
     }
 
-    if super::service_parser::is_http_scheme(url.scheme()) {
+    if matches!(url.scheme(), "http" | "https" | "ws" | "wss") {
         Ok(IngressService::Http(url))
     } else {
         Ok(IngressService::TcpOverWebsocket(url))

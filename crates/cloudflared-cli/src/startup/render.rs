@@ -1,8 +1,8 @@
-use cloudflared_config::{ConfigSource, DiscoveryAction, IngressService, NormalizationWarning};
+use cloudflared_config::{DiscoveryAction, IngressService, NormalizationWarning};
 
 use crate::runtime::RuntimeExecution;
 
-use super::StartupSurface;
+use super::{StartupSurface, config_source_label};
 
 pub(crate) fn render_validate_output(startup: &StartupSurface) -> String {
     let mut lines = vec![String::from("OK: admitted alpha startup surface validated")];
@@ -15,14 +15,6 @@ pub(crate) fn render_run_output(startup: &StartupSurface, report: &RuntimeExecut
     lines.extend(render_startup_lines(startup));
     lines.extend(report.summary_lines.iter().cloned());
     lines.join("\n") + "\n"
-}
-
-pub(crate) fn config_source_label(source: &ConfigSource) -> &'static str {
-    match source {
-        ConfigSource::ExplicitPath(_) => "explicit",
-        ConfigSource::DiscoveredPath(_) => "discovered",
-        ConfigSource::AutoCreatedPath(_) => "auto-created",
-    }
 }
 
 fn render_startup_lines(startup: &StartupSurface) -> Vec<String> {

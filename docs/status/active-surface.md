@@ -3,15 +3,15 @@
 This file captures the currently admitted executable surface and the immediate
 deferred scope around it.
 
-## Active Phase 3.7 + 4.1 Focus
+## Active Phase 4.1 Surface
 
 Phase 3.3 owns the QUIC tunnel core. Phase 3.4 adds the Pingora proxy seam
 above it. Phase 3.5 adds the wire/protocol boundary between them. Phase 3.6
 adds a narrow security/compliance operational boundary around the admitted
 quiche + BoringSSL lane. Phase 3.7 admits the minimum standard-format crate
-boundary required by the active runtime path. Phase 4.1 adds the minimum
-observability and operability surface required to run and inspect that alpha
-honestly.
+boundary required by the active runtime path. Phase 4.1 is the current
+admitted slice on top of that base and adds the minimum observability and
+operability surface required to run and inspect that alpha honestly.
 
 What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1):
 

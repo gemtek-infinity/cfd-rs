@@ -54,6 +54,16 @@ pub struct ActiveContextView {
 pub async fn load_active_context(repo_root: &Path, max_chars: usize) -> ActiveContextView {
     let max_chars = max_chars.clamp(200, 12000);
     let path = repo_root.join(ACTIVE_CONTEXT_PATH);
+    let missing_view = |source, message, first_step| ActiveContextView {
+        found: false,
+        source_path: ACTIVE_CONTEXT_PATH,
+        source,
+        max_chars,
+        truncated: false,
+        content: None,
+        message,
+        next_steps: vec![first_step, "Read docs/promotion-gates.md and STATUS.md directly."],
+    };
 
     match fs::read_to_string(path).await {
         Ok(text) => {
@@ -74,31 +84,15 @@ pub async fn load_active_context(repo_root: &Path, max_chars: usize) -> ActiveCo
                 ],
             }
         }
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => ActiveContextView {
-            found: false,
-            source_path: ACTIVE_CONTEXT_PATH,
-            source: "missing",
-            max_chars,
-            truncated: false,
-            content: None,
-            message: "no active context file found",
-            next_steps: vec![
-                "Create docs/ACTIVE_CONTEXT.md to define current active context.",
-                "Read docs/promotion-gates.md and STATUS.md directly.",
-            ],
-        },
-        Err(_) => ActiveContextView {
-            found: false,
-            source_path: ACTIVE_CONTEXT_PATH,
-            source: "error",
-            max_chars,
-            truncated: false,
-            content: None,
-            message: "active context file is not readable",
-            next_steps: vec![
-                "Fix file permissions or encoding for docs/ACTIVE_CONTEXT.md.",
-                "Read docs/promotion-gates.md and STATUS.md directly.",
-            ],
-        },
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => missing_view(
+            "missing",
+            "no active context file found",
+            "Create docs/ACTIVE_CONTEXT.md to define current active context.",
+        ),
+        Err(_) => missing_view(
+            "error",
+            "active context file is not readable",
+            "Fix file permissions or encoding for docs/ACTIVE_CONTEXT.md.",
+        ),
     }
 }

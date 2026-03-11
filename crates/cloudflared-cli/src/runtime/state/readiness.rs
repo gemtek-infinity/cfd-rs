@@ -53,7 +53,7 @@ fn resolve_readiness_state(
         return ReadinessState::WaitingForProxyAdmission;
     }
 
-    if !transport_stage.map_or(false, |stage| stage.is_connected()) {
+    if !transport_stage.is_some_and(|stage| stage.is_connected()) {
         return ReadinessState::WaitingForTransport;
     }
 

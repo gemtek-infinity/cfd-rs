@@ -29,19 +29,35 @@ fn handle_argument(
     args: &mut impl Iterator<Item = OsString>,
     state: &mut ParseState,
 ) -> Result<(), String> {
+    if handle_config_flag(arg.as_os_str(), args, state)? {
+        return Ok(());
+    }
+
+    handle_non_config_argument(arg, state)
+}
+
+fn handle_config_flag(
+    arg: &OsStr,
+    args: &mut impl Iterator<Item = OsString>,
+    state: &mut ParseState,
+) -> Result<bool, String> {
     if arg == OsStr::new("--config") {
         let value = args
             .next()
             .ok_or_else(|| String::from("missing value for --config"))?;
         set_config_path(&mut state.config_path, PathBuf::from(value))?;
-        return Ok(());
+        return Ok(true);
     }
 
-    if let Some(path) = parse_equals_flag(&arg, "--config") {
+    if let Some(path) = parse_equals_flag(arg, "--config") {
         set_config_path(&mut state.config_path, PathBuf::from(path))?;
-        return Ok(());
+        return Ok(true);
     }
 
+    Ok(false)
+}
+
+fn handle_non_config_argument(arg: OsString, state: &mut ParseState) -> Result<(), String> {
     match arg.to_string_lossy().as_ref() {
         "--help" | "-h" | "help" => {
             state.help_requested = true;

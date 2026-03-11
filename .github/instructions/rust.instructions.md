@@ -58,6 +58,7 @@ For medium or large Rust or manifest changes, before running checks:
 - keep the pass local; do not turn it into a repo-wide cleanup
 - consult the MCP Debtmap surface first when the task is a refactor, hotspot cleanup, ownership split, or medium/large control-flow change
 - when using Debtmap, prefer touched-files review first, then narrow path-prefix review, then broader hotspot review only if still needed
+- treat a Debtmap score above 150 as needing further cognitive-load reduction, and aim to keep touched Rust files below 150 when feasible
 - if the MCP Debtmap surface is unavailable, inaccessible, or insufficient, say so explicitly and continue with bounded direct review
 
 Do not force this pass on trivial edits.

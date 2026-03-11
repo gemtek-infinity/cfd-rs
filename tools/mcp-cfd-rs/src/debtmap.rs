@@ -183,8 +183,7 @@ fn analyze_text(text: &str) -> TextMetrics {
         }
 
         // TODO/FIXME markers.
-        let upper = trimmed.to_uppercase();
-        if upper.contains("TODO") || upper.contains("FIXME") {
+        if contains_todo_marker(trimmed) {
             todo_count += 1;
         }
     }
@@ -235,8 +234,7 @@ fn collect_todos(text: &str, limit: usize) -> Vec<TodoEntry> {
     let mut todos = Vec::new();
 
     for (idx, line) in text.lines().enumerate() {
-        let upper = line.to_uppercase();
-        if upper.contains("TODO") || upper.contains("FIXME") {
+        if contains_todo_marker(line) {
             todos.push(TodoEntry {
                 line: idx + 1,
                 text: line.trim().to_string(),
@@ -256,35 +254,60 @@ fn collect_long_fns(text: &str, threshold: usize) -> Vec<usize> {
     let mut brace_depth: i32 = 0;
 
     for (idx, line) in text.lines().enumerate() {
-        let trimmed = line.trim_start();
-
-        if is_fn_definition(trimmed) && fn_start.is_none() {
-            fn_start = Some(idx + 1);
-            brace_depth = 0;
-        }
-
-        for ch in line.chars() {
-            match ch {
-                '{' => brace_depth += 1,
-                '}' => brace_depth -= 1,
-                _ => {}
-            }
-        }
-
-        if let Some(start) = fn_start
-            && brace_depth <= 0
-            && idx + 1 > start
-        {
-            let fn_len = idx + 1 - start + 1;
-            if fn_len >= threshold {
-                long_starts.push(start);
-            }
-            fn_start = None;
-            brace_depth = 0;
-        }
+        track_long_function_line(
+            line,
+            idx + 1,
+            threshold,
+            &mut fn_start,
+            &mut brace_depth,
+            &mut long_starts,
+        );
     }
 
     long_starts
+}
+
+fn contains_todo_marker(line: &str) -> bool {
+    let upper = line.to_uppercase();
+    upper.contains("TODO") || upper.contains("FIXME")
+}
+
+fn track_long_function_line(
+    line: &str,
+    line_number: usize,
+    threshold: usize,
+    fn_start: &mut Option<usize>,
+    brace_depth: &mut i32,
+    long_starts: &mut Vec<usize>,
+) {
+    let trimmed = line.trim_start();
+
+    if is_fn_definition(trimmed) && fn_start.is_none() {
+        *fn_start = Some(line_number);
+        *brace_depth = 0;
+    }
+
+    *brace_depth += brace_delta(line);
+
+    if let Some(start) = *fn_start
+        && *brace_depth <= 0
+        && line_number > start
+    {
+        let fn_len = line_number - start + 1;
+        if fn_len >= threshold {
+            long_starts.push(start);
+        }
+        *fn_start = None;
+        *brace_depth = 0;
+    }
+}
+
+fn brace_delta(line: &str) -> i32 {
+    line.chars().fold(0, |delta, ch| match ch {
+        '{' => delta + 1,
+        '}' => delta - 1,
+        _ => delta,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -338,7 +361,7 @@ async fn collect_analyzable_files(base: &Path, out: &mut BTreeSet<PathBuf>) {
     }
 
     if meta.is_file() {
-        if meta.len() <= MAX_ANALYZABLE_SIZE && mcp_fs::is_text_file(base) {
+        if is_analyzable_file(base, &meta) {
             out.insert(base.to_path_buf());
         }
         return;
@@ -370,11 +393,15 @@ async fn walk_dir_for_analysis(start: &Path, out: &mut BTreeSet<PathBuf>) {
 
             if meta.is_dir() {
                 stack.push(path);
-            } else if meta.is_file() && meta.len() <= MAX_ANALYZABLE_SIZE && mcp_fs::is_text_file(&path) {
+            } else if is_analyzable_file(&path, &meta) {
                 out.insert(path);
             }
         }
     }
+}
+
+fn is_analyzable_file(path: &Path, meta: &std::fs::Metadata) -> bool {
+    meta.is_file() && meta.len() <= MAX_ANALYZABLE_SIZE && mcp_fs::is_text_file(path)
 }
 
 // ---------------------------------------------------------------------------

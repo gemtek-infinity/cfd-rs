@@ -91,7 +91,7 @@ The following top-level rewrite decisions are part of the active scaffold:
   - Phase 3.5 wire/protocol boundary is admitted
   - Phase 3.6 security/compliance operational boundary is admitted
   - Phase 3.7 standard-format crate integration boundary is admitted
-- Big Phase 4 has started narrowly:
+- Big Phase 4 is admitted narrowly at 4.1:
   - Phase 4.1 observability and operability is admitted around the existing
     runnable-alpha surface
   - 4.2 performance proof, 4.3 failure-mode proof, and 4.4 deployment proof
