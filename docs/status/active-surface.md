@@ -3,15 +3,17 @@
 This file captures the currently admitted executable surface and the immediate
 deferred scope around it.
 
-## Active Phase 3.7 Focus
+## Active Phase 3.7 + 4.1 Focus
 
 Phase 3.3 owns the QUIC tunnel core. Phase 3.4 adds the Pingora proxy seam
 above it. Phase 3.5 adds the wire/protocol boundary between them. Phase 3.6
 adds a narrow security/compliance operational boundary around the admitted
 quiche + BoringSSL lane. Phase 3.7 admits the minimum standard-format crate
-boundary required by the active runtime path.
+boundary required by the active runtime path. Phase 4.1 adds the minimum
+observability and operability surface required to run and inspect that alpha
+honestly.
 
-What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7):
+What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1):
 
 - `run` enters a real quiche-based transport service under the runtime boundary
 - connection/session ownership and QUIC handshake state are explicit
@@ -42,6 +44,13 @@ What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7):
   `crates/cloudflared-config/src/credentials.rs`
 - direct third-party PEM handling remains confined to that owned credential
   boundary rather than leaking across runtime, transport, proxy, or app code
+- runtime-owned observability now reports lifecycle transitions, owner-scoped
+  transport/protocol/proxy state, and failure boundaries live while `run`
+  executes
+- the runtime now derives and reports a narrow readiness state for the current
+  alpha role rather than implying broader request-serving readiness
+- the runtime now emits a minimal final operability snapshot with restart,
+  proxy-admission, protocol-registration, and failure counters
 
 What the current surface does not imply:
 
@@ -52,6 +61,8 @@ What the current surface does not imply:
   certification, whole-program compliance, or validated FIPS implementation
 - that broader standard-format crate integration beyond active-slice need
   exists
+- that the narrow readiness signal implies broad admin, deployment, or
+  production-proof surfaces
 - that packaging, installers, updaters, or deployment tooling already exist
 
 ## Deferred Within Big Phase 3
@@ -69,6 +80,8 @@ The following remain intentionally out of the current executable-surface task:
   outside their later owning slices
 - packaging, deployment tooling, container support, and
   certification-proving work beyond the current numbered Big Phase 3 slice list
+- performance proof, failure-mode proof, and broader deployment/management
+  work beyond the admitted 4.1 observability surface
 
 ## Follow-On Constraints For Later Slices
 

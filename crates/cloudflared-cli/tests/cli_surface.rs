@@ -40,9 +40,12 @@ fn help_lists_admitted_surface() {
     assert!(output.status.success());
     assert!(stdout.contains("Pingora proxy seam"));
     assert!(stdout.contains("wire/protocol boundary"));
+    assert!(stdout.contains("narrow operability reporting"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] validate"));
     assert!(stdout.contains("cloudflared [--config FILEPATH] run"));
     assert!(stdout.contains("HOME"));
+    assert!(stdout.contains("lifecycle, readiness, and failure visibility"));
+    assert!(stdout.contains("Admitted operability surface"));
     assert!(stdout.contains("http_status only"));
     assert!(stdout.contains("Broader origin support"));
     assert!(stdout.contains("registration RPC"));
@@ -76,6 +79,7 @@ fn validate_reports_admitted_startup_surface() {
     assert!(stdout.contains("config-source: explicit"));
     assert!(stdout.contains(&format!("config-path: {}", config.display())));
     assert!(stdout.contains("ingress-rules: 2"));
+    assert!(stdout.contains("startup-readiness: admitted-for-runtime-handoff"));
     assert!(stdout.contains("warnings: none"));
 
     fs::remove_dir_all(root).expect("temp directory should be removable");
@@ -93,8 +97,10 @@ fn run_exits_nonzero_when_quic_transport_inputs_are_missing() {
     assert_eq!(output.status.code(), Some(1));
     assert!(stdout.contains("Resolved admitted alpha startup surface"));
     assert!(stdout.contains("config-source: explicit"));
+    assert!(stdout.contains("startup-readiness: admitted-for-runtime-handoff"));
     assert!(stdout.contains("runtime-owner: initialized"));
     assert!(stdout.contains("config-ownership: runtime-owned"));
+    assert!(stdout.contains("readiness-scope: narrow-alpha-control-plane-only"));
     assert!(stdout.contains("security-boundary: runtime-crypto-surface=transport-tls-only"));
     assert!(
         stdout
@@ -105,6 +111,12 @@ fn run_exits_nonzero_when_quic_transport_inputs_are_missing() {
         stdout.contains("proxy-seam: origin-proxy admitted"),
         "run output should report the admitted Pingora proxy seam"
     );
+    assert!(stdout.contains("proxy-state: admitted"));
+    assert!(stdout.contains("protocol-state: bridge-created"));
+    assert!(stdout.contains("operability-status: lifecycle=failed readiness=failed"));
+    assert!(stdout.contains("operability-metrics: restart-attempts=0 proxy-admissions=1"));
+    assert!(stderr.contains("readiness-transition state=waiting-for-transport"));
+    assert!(stderr.contains("failure-boundary owner=quic-tunnel-core class=fatal"));
     assert!(stderr.contains("quic tunnel core requires credentials-file or origincert"));
 
     fs::remove_dir_all(root).expect("temp directory should be removable");

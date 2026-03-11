@@ -84,15 +84,18 @@ The following top-level rewrite decisions are part of the active scaffold:
 - Big Phase 2 is closed and frozen:
   - purpose was to freeze the Linux production-alpha lane
   - tasks 2.0 through 2.6 are complete at the governance level
-- Big Phase 3 is current:
-  - purpose: build the minimum runnable alpha on the frozen lane
+- Big Phase 3 runnable-alpha admission remains the active base:
+  - purpose was to build the minimum runnable alpha on the frozen lane
   - Phase 3.3 QUIC tunnel core is admitted
   - Phase 3.4 Pingora proxy seam (3.4a–c) is admitted
   - Phase 3.5 wire/protocol boundary is admitted
   - Phase 3.6 security/compliance operational boundary is admitted
   - Phase 3.7 standard-format crate integration boundary is admitted
-- Big Phase 4 is later:
-  - harden, validate, measure, and prove the alpha in real use
+- Big Phase 4 has started narrowly:
+  - Phase 4.1 observability and operability is admitted around the existing
+    runnable-alpha surface
+  - 4.2 performance proof, 4.3 failure-mode proof, and 4.4 deployment proof
+    remain later
 - Big Phase 5 is later:
   - widen intentionally only after the alpha is credible
 
@@ -116,13 +119,15 @@ The following top-level rewrite decisions are part of the active scaffold:
 - `baseline-2026.2.0/old-impl/` contains the frozen Go source of truth
 - `baseline-2026.2.0/design-audit/` contains the extracted spec set
 - `docs/` contains rewrite-program decisions and semantic guidance
-- `crates/` contains only minimal Rust crate skeletons
+- `crates/` contains the admitted Rust implementation crates plus the
+  remaining future-slice skeleton crates
 
 Current crate intent:
 
 - `crates/cloudflared-cli`: narrow admitted alpha entry surface for help,
   version, config-backed startup validation, the current runtime/lifecycle
-  owner, the current QUIC transport core, and the Pingora proxy seam
+  owner, the current QUIC transport core, the Pingora proxy seam, and the
+  admitted 4.1 observability/operability reporting surface
 - `crates/cloudflared-config`: owning crate for the accepted first-slice
   domain skeleton and future config, credentials, and ingress normalization
   behavior

@@ -27,6 +27,10 @@ What exists now:
 - a Phase 3.7 standard-format crate integration boundary that admits
   workspace-managed PEM handling for the active origin-cert runtime path
   through owned credential adapters in `crates/cloudflared-config/`
+- a Phase 4.1 observability and operability surface in
+  `crates/cloudflared-cli/` that emits live runtime reporting, owner-scoped
+  transport/protocol/proxy state, narrow readiness truth, and minimal
+  operability counters for the admitted alpha path
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 
@@ -36,6 +40,7 @@ What does not exist yet:
 - registration RPC content (capnp) and incoming request stream handling
 - broader standard-format integration beyond the active origin-cert path and
   broader compliance proof work
+- broad admin APIs, performance proof, failure-mode proof, and deployment proof
 - parity-complete broader subsystem coverage
 - broader platform scope beyond the frozen Linux lane
 

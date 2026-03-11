@@ -1,4 +1,4 @@
-//! Phase 3.5: Wire/protocol boundary between transport and proxy.
+//! Phase 3.5 + 4.1: Wire/protocol boundary between transport and proxy.
 //!
 //! Owns the protocol-level boundary that bridges the QUIC transport
 //! session to the Pingora proxy layer. Transport owns QUIC establishment.
@@ -18,11 +18,33 @@ use tokio::sync::mpsc;
 /// bidirectional stream for tunnel registration.
 pub(crate) const CONTROL_STREAM_ID: u64 = 0;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProtocolBridgeState {
+    BridgeUnavailable,
+    BridgeCreated,
+    RegistrationSent,
+    RegistrationObserved,
+    BridgeClosed,
+}
+
+impl ProtocolBridgeState {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Self::BridgeUnavailable => "bridge-unavailable",
+            Self::BridgeCreated => "bridge-created",
+            Self::RegistrationSent => "registration-sent",
+            Self::RegistrationObserved => "registration-observed",
+            Self::BridgeClosed => "bridge-closed",
+        }
+    }
+}
+
 /// Events that cross the wire/protocol boundary from transport to proxy.
 ///
 /// This is the explicit handoff surface. Transport sends these events
 /// after crossing protocol boundaries. The proxy layer receives them
-/// to coordinate its readiness.
+/// for its owned lifecycle reporting, while the runtime derives the
+/// top-level readiness view from owner-scoped state updates.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ProtocolEvent {
     /// The transport has opened the control stream and reached the
@@ -52,10 +74,15 @@ pub(crate) struct ProtocolSender(mpsc::Sender<ProtocolEvent>);
 
 impl ProtocolSender {
     /// Send a protocol event across the wire/protocol boundary.
-    pub(crate) async fn send(&self, event: ProtocolEvent) {
-        // Best-effort: if the receiver has been dropped, the event
-        // is silently lost. The runtime owns shutdown ordering.
-        let _ = self.0.send(event).await;
+    ///
+    /// Returns an error when the proxy-owned receiver is no longer
+    /// available so the transport can report that failure boundary
+    /// explicitly instead of losing the signal silently.
+    pub(crate) async fn send(&self, event: ProtocolEvent) -> Result<(), String> {
+        self.0
+            .send(event)
+            .await
+            .map_err(|_| String::from("proxy-side protocol bridge receiver is no longer available"))
     }
 }
 
@@ -84,7 +111,8 @@ mod tests {
             .send(ProtocolEvent::Registered {
                 peer: "127.0.0.1:7844".to_owned(),
             })
-            .await;
+            .await
+            .expect("bridge sender should deliver event while receiver is alive");
 
         assert_eq!(
             receiver.recv().await,
@@ -112,7 +140,8 @@ mod tests {
             .send(ProtocolEvent::Registered {
                 peer: "10.0.0.1:7844".to_owned(),
             })
-            .await;
+            .await
+            .expect("bridge sender clone should deliver event while receiver is alive");
 
         assert_eq!(
             receiver.recv().await,

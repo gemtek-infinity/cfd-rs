@@ -12,6 +12,8 @@ use tokio::time;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
+use super::TransportLifecycleStage;
+use crate::protocol::ProtocolBridgeState;
 use crate::protocol::{CONTROL_STREAM_ID, ProtocolEvent, ProtocolSender};
 use crate::runtime::{
     ChildTask, RuntimeCommand, RuntimeConfig, RuntimeService, RuntimeServiceFactory, ServiceExit,
@@ -103,6 +105,14 @@ impl QuicTunnelService {
             }
         };
 
+        send_transport_stage(
+            &command_tx,
+            service_name,
+            TransportLifecycleStage::IdentityLoaded,
+            format!("identity-source={}", identity.identity_source),
+        )
+        .await;
+
         send_status(
             &command_tx,
             service_name,
@@ -133,6 +143,16 @@ impl QuicTunnelService {
             "quic-pqc-compatibility: preserved through quiche + boringssl lane".to_owned(),
         )
         .await;
+        send_transport_stage(
+            &command_tx,
+            service_name,
+            TransportLifecycleStage::ResolvingEdge,
+            format!(
+                "endpoint-hint={}",
+                identity.endpoint_hint.as_deref().unwrap_or(EDGE_DEFAULT_REGION)
+            ),
+        )
+        .await;
 
         let target = match self.test_target.as_ref() {
             Some(target) => target.clone(),
@@ -156,6 +176,13 @@ impl QuicTunnelService {
                 target.connect_addr,
                 identity.endpoint_hint.as_deref().unwrap_or(EDGE_DEFAULT_REGION)
             ),
+        )
+        .await;
+        send_transport_stage(
+            &command_tx,
+            service_name,
+            TransportLifecycleStage::Dialing,
+            format!("edge={}", target.connect_addr),
         )
         .await;
         send_status(
@@ -233,6 +260,13 @@ impl QuicTunnelService {
             format!("transport-session-state: handshaking local={local_addr}"),
         )
         .await;
+        send_transport_stage(
+            command_tx,
+            self.name(),
+            TransportLifecycleStage::Handshaking,
+            format!("local={local_addr} remote={}", target.connect_addr),
+        )
+        .await;
 
         loop {
             if connection.is_established() {
@@ -296,11 +330,23 @@ impl QuicTunnelService {
             ),
         )
         .await;
+        send_transport_stage(
+            command_tx,
+            self.name(),
+            TransportLifecycleStage::Established,
+            format!(
+                "peer={} resumed-shape={}",
+                target.connect_addr,
+                identity.resumption.shape_label()
+            ),
+        )
+        .await;
         let _ = command_tx
             .send(RuntimeCommand::ServiceReady { service: self.name() })
             .await;
 
-        // Phase 3.5: Cross the wire/protocol boundary.
+        // Phase 3.5 + 4.1: Cross the wire/protocol boundary and report
+        // the transport-owned stage transition explicitly.
         // Open the control stream on the established QUIC session.
         // This proves wire-level protocol behavior exists beyond
         // transport establishment. Registration RPC content and
@@ -311,6 +357,13 @@ impl QuicTunnelService {
                     command_tx,
                     self.name(),
                     format!("protocol-boundary: control-stream-{CONTROL_STREAM_ID} opened"),
+                )
+                .await;
+                send_transport_stage(
+                    command_tx,
+                    self.name(),
+                    TransportLifecycleStage::ControlStreamOpened,
+                    format!("stream-id={CONTROL_STREAM_ID}"),
                 )
                 .await;
             }
@@ -327,9 +380,24 @@ impl QuicTunnelService {
             .map_err(|error| format!("failed to flush control stream at wire/protocol boundary: {error}"))?;
 
         // Notify the proxy layer through the explicit protocol bridge.
+        // The runtime consumes the resulting owner-scoped updates to
+        // derive its narrow readiness and failure-visibility surface.
         self.protocol_sender
             .send(ProtocolEvent::Registered {
                 peer: target.connect_addr.to_string(),
+            })
+            .await
+            .map_err(|detail| {
+                format!("failed to report transport registration across protocol bridge: {detail}")
+            })?;
+
+        let _ = command_tx
+            .send(RuntimeCommand::ProtocolState {
+                state: ProtocolBridgeState::RegistrationSent,
+                detail: format!(
+                    "transport sent registration event for peer {}",
+                    target.connect_addr
+                ),
             })
             .await;
 
@@ -343,6 +411,13 @@ impl QuicTunnelService {
         // Graceful close — the wire/protocol boundary has been crossed.
         let _ = connection.close(true, 0x00, b"protocol boundary crossed");
         let _ = flush_egress(&socket, &mut connection, &mut send_buffer).await;
+        send_transport_stage(
+            command_tx,
+            self.name(),
+            TransportLifecycleStage::Teardown,
+            format!("peer={}", target.connect_addr),
+        )
+        .await;
         send_status(
             command_tx,
             self.name(),
@@ -563,6 +638,21 @@ async fn flush_egress(
 async fn send_status(command_tx: &mpsc::Sender<RuntimeCommand>, service: &'static str, detail: String) {
     let _ = command_tx
         .send(RuntimeCommand::ServiceStatus { service, detail })
+        .await;
+}
+
+async fn send_transport_stage(
+    command_tx: &mpsc::Sender<RuntimeCommand>,
+    service: &'static str,
+    stage: TransportLifecycleStage,
+    detail: String,
+) {
+    let _ = command_tx
+        .send(RuntimeCommand::TransportStage {
+            service,
+            stage,
+            detail,
+        })
         .await;
 }
 

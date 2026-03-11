@@ -56,6 +56,7 @@ fn render_startup_lines(startup: &StartupSurface) -> Vec<String> {
         ),
         format!("config-path: {}", startup.discovery.path.display()),
         format!("ingress-rules: {}", startup.normalized.ingress.len()),
+        String::from("startup-readiness: admitted-for-runtime-handoff"),
     ];
 
     if startup.discovery.action == DiscoveryAction::CreateDefaultConfig {

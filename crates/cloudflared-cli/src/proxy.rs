@@ -1,5 +1,6 @@
-//! Phase 3.4a–c + 3.5: Pingora proxy-layer seam with lifecycle participation,
-//! first admitted origin/proxy path, and wire/protocol bridge reception.
+//! Phase 3.4a–c + 3.5 + 4.1: Pingora proxy-layer seam with lifecycle
+//! participation, first admitted origin/proxy path, wire/protocol bridge
+//! reception, and owner-scoped operability reporting.
 //!
 //! This module is the owned entry point for Pingora in the production-alpha
 //! path. All direct Pingora types and API usage are confined here. The rest
@@ -13,6 +14,9 @@
 //! 3.4c admitted: first origin/proxy path (http_status ingress routing).
 //! 3.5 admitted: receives protocol registration events from the transport
 //!     layer through the explicit wire/protocol bridge.
+//! 4.1 admitted: reports proxy admission, observed registration, bridge
+//!     closure, and shutdown acknowledgement through the runtime-owned
+//!     operability surface.
 
 use cloudflared_config::{IngressRule, IngressService, find_matching_rule};
 use pingora_http::{RequestHeader, ResponseHeader};
@@ -20,10 +24,27 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
-use crate::protocol::{ProtocolEvent, ProtocolReceiver};
+use crate::protocol::{ProtocolBridgeState, ProtocolEvent, ProtocolReceiver};
 use crate::runtime::{ChildTask, RuntimeCommand};
 
 pub(crate) const PROXY_SEAM_NAME: &str = "pingora-proxy-seam";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProxySeamState {
+    Admitted,
+    RegistrationObserved,
+    ShutdownAcknowledged,
+}
+
+impl ProxySeamState {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            Self::Admitted => "admitted",
+            Self::RegistrationObserved => "registration-observed",
+            Self::ShutdownAcknowledged => "shutdown-acknowledged",
+        }
+    }
+}
 
 /// Owned boundary for the Pingora proxy layer.
 ///
@@ -71,7 +92,8 @@ impl PingoraProxySeam {
     ///
     /// Reports the admitted origin/proxy path and ingress rule count at
     /// startup. When a protocol bridge is provided, waits for
-    /// registration events from the transport layer before shutdown.
+    /// registration events from the transport layer and reports owned
+    /// proxy/protocol visibility before shutdown.
     pub(crate) fn spawn(
         self,
         command_tx: mpsc::Sender<RuntimeCommand>,
@@ -83,6 +105,12 @@ impl PingoraProxySeam {
 
         child_tasks.spawn(async move {
             let _ = command_tx
+                .send(RuntimeCommand::ProxyState {
+                    state: ProxySeamState::Admitted,
+                    detail: format!("ingress-rules={ingress_count}"),
+                })
+                .await;
+            let _ = command_tx
                 .send(RuntimeCommand::ServiceStatus {
                     service: PROXY_SEAM_NAME,
                     detail: format!(
@@ -92,6 +120,8 @@ impl PingoraProxySeam {
                 .await;
 
             if let Some(mut rx) = protocol_rx {
+                let mut registration_observed = false;
+
                 // Wait for protocol registration from the transport
                 // layer, or shutdown, whichever comes first.
                 // Biased: prefer processing a protocol event that
@@ -102,6 +132,19 @@ impl PingoraProxySeam {
                         event = rx.recv() => {
                             match event {
                                 Some(ProtocolEvent::Registered { peer }) => {
+                                    registration_observed = true;
+                                    let _ = command_tx
+                                        .send(RuntimeCommand::ProtocolState {
+                                            state: ProtocolBridgeState::RegistrationObserved,
+                                            detail: format!("proxy observed transport registration from {peer}"),
+                                        })
+                                        .await;
+                                    let _ = command_tx
+                                        .send(RuntimeCommand::ProxyState {
+                                            state: ProxySeamState::RegistrationObserved,
+                                            detail: format!("peer={peer}"),
+                                        })
+                                        .await;
                                     let _ = command_tx
                                         .send(RuntimeCommand::ServiceStatus {
                                             service: PROXY_SEAM_NAME,
@@ -111,7 +154,26 @@ impl PingoraProxySeam {
                                         })
                                         .await;
                                 }
-                                None => break,
+                                None => {
+                                    let detail = if registration_observed {
+                                        String::from("proxy bridge closed after transport registration")
+                                    } else {
+                                        String::from("proxy bridge closed before transport registration")
+                                    };
+                                    let _ = command_tx
+                                        .send(RuntimeCommand::ProtocolState {
+                                            state: ProtocolBridgeState::BridgeClosed,
+                                            detail: detail.clone(),
+                                        })
+                                        .await;
+                                    let _ = command_tx
+                                        .send(RuntimeCommand::ServiceStatus {
+                                            service: PROXY_SEAM_NAME,
+                                            detail: format!("protocol-bridge: {detail}"),
+                                        })
+                                        .await;
+                                    break;
+                                }
                             }
                         }
                         _ = shutdown.cancelled() => break,
@@ -121,6 +183,12 @@ impl PingoraProxySeam {
                 shutdown.cancelled().await;
             }
 
+            let _ = command_tx
+                .send(RuntimeCommand::ProxyState {
+                    state: ProxySeamState::ShutdownAcknowledged,
+                    detail: String::from("proxy seam acknowledged runtime shutdown"),
+                })
+                .await;
             let _ = command_tx
                 .send(RuntimeCommand::ServiceStatus {
                     service: PROXY_SEAM_NAME,
@@ -284,6 +352,15 @@ mod tests {
         let seam = PingoraProxySeam::new(vec![catch_all_rule(503)]);
         seam.spawn(command_tx, None, shutdown.clone(), &mut child_tasks);
 
+        let msg = command_rx.recv().await.expect("should receive proxy state");
+        match msg {
+            RuntimeCommand::ProxyState { state, detail } => {
+                assert_eq!(state, ProxySeamState::Admitted);
+                assert!(detail.contains("ingress-rules=1"));
+            }
+            other => panic!("expected ProxyState for admission, got: {other:?}"),
+        }
+
         // Seam should report the admitted origin/proxy path on startup.
         let msg = command_rx.recv().await.expect("should receive origin status");
         match msg {
@@ -302,6 +379,18 @@ mod tests {
         }
 
         shutdown.cancel();
+
+        let msg = command_rx
+            .recv()
+            .await
+            .expect("should receive shutdown proxy state");
+        match msg {
+            RuntimeCommand::ProxyState { state, detail } => {
+                assert_eq!(state, ProxySeamState::ShutdownAcknowledged);
+                assert!(detail.contains("shutdown"));
+            }
+            other => panic!("expected ProxyState for shutdown, got: {other:?}"),
+        }
 
         let msg = command_rx.recv().await.expect("should receive shutdown status");
         match msg {
@@ -342,6 +431,15 @@ mod tests {
 
         // Startup status.
         let msg = command_rx.recv().await.expect("should receive startup status");
+        assert!(matches!(
+            msg,
+            RuntimeCommand::ProxyState {
+                state: ProxySeamState::Admitted,
+                ..
+            }
+        ));
+
+        let msg = command_rx.recv().await.expect("should receive origin status");
         assert!(matches!(msg, RuntimeCommand::ServiceStatus { .. }));
 
         // Simulate transport sending registration event.
@@ -349,7 +447,32 @@ mod tests {
             .send(ProtocolEvent::Registered {
                 peer: "127.0.0.1:7844".to_owned(),
             })
-            .await;
+            .await
+            .expect("protocol bridge should stay available during registration test");
+
+        let msg = command_rx
+            .recv()
+            .await
+            .expect("should receive protocol state update");
+        match msg {
+            RuntimeCommand::ProtocolState { state, detail } => {
+                assert_eq!(state, ProtocolBridgeState::RegistrationObserved);
+                assert!(detail.contains("127.0.0.1:7844"));
+            }
+            other => panic!("expected ProtocolState for registration, got: {other:?}"),
+        }
+
+        let msg = command_rx
+            .recv()
+            .await
+            .expect("should receive proxy registration state");
+        match msg {
+            RuntimeCommand::ProxyState { state, detail } => {
+                assert_eq!(state, ProxySeamState::RegistrationObserved);
+                assert!(detail.contains("127.0.0.1:7844"));
+            }
+            other => panic!("expected ProxyState for registration, got: {other:?}"),
+        }
 
         // Proxy should report the protocol bridge registration.
         let msg = command_rx
@@ -372,6 +495,18 @@ mod tests {
         }
 
         shutdown.cancel();
+
+        let msg = command_rx
+            .recv()
+            .await
+            .expect("should receive shutdown proxy state");
+        assert!(matches!(
+            msg,
+            RuntimeCommand::ProxyState {
+                state: ProxySeamState::ShutdownAcknowledged,
+                ..
+            }
+        ));
 
         let msg = command_rx.recv().await.expect("should receive shutdown status");
         match msg {
@@ -400,12 +535,50 @@ mod tests {
 
         // Startup status.
         let _ = command_rx.recv().await;
+        let _ = command_rx.recv().await;
 
         // Drop sender without sending registration — simulates
         // transport failure before reaching the protocol boundary.
         drop(protocol_sender);
 
-        // Proxy should still exit cleanly after bridge closure.
+        let msg = command_rx
+            .recv()
+            .await
+            .expect("should receive bridge-closed state");
+        match msg {
+            RuntimeCommand::ProtocolState { state, detail } => {
+                assert_eq!(state, ProtocolBridgeState::BridgeClosed);
+                assert!(detail.contains("before transport registration"));
+            }
+            other => panic!("expected ProtocolState for bridge closure, got: {other:?}"),
+        }
+
+        let msg = command_rx
+            .recv()
+            .await
+            .expect("should receive bridge-closure status after closure");
+        match msg {
+            RuntimeCommand::ServiceStatus { service, detail } => {
+                assert_eq!(service, PROXY_SEAM_NAME);
+                assert!(detail.contains("proxy bridge closed before transport registration"));
+            }
+            other => panic!("expected ServiceStatus for bridge closure, got: {other:?}"),
+        }
+
+        shutdown.cancel();
+
+        let msg = command_rx
+            .recv()
+            .await
+            .expect("should receive shutdown proxy state after bridge closure");
+        assert!(matches!(
+            msg,
+            RuntimeCommand::ProxyState {
+                state: ProxySeamState::ShutdownAcknowledged,
+                ..
+            }
+        ));
+
         let msg = command_rx
             .recv()
             .await
