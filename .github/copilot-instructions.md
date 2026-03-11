@@ -24,11 +24,14 @@ Use the local workspace MCP server first for:
 - active-phase or active-surface questions
 - ownership and routing confirmation
 - targeted file and line reads
+- regex-based search across repo files (`grep_paths`)
 
 For compact routing questions, prefer the local MCP snapshot surface first.
 
 Examples:
 - use a snapshot for questions like "what phase is active?", "which file owns this topic?", or "what is the transport/Pingora/FIPS lane?"
+- use `grep_paths` for pattern-based searches like `Big Phase|production.alpha|widen` across specific directories
+- use `search_paths` with quoted phrases like `"Big Phase 5"` for exact phrase scoring
 - use the frozen baseline after that when the question is about behavior or parity rather than governance routing
 
 If MCP is unavailable, inaccessible, or insufficient:

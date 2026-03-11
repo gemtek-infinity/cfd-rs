@@ -385,17 +385,53 @@ stage-transition regressions.
 
 The promoted alpha scope is validated well enough to be credible in real use.
 
-## Big Phase 5 — Intentional Widening
+## Big Phase 5 — Production-Alpha Completion And Frozen-Baseline Proof
 
 ### Purpose
 
-Widen scope only after the alpha is credible and the reason for widening is
-explicit.
+Complete the remaining frozen-baseline-required feature/surface on the declared
+Linux lane and prove production alpha.
+
+Production alpha means:
+
+- feature-complete, 1:1 in behavior/surface to frozen `2026.2.0` on the
+  declared lane
+- performance proven on that declared lane
+- not every edge case necessarily covered yet
+- implemented as idiomatic Rust with explicit ownership boundaries, not as
+  structural cloning
+
+Big Phase 5 is the phase that completes and proves production alpha.
+There is no separate post-alpha validation phase inside this roadmap.
+
+### Scope includes, where required for frozen-lane parity
+
+- remaining feature/surface completion to frozen `2026.2.0`
+- broader proxy completeness beyond the first admitted origin path
+- registration RPC content and incoming request-stream handling
+- broader standard-format and compliance surfaces beyond the already admitted
+  active path
+- remaining CLI/process/runtime/lifecycle surfaces required for the declared
+  lane
+- broader performance proof beyond the earlier narrow admitted harness path
+- failure/recovery/operability proof across the feature-complete surface
+- behavior/contract parity validation and divergence accounting
+- production-alpha promotion gate
+- admin/control surfaces only where they are actually part of frozen-lane
+  parity
 
 ### Exit condition
 
-Additional platforms, artifacts, or subsystem scope are admitted intentionally,
-not by drift.
+Big Phase 5 is done when the repo can honestly claim production-grade alpha
+for the declared Linux lane: feature-complete 1:1 behavior/surface parity to
+frozen `2026.2.0`, performance proven, known divergences recorded and
+justified, and remaining unknowns narrow, named, and bounded.
+
+### Not allowed before exit
+
+- claiming production alpha without durable behavior/contract parity evidence
+- leaving divergences unrecorded or unjustified
+- treating structural cloning as equivalent to behavior parity
 
 ## Promotion Rule
 
@@ -421,4 +457,6 @@ At the current repo state:
 - Phase 3.7 standard-format crate integration boundary is admitted
 - Phase 4.1 observability and operability is admitted
 - Phase 4.2 performance validation is admitted
-- 4.3 failure-mode proof and 4.4 deployment proof are later
+- 4.3 failure-mode proof and 4.4 deployment proof are later within Big Phase 4
+- Big Phase 5 completes remaining frozen-baseline feature/surface and proves
+  production alpha

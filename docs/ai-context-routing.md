@@ -176,6 +176,77 @@ Examples:
 - use a bundle for questions like "give me the narrow file pack for runtime/dependency policy" or "give me the baseline files for behavior/parity routing"
 - use Debtmap for questions like "what are the top hotspots in this path?", "summarize this touched file's cognitive load", or "review only these changed files for hotspot concentration"
 
+## MCP Tool Reference
+
+Quick reference for all MCP tools, their parameters, and key constraints.
+All paths are repo-relative. All tools enforce repo-boundary security.
+
+### Context tools
+
+| Tool | Required params | Optional params | Returns |
+| ---- | --------------- | --------------- | ------- |
+| `get_context_snapshot` | `snapshot` | | compact facts + source paths |
+| `get_context_brief` | `bundle` | | first file + next-file list |
+| `get_context_bundle` | `bundle` | | curated multi-file entries |
+| `get_active_context` | | `max_chars` (200–12000, default 4000) | docs/ACTIVE\_CONTEXT.md content or missing-file fallback |
+
+Supported bundles: `scope-lane`, `repo-state`, `active-surface`,
+`first-slice-parity`, `runtime-deps`, `behavior-baseline`
+
+Supported snapshots: `active-context`, `governing-files`, `scope-lane`,
+`repo-state`, `active-phase`, `runtime-deps`, `behavior-baseline`,
+`lane-decisions`
+
+### Read tools
+
+| Tool | Required params | Optional params | Returns |
+| ---- | --------------- | --------------- | ------- |
+| `read_file` | `path` | `max_chars` (200–32000, default 8000) | file content, truncated flag |
+| `read_file_lines` | `path`, `start_line`, `end_line` | `max_chars` (200–32000, default 8000) | line range content, total\_line\_count, truncated flag |
+
+`start_line` and `end_line` are **1-based inclusive**. `start_line` must be > 0
+and `end_line` >= `start_line`.
+
+### Listing and metadata tools
+
+| Tool | Required params | Optional params | Returns |
+| ---- | --------------- | --------------- | ------- |
+| `list_paths` | | `base_path` (default `.`), `extensions`, `recursive` (default false), `max_results` (1–500, default 100) | path entries with kind and size |
+| `file_metadata` | `path` | | kind, size\_bytes, line\_count (text files) |
+
+Note: `list_paths` uses `base_path` (singular string), not `paths`.
+
+### Search tools
+
+| Tool | Required params | Optional params | Returns |
+| ---- | --------------- | --------------- | ------- |
+| `find_governance` | `query` | `max_results` (1–10, default 5) | scored hits in governance roots |
+| `find_behavior_truth` | `query` | `max_results` (1–10, default 5) | scored hits in frozen baseline |
+| `search_paths` | `query`, `paths` | `max_results` (1–20, default 5) | scored hits in specified paths |
+| `grep_paths` | `pattern`, `paths` | `max_results` (1–200, default 50) | matched lines with file path and 1-based line number |
+
+`search_paths` supports phrase matching with quoted strings:
+`"Big Phase 5" widen` searches for the exact phrase "big phase 5" and the
+word "widen" separately.
+
+`grep_paths` uses case-insensitive regex. Supports alternation
+(`foo|bar`), character classes, and standard regex syntax.
+
+### Debtmap tools
+
+| Tool | Required params | Optional params | Returns |
+| ---- | --------------- | --------------- | ------- |
+| `debtmap_top_hotspots` | | `limit` (1–50, default 10), `path_prefix` | ranked hotspot files |
+| `debtmap_file_summary` | `path` | | single-file score, TODOs, functions, smells |
+| `debtmap_touched_files_review` | `paths` | | multi-file scores for bounded review |
+| `debtmap_code_smells` | `path` | | code smell detection (AST for Rust/TS/JS) |
+| `debtmap_function_complexity` | `path` | | per-function cyclomatic, cognitive, total |
+| `debtmap_unified_analysis` | | `limit` (1–100, default 20), `path_prefix` | God Object, coupling, cohesion, call-graph |
+| `debtmap_ci_gate` | | `path_prefix`, `paths` | pass/fail with blocking violations and warnings |
+
+When `debtmap_ci_gate` receives `paths`, only violations in those files are
+reported and the debt\_density gate is skipped.
+
 ## Debtmap Score Categories
 
 Treat the MCP Debtmap file score and the per-function complexity metrics as

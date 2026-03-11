@@ -246,6 +246,7 @@ version = "0.1.0"
 dependencies = [
  "debtmap",
  "mimalloc",
+ "regex",
  "rmcp",
  "schemars",
  "serde",
