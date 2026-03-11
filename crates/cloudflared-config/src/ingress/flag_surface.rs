@@ -4,7 +4,17 @@ use url::Url;
 
 use crate::error::{ConfigError, Result};
 
+use super::service_parser::OriginSchemeClass;
 use super::{IngressFlagRequest, IngressMatch, IngressRule, IngressService, NormalizedIngress};
+
+/// Parse a boolean flag value from a CLI `--flag=value` argument.
+///
+/// Accepts "true" and "false" (case-sensitive, matching Go behavior).
+/// Returns `false` for any unrecognized value — matching Go's
+/// `strconv.ParseBool` partial behavior for CLI flags.
+fn parse_flag_bool(value: &str) -> bool {
+    value.parse::<bool>().unwrap_or(false)
+}
 
 pub(super) fn parse_flag_request(flags: &[String]) -> IngressFlagRequest {
     let mut request = IngressFlagRequest::default();
@@ -16,7 +26,7 @@ pub(super) fn parse_flag_request(flags: &[String]) -> IngressFlagRequest {
         }
 
         if let Some(value) = flag.strip_prefix("--hello-world=") {
-            request.hello_world = value == "true";
+            request.hello_world = parse_flag_bool(value);
             continue;
         }
 
@@ -26,7 +36,7 @@ pub(super) fn parse_flag_request(flags: &[String]) -> IngressFlagRequest {
         }
 
         if let Some(value) = flag.strip_prefix("--bastion=") {
-            request.bastion = value == "true";
+            request.bastion = parse_flag_bool(value);
             continue;
         }
 
@@ -101,7 +111,10 @@ fn parse_flag_origin_url(value: &str) -> Result<IngressService> {
         url.set_path("");
     }
 
-    if matches!(url.scheme(), "http" | "https" | "ws" | "wss") {
+    if matches!(
+        OriginSchemeClass::from_scheme(url.scheme()),
+        OriginSchemeClass::HttpLike
+    ) {
         Ok(IngressService::Http(url))
     } else {
         Ok(IngressService::TcpOverWebsocket(url))

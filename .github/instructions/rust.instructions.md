@@ -72,6 +72,15 @@ For medium or large Rust or manifest changes, before running checks:
 
 Do not force this pass on trivial edits.
 
+## Completion workflow
+When finishing a task that touched Rust files, run these steps in order:
+1. `cargo test --workspace` and `cargo clippy --workspace --all-targets --locked -- -D warnings` — fix any failures before proceeding
+2. `debtmap_ci_gate` on touched files — fix blocking violations in touched files; report untouched blocking violations to the human; note warnings but do not block on them
+3. `cargo +nightly fmt`
+4. Summary and doc reconciliation — summarize the change, check whether any governance or status docs need updating to reflect the work
+
+Do not skip or reorder these steps.
+
 ## Final reporting
 For medium or large changes, separate the summary into:
 - correctness changes

@@ -189,7 +189,7 @@ fn flag_ingress_hello_world_normalizes() {
             .defaults
             .connect_timeout
             .as_ref()
-            .map(|value| value.0.as_str()),
+            .map(|value| value.as_str()),
         Some("30s")
     );
 }
@@ -211,7 +211,7 @@ fn flag_ingress_materializes_go_default_representation() {
 
     assert_eq!(
         ingress.defaults.keep_alive_timeout,
-        Some(DurationSpec("1m30s".to_owned()))
+        Some(DurationSpec::new("1m30s"))
     );
     assert_eq!(ingress.defaults.proxy_port, Some(0));
     assert_eq!(ingress.defaults.bastion_mode, Some(false));
@@ -240,11 +240,11 @@ fn inherited_origin_request_defaults_materialize_and_merge() {
 
     assert_eq!(
         rule.origin_request.connect_timeout,
-        Some(DurationSpec("30s".to_owned()))
+        Some(DurationSpec::new("30s"))
     );
     assert_eq!(
         rule.origin_request.keep_alive_timeout,
-        Some(DurationSpec("1m30s".to_owned()))
+        Some(DurationSpec::new("1m30s"))
     );
     assert_eq!(rule.origin_request.proxy_port, Some(0));
     assert_eq!(rule.origin_request.bastion_mode, Some(false));
@@ -256,5 +256,5 @@ fn flag_ingress_without_origin_is_an_error() {
     let error = parse_ingress_flags(&[]).expect_err("missing origin should fail");
 
     assert!(matches!(error, ConfigError::NoIngressRulesFlags));
-    assert_eq!(error.category(), "no-ingress-rules-flags");
+    assert_eq!(error.category().to_string(), "no-ingress-rules-flags");
 }

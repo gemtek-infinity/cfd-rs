@@ -80,7 +80,7 @@ fn invalid_yaml_fixture_maps_to_error_category() {
     .expect_err("fixture should fail validation");
 
     assert!(matches!(error, ConfigError::IngressLastRuleNotCatchAll));
-    assert_eq!(error.category(), "ingress-last-rule-not-catch-all");
+    assert_eq!(error.category().to_string(), "ingress-last-rule-not-catch-all");
 }
 
 #[test]

@@ -53,7 +53,7 @@ fn missing_token_fixture_maps_to_origin_cert_category() {
         baseline_credential_fixture("baseline-2026.2.0/old-impl/credentials/test-cert-no-token.pem");
     let error = OriginCertToken::from_pem_path(&fixture).expect_err("fixture should fail");
 
-    assert_eq!(error.category(), "origin-cert-missing-token");
+    assert_eq!(error.category().to_string(), "origin-cert-missing-token");
     assert_eq!(error.to_string(), "missing token in the certificate");
 }
 
@@ -63,7 +63,7 @@ fn unknown_block_fixture_maps_to_origin_cert_category() {
         baseline_credential_fixture("baseline-2026.2.0/old-impl/credentials/test-cert-unknown-block.pem");
     let error = OriginCertToken::from_pem_path(&fixture).expect_err("fixture should fail");
 
-    assert_eq!(error.category(), "origin-cert-unknown-block");
+    assert_eq!(error.category().to_string(), "origin-cert-unknown-block");
     assert_eq!(
         error.to_string(),
         "unknown block RSA PRIVATE KEY in the certificate"

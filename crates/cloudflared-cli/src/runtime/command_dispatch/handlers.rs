@@ -40,7 +40,7 @@ where
         self.status.record_timing_transport_stage(stage);
         self.status.record_transport_stage(service, stage, detail);
         self.status
-            .refresh_readiness(format!("transport reached {}", stage.as_str()));
+            .refresh_readiness(format!("transport reached {stage}"));
         None
     }
 
@@ -54,7 +54,7 @@ where
         }
         self.status.record_protocol_state(state, detail);
         self.status
-            .refresh_readiness(format!("protocol bridge reached {}", state.as_str()));
+            .refresh_readiness(format!("protocol bridge reached {state}"));
         None
     }
 
@@ -68,7 +68,7 @@ where
         }
         self.status.record_proxy_state(state, detail);
         self.status
-            .refresh_readiness(format!("proxy seam reached {}", state.as_str()));
+            .refresh_readiness(format!("proxy seam reached {state}"));
         None
     }
 

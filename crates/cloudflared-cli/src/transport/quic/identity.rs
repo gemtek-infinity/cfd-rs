@@ -1,3 +1,4 @@
+use std::fmt;
 use std::path::PathBuf;
 
 use cloudflared_config::{OriginCertLocator, OriginCertToken, TunnelCredentialsFile};
@@ -5,10 +6,26 @@ use uuid::Uuid;
 
 use crate::runtime::RuntimeConfig;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum IdentitySource {
+    CredentialsFile,
+    OriginCert,
+}
+
+impl fmt::Display for IdentitySource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let label = match self {
+            Self::CredentialsFile => "credentials-file",
+            Self::OriginCert => "origin-cert",
+        };
+        f.write_str(label)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct TransportIdentity {
     pub(super) tunnel_id: Uuid,
-    pub(super) identity_source: &'static str,
+    pub(super) identity_source: IdentitySource,
     pub(super) endpoint_hint: Option<String>,
     pub(super) resumption: ResumptionShape,
 }
@@ -41,7 +58,7 @@ impl TransportIdentity {
             }
 
             (
-                "credentials-file",
+                IdentitySource::CredentialsFile,
                 tunnel_credentials
                     .endpoint
                     .map(|value| value.to_ascii_lowercase()),
@@ -49,7 +66,7 @@ impl TransportIdentity {
         } else if let Some(path) = origin_cert_path(credentials) {
             let origin_cert = OriginCertToken::from_pem_path(&path)
                 .map_err(|error| format!("failed to read origin cert {}: {error}", path.display()))?;
-            ("origin-cert", origin_cert.endpoint)
+            (IdentitySource::OriginCert, origin_cert.endpoint)
         } else {
             return Err(String::from(
                 "quic tunnel core requires credentials-file or origincert to resolve edge interaction \

@@ -57,7 +57,7 @@ fn origin_cert_unknown_block_is_rejected() {
         error.to_string(),
         "unknown block RSA PRIVATE KEY in the certificate"
     );
-    assert_eq!(error.category(), "origin-cert-unknown-block");
+    assert_eq!(error.category().to_string(), "origin-cert-unknown-block");
 }
 
 #[test]
@@ -73,7 +73,7 @@ fn origin_cert_missing_token_is_rejected() {
 
     let error = OriginCertToken::from_pem_blocks(pem.as_bytes()).expect_err("missing token should fail");
     assert_eq!(error.to_string(), "missing token in the certificate");
-    assert_eq!(error.category(), "origin-cert-missing-token");
+    assert_eq!(error.category().to_string(), "origin-cert-missing-token");
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn origin_cert_multiple_tokens_is_rejected() {
 
     let error = OriginCertToken::from_pem_blocks(&pem).expect_err("multiple tokens should fail");
     assert_eq!(error.to_string(), "found multiple tokens in the certificate");
-    assert_eq!(error.category(), "origin-cert-multiple-tokens");
+    assert_eq!(error.category().to_string(), "origin-cert-multiple-tokens");
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn malformed_origin_cert_pem_is_rejected_explicitly() {
     );
 
     let error = OriginCertToken::from_pem_blocks(pem.as_bytes()).expect_err("malformed pem should fail");
-    assert_eq!(error.category(), "origin-cert-invalid-pem");
+    assert_eq!(error.category().to_string(), "origin-cert-invalid-pem");
 }
 
 #[test]
@@ -120,7 +120,7 @@ fn origin_cert_user_requires_account_id() {
     std::fs::write(&path, ok(token.encode_pem())).expect("pem should be written");
 
     let error = OriginCertUser::read(&path).expect_err("empty account id should fail");
-    assert_eq!(error.category(), "origin-cert-needs-refresh");
+    assert_eq!(error.category().to_string(), "origin-cert-needs-refresh");
 
     let _ = std::fs::remove_file(path);
 }

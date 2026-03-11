@@ -25,12 +25,10 @@ impl RuntimeStatus {
     pub(in super::super) fn record_readiness(&mut self, state: ReadinessState, reason: impl Into<String>) {
         let reason = reason.into();
         self.readiness_state = state;
-        self.summary_lines
-            .push(format!("readiness-state: {}", state.as_str()));
+        self.summary_lines.push(format!("readiness-state: {state}"));
         self.summary_lines.push(format!("readiness-reason: {reason}"));
         info!(
-            "readiness-transition state={} scope={} reason={reason}",
-            state.as_str(),
+            "readiness-transition state={state} scope={} reason={reason}",
             super::super::READINESS_SCOPE
         );
     }

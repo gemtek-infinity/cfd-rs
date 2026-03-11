@@ -120,9 +120,7 @@ fn set_command(slot: &mut Option<Command>, command: Command) -> Result<(), Strin
         && *existing != command
     {
         return Err(format!(
-            "multiple commands were provided: {} and {}",
-            existing.as_str(),
-            command.as_str()
+            "multiple commands were provided: {existing} and {command}"
         ));
     }
     *slot = Some(command);

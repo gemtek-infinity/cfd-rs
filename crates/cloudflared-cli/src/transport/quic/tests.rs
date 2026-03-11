@@ -1,6 +1,6 @@
 use super::QuicTunnelServiceFactory;
 use super::edge::{PeerVerification, QuicEdgeTarget, edge_host_label};
-use super::identity::TransportIdentity;
+use super::identity::{IdentitySource, TransportIdentity};
 use super::session::build_quiche_config;
 use crate::protocol;
 use crate::runtime::{RuntimeExit, run_with_factory};
@@ -283,7 +283,7 @@ fn transport_identity_reads_origin_cert_through_owned_pem_boundary() {
     let identity = TransportIdentity::from_runtime_config(&runtime_config)
         .expect("origin cert should resolve runtime identity");
 
-    assert_eq!(identity.identity_source, "origin-cert");
+    assert_eq!(identity.identity_source, IdentitySource::OriginCert);
     assert_eq!(identity.endpoint_hint.as_deref(), Some("fed"));
 
     fs::remove_dir_all(root).expect("temp directory should be removable");

@@ -1,3 +1,4 @@
+use std::fmt;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -8,14 +9,15 @@ pub(crate) enum Command {
     Run,
 }
 
-impl Command {
-    pub(super) fn as_str(&self) -> &'static str {
-        match self {
+impl fmt::Display for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let label = match self {
             Self::Help => "help",
             Self::Version => "version",
             Self::Validate => "validate",
             Self::Run => "run",
-        }
+        };
+        f.write_str(label)
     }
 }
 
@@ -23,4 +25,17 @@ impl Command {
 pub(crate) struct Cli {
     pub(crate) command: Command,
     pub(crate) config_path: Option<PathBuf>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn command_display() {
+        assert_eq!(Command::Help.to_string(), "help");
+        assert_eq!(Command::Version.to_string(), "version");
+        assert_eq!(Command::Validate.to_string(), "validate");
+        assert_eq!(Command::Run.to_string(), "run");
+    }
 }

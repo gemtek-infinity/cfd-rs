@@ -5,6 +5,7 @@ use crate::ingress::NormalizedIngress;
 
 use super::super::types::{
     ArtifactEnvelope, CredentialReportPayload, ErrorReportPayload, FixtureSpec, IngressReportPayload,
+    ReportKind, SourceKind,
 };
 
 pub fn error_envelope(
@@ -13,7 +14,7 @@ pub fn error_envelope(
 ) -> Result<ArtifactEnvelope, serde_json::Error> {
     envelope_with_payload(
         fixture,
-        "error-report.v1",
+        ReportKind::Error,
         serde_json::to_value(ErrorReportPayload {
             category: error.category(),
             message: error.to_string(),
@@ -28,19 +29,19 @@ pub fn credential_envelope(
 ) -> Result<ArtifactEnvelope, serde_json::Error> {
     envelope_with_payload(
         fixture,
-        "credential-report.v1",
+        ReportKind::Credential,
         serde_json::to_value(CredentialReportPayload::from_origin_cert(source_path, token))?,
     )
 }
 
 pub fn ingress_envelope(
     fixture: &FixtureSpec,
-    source_kind: &'static str,
+    source_kind: SourceKind,
     normalized: &NormalizedIngress,
 ) -> Result<ArtifactEnvelope, serde_json::Error> {
     envelope_with_payload(
         fixture,
-        "ingress-report.v1",
+        ReportKind::Ingress,
         serde_json::to_value(IngressReportPayload::from_ingress(source_kind, normalized))?,
     )
 }

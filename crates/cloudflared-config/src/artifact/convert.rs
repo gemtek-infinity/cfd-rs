@@ -1,9 +1,10 @@
 use std::path::Path;
 
 use super::types::{
-    CredentialReportPayload, CredentialSurfacePayload, DiscoveryReportPayload, IngressReportPayload,
-    IngressRulePayload, IngressServicePayload, NormalizedConfigPayload, OriginCertLocatorPayload,
-    TunnelReferencePayload, WarningPayload,
+    CredentialKind, CredentialReportPayload, CredentialSurfacePayload, DiscoveryActionKind,
+    DiscoveryReportPayload, IngressReportPayload, IngressRulePayload, IngressServiceKind,
+    IngressServicePayload, NormalizedConfigPayload, OriginCertLocatorKind, OriginCertLocatorPayload,
+    SourceKind, TunnelReferencePayload, WarningKind, WarningPayload,
 };
 use crate::credentials::{CredentialSurface, OriginCertLocator, OriginCertToken, TunnelReference};
 use crate::discovery::{ConfigSource, DiscoveryAction, DiscoveryOutcome};
@@ -14,14 +15,10 @@ impl DiscoveryReportPayload {
     pub fn from_outcome(outcome: &DiscoveryOutcome, sandbox_root: &Path) -> Self {
         Self {
             action: match outcome.action {
-                DiscoveryAction::UseExisting => "use-existing",
-                DiscoveryAction::CreateDefaultConfig => "create-default-config",
+                DiscoveryAction::UseExisting => DiscoveryActionKind::UseExisting,
+                DiscoveryAction::CreateDefaultConfig => DiscoveryActionKind::CreateDefaultConfig,
             },
-            source_kind: match &outcome.source {
-                ConfigSource::ExplicitPath(_) => "explicit-path",
-                ConfigSource::DiscoveredPath(_) => "discovered-path",
-                ConfigSource::AutoCreatedPath(_) => "auto-created-path",
-            },
+            source_kind: config_source_to_kind(&outcome.source),
             resolved_path: display_path(&outcome.path, sandbox_root),
             created_paths: outcome
                 .created_paths
@@ -48,11 +45,7 @@ impl NormalizedConfigPayload {
         };
 
         Self {
-            source_kind: match normalized.source {
-                ConfigSource::ExplicitPath(_) => "explicit-path",
-                ConfigSource::DiscoveredPath(_) => "discovered-path",
-                ConfigSource::AutoCreatedPath(_) => "auto-created-path",
-            },
+            source_kind: config_source_to_kind(&normalized.source),
             source_path: source_path.display().to_string(),
             tunnel: normalized
                 .tunnel
@@ -107,11 +100,11 @@ impl OriginCertLocatorPayload {
     pub(super) fn from_locator(locator: &OriginCertLocator) -> Self {
         match locator {
             OriginCertLocator::ConfiguredPath(path) => Self {
-                kind: "configured-path",
+                kind: OriginCertLocatorKind::ConfiguredPath,
                 path: path.display().to_string(),
             },
             OriginCertLocator::DefaultSearchPath(path) => Self {
-                kind: "default-search-path",
+                kind: OriginCertLocatorKind::DefaultSearchPath,
                 path: path.display().to_string(),
             },
         }
@@ -134,63 +127,63 @@ impl IngressServicePayload {
     pub(super) fn from_service(service: &IngressService) -> Self {
         match service {
             IngressService::Http(uri) => Self {
-                kind: "http",
+                kind: IngressServiceKind::Http,
                 uri: Some(display_origin_url(uri)),
                 path: None,
                 name: None,
                 status_code: None,
             },
             IngressService::TcpOverWebsocket(uri) => Self {
-                kind: "tcp-over-websocket",
+                kind: IngressServiceKind::TcpOverWebsocket,
                 uri: Some(display_origin_url(uri)),
                 path: None,
                 name: None,
                 status_code: None,
             },
             IngressService::UnixSocket(path) => Self {
-                kind: "unix-socket",
+                kind: IngressServiceKind::UnixSocket,
                 uri: None,
                 path: Some(path.display().to_string()),
                 name: None,
                 status_code: None,
             },
             IngressService::UnixSocketTls(path) => Self {
-                kind: "unix-socket-tls",
+                kind: IngressServiceKind::UnixSocketTls,
                 uri: None,
                 path: Some(path.display().to_string()),
                 name: None,
                 status_code: None,
             },
             IngressService::HttpStatus(status_code) => Self {
-                kind: "http-status",
+                kind: IngressServiceKind::HttpStatus,
                 uri: None,
                 path: None,
                 name: None,
                 status_code: Some(*status_code),
             },
             IngressService::HelloWorld => Self {
-                kind: "hello-world",
+                kind: IngressServiceKind::HelloWorld,
                 uri: None,
                 path: None,
                 name: None,
                 status_code: None,
             },
             IngressService::Bastion => Self {
-                kind: "bastion",
+                kind: IngressServiceKind::Bastion,
                 uri: None,
                 path: None,
                 name: None,
                 status_code: None,
             },
             IngressService::SocksProxy => Self {
-                kind: "socks-proxy",
+                kind: IngressServiceKind::SocksProxy,
                 uri: None,
                 path: None,
                 name: None,
                 status_code: None,
             },
             IngressService::NamedToken(name) => Self {
-                kind: "named-token",
+                kind: IngressServiceKind::NamedToken,
                 uri: None,
                 path: None,
                 name: Some(name.clone()),
@@ -204,7 +197,7 @@ impl WarningPayload {
     pub(super) fn from_warning(warning: &NormalizationWarning) -> Self {
         match warning {
             NormalizationWarning::UnknownTopLevelKeys(keys) => Self {
-                kind: "unknown-top-level-keys",
+                kind: WarningKind::UnknownTopLevelKeys,
                 keys: keys.clone(),
             },
         }
@@ -214,7 +207,7 @@ impl WarningPayload {
 impl CredentialReportPayload {
     pub(super) fn from_origin_cert(source_path: &str, token: &OriginCertToken) -> Self {
         Self {
-            kind: "origin-cert-pem",
+            kind: CredentialKind::OriginCertPem,
             source_path: source_path.to_owned(),
             zone_id: token.zone_id.clone(),
             account_id: token.account_id.clone(),
@@ -226,7 +219,7 @@ impl CredentialReportPayload {
 }
 
 impl IngressReportPayload {
-    pub(super) fn from_ingress(source_kind: &'static str, normalized: &NormalizedIngress) -> Self {
+    pub(super) fn from_ingress(source_kind: SourceKind, normalized: &NormalizedIngress) -> Self {
         Self {
             source_kind,
             rule_count: normalized.rules.len(),
@@ -255,5 +248,13 @@ fn display_origin_url(url: &url::Url) -> String {
         rendered.trim_end_matches('/').to_owned()
     } else {
         rendered
+    }
+}
+
+fn config_source_to_kind(source: &ConfigSource) -> SourceKind {
+    match source {
+        ConfigSource::ExplicitPath(_) => SourceKind::ExplicitPath,
+        ConfigSource::DiscoveredPath(_) => SourceKind::DiscoveredPath,
+        ConfigSource::AutoCreatedPath(_) => SourceKind::AutoCreatedPath,
     }
 }

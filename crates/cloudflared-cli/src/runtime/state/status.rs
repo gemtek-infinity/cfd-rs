@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::protocol::ProtocolBridgeState;
 use crate::proxy::ProxySeamState;
 use crate::startup::config_source_label;
@@ -33,6 +35,12 @@ impl LifecycleState {
     }
 }
 
+impl fmt::Display for LifecycleState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::runtime) enum ReadinessState {
     Starting,
@@ -55,6 +63,12 @@ impl ReadinessState {
             Self::Stopping => "stopping",
             Self::Failed => "failed",
         }
+    }
+}
+
+impl fmt::Display for ReadinessState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
     }
 }
 
@@ -181,23 +195,19 @@ impl RuntimeStatus {
     ) {
         self.transport_stage = Some(stage);
         self.summary_lines
-            .push(format!("transport-stage[{service}]: {}", stage.as_str()));
+            .push(format!("transport-stage[{service}]: {stage}"));
         self.summary_lines
             .push(format!("transport-detail[{service}]: {detail}"));
-        info!(
-            "transport-stage service={service} stage={} detail={detail}",
-            stage.as_str()
-        );
+        info!("transport-stage service={service} stage={stage} detail={detail}",);
     }
 
     pub(in crate::runtime) fn record_proxy_state(&mut self, state: ProxySeamState, detail: String) {
         self.proxy_state = Some(state);
         self.proxy_admissions += u32::from(state == ProxySeamState::Admitted);
 
-        self.summary_lines
-            .push(format!("proxy-state: {}", state.as_str()));
+        self.summary_lines.push(format!("proxy-state: {state}"));
         self.summary_lines.push(format!("proxy-detail: {detail}"));
-        info!("proxy-state state={} detail={detail}", state.as_str());
+        info!("proxy-state state={state} detail={detail}");
     }
 
     pub(in crate::runtime) fn record_protocol_state(
@@ -209,15 +219,13 @@ impl RuntimeStatus {
         self.protocol_registrations += u32::from(state == ProtocolBridgeState::RegistrationObserved);
 
         let detail = detail.into();
-        self.summary_lines
-            .push(format!("protocol-state: {}", state.as_str()));
+        self.summary_lines.push(format!("protocol-state: {state}"));
         self.summary_lines.push(format!("protocol-detail: {detail}"));
-        info!("protocol-state state={} detail={detail}", state.as_str());
+        info!("protocol-state state={state} detail={detail}");
     }
 
     pub(in crate::runtime) fn record_shutdown_reason(&mut self, reason: &ShutdownReason) {
-        let reason = reason.as_str();
-        self.push_labeled_summary("shutdown-reason", &reason);
+        self.push_labeled_summary("shutdown-reason", reason);
         info!("runtime-shutdown-request reason={reason}");
     }
 
@@ -237,9 +245,9 @@ impl RuntimeStatus {
     pub(in crate::runtime) fn record_state(&mut self, state: LifecycleState, reason: impl Into<String>) {
         self.lifecycle_state = state;
         let reason = reason.into();
-        self.push_labeled_summary("lifecycle-state", state.as_str());
+        self.push_labeled_summary("lifecycle-state", state);
         self.push_labeled_summary("lifecycle-reason", &reason);
-        info!("lifecycle-transition state={} reason={reason}", state.as_str());
+        info!("lifecycle-transition state={state} reason={reason}");
     }
 }
 
