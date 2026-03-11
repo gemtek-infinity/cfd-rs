@@ -3,17 +3,19 @@
 This file captures the currently admitted executable surface and the immediate
 deferred scope around it.
 
-## Active Phase 4.1 Surface
+## Active Phase 4.2 Surface
 
 Phase 3.3 owns the QUIC tunnel core. Phase 3.4 adds the Pingora proxy seam
 above it. Phase 3.5 adds the wire/protocol boundary between them. Phase 3.6
 adds a narrow security/compliance operational boundary around the admitted
 quiche + BoringSSL lane. Phase 3.7 admits the minimum standard-format crate
-boundary required by the active runtime path. Phase 4.1 is the current
-admitted slice on top of that base and adds the minimum observability and
-operability surface required to run and inspect that alpha honestly.
+boundary required by the active runtime path. Phase 4.1 adds the minimum
+observability and operability surface required to run and inspect that alpha
+honestly. Phase 4.2 is the current admitted slice and adds deterministic
+performance validation with stage-transition timing evidence, cold vs resumed
+path distinction, and explicit regression thresholds.
 
-What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1):
+What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2):
 
 - `run` enters a real quiche-based transport service under the runtime boundary
 - connection/session ownership and QUIC handshake state are explicit
@@ -51,6 +53,15 @@ What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1):
   alpha role rather than implying broader request-serving readiness
 - the runtime now emits a minimal final operability snapshot with restart,
   proxy-admission, protocol-registration, and failure counters
+- transport lifecycle stage transitions are now timed relative to runtime start
+  with wall-clock millisecond-resolution evidence
+- cold-start (attempt 0) vs resumed (attempt > 0) transport paths are
+  distinguished in performance evidence output
+- machine-readable performance evidence lines (`perf-*`) are emitted at
+  runtime finish for structured log parsing and CI gate evaluation
+- explicit regression thresholds gate proxy-admission, service-ready,
+  readiness, restart-overhead, and total-runtime timing
+- threshold violations are reported as a pass/fail gate in summary output
 
 What the current surface does not imply:
 
@@ -63,6 +74,8 @@ What the current surface does not imply:
   exists
 - that the narrow readiness signal implies broad admin, deployment, or
   production-proof surfaces
+- that performance evidence implies real QUIC wire latency measurement,
+  0-RTT session resumption savings, or end-to-end request latency
 - that packaging, installers, updaters, or deployment tooling already exist
 
 ## Deferred Within Big Phase 3
@@ -81,7 +94,7 @@ The following remain intentionally out of the current executable-surface task:
 - packaging, deployment tooling, container support, and
   certification-proving work beyond the current numbered Big Phase 3 slice list
 - performance proof, failure-mode proof, and broader deployment/management
-  work beyond the admitted 4.1 observability surface
+  work beyond the admitted 4.2 performance validation surface
 
 ## Follow-On Constraints For Later Slices
 

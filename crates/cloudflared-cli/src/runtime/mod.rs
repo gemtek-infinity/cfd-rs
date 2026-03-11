@@ -172,6 +172,8 @@ where
         }
 
         self.status.record_operability_summary();
+        self.status.record_timing_finished();
+        self.status.record_performance_evidence();
 
         RuntimeExecution {
             summary_lines: self.status.into_summary_lines(),

@@ -355,6 +355,32 @@ Phase 4.1 is complete when the current alpha can be run, inspected, and
 debugged honestly through narrow logs, readiness, and minimal operability
 reporting.
 
+### Phase 4.2 — Performance Validation
+
+#### Purpose
+
+Validate the admitted alpha path with deterministic stage-transition timing
+evidence, cold vs resumed path distinction, and explicit regression thresholds
+without implying full transport or end-to-end performance proof.
+
+#### Required conditions
+
+- transport lifecycle stage transitions are timed relative to runtime start
+- cold-start (attempt 0) vs resumed (attempt > 0) paths are distinguished in
+  evidence output
+- machine-readable performance evidence is emitted at runtime finish
+- explicit regression thresholds exist for the admitted harness path
+- threshold violations are reported as a pass/fail gate in summary output
+- evidence is honest about what is measured (in-process harness timing) vs
+  what remains deferred (real QUIC wire latency, 0-RTT session resumption
+  savings, end-to-end request latency)
+
+#### Exit condition
+
+Phase 4.2 is complete when the admitted alpha path emits deterministic
+performance evidence with regression thresholds that can gate CI and detect
+stage-transition regressions.
+
 ### Exit condition
 
 The promoted alpha scope is validated well enough to be credible in real use.
@@ -394,4 +420,5 @@ At the current repo state:
 - Phase 3.6 security/compliance operational boundary is admitted
 - Phase 3.7 standard-format crate integration boundary is admitted
 - Phase 4.1 observability and operability is admitted
-- 4.2 performance proof, 4.3 failure-mode proof, and 4.4 deployment proof are later
+- Phase 4.2 performance validation is admitted
+- 4.3 failure-mode proof and 4.4 deployment proof are later

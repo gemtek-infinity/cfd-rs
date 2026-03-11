@@ -11,6 +11,9 @@ where
     F: RuntimeServiceFactory,
 {
     pub(super) fn handle_service_ready(&mut self, service: &'static str) -> Option<RuntimeExit> {
+        let is_resumed = self.status.restart_attempts() > 0;
+        self.status.record_timing_service_ready(is_resumed);
+
         if self.status.lifecycle_state() == LifecycleState::Starting {
             self.status
                 .record_state(LifecycleState::Running, format!("service ready: {service}"));
@@ -34,6 +37,7 @@ where
         stage: TransportLifecycleStage,
         detail: String,
     ) -> Option<RuntimeExit> {
+        self.status.record_timing_transport_stage(stage);
         self.status.record_transport_stage(service, stage, detail);
         self.status
             .refresh_readiness(format!("transport reached {}", stage.as_str()));
@@ -45,6 +49,9 @@ where
         state: ProtocolBridgeState,
         detail: String,
     ) -> Option<RuntimeExit> {
+        if state == ProtocolBridgeState::RegistrationObserved {
+            self.status.record_timing_protocol_registration();
+        }
         self.status.record_protocol_state(state, detail);
         self.status
             .refresh_readiness(format!("protocol bridge reached {}", state.as_str()));
@@ -56,6 +63,9 @@ where
         state: ProxySeamState,
         detail: String,
     ) -> Option<RuntimeExit> {
+        if state == ProxySeamState::Admitted {
+            self.status.record_timing_proxy_admitted();
+        }
         self.status.record_proxy_state(state, detail);
         self.status
             .refresh_readiness(format!("proxy seam reached {}", state.as_str()));
@@ -88,6 +98,7 @@ where
         }
 
         let attempt = self.status.record_restart_attempt(service, &detail);
+        self.status.record_timing_restart();
         self.status.record_state(
             LifecycleState::Starting,
             format!("restarting {service} after retryable failure"),

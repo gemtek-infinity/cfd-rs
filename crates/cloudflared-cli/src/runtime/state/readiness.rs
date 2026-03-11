@@ -15,6 +15,9 @@ impl RuntimeStatus {
             self.protocol_state,
         );
         if next != self.readiness_state {
+            if next == ReadinessState::Ready {
+                self.record_timing_readiness_reached();
+            }
             self.record_readiness(next, reason);
         }
     }
