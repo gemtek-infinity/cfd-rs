@@ -76,6 +76,7 @@ Use this file as the short operating guide, not as the full routing map.
 - do not preload speculative dependencies
 - do not introduce async/runtime machinery into first-slice work unless the accepted slice requires it
 - keep patches narrow and source-grounded
+- when finishing Rust work, follow the completion workflow in `.github/instructions/rust.instructions.md` (test+clippy → debtmap gate → fmt → summary+docs)
 
 ## Question routing
 

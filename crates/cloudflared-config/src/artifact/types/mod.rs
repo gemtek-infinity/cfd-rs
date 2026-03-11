@@ -2,9 +2,9 @@ mod payload;
 mod plan;
 
 pub use self::payload::{
-    ArtifactEnvelope, CredentialReportPayload, CredentialSurfacePayload, DiscoveryReportPayload,
-    ErrorReportPayload, IngressReportPayload, IngressRulePayload, IngressServicePayload,
-    NormalizedConfigPayload, OriginCertLocatorPayload, SCHEMA_VERSION, TunnelReferencePayload,
-    WarningPayload,
+    ArtifactEnvelope, CredentialKind, CredentialReportPayload, CredentialSurfacePayload, DiscoveryActionKind,
+    DiscoveryReportPayload, ErrorReportPayload, IngressReportPayload, IngressRulePayload, IngressServiceKind,
+    IngressServicePayload, NormalizedConfigPayload, OriginCertLocatorKind, OriginCertLocatorPayload,
+    ReportKind, SCHEMA_VERSION, SourceKind, TunnelReferencePayload, WarningKind, WarningPayload,
 };
 pub use self::plan::{DiscoveryCase, EmissionPlan, FixtureSpec, FlagIngressCase, OrderingCase};

@@ -80,7 +80,7 @@ fn flag_origin_url_http_normalizes_to_http_service() {
             .defaults
             .keep_alive_timeout
             .as_ref()
-            .map(|value| value.0.as_str()),
+            .map(|value| value.as_str()),
         Some("1m30s")
     );
     assert_eq!(ingress.defaults.proxy_port, Some(0));
@@ -92,7 +92,7 @@ fn flag_origin_no_origin_returns_expected_error_category() {
     let error = parse_ingress_flags(&[]).expect_err("missing flag origin should fail");
 
     assert!(matches!(error, ConfigError::NoIngressRulesFlags));
-    assert_eq!(error.category(), "no-ingress-rules-flags");
+    assert_eq!(error.category().to_string(), "no-ingress-rules-flags");
 }
 
 #[test]

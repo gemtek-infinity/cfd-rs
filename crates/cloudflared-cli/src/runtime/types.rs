@@ -124,12 +124,12 @@ pub(crate) enum ShutdownReason {
     ServiceFailure(&'static str),
 }
 
-impl ShutdownReason {
-    pub(super) fn as_str(&self) -> String {
+impl std::fmt::Display for ShutdownReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Signal(name) => format!("signal:{name}"),
-            Self::Harness => "harness".to_owned(),
-            Self::ServiceFailure(name) => format!("service-failure:{name}"),
+            Self::Signal(name) => write!(f, "signal:{name}"),
+            Self::Harness => f.write_str("harness"),
+            Self::ServiceFailure(name) => write!(f, "service-failure:{name}"),
         }
     }
 }
@@ -178,31 +178,79 @@ pub(crate) trait RuntimeService: Send + 'static {
     );
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub(crate) struct RuntimeHarness {
     pub(super) enable_signals: bool,
     pub(super) injected_shutdown_after: Option<Duration>,
 }
 
-impl RuntimeHarness {
-    pub(super) fn production() -> Self {
+/// Typestate markers for [`HarnessBuilder`] construction modes.
+pub(crate) mod harness_mode {
+    /// Production mode: signals are enabled, test injection is unavailable.
+    pub struct Production;
+    /// Test mode: signals are disabled, shutdown injection is available.
+    #[cfg(test)]
+    pub struct Testing;
+}
+
+/// Typestate builder for [`RuntimeHarness`].
+///
+/// The mode parameter prevents production harnesses from accidentally
+/// using test-only configuration like
+/// [`with_shutdown_after`](Self::with_shutdown_after), and ensures test
+/// harnesses always disable signal handlers.
+pub(crate) struct HarnessBuilder<Mode> {
+    enable_signals: bool,
+    injected_shutdown_after: Option<Duration>,
+    _mode: std::marker::PhantomData<Mode>,
+}
+
+impl HarnessBuilder<harness_mode::Production> {
+    pub(crate) fn production() -> Self {
         Self {
             enable_signals: true,
             injected_shutdown_after: None,
+            _mode: std::marker::PhantomData,
         }
     }
+}
 
-    #[cfg(test)]
+#[cfg(test)]
+impl HarnessBuilder<harness_mode::Testing> {
     pub(crate) fn for_tests() -> Self {
         Self {
             enable_signals: false,
             injected_shutdown_after: None,
+            _mode: std::marker::PhantomData,
         }
     }
 
-    #[cfg(test)]
-    pub(super) fn with_shutdown_after(mut self, duration: Duration) -> Self {
+    pub(crate) fn with_shutdown_after(mut self, duration: Duration) -> Self {
         self.injected_shutdown_after = Some(duration);
         self
+    }
+}
+
+impl<Mode> HarnessBuilder<Mode> {
+    pub(crate) fn build(self) -> RuntimeHarness {
+        RuntimeHarness {
+            enable_signals: self.enable_signals,
+            injected_shutdown_after: self.injected_shutdown_after,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shutdown_reason_display() {
+        assert_eq!(ShutdownReason::Signal("SIGTERM").to_string(), "signal:SIGTERM");
+        assert_eq!(ShutdownReason::Harness.to_string(), "harness");
+        assert_eq!(
+            ShutdownReason::ServiceFailure("quic-transport").to_string(),
+            "service-failure:quic-transport"
+        );
     }
 }

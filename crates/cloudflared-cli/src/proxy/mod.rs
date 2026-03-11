@@ -46,6 +46,12 @@ impl ProxySeamState {
     }
 }
 
+impl std::fmt::Display for ProxySeamState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 /// Owned boundary for the Pingora proxy layer.
 ///
 /// Confines the Pingora dependency surface to this module. Holds ingress

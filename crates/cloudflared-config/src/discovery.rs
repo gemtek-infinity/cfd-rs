@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fs;
 use std::path::PathBuf;
 
@@ -23,10 +24,29 @@ pub enum DiscoveryOrigin {
     AutoCreateDefault,
 }
 
+impl fmt::Display for DiscoveryOrigin {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Explicit => f.write_str("explicit"),
+            Self::Search => f.write_str("search"),
+            Self::AutoCreateDefault => f.write_str("auto-create-default"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum DiscoveryAction {
     UseExisting,
     CreateDefaultConfig,
+}
+
+impl fmt::Display for DiscoveryAction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::UseExisting => f.write_str("use-existing"),
+            Self::CreateDefaultConfig => f.write_str("create-default-config"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -34,6 +54,16 @@ pub enum ConfigSource {
     ExplicitPath(PathBuf),
     DiscoveredPath(PathBuf),
     AutoCreatedPath(PathBuf),
+}
+
+impl fmt::Display for ConfigSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ExplicitPath(_) => f.write_str("explicit-path"),
+            Self::DiscoveredPath(_) => f.write_str("discovered-path"),
+            Self::AutoCreatedPath(_) => f.write_str("auto-created-path"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

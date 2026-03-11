@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::runtime::{RuntimeExit, RuntimeHarness, run_with_factory};
+use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_factory};
 
 use super::fixtures::{runtime_config, summary_contains};
 use super::harness::{TestBehavior, TestFactory};
@@ -10,7 +10,9 @@ fn runtime_owns_config_after_startup_handoff() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(25))
+            .build(),
         None,
     );
 
@@ -29,7 +31,9 @@ fn runtime_orders_shutdown_of_ready_service() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(25))
+            .build(),
         None,
     );
 
@@ -47,7 +51,9 @@ fn runtime_restarts_retryable_service_before_shutdown() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(50)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(50))
+            .build(),
         None,
     );
 
@@ -68,7 +74,7 @@ fn runtime_fails_fatal_service_without_restart() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::FatalFailure]),
-        RuntimeHarness::for_tests(),
+        HarnessBuilder::for_tests().build(),
         None,
     );
 

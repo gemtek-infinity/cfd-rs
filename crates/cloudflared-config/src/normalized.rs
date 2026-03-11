@@ -121,7 +121,7 @@ mod tests {
                 .origin_request
                 .connect_timeout
                 .as_ref()
-                .map(|value| value.0.as_str()),
+                .map(|value| value.as_str()),
             Some("30s")
         );
         assert_eq!(
@@ -129,7 +129,7 @@ mod tests {
                 .origin_request
                 .keep_alive_timeout
                 .as_ref()
-                .map(|value| value.0.as_str()),
+                .map(|value| value.as_str()),
             Some("1m30s")
         );
     }
@@ -151,7 +151,7 @@ mod tests {
                 .origin_request
                 .keep_alive_timeout
                 .as_ref()
-                .map(|value| value.0.as_str()),
+                .map(|value| value.as_str()),
             Some("1m30s")
         );
         assert_eq!(normalized.ingress[0].origin_request.proxy_port, Some(0));

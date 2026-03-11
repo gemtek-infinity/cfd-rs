@@ -4,19 +4,19 @@ use super::super::super::{
 };
 
 pub(super) fn default_http_connect_timeout() -> Option<DurationSpec> {
-    Some(DurationSpec(DEFAULT_HTTP_CONNECT_TIMEOUT.to_owned()))
+    Some(DurationSpec::new(DEFAULT_HTTP_CONNECT_TIMEOUT))
 }
 
 pub(super) fn default_tls_timeout() -> Option<DurationSpec> {
-    Some(DurationSpec(DEFAULT_TLS_TIMEOUT.to_owned()))
+    Some(DurationSpec::new(DEFAULT_TLS_TIMEOUT))
 }
 
 pub(super) fn default_tcp_keep_alive() -> Option<DurationSpec> {
-    Some(DurationSpec(DEFAULT_TCP_KEEP_ALIVE.to_owned()))
+    Some(DurationSpec::new(DEFAULT_TCP_KEEP_ALIVE))
 }
 
 pub(super) fn default_keep_alive_timeout() -> Option<DurationSpec> {
-    Some(DurationSpec(DEFAULT_KEEP_ALIVE_TIMEOUT.to_owned()))
+    Some(DurationSpec::new(DEFAULT_KEEP_ALIVE_TIMEOUT))
 }
 
 pub(super) fn default_proxy_address() -> Option<String> {

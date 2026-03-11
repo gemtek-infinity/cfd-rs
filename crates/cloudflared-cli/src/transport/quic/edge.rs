@@ -10,13 +10,26 @@ pub(super) const EDGE_DEFAULT_REGION: &str = "region1";
 const EDGE_DEFAULT_HOST: &str = "region1.v2.argotunnel.com";
 const EDGE_QUIC_PORT: u16 = 7844;
 
+/// Peer verification state for QUIC edge connections.
+///
+/// Encodes the verification requirement in the type so that a verified
+/// connection always carries the CA bundle path and an unverified
+/// connection cannot accidentally enable verification without one.
+#[derive(Debug, Clone)]
+pub(super) enum PeerVerification {
+    Verified {
+        ca_bundle_path: PathBuf,
+    },
+    #[cfg_attr(not(test), allow(dead_code))]
+    Unverified,
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct QuicEdgeTarget {
     pub(super) connect_addr: SocketAddr,
     pub(super) host_label: String,
     pub(super) server_name: String,
-    pub(super) verify_peer: bool,
-    pub(super) ca_bundle_path: Option<PathBuf>,
+    pub(super) verification: PeerVerification,
 }
 
 pub(super) async fn resolve_edge_target(identity: &TransportIdentity) -> Result<QuicEdgeTarget, String> {
@@ -31,14 +44,15 @@ pub(super) async fn resolve_edge_target(identity: &TransportIdentity) -> Result<
         format!("no socket addresses resolved for QUIC edge target {host_label}:{EDGE_QUIC_PORT}")
     })?;
 
+    let ca_bundle_path = default_ca_bundle_path().ok_or_else(|| {
+        String::from("no Linux CA bundle path found for QUIC edge certificate verification")
+    })?;
+
     Ok(QuicEdgeTarget {
         connect_addr,
         host_label,
         server_name: "quic.cftunnel.com".to_owned(),
-        verify_peer: true,
-        ca_bundle_path: Some(default_ca_bundle_path().ok_or_else(|| {
-            String::from("no Linux CA bundle path found for QUIC edge certificate verification")
-        })?),
+        verification: PeerVerification::Verified { ca_bundle_path },
     })
 }
 

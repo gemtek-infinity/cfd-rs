@@ -1,6 +1,6 @@
 use super::QuicTunnelServiceFactory;
-use super::edge::{QuicEdgeTarget, default_ca_bundle_path, edge_host_label};
-use super::identity::TransportIdentity;
+use super::edge::{PeerVerification, QuicEdgeTarget, edge_host_label};
+use super::identity::{IdentitySource, TransportIdentity};
 use super::session::build_quiche_config;
 use crate::protocol;
 use crate::runtime::{RuntimeExit, run_with_factory};
@@ -269,8 +269,7 @@ fn quiche_config_keeps_0rtt_lane_enabled() {
             .expect("test socket address should parse"),
         host_label: "region1.v2.argotunnel.com".to_owned(),
         server_name: "localhost".to_owned(),
-        verify_peer: false,
-        ca_bundle_path: default_ca_bundle_path(),
+        verification: PeerVerification::Unverified,
     };
 
     let _ = build_quiche_config(&target).expect("quiche config should build");
@@ -284,7 +283,7 @@ fn transport_identity_reads_origin_cert_through_owned_pem_boundary() {
     let identity = TransportIdentity::from_runtime_config(&runtime_config)
         .expect("origin cert should resolve runtime identity");
 
-    assert_eq!(identity.identity_source, "origin-cert");
+    assert_eq!(identity.identity_source, IdentitySource::OriginCert);
     assert_eq!(identity.endpoint_hint.as_deref(), Some("fed"));
 
     fs::remove_dir_all(root).expect("temp directory should be removable");
@@ -304,11 +303,10 @@ fn runtime_crosses_wire_protocol_boundary_after_quic_establish() {
                 connect_addr: server_addr,
                 host_label: "localhost".to_owned(),
                 server_name: "localhost".to_owned(),
-                verify_peer: false,
-                ca_bundle_path: None,
+                verification: PeerVerification::Unverified,
             },
         ),
-        crate::runtime::RuntimeHarness::for_tests(),
+        crate::runtime::HarnessBuilder::for_tests().build(),
         Some(protocol_receiver),
     );
 

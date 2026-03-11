@@ -33,11 +33,11 @@ pub use crate::discovery::{
     DiscoveryPlan, DiscoveryRequest, default_nix_log_directory, default_nix_primary_config_path,
     default_nix_search_directories,
 };
-pub use crate::error::{ConfigError, Result};
+pub use crate::error::{ConfigError, ErrorCategory, Result};
 pub use crate::ingress::{
     AccessConfig, DurationSpec, IngressFlagRequest, IngressIpRule, IngressMatch, IngressRule, IngressService,
-    NO_INGRESS_RULES_FLAGS_MESSAGE, NormalizedIngress, OriginRequestConfig, RawIngressRule,
-    find_matching_rule, parse_ingress_flags,
+    NO_INGRESS_RULES_FLAGS_MESSAGE, NormalizedIngress, OriginRequestConfig, OriginRequestConfigBuilder,
+    ProxyType, RawIngressRule, find_matching_rule, parse_ingress_flags,
 };
 pub use crate::normalized::{NormalizationWarning, NormalizedConfig};
 pub use crate::raw_config::{RawConfig, WarpRoutingConfig};

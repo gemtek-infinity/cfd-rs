@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cloudflared_config::artifact::{
-    DiscoveryCase, DiscoveryReportPayload, EmissionPlan, FixtureSpec, credential_envelope,
+    DiscoveryCase, DiscoveryReportPayload, EmissionPlan, FixtureSpec, SourceKind, credential_envelope,
     discovery_envelope, error_envelope, ingress_envelope, normalized_config_envelope,
 };
 use cloudflared_config::{
@@ -151,7 +151,11 @@ fn emit_flag_ingress_envelope(
     fixture: &FixtureSpec,
     normalized: &NormalizedIngress,
 ) -> Result<cloudflared_config::artifact::ArtifactEnvelope, Box<dyn std::error::Error>> {
-    Ok(ingress_envelope(fixture, "flag-single-origin", normalized)?)
+    Ok(ingress_envelope(
+        fixture,
+        SourceKind::FlagSingleOrigin,
+        normalized,
+    )?)
 }
 
 fn build_discovery_sandbox(case: &DiscoveryCase) -> Result<PathBuf, Box<dyn std::error::Error>> {

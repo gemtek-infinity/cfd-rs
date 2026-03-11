@@ -1,6 +1,78 @@
+use std::fmt;
 use std::path::PathBuf;
 
 use thiserror::Error;
+
+/// Typed error category for structured reporting and artifact envelopes.
+///
+/// Replaces the previous `&'static str` return from `ConfigError::category()`
+/// so that category values are exhaustively matched rather than compared
+/// as free-form strings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ErrorCategory {
+    NoConfigFile,
+    Io,
+    YamlParse,
+    JsonParse,
+    JsonSerialize,
+    InvalidUrl,
+    InvalidUuid,
+    CreateDirectory,
+    CreateFile,
+    WriteFile,
+    OriginCertEmpty,
+    OriginCertInvalidPem,
+    OriginCertUnknownBlock,
+    OriginCertMultipleTokens,
+    OriginCertMissingToken,
+    OriginCertNeedsRefresh,
+    NoIngressRulesFlags,
+    IngressLastRuleNotCatchAll,
+    IngressBadWildcard,
+    IngressHostnameContainsPort,
+    IngressCatchAllNotLast,
+    InvalidIngressService,
+    InvariantViolation,
+    Deferred,
+}
+
+impl fmt::Display for ErrorCategory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let label = match self {
+            Self::NoConfigFile => "no-config-file",
+            Self::Io => "io",
+            Self::YamlParse => "yaml-parse",
+            Self::JsonParse => "json-parse",
+            Self::JsonSerialize => "json-serialize",
+            Self::InvalidUrl => "invalid-url",
+            Self::InvalidUuid => "invalid-uuid",
+            Self::CreateDirectory => "create-directory",
+            Self::CreateFile => "create-file",
+            Self::WriteFile => "write-file",
+            Self::OriginCertEmpty => "origin-cert-empty",
+            Self::OriginCertInvalidPem => "origin-cert-invalid-pem",
+            Self::OriginCertUnknownBlock => "origin-cert-unknown-block",
+            Self::OriginCertMultipleTokens => "origin-cert-multiple-tokens",
+            Self::OriginCertMissingToken => "origin-cert-missing-token",
+            Self::OriginCertNeedsRefresh => "origin-cert-needs-refresh",
+            Self::NoIngressRulesFlags => "no-ingress-rules-flags",
+            Self::IngressLastRuleNotCatchAll => "ingress-last-rule-not-catch-all",
+            Self::IngressBadWildcard => "ingress-bad-wildcard",
+            Self::IngressHostnameContainsPort => "ingress-hostname-contains-port",
+            Self::IngressCatchAllNotLast => "ingress-catch-all-not-last",
+            Self::InvalidIngressService => "invalid-ingress-service",
+            Self::InvariantViolation => "invariant-violation",
+            Self::Deferred => "deferred",
+        };
+        f.write_str(label)
+    }
+}
+
+impl serde::Serialize for ErrorCategory {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -209,32 +281,68 @@ impl ConfigError {
         Self::Deferred { operation }
     }
 
-    pub fn category(&self) -> &'static str {
+    pub fn category(&self) -> ErrorCategory {
         match self {
-            Self::NoConfigFile => "no-config-file",
-            Self::Io { .. } => "io",
-            Self::Yaml { .. } => "yaml-parse",
-            Self::JsonParse { .. } => "json-parse",
-            Self::JsonSerialize { .. } => "json-serialize",
-            Self::InvalidUrl { .. } => "invalid-url",
-            Self::InvalidUuid { .. } => "invalid-uuid",
-            Self::CreateDirectory { .. } => "create-directory",
-            Self::CreateFile { .. } => "create-file",
-            Self::WriteFile { .. } => "write-file",
-            Self::OriginCertEmpty => "origin-cert-empty",
-            Self::OriginCertInvalidPem => "origin-cert-invalid-pem",
-            Self::OriginCertUnknownBlock { .. } => "origin-cert-unknown-block",
-            Self::OriginCertMultipleTokens => "origin-cert-multiple-tokens",
-            Self::OriginCertMissingToken => "origin-cert-missing-token",
-            Self::OriginCertNeedsRefresh { .. } => "origin-cert-needs-refresh",
-            Self::NoIngressRulesFlags => "no-ingress-rules-flags",
-            Self::IngressLastRuleNotCatchAll => "ingress-last-rule-not-catch-all",
-            Self::IngressBadWildcard => "ingress-bad-wildcard",
-            Self::IngressHostnameContainsPort => "ingress-hostname-contains-port",
-            Self::IngressCatchAllNotLast { .. } => "ingress-catch-all-not-last",
-            Self::InvalidIngressService { .. } => "invalid-ingress-service",
-            Self::InvariantViolation { .. } => "invariant-violation",
-            Self::Deferred { .. } => "deferred",
+            Self::NoConfigFile => ErrorCategory::NoConfigFile,
+            Self::Io { .. } => ErrorCategory::Io,
+            Self::Yaml { .. } => ErrorCategory::YamlParse,
+            Self::JsonParse { .. } => ErrorCategory::JsonParse,
+            Self::JsonSerialize { .. } => ErrorCategory::JsonSerialize,
+            Self::InvalidUrl { .. } => ErrorCategory::InvalidUrl,
+            Self::InvalidUuid { .. } => ErrorCategory::InvalidUuid,
+            Self::CreateDirectory { .. } => ErrorCategory::CreateDirectory,
+            Self::CreateFile { .. } => ErrorCategory::CreateFile,
+            Self::WriteFile { .. } => ErrorCategory::WriteFile,
+            Self::OriginCertEmpty => ErrorCategory::OriginCertEmpty,
+            Self::OriginCertInvalidPem => ErrorCategory::OriginCertInvalidPem,
+            Self::OriginCertUnknownBlock { .. } => ErrorCategory::OriginCertUnknownBlock,
+            Self::OriginCertMultipleTokens => ErrorCategory::OriginCertMultipleTokens,
+            Self::OriginCertMissingToken => ErrorCategory::OriginCertMissingToken,
+            Self::OriginCertNeedsRefresh { .. } => ErrorCategory::OriginCertNeedsRefresh,
+            Self::NoIngressRulesFlags => ErrorCategory::NoIngressRulesFlags,
+            Self::IngressLastRuleNotCatchAll => ErrorCategory::IngressLastRuleNotCatchAll,
+            Self::IngressBadWildcard => ErrorCategory::IngressBadWildcard,
+            Self::IngressHostnameContainsPort => ErrorCategory::IngressHostnameContainsPort,
+            Self::IngressCatchAllNotLast { .. } => ErrorCategory::IngressCatchAllNotLast,
+            Self::InvalidIngressService { .. } => ErrorCategory::InvalidIngressService,
+            Self::InvariantViolation { .. } => ErrorCategory::InvariantViolation,
+            Self::Deferred { .. } => ErrorCategory::Deferred,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn error_category_display_outputs_kebab_case() {
+        assert_eq!(ErrorCategory::NoConfigFile.to_string(), "no-config-file");
+        assert_eq!(ErrorCategory::Io.to_string(), "io");
+        assert_eq!(
+            ErrorCategory::OriginCertInvalidPem.to_string(),
+            "origin-cert-invalid-pem"
+        );
+        assert_eq!(
+            ErrorCategory::NoIngressRulesFlags.to_string(),
+            "no-ingress-rules-flags"
+        );
+        assert_eq!(ErrorCategory::Deferred.to_string(), "deferred");
+    }
+
+    #[test]
+    fn error_category_serializes_as_kebab_case_string() {
+        let json =
+            serde_json::to_string(&ErrorCategory::IngressLastRuleNotCatchAll).expect("serialize category");
+        assert_eq!(json, "\"ingress-last-rule-not-catch-all\"");
+    }
+
+    #[test]
+    fn config_error_category_is_exhaustive() {
+        let error = ConfigError::NoConfigFile;
+        assert_eq!(error.category(), ErrorCategory::NoConfigFile);
+
+        let error = ConfigError::NoIngressRulesFlags;
+        assert_eq!(error.category(), ErrorCategory::NoIngressRulesFlags);
     }
 }

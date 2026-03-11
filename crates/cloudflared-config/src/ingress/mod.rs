@@ -9,7 +9,7 @@ mod validation;
 
 pub use self::types::{
     AccessConfig, DurationSpec, IngressFlagRequest, IngressIpRule, IngressMatch, IngressRule, IngressService,
-    NormalizedIngress, OriginRequestConfig, RawIngressRule,
+    NormalizedIngress, OriginRequestConfig, OriginRequestConfigBuilder, ProxyType, RawIngressRule,
 };
 
 pub const NO_INGRESS_RULES_FLAGS_MESSAGE: &str = concat!(
