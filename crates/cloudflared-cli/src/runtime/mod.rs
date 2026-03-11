@@ -92,6 +92,7 @@ where
         self.status.record_runtime_owner();
         self.status.record_runtime_config(self.config.as_ref());
         self.status.record_supervision_policy(&self.policy);
+        self.status.restart_budget_max = self.policy.max_restart_attempts;
         self.status.record_readiness_scope();
 
         if let Err(detail) = self.record_security_compliance_boundary() {
@@ -174,6 +175,7 @@ where
         self.status.record_operability_summary();
         self.status.record_timing_finished();
         self.status.record_performance_evidence();
+        self.status.record_failure_evidence();
 
         RuntimeExecution {
             summary_lines: self.status.into_summary_lines(),

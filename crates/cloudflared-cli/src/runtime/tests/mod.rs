@@ -1,6 +1,8 @@
 mod compliance;
+mod failure_recovery;
 mod fixtures;
 mod harness;
 mod lifecycle_primary;
 mod lifecycle_proxy;
+mod malformed_input;
 mod performance;

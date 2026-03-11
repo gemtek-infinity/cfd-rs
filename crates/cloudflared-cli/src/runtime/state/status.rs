@@ -84,6 +84,7 @@ pub(in crate::runtime) struct RuntimeStatus {
     pub(in crate::runtime) protocol_registrations: u32,
     pub(in crate::runtime) transport_failures: u32,
     pub(in crate::runtime) failure_events: u32,
+    pub(in crate::runtime) restart_budget_max: u32,
     pub(in crate::runtime) protocol_bridge_present: bool,
     pub(in crate::runtime) timing: StageTiming,
 }
@@ -102,6 +103,7 @@ impl RuntimeStatus {
             protocol_registrations: 0,
             transport_failures: 0,
             failure_events: 0,
+            restart_budget_max: 0,
             protocol_bridge_present,
             timing: StageTiming::new(),
         }

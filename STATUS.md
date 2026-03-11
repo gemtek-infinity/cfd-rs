@@ -36,6 +36,11 @@ What exists now:
   path distinction, 0-RTT lane configuration truth, pipeline latency
   measurement, machine-readable performance evidence with explicit honesty
   scope, and regression thresholds for the admitted alpha harness path
+- a Phase 4.3 failure-mode and recovery proof surface in
+  `crates/cloudflared-cli/` that emits deterministic failure/recovery
+  evidence, bounded reconnect/retry proof, shutdown proof, malformed-input
+  boundary handling, dependency-boundary failure visibility, and honest
+  config-reload non-support declaration for the admitted alpha harness path
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 
@@ -46,7 +51,7 @@ What does not exist yet:
 - broader standard-format integration beyond the active origin-cert path and
   broader compliance proof work
 - broad admin APIs, broader performance proof beyond the admitted harness
-  path, failure-mode proof, and deployment proof
+  path, and deployment proof
 - parity-complete broader subsystem coverage
 - broader platform scope beyond the frozen Linux lane
 

@@ -3,7 +3,7 @@
 This file captures the currently admitted executable surface and the immediate
 deferred scope around it.
 
-## Active Phase 4.2 Surface
+## Active Phase 4.3 Surface
 
 Phase 3.3 owns the QUIC tunnel core. Phase 3.4 adds the Pingora proxy seam
 above it. Phase 3.5 adds the wire/protocol boundary between them. Phase 3.6
@@ -11,11 +11,12 @@ adds a narrow security/compliance operational boundary around the admitted
 quiche + BoringSSL lane. Phase 3.7 admits the minimum standard-format crate
 boundary required by the active runtime path. Phase 4.1 adds the minimum
 observability and operability surface required to run and inspect that alpha
-honestly. Phase 4.2 is the current admitted slice and adds deterministic
-performance validation with stage-transition timing evidence, cold vs resumed
-path distinction, and explicit regression thresholds.
+honestly. Phase 4.2 adds deterministic performance validation with
+stage-transition timing evidence, cold vs resumed path distinction, and
+explicit regression thresholds. Phase 4.3 is the current admitted slice and
+adds deterministic failure-mode and recovery proof for the admitted alpha path.
 
-What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2):
+What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2 + 4.3):
 
 - `run` enters a real quiche-based transport service under the runtime boundary
 - connection/session ownership and QUIC handshake state are explicit
@@ -71,6 +72,22 @@ What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2):
 - threshold violations are reported as a pass/fail gate in summary output
 - evidence scope is honestly reported, distinguishing in-process harness
   timing from deferred real wire latency and 0-RTT resumption measurement
+- machine-readable failure evidence lines (`failure-*`) are emitted at
+  runtime finish alongside performance evidence
+- reconnect/retry behavior is bounded: the runtime tracks restart budget
+  consumption and reports exhaustion explicitly
+- shutdown behavior is observable through lifecycle state transitions
+  and child-task drain reporting
+- dependency-boundary failures are reported with explicit owner and class
+  at each failure event
+- config-reload is honestly declared as not supported: config is frozen at
+  startup handoff, no SIGHUP handler or reload command exists
+- malformed YAML, invalid ingress rules, and structurally invalid config
+  fields fail at the config boundary with typed, machine-readable error
+  categories
+- failure evidence scope is honestly reported, distinguishing in-process
+  harness failure proof from deferred real transport reconnect and
+  deployment-level recovery
 
 What the current surface does not imply:
 
@@ -85,6 +102,8 @@ What the current surface does not imply:
   production-proof surfaces
 - that performance evidence implies real QUIC wire latency measurement,
   0-RTT session resumption savings, or end-to-end request latency
+- that failure-mode evidence implies real QUIC transport reconnect,
+  deployment-level process recovery, or config-reload behavior
 - that packaging, installers, updaters, or deployment tooling already exist
 
 ## Deferred Within Big Phase 3
@@ -102,8 +121,8 @@ The following remain intentionally out of the current executable-surface task:
   outside their later owning slices
 - packaging, deployment tooling, container support, and
   certification-proving work beyond the current numbered Big Phase 3 slice list
-- performance proof, failure-mode proof, and broader deployment/management
-  work beyond the admitted 4.2 performance validation surface
+- performance proof, and broader deployment/management
+  work beyond the admitted 4.3 failure-mode proof surface
 
 ## Follow-On Constraints For Later Slices
 

@@ -1,3 +1,4 @@
+mod failure;
 mod operability;
 mod readiness;
 mod status;
