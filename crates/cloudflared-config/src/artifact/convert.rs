@@ -35,6 +35,18 @@ impl DiscoveryReportPayload {
 
 impl NormalizedConfigPayload {
     pub fn from_normalized(source_path: &Path, normalized: &NormalizedConfig) -> Self {
+        let warnings = if normalized.warnings.is_empty() {
+            None
+        } else {
+            Some(
+                normalized
+                    .warnings
+                    .iter()
+                    .map(WarningPayload::from_warning)
+                    .collect(),
+            )
+        };
+
         Self {
             source_kind: match normalized.source {
                 ConfigSource::ExplicitPath(_) => "explicit-path",
@@ -58,17 +70,7 @@ impl NormalizedConfigPayload {
                 .log_directory
                 .as_ref()
                 .map(|path| path.display().to_string()),
-            warnings: if normalized.warnings.is_empty() {
-                None
-            } else {
-                Some(
-                    normalized
-                        .warnings
-                        .iter()
-                        .map(WarningPayload::from_warning)
-                        .collect(),
-                )
-            },
+            warnings,
         }
     }
 }

@@ -182,6 +182,7 @@ fn token_contains_credentials(token: Option<&OriginCertToken>) -> bool {
 impl OriginCertUser {
     pub fn read(path: &Path) -> Result<Self> {
         let cert = OriginCertToken::from_pem_path(path)?;
+
         if cert.account_id.is_empty() {
             return Err(ConfigError::origin_cert_needs_refresh(path));
         }

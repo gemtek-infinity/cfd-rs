@@ -1,0 +1,23 @@
+# Debtmap Configuration
+#
+# This file is the single source of truth for debtmap analysis thresholds.
+# Both the debtmap CLI and the MCP server read it via the debtmap crate's
+# multi-source config loader.
+#
+# See docs/ai-context-routing.md § "CI gate rules" for the blocking/warning
+# thresholds applied on top of these analysis parameters.
+
+[thresholds]
+complexity = 10
+duplication = 50
+max_file_length = 500
+max_function_length = 50
+
+[languages]
+enabled = ["javascript", "rust", "typescript"]
+
+[ignore]
+patterns = ["*.min.js", "baseline-2026.2.0/**", "node_modules/**", "target/**", "venv/**"]
+
+[output]
+default_format = "terminal"

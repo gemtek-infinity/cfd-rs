@@ -208,14 +208,135 @@ Operational rule:
 
 Use these categories for `debtmap_function_complexity` output:
 
-- cyclomatic complexity: `1-4` `low`, `5-7` `moderate`, `8-10` `high`, `11+` `very_high`
+- cyclomatic complexity: `1-10` `low`, `11-20` `moderate`, `21-30` `high`, `31+` `very_high`
 - cognitive complexity: `0-9` `low`, `10-14` `moderate`, `15-24` `high`, `25+` `very_high`
-- total complexity (`cyclomatic + cognitive`): `<8` `trivial`, `8-15` `moderate`, `16-23` `high`, `24+` `excessive`
+- total complexity (`cyclomatic + cognitive`): `<20` `trivial`, `20-35` `moderate`, `36-49` `high`, `50+` `excessive`
 
 Operational rule for active-path code:
 
-- cognitive `25+`, cyclomatic `11+`, or total complexity `24+` is `refactor_now`
-- cognitive `15-24`, cyclomatic `8-10`, or total complexity `16-23` is `reduce_when_touched`
+- cognitive `25+`, cyclomatic `31+`, or total complexity `50+` is `refactor_now`
+- cognitive `15-24`, cyclomatic `21-30`, or total complexity `36-49` is `reduce_when_touched`
+
+### Marker-debt exclusion
+
+TODO, FIXME, and TestTodo markers are expected during rewrite phases and do
+not represent actual code complexity.  The file-level score intentionally
+excludes marker-debt so that rewrite bookkeeping does not inflate files into
+hotspot territory.
+
+The scoring formula separates debt items into two families:
+
+- **complexity-debt** — `Complexity`, `CodeSmell`, `ErrorSwallowing`,
+  `Duplication`, `ResourceManagement`, and all other non-marker types.
+  These contribute to the file-level score via `sqrt(sum)`.
+- **marker-debt** — `Todo`, `Fixme`, `TestTodo`.  These are reported as
+  `todo_count` and visible in `debtmap_file_summary` output, but they do
+  not contribute to the score or change the score category.
+
+Rationale: high cyclomatic / cognitive complexity costs both human cognitive
+load and LLM context window.  Marker-debt does not.
+
+### Unified analysis and structural detection
+
+The MCP `debtmap_unified_analysis` tool runs the full debtmap pipeline
+(identical to `debtmap analyze`) and returns God Object, coupling, cohesion,
+and call-graph results.  Use it for deep structural analysis, not routine
+edits.
+
+The MCP `debtmap_ci_gate` tool evaluates CI gate rules against the unified
+analysis.  Its output is pass/fail with blocking violations and warnings.
+
+### CI gate rules
+
+These rules are enforced by `debtmap_ci_gate` and should also be applied by
+human reviewers and AI agents during code review.
+
+**Blocking** (must fix before merge):
+
+| Rule | Threshold | Detail |
+| ---- | --------- | ------ |
+| priority | `critical` or `high` | Unified score ≥ 45.0 |
+| god\_object\_score | ≥ 45.0 | GodClass, GodFile, or GodModule detection |
+| debt\_density | > 50.0 per 1K LOC | Project-wide density gate |
+| cyclomatic | ≥ 31 | Per-function cyclomatic complexity |
+| cognitive | ≥ 25 | Per-function cognitive complexity |
+
+**Warning** (visible, non-blocking):
+
+| Rule | Threshold | Detail |
+| ---- | --------- | ------ |
+| priority | `medium` | Unified score 15.0-44.99 |
+| god\_object\_score | < 45.0 | Monitor — not yet blocking |
+| coupling | `highly_coupled` or `Hub` | High afferent + efferent coupling |
+| cyclomatic | 21-30 | Per-function cyclomatic watch |
+| cognitive | 15-24 | Per-function cognitive watch |
+
+Operational guidance:
+
+- Run `debtmap_ci_gate` (or `debtmap validate` in CI) before merging PRs
+- Blocking violations must be resolved; warnings should be tracked
+- God Object detection identifies GodClass (single struct with too many
+  responsibilities), GodFile (file with too many functions), and GodModule
+  (module with too many related types)
+- Coupling classifications track afferent (Ca) and efferent (Ce) coupling;
+  `Hub` means a module is both heavily depended on and depends on many others
+
+### Shared config
+
+Both the debtmap CLI and the MCP `debtmap_unified_analysis` / `debtmap_ci_gate`
+tools read the project `.debtmap.toml` file for analysis thresholds
+(`complexity`, `duplication`, ignore patterns, etc.) via the debtmap crate's
+multi-source config loader.
+
+The MCP-level score categories (file 15/30/45/75, function cyclomatic
+11/21/31, cognitive 10/15/25) are this repository's own categorization
+layer on top of the raw debtmap scores.  They are documented in this file
+and are not part of `.debtmap.toml`.
+
+## Debtmap Workflow — Human
+
+When a human makes changes to this repository:
+
+1. Run `debtmap analyze` (or `debtmap analyze --plain`) on the workspace to
+   check for structural issues (God Objects, coupling, cohesion).
+2. Run `debtmap validate` to check against the project's threshold gates.
+3. If either reports blocking-level findings in touched or new code, fix them
+   before opening a PR.
+4. Warnings should be reviewed; track them for later reduction if not
+   immediately fixable.
+5. If `.debtmap.toml` thresholds need adjustment, update the file and confirm
+   both CLI and MCP produce the same results.
+
+Quick reference:
+
+- `debtmap analyze -q --no-tui --plain .` — quiet, non-interactive full
+  analysis
+- `debtmap validate .` — threshold validation against project config
+
+## Debtmap Workflow — AI Agent
+
+When an AI agent makes changes to this repository, before the test/validation
+stage:
+
+1. Call `debtmap_ci_gate` (no scope needed for project-wide, or set
+   `path_prefix` to scope).
+2. If `pass` is `true`, proceed to tests.
+3. If `pass` is `false`:
+   - Check each blocking violation's `path` and `function`.
+   - If the violation is in a file the agent touched or created, the agent
+     must fix it before completing the task.
+   - If the violation is in untouched code, report it to the human:
+     "Blocking debtmap violation in `<path>` (`<rule>: <detail>`).
+     This is not related to the current change but will block PR merge."
+4. Warnings should be noted but do not block task completion.
+
+For more targeted review after edits:
+
+1. Call `debtmap_touched_files_review` with the list of changed files.
+2. If any touched file has a score ≥ 30.0, apply the bounded cognitive-load
+   pass from `.github/instructions/rust.instructions.md`.
+3. If any touched file has a score ≥ 45.0, split or reduce the file before
+   completing the task.
 
 ## Anti-Drift Rules
 

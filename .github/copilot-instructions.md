@@ -56,6 +56,8 @@ For refactor, hotspot, architecture-shaping, or medium/large code-change tasks:
 4. use Debtmap as a hotspot and review aid, not as behavior truth
 5. use the file-level Debtmap score categories owned by `docs/ai-context-routing.md`
 6. treat file-level scores below `15.0` as negligible, `15.0-29.99` as `reviewable`, `30.0-44.99` as `reduce_when_touched`, and `45.0+` as the hard `refactor_now` limit
+7. marker-debt (TODO/FIXME/TestTodo) is excluded from the file score — see `docs/ai-context-routing.md` marker-debt exclusion
+8. for structural analysis (God Object, coupling, cohesion), use `debtmap_unified_analysis`; for PR-readiness, use `debtmap_ci_gate` — see CI gate rules in `docs/ai-context-routing.md`
 
 If the MCP Debtmap surface is unavailable, inaccessible, or insufficient:
 1. say that explicitly
@@ -85,3 +87,10 @@ For medium or large code changes only, do one bounded cognitive-load review of t
 - do not widen scope beyond touched files unless a tiny adjacent fix is strictly necessary
 
 Do not use that cognitive-load pass for trivial edits.
+
+## Pre-merge debtmap gate
+Before completing a non-trivial task, follow the AI agent workflow in
+`docs/ai-context-routing.md` § "Debtmap Workflow — AI Agent":
+- call `debtmap_ci_gate` to check for blocking violations
+- fix blocking violations in touched files; report untouched blocking violations to the human
+- note warnings but do not block on them

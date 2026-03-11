@@ -244,11 +244,13 @@ Prefer:
 - early returns for invalid states
 - `match` for meaningful branching
 - `if let` or `let else` for simple guards
+- flat independent `if` + `continue`/`return` over long `if..else if..else if` chains
 
 Avoid:
 
 - deep nesting when a guard clause is clearer
 - clever control flow that hides the important path
+- long `if..else if..else if..else` chains when flat guards or `match` are clearer
 
 Example:
 
@@ -266,6 +268,36 @@ Good:
 match origin {
     Origin::Local(service) => load_local(service),
     Origin::Remote(url) => load_remote(url),
+}
+```
+
+Good (flat guards instead of if-else chain):
+
+```rust
+for flag in flags {
+    if flag == "--hello-world" {
+        request.hello_world = true;
+        continue;
+    }
+
+    if let Some(value) = flag.strip_prefix("--url=") {
+        request.url = Some(value.to_owned());
+        continue;
+    }
+}
+```
+
+Less preferred:
+
+```rust
+for flag in flags {
+    if flag == "--hello-world" {
+        request.hello_world = true;
+    } else if let Some(value) = flag.strip_prefix("--url=") {
+        request.url = Some(value.to_owned());
+    } else if let Some(value) = flag.strip_prefix("--socket=") {
+        request.socket = Some(value.to_owned());
+    }
 }
 ```
 

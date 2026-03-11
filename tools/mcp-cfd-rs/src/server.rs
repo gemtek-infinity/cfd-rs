@@ -1,4 +1,4 @@
-use crate::{context, debtmap, fs, log, profile, repo, search};
+use crate::{cogload, context, fs, log, profile, repo, search};
 use rmcp::{
     ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -93,6 +93,20 @@ struct DebtmapCodeSmellsRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapFunctionComplexityRequest {
     path: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct DebtmapUnifiedAnalysisRequest {
+    /// Maximum number of items to return (default: 20).
+    limit: Option<u32>,
+    /// Optional sub-path to scope the analysis.
+    path_prefix: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct DebtmapCiGateRequest {
+    /// Optional sub-path to scope the analysis.
+    path_prefix: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -465,7 +479,7 @@ impl CfdRsMemory {
 
         span.detail(&format!("limit={} prefix={:?}", limit, path_prefix));
 
-        let hotspots = debtmap::top_hotspots(&self.repo_root, scope.as_deref(), limit).await;
+        let hotspots = cogload::top_hotspots(&self.repo_root, scope.as_deref(), limit).await;
 
         span.done(&format!("hotspots={}", hotspots.len()));
         to_json(hotspots)
@@ -490,7 +504,7 @@ impl CfdRsMemory {
             }
         };
 
-        match debtmap::file_summary(&self.repo_root, &resolved).await {
+        match cogload::file_summary(&self.repo_root, &resolved).await {
             Ok(summary) => {
                 span.done(&format!("path={} score={}", summary.path, summary.score));
                 to_json(summary)
@@ -526,7 +540,7 @@ impl CfdRsMemory {
             }
         };
 
-        let review = debtmap::touched_files_review(&self.repo_root, &resolved).await;
+        let review = cogload::touched_files_review(&self.repo_root, &resolved).await;
 
         span.done(&format!(
             "files={} total_score={} skipped={}",
@@ -555,7 +569,7 @@ impl CfdRsMemory {
             }
         };
 
-        match debtmap::code_smells(&self.repo_root, &resolved).await {
+        match cogload::code_smells(&self.repo_root, &resolved).await {
             Ok(report) => {
                 span.done(&format!("path={} smells={}", report.path, report.total));
                 to_json(report)
@@ -587,7 +601,7 @@ impl CfdRsMemory {
             }
         };
 
-        match debtmap::function_complexity(&self.repo_root, &resolved).await {
+        match cogload::function_complexity(&self.repo_root, &resolved).await {
             Ok(report) => {
                 span.done(&format!(
                     "path={} fn_count={} method={}",
@@ -598,6 +612,93 @@ impl CfdRsMemory {
             Err(error) => {
                 span.error(error);
                 path_error(error, &path)
+            }
+        }
+    }
+
+    #[tool(
+        description = "Run full unified analysis (identical to debtmap CLI `analyze`) detecting God \
+                       Objects, coupling, cohesion, and call-graph issues. Returns structured items sorted \
+                       by score. Use for deep structural analysis, not routine edits."
+    )]
+    async fn debtmap_unified_analysis(
+        &self,
+        Parameters(DebtmapUnifiedAnalysisRequest { limit, path_prefix }): Parameters<
+            DebtmapUnifiedAnalysisRequest,
+        >,
+    ) -> String {
+        let span = log::ToolSpan::start("debtmap_unified_analysis");
+        let limit = limit.unwrap_or(20).clamp(1, 100) as usize;
+
+        let scope = match &path_prefix {
+            Some(prefix) => match repo::resolve(&self.repo_root, &self.repo_root_canon, prefix) {
+                Ok(p) => Some(p),
+                Err(error) => {
+                    span.error(error);
+                    return path_error(error, prefix);
+                }
+            },
+            None => None,
+        };
+
+        span.detail(&format!("limit={} prefix={:?}", limit, path_prefix));
+
+        match cogload::run_unified_analysis(&self.repo_root, scope.as_deref(), limit).await {
+            Ok(report) => {
+                span.done(&format!(
+                    "items={} density={:.1} loc={}",
+                    report.total_items, report.debt_density, report.total_loc,
+                ));
+                to_json(report)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error }))
+            }
+        }
+    }
+
+    #[tool(
+        description = "Evaluate CI gate rules against the repo. Returns pass/fail with blocking violations \
+                       and warnings. Blocking rules: priority critical/high, god_object_score >= 45, \
+                       debt_density > 50/1K LOC, cyclomatic >= 31, cognitive >= 25. Warning rules: priority \
+                       medium, god_object_score < 45, coupling Hub/highly_coupled, cyclomatic 21-30, \
+                       cognitive 15-24."
+    )]
+    async fn debtmap_ci_gate(
+        &self,
+        Parameters(DebtmapCiGateRequest { path_prefix }): Parameters<DebtmapCiGateRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("debtmap_ci_gate");
+
+        let scope = match &path_prefix {
+            Some(prefix) => match repo::resolve(&self.repo_root, &self.repo_root_canon, prefix) {
+                Ok(p) => Some(p),
+                Err(error) => {
+                    span.error(error);
+                    return path_error(error, prefix);
+                }
+            },
+            None => None,
+        };
+
+        span.detail(&format!("prefix={:?}", path_prefix));
+
+        // Run full analysis with a high limit so CI gate sees everything.
+        match cogload::run_unified_analysis(&self.repo_root, scope.as_deref(), 500).await {
+            Ok(report) => {
+                let gate = cogload::evaluate_ci_gate(&report);
+                span.done(&format!(
+                    "pass={} blocking={} warnings={}",
+                    gate.pass,
+                    gate.blocking.len(),
+                    gate.warnings.len(),
+                ));
+                to_json(gate)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error }))
             }
         }
     }

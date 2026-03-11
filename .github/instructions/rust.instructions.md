@@ -20,6 +20,8 @@ When editing Rust code or Cargo manifests in this repository:
 - prefer explicit names, explicit intermediate variables, and straightforward control flow
 - avoid dense one-liners or clever chaining when a few named steps are easier to review
 - prefer early returns, `match`, `if let`, and `let else` over deep nesting
+- prefer flat independent `if` + `continue`/`return` guards over long `if..else if..else if` chains
+- add a blank line before a multi-line control flow block when it follows a different logical step
 - keep blank lines tight; use them to separate real steps, not to add visual padding
 - use one blank line before a multi-line final expression when setup and the final return or construction are both meaningful
 - prefer `self::` for sibling module items when that makes local ownership clearer
@@ -63,8 +65,10 @@ For medium or large Rust or manifest changes, before running checks:
 - treat file-level scores in `15.0-29.99` as `reviewable` — review when already in the file
 - treat file-level scores in `30.0-44.99` as `reduce_when_touched`, and aim to keep touched Rust files below `30.0` when feasible
 - treat file-level scores at `45.0+` as `refactor_now`
-- for per-function output, treat cognitive `25+`, cyclomatic `11+`, or total complexity `24+` as `refactor_now` on active-path code
+- for per-function output, treat cognitive `25+`, cyclomatic `31+`, or total complexity `50+` as `refactor_now` on active-path code
+- marker-debt (TODO/FIXME/TestTodo) is excluded from the file score — these are expected during rewrite phases and do not represent real cognitive load
 - if the MCP Debtmap surface is unavailable, inaccessible, or insufficient, say so explicitly and continue with bounded direct review
+- for PR-readiness, run `debtmap_ci_gate` or `debtmap validate` — blocking violations must be fixed before merge (see CI gate rules in `docs/ai-context-routing.md`)
 
 Do not force this pass on trivial edits.
 

@@ -10,17 +10,32 @@ pub(super) fn parse_flag_request(flags: &[String]) -> IngressFlagRequest {
     let mut request = IngressFlagRequest::default();
 
     for flag in flags {
+        if flag == "--hello-world" {
+            request.hello_world = true;
+            continue;
+        }
+
         if let Some(value) = flag.strip_prefix("--hello-world=") {
             request.hello_world = value == "true";
-        } else if flag == "--hello-world" {
-            request.hello_world = true;
-        } else if let Some(value) = flag.strip_prefix("--bastion=") {
-            request.bastion = value == "true";
-        } else if flag == "--bastion" {
+            continue;
+        }
+
+        if flag == "--bastion" {
             request.bastion = true;
-        } else if let Some(value) = flag.strip_prefix("--url=") {
+            continue;
+        }
+
+        if let Some(value) = flag.strip_prefix("--bastion=") {
+            request.bastion = value == "true";
+            continue;
+        }
+
+        if let Some(value) = flag.strip_prefix("--url=") {
             request.url = Some(value.to_owned());
-        } else if let Some(value) = flag.strip_prefix("--unix-socket=") {
+            continue;
+        }
+
+        if let Some(value) = flag.strip_prefix("--unix-socket=") {
             request.unix_socket = Some(value.to_owned());
         }
     }
@@ -50,12 +65,15 @@ fn parse_single_origin_service(request: &IngressFlagRequest) -> Result<IngressSe
     if request.hello_world {
         return Ok(IngressService::HelloWorld);
     }
+
     if request.bastion {
         return Ok(IngressService::Bastion);
     }
+
     if let Some(url) = request.url.as_deref() {
         return parse_flag_origin_url(url);
     }
+
     if let Some(unix_socket) = request.unix_socket.as_deref() {
         return Ok(IngressService::UnixSocket(PathBuf::from(unix_socket)));
     }
@@ -65,17 +83,20 @@ fn parse_single_origin_service(request: &IngressFlagRequest) -> Result<IngressSe
 
 fn parse_flag_origin_url(value: &str) -> Result<IngressService> {
     let mut url = Url::parse(value).map_err(|source| ConfigError::invalid_url("url", value, source))?;
+
     if url.scheme().is_empty() || url.host_str().is_none() {
         return Err(ConfigError::invalid_ingress_service(
             value,
             "address must include a scheme and hostname",
         ));
     }
+
     if !url.path().is_empty() && url.path() != "/" {
         url.set_path("");
         url.set_query(None);
         url.set_fragment(None);
     }
+
     if url.path() == "/" {
         url.set_path("");
     }
