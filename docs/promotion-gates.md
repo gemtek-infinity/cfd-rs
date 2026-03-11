@@ -368,4 +368,5 @@ At the current repo state:
 - Phase 3.3 QUIC tunnel core is admitted
 - Phase 3.4 Pingora proxy seam (3.4a–c) is admitted
 - Phase 3.5 wire/protocol boundary is admitted
-- Phases 3.6 through 3.7 are deferred within Big Phase 3
+- Phase 3.6 security/compliance operational boundary is admitted
+- Phase 3.7 standard-format crate integration boundary is admitted

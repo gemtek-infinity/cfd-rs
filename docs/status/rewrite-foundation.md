@@ -21,8 +21,11 @@ compares green. It also now contains a narrow Phase 3.3 QUIC tunnel core in
 establishment, and runtime config handoff. Phase 3.4 adds a Pingora proxy seam
 with runtime lifecycle participation and a first admitted origin/proxy path
 (`http_status` routing) confined to `crates/cloudflared-cli/src/proxy.rs`. The
-admitted origin path is intentionally narrow. Broader wire/protocol behavior
-and general proxy completeness remain later slices. Most broader
+admitted origin path is intentionally narrow. Phase 3.7 now admits a minimal
+standard-format crate boundary for the active origin-cert PEM path through the
+owned credential seam in `crates/cloudflared-config/src/credentials.rs`.
+Broader wire/protocol behavior and general proxy completeness remain later
+slices. Most broader
 production-alpha subsystem behavior is still unported.
 
 The scaffold is intentionally real but minimal:
@@ -86,7 +89,8 @@ The following top-level rewrite decisions are part of the active scaffold:
   - Phase 3.3 QUIC tunnel core is admitted
   - Phase 3.4 Pingora proxy seam (3.4a–c) is admitted
   - Phase 3.5 wire/protocol boundary is admitted
-  - active task: 3.6 security/compliance operational boundary
+  - Phase 3.6 security/compliance operational boundary is admitted
+  - Phase 3.7 standard-format crate integration boundary is admitted
 - Big Phase 4 is later:
   - harden, validate, measure, and prove the alpha in real use
 - Big Phase 5 is later:

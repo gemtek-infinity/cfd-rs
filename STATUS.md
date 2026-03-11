@@ -24,6 +24,9 @@ What exists now:
 - a Phase 3.6 security/compliance operational boundary that reports the bounded
   crypto surface (quiche + BoringSSL lane only) and enforces Linux GNU/glibc
   deployment-contract assumptions at runtime startup
+- a Phase 3.7 standard-format crate integration boundary that admits
+  workspace-managed PEM handling for the active origin-cert runtime path
+  through owned credential adapters in `crates/cloudflared-config/`
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 
@@ -31,7 +34,8 @@ What does not exist yet:
 
 - broader Pingora proxy completeness beyond the narrow admitted origin path
 - registration RPC content (capnp) and incoming request stream handling
-- later standard-format integration slices and broader compliance proof work
+- broader standard-format integration beyond the active origin-cert path and
+  broader compliance proof work
 - parity-complete broader subsystem coverage
 - broader platform scope beyond the frozen Linux lane
 
