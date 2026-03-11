@@ -1,9 +1,7 @@
 # AI Context Routing
 
 This file is the thin entry map for AI and human cold starts.
-
-Use it to choose the minimum files and tools needed for a task before loading
-larger documents.
+Use it to choose the minimum files and tools needed for a task before loading larger documents.
 
 ## Retrieval Order
 
@@ -116,6 +114,25 @@ Load first:
 These files are workflow notes.
 They do not override charter, status, or policy docs.
 
+### Refactor, hotspot, and cognitive-load work
+
+Load first:
+
+- `docs/ai-context-routing.md`
+- `.github/copilot-instructions.md`
+- `.github/instructions/rust.instructions.md`
+
+Then use MCP in this order:
+
+1. a compact context snapshot or brief to identify the owning boundary and smallest relevant file set
+2. the MCP Debtmap surface for touched-files review or narrow path-prefix hotspot review
+3. direct targeted file reads only after the first bounded MCP slice is known
+
+Debtmap is a hotspot and review aid, not behavior truth.
+Use frozen baseline code/tests for behavior and parity truth.
+
+Do not start refactor work with broad repo-wide Debtmap output if a touched-files or narrow path-prefix query can answer first.
+
 ## MCP Routing
 
 When using the local read-only MCP server:
@@ -129,6 +146,18 @@ When using the local read-only MCP server:
 7. read only the needed lines or chunk
 8. widen the search only if the first path set does not answer the question
 
+For refactor, hotspot, and cognitive-load tasks:
+
+1. use MCP routing first to identify the owning boundary and smallest file set
+2. then consult the MCP Debtmap surface first when available
+3. prefer touched-files review first
+4. then prefer narrow path-prefix hotspot review
+5. use broader hotspot queries only when the bounded query still leaves uncertainty
+
+If the MCP server is unavailable, inaccessible, or insufficient for the question, say so explicitly before widening to broader manual reads.
+
+If the MCP Debtmap surface is unavailable, inaccessible, or insufficient for a refactor or hotspot task, say so explicitly before falling back to bounded direct review.
+
 The MCP server should be used for small grounded slices, not broad document dumping.
 
 Choose the smallest MCP surface that fits the question:
@@ -137,12 +166,14 @@ Choose the smallest MCP surface that fits the question:
 - use a brief when you need the first file to open and the next two or three likely follow-ups
 - use a bundle when you need a curated multi-file pack for a known question type
 - use search, listing, metadata, and line reads only after the smallest curated surface stops being enough
+- use Debtmap only for hotspot triage, touched-files review, or bounded cognitive-load inspection
 
 Examples:
 
 - use a snapshot for questions like "what phase is active now?", "what owns dependency truth?", "which file owns this topic?", or "what is the transport/Pingora/FIPS lane?"
 - use a brief for questions like "which file should I open first for repo state or parity work?"
 - use a bundle for questions like "give me the narrow file pack for runtime/dependency policy" or "give me the baseline files for behavior/parity routing"
+- use Debtmap for questions like "what are the top hotspots in this path?", "summarize this touched file's cognitive load", or "review only these changed files for hotspot concentration"
 
 ## Anti-Drift Rules
 

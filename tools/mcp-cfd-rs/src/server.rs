@@ -1,4 +1,4 @@
-use crate::{context, fs, log, profile, repo, search};
+use crate::{context, debtmap, fs, log, profile, repo, search};
 use rmcp::{
     ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -69,6 +69,22 @@ struct FileMetadataRequest {
     path: String,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+struct DebtmapHotspotsRequest {
+    limit: Option<u32>,
+    path_prefix: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct DebtmapFileSummaryRequest {
+    path: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct DebtmapTouchedFilesRequest {
+    paths: Vec<String>,
+}
+
 // ---------------------------------------------------------------------------
 // Server handler
 // ---------------------------------------------------------------------------
@@ -98,22 +114,9 @@ impl CfdRsMemory {
         Parameters(SearchRequest { query, max_results }): Parameters<SearchRequest>,
     ) -> String {
         let span = log::ToolSpan::start("find_governance");
-        let max_results = max_results.unwrap_or(5).clamp(1, 10) as usize;
-
         let roots = profile::governance_roots(&self.repo_root);
-
-        span.detail(&format!("scope=governance roots={}", roots.len()));
-
-        match search::search_roots(&self.repo_root, &roots, &query, max_results).await {
-            Ok(hits) => {
-                span.done(&format!("hits={}", hits.len()));
-                to_json(hits)
-            }
-            Err(error) => {
-                span.error(error);
-                to_json(serde_json::json!({ "error": error }))
-            }
-        }
+        let max = max_results.unwrap_or(5).clamp(1, 10) as usize;
+        self.search_and_respond(&span, &roots, &query, max).await
     }
 
     #[tool(description = "Search frozen behavior/parity sources, returning small grounded hits.")]
@@ -122,22 +125,9 @@ impl CfdRsMemory {
         Parameters(SearchRequest { query, max_results }): Parameters<SearchRequest>,
     ) -> String {
         let span = log::ToolSpan::start("find_behavior_truth");
-        let max_results = max_results.unwrap_or(5).clamp(1, 10) as usize;
-
         let roots = profile::behavior_truth_roots(&self.repo_root);
-
-        span.detail(&format!("scope=behavior roots={}", roots.len()));
-
-        match search::search_roots(&self.repo_root, &roots, &query, max_results).await {
-            Ok(hits) => {
-                span.done(&format!("hits={}", hits.len()));
-                to_json(hits)
-            }
-            Err(error) => {
-                span.error(error);
-                to_json(serde_json::json!({ "error": error }))
-            }
-        }
+        let max = max_results.unwrap_or(5).clamp(1, 10) as usize;
+        self.search_and_respond(&span, &roots, &query, max).await
     }
 
     #[tool(
@@ -156,33 +146,22 @@ impl CfdRsMemory {
 
         if paths.is_empty() {
             span.error("paths must not be empty");
-            return to_json(serde_json::json!({ "error": "paths must not be empty" }));
+            return path_error("paths must not be empty", "");
         }
 
         let mut roots = Vec::new();
-        for path in paths {
+        for path in &paths {
             match repo::resolve(&self.repo_root, &self.repo_root_canon, path.as_str()) {
                 Ok(root) => roots.push(root),
                 Err(error) => {
                     span.error(error);
-                    return to_json(serde_json::json!({ "error": error, "path": path }));
+                    return path_error(error, path);
                 }
             }
         }
 
-        let max_results = max_results.unwrap_or(5).clamp(1, 20) as usize;
-        span.detail(&format!("roots={}", roots.len()));
-
-        match search::search_roots(&self.repo_root, &roots, &query, max_results).await {
-            Ok(hits) => {
-                span.done(&format!("hits={}", hits.len()));
-                to_json(hits)
-            }
-            Err(error) => {
-                span.error(error);
-                to_json(serde_json::json!({ "error": error }))
-            }
-        }
+        let max = max_results.unwrap_or(5).clamp(1, 20) as usize;
+        self.search_and_respond(&span, &roots, &query, max).await
     }
 
     // -- listing tools ------------------------------------------------------
@@ -212,7 +191,7 @@ impl CfdRsMemory {
             Ok(path) => path,
             Err(error) => {
                 span.error(error);
-                return to_json(serde_json::json!({ "error": error, "path": base_path }));
+                return path_error(error, &base_path);
             }
         };
 
@@ -330,26 +309,18 @@ impl CfdRsMemory {
         let span = log::ToolSpan::start("read_file");
         let max_chars = max_chars.unwrap_or(4000).clamp(200, 12000) as usize;
 
-        let candidate_canon = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
-            Ok(path) => path,
+        let resolved = match self.resolve_repo_file(&path) {
+            Ok(p) => p,
             Err(error) => {
                 span.error(error);
-                return to_json(serde_json::json!({ "error": error, "path": path }));
+                return path_error(error, &path);
             }
         };
 
-        if !candidate_canon.is_file() {
-            span.error("path is not a regular file");
-            return to_json(serde_json::json!({
-                "error": "path is not a regular file",
-                "path": path
-            }));
-        }
-
-        match tokio_fs::read_to_string(&candidate_canon).await {
+        match tokio_fs::read_to_string(&resolved).await {
             Ok(text) => {
-                let content: String = text.chars().take(max_chars).collect();
                 let truncated = text.chars().count() > max_chars;
+                let content: String = text.chars().take(max_chars).collect();
 
                 span.done(&format!("path={} truncated={}", path, truncated));
                 to_json(serde_json::json!({
@@ -360,10 +331,7 @@ impl CfdRsMemory {
             }
             Err(_) => {
                 span.error("file not readable as UTF-8 text");
-                to_json(serde_json::json!({
-                    "error": "file not readable as UTF-8 text",
-                    "path": path
-                }))
+                path_error("file not readable as UTF-8 text", &path)
             }
         }
     }
@@ -386,29 +354,21 @@ impl CfdRsMemory {
 
         if start_line == 0 || end_line < start_line {
             span.error("invalid line range");
-            return to_json(serde_json::json!({
-                "error": "line range must be 1-based and end_line must be >= start_line",
-                "path": path
-            }));
+            return path_error(
+                "line range must be 1-based and end_line must be >= start_line",
+                &path,
+            );
         }
 
-        let candidate_canon = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
-            Ok(path) => path,
+        let resolved = match self.resolve_repo_file(&path) {
+            Ok(p) => p,
             Err(error) => {
                 span.error(error);
-                return to_json(serde_json::json!({ "error": error, "path": path }));
+                return path_error(error, &path);
             }
         };
 
-        if !candidate_canon.is_file() {
-            span.error("path is not a regular file");
-            return to_json(serde_json::json!({
-                "error": "path is not a regular file",
-                "path": path
-            }));
-        }
-
-        match tokio_fs::read_to_string(&candidate_canon).await {
+        match tokio_fs::read_to_string(&resolved).await {
             Ok(text) => {
                 match fs::slice_lines(text.as_str(), start_line as usize, end_line as usize, max_chars) {
                     Ok((content, total_line_count, truncated)) => {
@@ -430,16 +390,13 @@ impl CfdRsMemory {
                     }
                     Err(error) => {
                         span.error(error);
-                        to_json(serde_json::json!({ "error": error, "path": path }))
+                        path_error(error, &path)
                     }
                 }
             }
             Err(_) => {
                 span.error("file not readable as UTF-8 text");
-                to_json(serde_json::json!({
-                    "error": "file not readable as UTF-8 text",
-                    "path": path
-                }))
+                path_error("file not readable as UTF-8 text", &path)
             }
         }
     }
@@ -453,19 +410,19 @@ impl CfdRsMemory {
     ) -> String {
         let span = log::ToolSpan::start("file_metadata");
 
-        let candidate_canon = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
-            Ok(path) => path,
+        let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
+            Ok(p) => p,
             Err(error) => {
                 span.error(error);
-                return to_json(serde_json::json!({ "error": error, "path": path }));
+                return path_error(error, &path);
             }
         };
 
-        let metadata = match tokio_fs::metadata(&candidate_canon).await {
-            Ok(metadata) => metadata,
+        let metadata = match tokio_fs::metadata(&resolved).await {
+            Ok(m) => m,
             Err(_) => {
                 span.error("path not readable");
-                return to_json(serde_json::json!({ "error": "path not readable", "path": path }));
+                return path_error("path not readable", &path);
             }
         };
 
@@ -477,8 +434,8 @@ impl CfdRsMemory {
             "other"
         };
 
-        let line_count = if metadata.is_file() && fs::is_text_file(&candidate_canon) {
-            tokio_fs::read_to_string(&candidate_canon)
+        let line_count = if metadata.is_file() && fs::is_text_file(&resolved) {
+            tokio_fs::read_to_string(&resolved)
                 .await
                 .ok()
                 .map(|text| text.lines().count())
@@ -495,6 +452,143 @@ impl CfdRsMemory {
 
         span.done(&format!("path={} kind={}", result.path, result.kind));
         to_json(result)
+    }
+
+    // -- debtmap tools ------------------------------------------------------
+
+    #[tool(
+        description = "Return top cognitive-load hotspot files for the repo or a bounded path prefix. Use \
+                       for refactor triage, not as always-on context."
+    )]
+    async fn debtmap_top_hotspots(
+        &self,
+        Parameters(DebtmapHotspotsRequest { limit, path_prefix }): Parameters<DebtmapHotspotsRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("debtmap_top_hotspots");
+        let limit = limit.unwrap_or(10).clamp(1, 50) as usize;
+
+        let scope = match &path_prefix {
+            Some(prefix) => match repo::resolve(&self.repo_root, &self.repo_root_canon, prefix) {
+                Ok(p) => Some(p),
+                Err(error) => {
+                    span.error(error);
+                    return path_error(error, prefix);
+                }
+            },
+            None => None,
+        };
+
+        span.detail(&format!("limit={} prefix={:?}", limit, path_prefix));
+
+        let hotspots = debtmap::top_hotspots(&self.repo_root, scope.as_deref(), limit).await;
+
+        span.done(&format!("hotspots={}", hotspots.len()));
+        to_json(hotspots)
+    }
+
+    #[tool(
+        description = "Return a focused Debtmap summary for one file, including TODO locations and \
+                       long-function line numbers."
+    )]
+    async fn debtmap_file_summary(
+        &self,
+        Parameters(DebtmapFileSummaryRequest { path }): Parameters<DebtmapFileSummaryRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("debtmap_file_summary");
+
+        let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
+            Ok(p) => p,
+            Err(error) => {
+                span.error(error);
+                return path_error(error, &path);
+            }
+        };
+
+        match debtmap::file_summary(&self.repo_root, &resolved).await {
+            Ok(summary) => {
+                span.done(&format!("path={} score={}", summary.path, summary.score));
+                to_json(summary)
+            }
+            Err(error) => {
+                span.error(error);
+                path_error(error, &path)
+            }
+        }
+    }
+
+    #[tool(
+        description = "Score a provided list of touched files for bounded cognitive-load review. Use after \
+                       edits, not as always-on analysis."
+    )]
+    async fn debtmap_touched_files_review(
+        &self,
+        Parameters(DebtmapTouchedFilesRequest { paths }): Parameters<DebtmapTouchedFilesRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("debtmap_touched_files_review");
+
+        if paths.is_empty() {
+            span.error("paths must not be empty");
+            return path_error("paths must not be empty", "");
+        }
+
+        let mut resolved = Vec::new();
+        for path in &paths {
+            match repo::resolve(&self.repo_root, &self.repo_root_canon, path) {
+                Ok(p) => resolved.push(p),
+                Err(error) => {
+                    span.error(error);
+                    return path_error(error, path);
+                }
+            }
+        }
+
+        let review = debtmap::touched_files_review(&self.repo_root, &resolved).await;
+
+        span.done(&format!(
+            "files={} total_score={} skipped={}",
+            review.files.len(),
+            review.total_score,
+            review.skipped.len(),
+        ));
+        to_json(review)
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Private helpers
+// ---------------------------------------------------------------------------
+
+impl CfdRsMemory {
+    /// Shared search-and-format for scoped search tools.
+    async fn search_and_respond(
+        &self,
+        span: &log::ToolSpan,
+        roots: &[PathBuf],
+        query: &str,
+        max_results: usize,
+    ) -> String {
+        span.detail(&format!("roots={}", roots.len()));
+
+        match search::search_roots(&self.repo_root, roots, query, max_results).await {
+            Ok(hits) => {
+                span.done(&format!("hits={}", hits.len()));
+                to_json(hits)
+            }
+            Err(error) => {
+                span.error(error);
+                to_json(serde_json::json!({ "error": error }))
+            }
+        }
+    }
+
+    /// Resolve a repo-relative path to a canonical file path, rejecting
+    /// non-files and paths outside the repo boundary.
+    fn resolve_repo_file(&self, path: &str) -> Result<PathBuf, &'static str> {
+        let resolved = repo::resolve(&self.repo_root, &self.repo_root_canon, path)?;
+        if !resolved.is_file() {
+            return Err("path is not a regular file");
+        }
+        Ok(resolved)
     }
 }
 
@@ -516,4 +610,8 @@ impl ServerHandler for CfdRsMemory {
 fn to_json<T: Serialize>(value: T) -> String {
     serde_json::to_string_pretty(&value)
         .unwrap_or_else(|_| "{\"error\":\"serialization failed\"}".to_string())
+}
+
+fn path_error(error: &str, path: &str) -> String {
+    to_json(serde_json::json!({ "error": error, "path": path }))
 }

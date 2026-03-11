@@ -6,6 +6,7 @@ static GLOBAL_ALLOCATOR: MiMalloc = MiMalloc;
 use rmcp::{ServiceExt, transport::stdio};
 
 mod context;
+mod debtmap;
 mod fs;
 mod log;
 mod profile;
