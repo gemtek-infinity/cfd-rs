@@ -20,7 +20,7 @@ What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1):
 - runtime-owned config handoff feeds the transport identity boundary
 - reconnect/restart policy remains owned by runtime supervision
 - the Pingora proxy seam is admitted and confined to
-  `crates/cloudflared-cli/src/proxy.rs`
+  `crates/cloudflared-cli/src/proxy/`
 - the proxy seam participates in runtime lifecycle (startup/shutdown)
 - the first admitted origin/proxy path routes `http_status` ingress rules
   through the Pingora-owned seam
@@ -41,7 +41,7 @@ What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1):
   missing
 - the active origin-cert runtime path now uses a workspace-managed mature PEM
   crate through owned credential adapters in
-  `crates/cloudflared-config/src/credentials.rs`
+  `crates/cloudflared-config/src/credentials/`
 - direct third-party PEM handling remains confined to that owned credential
   boundary rather than leaking across runtime, transport, proxy, or app code
 - runtime-owned observability now reports lifecycle transitions, owner-scoped
@@ -98,7 +98,7 @@ Phase 3.7 (standard-format crate integration boundary):
 - the admitted standard-format boundary is limited to PEM container handling
   needed by the active origin-cert runtime path
 - the PEM crate enters through owned credential adapters in
-  `crates/cloudflared-config/src/credentials.rs`
+  `crates/cloudflared-config/src/credentials/`
 - broader certificate/key container handling, broader format coverage, and
   later protocol/runtime parsing work remain deferred
 

@@ -17,7 +17,7 @@ What exists now:
 - a narrow Phase 3.3 QUIC tunnel core in `crates/cloudflared-cli/`
 - a Phase 3.4 Pingora proxy seam with runtime lifecycle participation and a
   first admitted origin/proxy path (`http_status` routing) in
-  `crates/cloudflared-cli/src/proxy.rs`
+  `crates/cloudflared-cli/src/proxy/`
 - a Phase 3.5 wire/protocol boundary between transport and proxy in
   `crates/cloudflared-cli/src/protocol.rs` with explicit transport-to-proxy
   handoff through the runtime-managed protocol bridge
