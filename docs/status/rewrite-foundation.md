@@ -94,13 +94,16 @@ The following top-level rewrite decisions are part of the active scaffold:
   - Phase 3.5 wire/protocol boundary is admitted
   - Phase 3.6 security/compliance operational boundary is admitted
   - Phase 3.7 standard-format crate integration boundary is admitted
-- Big Phase 4 is admitted narrowly at 4.1:
-  - Phase 4.1 observability and operability is admitted around the existing
-    runnable-alpha surface
-  - 4.2 performance proof, 4.3 failure-mode proof, and 4.4 deployment proof
-    remain later
-- Big Phase 5 is later:
-  - widen intentionally only after the alpha is credible
+- Big Phase 4 hardening is admitted through 4.2:
+  - Phase 4.1 observability and operability is admitted
+  - Phase 4.2 performance validation is admitted
+  - 4.3 failure-mode proof and 4.4 deployment proof remain later within
+    Big Phase 4
+- Big Phase 5 completes and proves production alpha:
+  - remaining frozen-baseline feature/surface completion on the declared lane
+  - broader performance proof, divergence accounting, and promotion gate
+  - production alpha means behavior/surface parity to frozen `2026.2.0`, not
+    structural cloning
 
 ### Active Lane
 
