@@ -1,6 +1,36 @@
 use super::*;
 use cloudflared_config::{IngressMatch, OriginRequestConfig};
 
+fn expect_proxy_state(msg: RuntimeCommand, expected: ProxySeamState) -> String {
+    match msg {
+        RuntimeCommand::ProxyState { state, detail } => {
+            assert_eq!(state, expected);
+            detail
+        }
+        other => panic!("expected ProxyState({expected:?}), got: {other:?}"),
+    }
+}
+
+fn expect_service_status(msg: RuntimeCommand) -> String {
+    match msg {
+        RuntimeCommand::ServiceStatus { service, detail } => {
+            assert_eq!(service, PROXY_SEAM_NAME);
+            detail
+        }
+        other => panic!("expected ServiceStatus for {PROXY_SEAM_NAME}, got: {other:?}"),
+    }
+}
+
+fn expect_protocol_state(msg: RuntimeCommand, expected: ProtocolBridgeState) -> String {
+    match msg {
+        RuntimeCommand::ProtocolState { state, detail } => {
+            assert_eq!(state, expected);
+            detail
+        }
+        other => panic!("expected ProtocolState({expected:?}), got: {other:?}"),
+    }
+}
+
 fn http_status_rule(hostname: Option<&str>, code: u16) -> IngressRule {
     IngressRule {
         matcher: IngressMatch {
@@ -112,30 +142,20 @@ async fn proxy_seam_reports_origin_path_and_shuts_down() {
     seam.spawn(command_tx, None, shutdown.clone(), &mut child_tasks);
 
     let msg = command_rx.recv().await.expect("should receive proxy state");
-    match msg {
-        RuntimeCommand::ProxyState { state, detail } => {
-            assert_eq!(state, ProxySeamState::Admitted);
-            assert!(detail.contains("ingress-rules=1"));
-        }
-        other => panic!("expected ProxyState for admission, got: {other:?}"),
-    }
+    let detail = expect_proxy_state(msg, ProxySeamState::Admitted);
+    assert!(detail.contains("ingress-rules=1"));
 
     // Seam should report the admitted origin/proxy path on startup.
     let msg = command_rx.recv().await.expect("should receive origin status");
-    match msg {
-        RuntimeCommand::ServiceStatus { service, detail } => {
-            assert_eq!(service, PROXY_SEAM_NAME);
-            assert!(
-                detail.contains("origin-proxy-admitted"),
-                "startup status should report admitted origin path, got: {detail}"
-            );
-            assert!(
-                detail.contains("ingress-rules=1"),
-                "startup status should report ingress rule count, got: {detail}"
-            );
-        }
-        other => panic!("expected ServiceStatus for origin admission, got: {other:?}"),
-    }
+    let detail = expect_service_status(msg);
+    assert!(
+        detail.contains("origin-proxy-admitted"),
+        "startup status should report admitted origin path, got: {detail}"
+    );
+    assert!(
+        detail.contains("ingress-rules=1"),
+        "startup status should report ingress rule count, got: {detail}"
+    );
 
     shutdown.cancel();
 
@@ -143,22 +163,12 @@ async fn proxy_seam_reports_origin_path_and_shuts_down() {
         .recv()
         .await
         .expect("should receive shutdown proxy state");
-    match msg {
-        RuntimeCommand::ProxyState { state, detail } => {
-            assert_eq!(state, ProxySeamState::ShutdownAcknowledged);
-            assert!(detail.contains("shutdown"));
-        }
-        other => panic!("expected ProxyState for shutdown, got: {other:?}"),
-    }
+    let detail = expect_proxy_state(msg, ProxySeamState::ShutdownAcknowledged);
+    assert!(detail.contains("shutdown"));
 
     let msg = command_rx.recv().await.expect("should receive shutdown status");
-    match msg {
-        RuntimeCommand::ServiceStatus { service, detail } => {
-            assert_eq!(service, PROXY_SEAM_NAME);
-            assert!(detail.contains("shutdown acknowledged"));
-        }
-        other => panic!("expected ServiceStatus for shutdown exit, got: {other:?}"),
-    }
+    let detail = expect_service_status(msg);
+    assert!(detail.contains("shutdown acknowledged"));
 
     let result = child_tasks.join_next().await;
     assert!(result.is_some(), "proxy seam child task should complete");
@@ -213,45 +223,30 @@ async fn proxy_seam_receives_protocol_registration() {
         .recv()
         .await
         .expect("should receive protocol state update");
-    match msg {
-        RuntimeCommand::ProtocolState { state, detail } => {
-            assert_eq!(state, ProtocolBridgeState::RegistrationObserved);
-            assert!(detail.contains("127.0.0.1:7844"));
-        }
-        other => panic!("expected ProtocolState for registration, got: {other:?}"),
-    }
+    let detail = expect_protocol_state(msg, ProtocolBridgeState::RegistrationObserved);
+    assert!(detail.contains("127.0.0.1:7844"));
 
     let msg = command_rx
         .recv()
         .await
         .expect("should receive proxy registration state");
-    match msg {
-        RuntimeCommand::ProxyState { state, detail } => {
-            assert_eq!(state, ProxySeamState::RegistrationObserved);
-            assert!(detail.contains("127.0.0.1:7844"));
-        }
-        other => panic!("expected ProxyState for registration, got: {other:?}"),
-    }
+    let detail = expect_proxy_state(msg, ProxySeamState::RegistrationObserved);
+    assert!(detail.contains("127.0.0.1:7844"));
 
     // Proxy should report the protocol bridge registration.
     let msg = command_rx
         .recv()
         .await
         .expect("should receive protocol bridge status");
-    match msg {
-        RuntimeCommand::ServiceStatus { service, detail } => {
-            assert_eq!(service, PROXY_SEAM_NAME);
-            assert!(
-                detail.contains("protocol-bridge: session registered"),
-                "expected protocol bridge registration, got: {detail}"
-            );
-            assert!(
-                detail.contains("peer=127.0.0.1:7844"),
-                "expected peer address, got: {detail}"
-            );
-        }
-        other => panic!("expected ServiceStatus for protocol bridge, got: {other:?}"),
-    }
+    let detail = expect_service_status(msg);
+    assert!(
+        detail.contains("protocol-bridge: session registered"),
+        "expected protocol bridge registration, got: {detail}"
+    );
+    assert!(
+        detail.contains("peer=127.0.0.1:7844"),
+        "expected peer address, got: {detail}"
+    );
 
     shutdown.cancel();
 
@@ -268,13 +263,8 @@ async fn proxy_seam_receives_protocol_registration() {
     ));
 
     let msg = command_rx.recv().await.expect("should receive shutdown status");
-    match msg {
-        RuntimeCommand::ServiceStatus { service, detail } => {
-            assert_eq!(service, PROXY_SEAM_NAME);
-            assert!(detail.contains("shutdown acknowledged"));
-        }
-        other => panic!("expected ServiceStatus for shutdown, got: {other:?}"),
-    }
+    let detail = expect_service_status(msg);
+    assert!(detail.contains("shutdown acknowledged"));
 }
 
 #[tokio::test]
@@ -304,25 +294,15 @@ async fn proxy_seam_handles_bridge_closure_without_registration() {
         .recv()
         .await
         .expect("should receive bridge-closed state");
-    match msg {
-        RuntimeCommand::ProtocolState { state, detail } => {
-            assert_eq!(state, ProtocolBridgeState::BridgeClosed);
-            assert!(detail.contains("before transport registration"));
-        }
-        other => panic!("expected ProtocolState for bridge closure, got: {other:?}"),
-    }
+    let detail = expect_protocol_state(msg, ProtocolBridgeState::BridgeClosed);
+    assert!(detail.contains("before transport registration"));
 
     let msg = command_rx
         .recv()
         .await
         .expect("should receive bridge-closure status after closure");
-    match msg {
-        RuntimeCommand::ServiceStatus { service, detail } => {
-            assert_eq!(service, PROXY_SEAM_NAME);
-            assert!(detail.contains("proxy bridge closed before transport registration"));
-        }
-        other => panic!("expected ServiceStatus for bridge closure, got: {other:?}"),
-    }
+    let detail = expect_service_status(msg);
+    assert!(detail.contains("proxy bridge closed before transport registration"));
 
     shutdown.cancel();
 
@@ -342,14 +322,9 @@ async fn proxy_seam_handles_bridge_closure_without_registration() {
         .recv()
         .await
         .expect("should receive shutdown status after bridge closure");
-    match msg {
-        RuntimeCommand::ServiceStatus { service, detail } => {
-            assert_eq!(service, PROXY_SEAM_NAME);
-            assert!(
-                detail.contains("shutdown acknowledged"),
-                "expected shutdown ack after bridge closure, got: {detail}"
-            );
-        }
-        other => panic!("expected ServiceStatus for shutdown, got: {other:?}"),
-    }
+    let detail = expect_service_status(msg);
+    assert!(
+        detail.contains("shutdown acknowledged"),
+        "expected shutdown ack after bridge closure, got: {detail}"
+    );
 }

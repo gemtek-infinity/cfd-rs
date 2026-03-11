@@ -89,22 +89,30 @@ async fn walk_dir(start: &Path, out: &mut BTreeSet<PathBuf>) {
         };
 
         while let Ok(Some(entry)) = read_dir.next_entry().await {
-            let entry_path = entry.path();
-
-            let Ok(entry_meta) = fs::symlink_metadata(&entry_path).await else {
-                continue;
-            };
-
-            if entry_meta.file_type().is_symlink() {
-                continue;
-            }
-
-            if entry_meta.is_dir() {
-                stack.push(entry_path);
-            } else if entry_meta.is_file() && is_searchable_file(&entry_path, entry_meta.len()) {
-                out.insert(entry_path);
-            }
+            classify_search_entry(entry, out, &mut stack).await;
         }
+    }
+}
+
+async fn classify_search_entry(
+    entry: tokio::fs::DirEntry,
+    out: &mut BTreeSet<PathBuf>,
+    stack: &mut Vec<PathBuf>,
+) {
+    let entry_path = entry.path();
+
+    let Ok(entry_meta) = fs::symlink_metadata(&entry_path).await else {
+        return;
+    };
+
+    if entry_meta.file_type().is_symlink() {
+        return;
+    }
+
+    if entry_meta.is_dir() {
+        stack.push(entry_path);
+    } else if entry_meta.is_file() && is_searchable_file(&entry_path, entry_meta.len()) {
+        out.insert(entry_path);
     }
 }
 

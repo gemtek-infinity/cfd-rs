@@ -158,45 +158,10 @@ async fn handle_protocol_bridge(
                 match event {
                     Some(ProtocolEvent::Registered { peer }) => {
                         registration_observed = true;
-                        let _ = command_tx
-                            .send(RuntimeCommand::ProtocolState {
-                                state: ProtocolBridgeState::RegistrationObserved,
-                                detail: format!("proxy observed transport registration from {peer}"),
-                            })
-                            .await;
-                        let _ = command_tx
-                            .send(RuntimeCommand::ProxyState {
-                                state: ProxySeamState::RegistrationObserved,
-                                detail: format!("peer={peer}"),
-                            })
-                            .await;
-                        let _ = command_tx
-                            .send(RuntimeCommand::ServiceStatus {
-                                service: PROXY_SEAM_NAME,
-                                detail: format!(
-                                    "protocol-bridge: session registered, peer={peer}"
-                                ),
-                            })
-                            .await;
+                        send_registration_observed(&peer, command_tx).await;
                     }
                     None => {
-                        let detail = if registration_observed {
-                            String::from("proxy bridge closed after transport registration")
-                        } else {
-                            String::from("proxy bridge closed before transport registration")
-                        };
-                        let _ = command_tx
-                            .send(RuntimeCommand::ProtocolState {
-                                state: ProtocolBridgeState::BridgeClosed,
-                                detail: detail.clone(),
-                            })
-                            .await;
-                        let _ = command_tx
-                            .send(RuntimeCommand::ServiceStatus {
-                                service: PROXY_SEAM_NAME,
-                                detail: format!("protocol-bridge: {detail}"),
-                            })
-                            .await;
+                        send_bridge_closed(registration_observed, command_tx).await;
                         break;
                     }
                 }
@@ -204,6 +169,47 @@ async fn handle_protocol_bridge(
             _ = shutdown.cancelled() => break,
         }
     }
+}
+
+async fn send_registration_observed(peer: &str, command_tx: &mpsc::Sender<RuntimeCommand>) {
+    let _ = command_tx
+        .send(RuntimeCommand::ProtocolState {
+            state: ProtocolBridgeState::RegistrationObserved,
+            detail: format!("proxy observed transport registration from {peer}"),
+        })
+        .await;
+    let _ = command_tx
+        .send(RuntimeCommand::ProxyState {
+            state: ProxySeamState::RegistrationObserved,
+            detail: format!("peer={peer}"),
+        })
+        .await;
+    let _ = command_tx
+        .send(RuntimeCommand::ServiceStatus {
+            service: PROXY_SEAM_NAME,
+            detail: format!("protocol-bridge: session registered, peer={peer}"),
+        })
+        .await;
+}
+
+async fn send_bridge_closed(registration_observed: bool, command_tx: &mpsc::Sender<RuntimeCommand>) {
+    let detail = if registration_observed {
+        String::from("proxy bridge closed after transport registration")
+    } else {
+        String::from("proxy bridge closed before transport registration")
+    };
+    let _ = command_tx
+        .send(RuntimeCommand::ProtocolState {
+            state: ProtocolBridgeState::BridgeClosed,
+            detail: detail.clone(),
+        })
+        .await;
+    let _ = command_tx
+        .send(RuntimeCommand::ServiceStatus {
+            service: PROXY_SEAM_NAME,
+            detail: format!("protocol-bridge: {detail}"),
+        })
+        .await;
 }
 
 /// Dispatch a request to the matched origin service.

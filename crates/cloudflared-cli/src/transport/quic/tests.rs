@@ -158,6 +158,86 @@ fn write_tls_files(root: &Path) -> (PathBuf, PathBuf) {
     (cert_path, key_path)
 }
 
+fn build_test_quiche_server_config(cert_path: &Path, key_path: &Path) -> quiche::Config {
+    let mut config =
+        quiche::Config::new(quiche::PROTOCOL_VERSION).expect("test quiche server config should be created");
+    config
+        .load_cert_chain_from_pem_file(&cert_path.to_string_lossy())
+        .expect("test certificate chain should load");
+    config
+        .load_priv_key_from_pem_file(&key_path.to_string_lossy())
+        .expect("test private key should load");
+    config
+        .set_application_protos(&[b"argotunnel"])
+        .expect("test ALPN should be configured");
+    config.verify_peer(false);
+    config.enable_early_data();
+    config.set_max_idle_timeout(30_000);
+    config.set_max_recv_udp_payload_size(1350);
+    config.set_max_send_udp_payload_size(1350);
+    config.set_initial_max_data(1_000_000);
+    config.set_initial_max_stream_data_bidi_local(256_000);
+    config.set_initial_max_stream_data_bidi_remote(256_000);
+    config.set_initial_max_stream_data_uni(256_000);
+    config.set_initial_max_streams_bidi(32);
+    config.set_initial_max_streams_uni(32);
+    config.set_disable_active_migration(true);
+    config
+}
+
+fn run_test_quic_server(socket: UdpSocket, mut config: quiche::Config) {
+    let mut recv_buf = [0_u8; 65_535];
+    let mut send_buf = [0_u8; 1350];
+    let local_addr = socket
+        .local_addr()
+        .expect("server address should remain available");
+    let mut connection = None;
+
+    loop {
+        let (read, from) = match socket.recv_from(&mut recv_buf) {
+            Ok(result) => result,
+            Err(error) if error.kind() == ErrorKind::WouldBlock || error.kind() == ErrorKind::TimedOut => {
+                break;
+            }
+            Err(error) => panic!("unexpected test server recv error: {error}"),
+        };
+
+        if connection.is_none() {
+            let header = quiche::Header::from_slice(&mut recv_buf[..read], quiche::MAX_CONN_ID_LEN)
+                .expect("initial client packet header should parse");
+            let scid = quiche::ConnectionId::from_ref(&header.dcid);
+            connection = Some(
+                quiche::accept(&scid, None, local_addr, from, &mut config)
+                    .expect("test server connection should initialize"),
+            );
+        }
+
+        let conn = connection.as_mut().expect("test server connection should exist");
+        let recv_info = quiche::RecvInfo { from, to: local_addr };
+        let _ = conn.recv(&mut recv_buf[..read], recv_info);
+
+        flush_test_server_egress(conn, &socket, &mut send_buf);
+
+        if conn.is_closed() {
+            break;
+        }
+    }
+}
+
+fn flush_test_server_egress(conn: &mut quiche::Connection, socket: &UdpSocket, send_buf: &mut [u8]) {
+    loop {
+        match conn.send(send_buf) {
+            Ok((written, send_info)) => {
+                socket
+                    .send_to(&send_buf[..written], send_info.to)
+                    .expect("test server UDP packet should send");
+            }
+            Err(quiche::Error::Done) => break,
+            Err(error) => panic!("unexpected test server send error: {error}"),
+        }
+    }
+}
+
 fn spawn_test_server(root: &Path) -> SocketAddr {
     let (cert_path, key_path) = write_tls_files(root);
     let socket = UdpSocket::bind("127.0.0.1:0").expect("test UDP socket should bind");
@@ -168,80 +248,8 @@ fn spawn_test_server(root: &Path) -> SocketAddr {
         .local_addr()
         .expect("test UDP socket address should be available");
 
-    thread::spawn(move || {
-        let mut config = quiche::Config::new(quiche::PROTOCOL_VERSION)
-            .expect("test quiche server config should be created");
-        config
-            .load_cert_chain_from_pem_file(&cert_path.to_string_lossy())
-            .expect("test certificate chain should load");
-        config
-            .load_priv_key_from_pem_file(&key_path.to_string_lossy())
-            .expect("test private key should load");
-        config
-            .set_application_protos(&[b"argotunnel"])
-            .expect("test ALPN should be configured");
-        config.verify_peer(false);
-        config.enable_early_data();
-        config.set_max_idle_timeout(30_000);
-        config.set_max_recv_udp_payload_size(1350);
-        config.set_max_send_udp_payload_size(1350);
-        config.set_initial_max_data(1_000_000);
-        config.set_initial_max_stream_data_bidi_local(256_000);
-        config.set_initial_max_stream_data_bidi_remote(256_000);
-        config.set_initial_max_stream_data_uni(256_000);
-        config.set_initial_max_streams_bidi(32);
-        config.set_initial_max_streams_uni(32);
-        config.set_disable_active_migration(true);
-
-        let mut recv_buf = [0_u8; 65_535];
-        let mut send_buf = [0_u8; 1350];
-        let local_addr = socket
-            .local_addr()
-            .expect("server address should remain available");
-        let mut connection = None;
-
-        loop {
-            let (read, from) = match socket.recv_from(&mut recv_buf) {
-                Ok(result) => result,
-                Err(error)
-                    if error.kind() == ErrorKind::WouldBlock || error.kind() == ErrorKind::TimedOut =>
-                {
-                    break;
-                }
-                Err(error) => panic!("unexpected test server recv error: {error}"),
-            };
-
-            if connection.is_none() {
-                let header = quiche::Header::from_slice(&mut recv_buf[..read], quiche::MAX_CONN_ID_LEN)
-                    .expect("initial client packet header should parse");
-                let scid = quiche::ConnectionId::from_ref(&header.dcid);
-                connection = Some(
-                    quiche::accept(&scid, None, local_addr, from, &mut config)
-                        .expect("test server connection should initialize"),
-                );
-            }
-
-            let conn = connection.as_mut().expect("test server connection should exist");
-            let recv_info = quiche::RecvInfo { from, to: local_addr };
-            let _ = conn.recv(&mut recv_buf[..read], recv_info);
-
-            loop {
-                match conn.send(&mut send_buf) {
-                    Ok((written, send_info)) => {
-                        socket
-                            .send_to(&send_buf[..written], send_info.to)
-                            .expect("test server UDP packet should send");
-                    }
-                    Err(quiche::Error::Done) => break,
-                    Err(error) => panic!("unexpected test server send error: {error}"),
-                }
-            }
-
-            if conn.is_closed() {
-                break;
-            }
-        }
-    });
+    let config = build_test_quiche_server_config(&cert_path, &key_path);
+    thread::spawn(move || run_test_quic_server(socket, config));
 
     server_addr
 }

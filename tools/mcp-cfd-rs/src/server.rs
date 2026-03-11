@@ -159,16 +159,13 @@ impl CfdRsMemory {
             return path_error("paths must not be empty", "");
         }
 
-        let mut roots = Vec::new();
-        for path in &paths {
-            match repo::resolve(&self.repo_root, &self.repo_root_canon, path.as_str()) {
-                Ok(root) => roots.push(root),
-                Err(error) => {
-                    span.error(error);
-                    return path_error(error, path);
-                }
+        let roots = match resolve_paths(&self.repo_root, &self.repo_root_canon, &paths) {
+            Ok(r) => r,
+            Err((error, path)) => {
+                span.error(error);
+                return path_error(error, &path);
             }
-        }
+        };
 
         let max = max_results.unwrap_or(5).clamp(1, 20) as usize;
         self.search_and_respond(&span, &roots, &query, max).await
@@ -327,23 +324,23 @@ impl CfdRsMemory {
             }
         };
 
-        match tokio_fs::read_to_string(&resolved).await {
-            Ok(text) => {
-                let truncated = text.chars().count() > max_chars;
-                let content: String = text.chars().take(max_chars).collect();
-
-                span.done(&format!("path={} truncated={}", path, truncated));
-                to_json(serde_json::json!({
-                    "path": path,
-                    "truncated": truncated,
-                    "content": content
-                }))
-            }
+        let text = match tokio_fs::read_to_string(&resolved).await {
+            Ok(t) => t,
             Err(_) => {
                 span.error("file not readable as UTF-8 text");
-                path_error("file not readable as UTF-8 text", &path)
+                return path_error("file not readable as UTF-8 text", &path);
             }
-        }
+        };
+
+        let truncated = text.chars().count() > max_chars;
+        let content: String = text.chars().take(max_chars).collect();
+
+        span.done(&format!("path={} truncated={}", path, truncated));
+        to_json(serde_json::json!({
+            "path": path,
+            "truncated": truncated,
+            "content": content
+        }))
     }
 
     #[tool(
@@ -378,37 +375,36 @@ impl CfdRsMemory {
             }
         };
 
-        match tokio_fs::read_to_string(&resolved).await {
-            Ok(text) => {
-                match fs::slice_lines(text.as_str(), start_line as usize, end_line as usize, max_chars) {
-                    Ok((content, total_line_count, truncated)) => {
-                        span.done(&format!(
-                            "path={} lines={}..{} truncated={}",
-                            path,
-                            start_line,
-                            usize::min(end_line as usize, total_line_count),
-                            truncated,
-                        ));
-                        to_json(serde_json::json!({
-                            "path": path,
-                            "start_line": start_line,
-                            "end_line": usize::min(end_line as usize, total_line_count),
-                            "total_line_count": total_line_count,
-                            "truncated": truncated,
-                            "content": content
-                        }))
-                    }
-                    Err(error) => {
-                        span.error(error);
-                        path_error(error, &path)
-                    }
-                }
-            }
+        let text = match tokio_fs::read_to_string(&resolved).await {
+            Ok(t) => t,
             Err(_) => {
                 span.error("file not readable as UTF-8 text");
-                path_error("file not readable as UTF-8 text", &path)
+                return path_error("file not readable as UTF-8 text", &path);
             }
-        }
+        };
+
+        let (content, total_line_count, truncated) =
+            match fs::slice_lines(text.as_str(), start_line as usize, end_line as usize, max_chars) {
+                Ok(result) => result,
+                Err(error) => {
+                    span.error(error);
+                    return path_error(error, &path);
+                }
+            };
+
+        let actual_end = usize::min(end_line as usize, total_line_count);
+        span.done(&format!(
+            "path={} lines={}..{} truncated={}",
+            path, start_line, actual_end, truncated,
+        ));
+        to_json(serde_json::json!({
+            "path": path,
+            "start_line": start_line,
+            "end_line": actual_end,
+            "total_line_count": total_line_count,
+            "truncated": truncated,
+            "content": content
+        }))
     }
 
     // -- metadata tools -----------------------------------------------------
@@ -436,29 +432,7 @@ impl CfdRsMemory {
             }
         };
 
-        let kind = if metadata.is_dir() {
-            "directory"
-        } else if metadata.is_file() {
-            "file"
-        } else {
-            "other"
-        };
-
-        let line_count = if metadata.is_file() && fs::is_text_file(&resolved) {
-            tokio_fs::read_to_string(&resolved)
-                .await
-                .ok()
-                .map(|text| text.lines().count())
-        } else {
-            None
-        };
-
-        let result = fs::FileMetadata {
-            path,
-            kind,
-            size_bytes: metadata.len(),
-            line_count,
-        };
+        let result = build_file_metadata(&resolved, &path, &metadata).await;
 
         span.done(&format!("path={} kind={}", result.path, result.kind));
         to_json(result)
@@ -541,16 +515,13 @@ impl CfdRsMemory {
             return path_error("paths must not be empty", "");
         }
 
-        let mut resolved = Vec::new();
-        for path in &paths {
-            match repo::resolve(&self.repo_root, &self.repo_root_canon, path) {
-                Ok(p) => resolved.push(p),
-                Err(error) => {
-                    span.error(error);
-                    return path_error(error, path);
-                }
+        let resolved = match resolve_paths(&self.repo_root, &self.repo_root_canon, &paths) {
+            Ok(r) => r,
+            Err((error, path)) => {
+                span.error(error);
+                return path_error(error, &path);
             }
-        }
+        };
 
         let review = debtmap::touched_files_review(&self.repo_root, &resolved).await;
 
@@ -677,6 +648,53 @@ impl ServerHandler for CfdRsMemory {
         );
         info.capabilities = ServerCapabilities::builder().enable_tools().build();
         info
+    }
+}
+
+/// Resolve a list of repo-relative paths, returning all or the first error.
+fn resolve_paths(
+    repo_root: &PathBuf,
+    repo_root_canon: &PathBuf,
+    paths: &[String],
+) -> Result<Vec<PathBuf>, (&'static str, String)> {
+    let mut resolved = Vec::with_capacity(paths.len());
+    for path in paths {
+        match repo::resolve(repo_root, repo_root_canon, path.as_str()) {
+            Ok(p) => resolved.push(p),
+            Err(error) => return Err((error, path.clone())),
+        }
+    }
+    Ok(resolved)
+}
+
+/// Build file metadata, determining kind and optional line count.
+async fn build_file_metadata(
+    resolved: &PathBuf,
+    path: &str,
+    metadata: &std::fs::Metadata,
+) -> fs::FileMetadata {
+    let kind = if metadata.is_dir() {
+        "directory"
+    } else if metadata.is_file() {
+        "file"
+    } else {
+        "other"
+    };
+
+    let line_count = if metadata.is_file() && fs::is_text_file(resolved) {
+        tokio_fs::read_to_string(resolved)
+            .await
+            .ok()
+            .map(|text| text.lines().count())
+    } else {
+        None
+    };
+
+    fs::FileMetadata {
+        path: path.to_string(),
+        kind,
+        size_bytes: metadata.len(),
+        line_count,
     }
 }
 

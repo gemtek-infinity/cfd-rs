@@ -17,16 +17,20 @@ where
                 }
                 Ok(None) => break,
                 Err(_) => {
-                    self.status
-                        .push_summary("shutdown-action: aborting remaining child tasks after grace timeout");
-                    self.child_tasks.abort_all();
-                    while let Some(result) = self.child_tasks.join_next().await {
-                        if let Err(error) = result {
-                            self.status.push_summary(format!("child-task-error: {error}"));
-                        }
-                    }
+                    self.abort_timed_out_children().await;
                     break;
                 }
+            }
+        }
+    }
+
+    async fn abort_timed_out_children(&mut self) {
+        self.status
+            .push_summary("shutdown-action: aborting remaining child tasks after grace timeout");
+        self.child_tasks.abort_all();
+        while let Some(result) = self.child_tasks.join_next().await {
+            if let Err(error) = result {
+                self.status.push_summary(format!("child-task-error: {error}"));
             }
         }
     }

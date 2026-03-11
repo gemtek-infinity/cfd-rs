@@ -120,19 +120,9 @@ impl QuicTunnelService {
                 recv_result = session.socket.recv_from(&mut *session.recv_buffer) => {
                     let (read, from) = recv_result
                         .map_err(|error| format!("failed to receive QUIC packet from edge: {error}"))?;
-                    let recv_info = quiche::RecvInfo {
-                        from,
-                        to: session.local_addr,
-                    };
 
-                    match session.connection.recv(&mut session.recv_buffer[..read], recv_info) {
-                        Ok(_) | Err(quiche::Error::Done) => {}
-                        Err(error) => {
-                            return Ok(Some(ServiceExit::RetryableFailure {
-                                service: self.name(),
-                                detail: format!("quic handshake failed while reading edge packets: {error}"),
-                            }));
-                        }
+                    if let Some(exit) = process_handshake_packet(session, from, read, self.name()) {
+                        return Ok(Some(exit));
                     }
 
                     flush_egress(
@@ -250,5 +240,30 @@ impl QuicTunnelService {
             "transport-session-state: teardown".to_owned(),
         )
         .await;
+    }
+}
+
+/// Process a single handshake packet, returning a `ServiceExit` if the
+/// connection encountered a fatal recv error.
+fn process_handshake_packet(
+    session: &mut QuicSessionState,
+    from: std::net::SocketAddr,
+    read: usize,
+    service_name: &'static str,
+) -> Option<ServiceExit> {
+    let recv_info = quiche::RecvInfo {
+        from,
+        to: session.local_addr,
+    };
+
+    match session
+        .connection
+        .recv(&mut session.recv_buffer[..read], recv_info)
+    {
+        Ok(_) | Err(quiche::Error::Done) => None,
+        Err(error) => Some(ServiceExit::RetryableFailure {
+            service: service_name,
+            detail: format!("quic handshake failed while reading edge packets: {error}"),
+        }),
     }
 }

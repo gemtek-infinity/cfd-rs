@@ -145,20 +145,7 @@ impl QuicTunnelService {
             .establish_quic_session(identity, target, &command_tx, shutdown)
             .await
         {
-            Ok(ServiceExit::Completed { service }) => ServiceExit::Completed { service },
-            Ok(ServiceExit::Deferred {
-                service,
-                phase,
-                detail,
-            }) => ServiceExit::Deferred {
-                service,
-                phase,
-                detail,
-            },
-            Ok(ServiceExit::RetryableFailure { service, detail }) => {
-                ServiceExit::RetryableFailure { service, detail }
-            }
-            Ok(ServiceExit::Fatal { service, detail }) => ServiceExit::Fatal { service, detail },
+            Ok(exit) => exit,
             Err(detail) => ServiceExit::RetryableFailure {
                 service: self.name(),
                 detail,

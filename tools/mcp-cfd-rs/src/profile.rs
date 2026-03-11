@@ -47,115 +47,139 @@ pub fn supported_snapshot_names() -> Vec<&'static str> {
 
 pub fn bundle(name: &str) -> Option<ContextBundle> {
     match name {
-        "scope-lane" => Some(ContextBundle {
-            bundle: "scope-lane",
-            summary: "Use this bundle for scope boundaries and governing files.",
-            entries: vec![
-                BundleEntry {
-                    path: "REWRITE_CHARTER.md".to_string(),
-                    reason: "Repository scope and non-negotiable boundaries.",
-                },
-                BundleEntry {
-                    path: "docs/compatibility-scope.md".to_string(),
-                    reason: "Compatibility scope definition.",
-                },
-                BundleEntry {
-                    path: "docs/promotion-gates.md".to_string(),
-                    reason: "Phase governance source when needed.",
-                },
-            ],
-        }),
-        "repo-state" => Some(ContextBundle {
-            bundle: "repo-state",
-            summary: "Use this bundle for current repository state sources.",
-            entries: vec![
-                BundleEntry {
-                    path: "STATUS.md".to_string(),
-                    reason: "Short index for current state.",
-                },
-                BundleEntry {
-                    path: "docs/status/rewrite-foundation.md".to_string(),
-                    reason: "Focused current-state details.",
-                },
-                BundleEntry {
-                    path: "docs/status/active-surface.md".to_string(),
-                    reason: "Focused implementation surface details.",
-                },
-            ],
-        }),
-        "active-surface" => Some(ContextBundle {
-            bundle: "active-surface",
-            summary: "Use this bundle for active context without embedding phase truth in code.",
-            entries: vec![
-                BundleEntry {
-                    path: ACTIVE_CONTEXT_PATH.to_string(),
-                    reason: "Preferred source for current active context when present.",
-                },
-                BundleEntry {
-                    path: "docs/promotion-gates.md".to_string(),
-                    reason: "Authoritative phase file when active context needs broader grounding.",
-                },
-                BundleEntry {
-                    path: "STATUS.md".to_string(),
-                    reason: "Current-state index.",
-                },
-            ],
-        }),
-        "first-slice-parity" => Some(ContextBundle {
-            bundle: "first-slice-parity",
-            summary: "Use this bundle for parity workflow sources.",
-            entries: vec![
-                BundleEntry {
-                    path: ACTIVE_CONTEXT_PATH.to_string(),
-                    reason: "Preferred active-slice source when present.",
-                },
-                BundleEntry {
-                    path: "docs/status/first-slice-parity.md".to_string(),
-                    reason: "Parity status details.",
-                },
-                BundleEntry {
-                    path: "tools/first_slice_parity.py".to_string(),
-                    reason: "Parity harness entry point.",
-                },
-            ],
-        }),
-        "runtime-deps" => Some(ContextBundle {
-            bundle: "runtime-deps",
-            summary: "Use this bundle for dependency and runtime policy sources.",
-            entries: vec![
-                BundleEntry {
-                    path: "docs/dependency-policy.md".to_string(),
-                    reason: "Dependency policy source.",
-                },
-                BundleEntry {
-                    path: "docs/allocator-runtime-baseline.md".to_string(),
-                    reason: "Allocator and runtime policy source.",
-                },
-                BundleEntry {
-                    path: "docs/go-rust-semantic-mapping.md".to_string(),
-                    reason: "Lifecycle and semantic mapping source.",
-                },
-            ],
-        }),
-        "behavior-baseline" => Some(ContextBundle {
-            bundle: "behavior-baseline",
-            summary: "Use this bundle for behavior/parity baseline sources.",
-            entries: vec![
-                BundleEntry {
-                    path: "baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md".to_string(),
-                    reason: "Topic-to-source map into frozen baseline.",
-                },
-                BundleEntry {
-                    path: "baseline-2026.2.0/design-audit/REPO_REFERENCE.md".to_string(),
-                    reason: "Baseline reference index.",
-                },
-                BundleEntry {
-                    path: "baseline-2026.2.0/old-impl".to_string(),
-                    reason: "Frozen behavior source tree.",
-                },
-            ],
-        }),
+        "scope-lane" => Some(scope_lane_bundle()),
+        "repo-state" => Some(repo_state_bundle()),
+        "active-surface" => Some(active_surface_bundle()),
+        "first-slice-parity" => Some(first_slice_parity_bundle()),
+        "runtime-deps" => Some(runtime_deps_bundle()),
+        "behavior-baseline" => Some(behavior_baseline_bundle()),
         _ => None,
+    }
+}
+
+fn scope_lane_bundle() -> ContextBundle {
+    ContextBundle {
+        bundle: "scope-lane",
+        summary: "Use this bundle for scope boundaries and governing files.",
+        entries: vec![
+            BundleEntry {
+                path: "REWRITE_CHARTER.md".to_string(),
+                reason: "Repository scope and non-negotiable boundaries.",
+            },
+            BundleEntry {
+                path: "docs/compatibility-scope.md".to_string(),
+                reason: "Compatibility scope definition.",
+            },
+            BundleEntry {
+                path: "docs/promotion-gates.md".to_string(),
+                reason: "Phase governance source when needed.",
+            },
+        ],
+    }
+}
+
+fn repo_state_bundle() -> ContextBundle {
+    ContextBundle {
+        bundle: "repo-state",
+        summary: "Use this bundle for current repository state sources.",
+        entries: vec![
+            BundleEntry {
+                path: "STATUS.md".to_string(),
+                reason: "Short index for current state.",
+            },
+            BundleEntry {
+                path: "docs/status/rewrite-foundation.md".to_string(),
+                reason: "Focused current-state details.",
+            },
+            BundleEntry {
+                path: "docs/status/active-surface.md".to_string(),
+                reason: "Focused implementation surface details.",
+            },
+        ],
+    }
+}
+
+fn active_surface_bundle() -> ContextBundle {
+    ContextBundle {
+        bundle: "active-surface",
+        summary: "Use this bundle for active context without embedding phase truth in code.",
+        entries: vec![
+            BundleEntry {
+                path: ACTIVE_CONTEXT_PATH.to_string(),
+                reason: "Preferred source for current active context when present.",
+            },
+            BundleEntry {
+                path: "docs/promotion-gates.md".to_string(),
+                reason: "Authoritative phase file when active context needs broader grounding.",
+            },
+            BundleEntry {
+                path: "STATUS.md".to_string(),
+                reason: "Current-state index.",
+            },
+        ],
+    }
+}
+
+fn first_slice_parity_bundle() -> ContextBundle {
+    ContextBundle {
+        bundle: "first-slice-parity",
+        summary: "Use this bundle for parity workflow sources.",
+        entries: vec![
+            BundleEntry {
+                path: ACTIVE_CONTEXT_PATH.to_string(),
+                reason: "Preferred active-slice source when present.",
+            },
+            BundleEntry {
+                path: "docs/status/first-slice-parity.md".to_string(),
+                reason: "Parity status details.",
+            },
+            BundleEntry {
+                path: "tools/first_slice_parity.py".to_string(),
+                reason: "Parity harness entry point.",
+            },
+        ],
+    }
+}
+
+fn runtime_deps_bundle() -> ContextBundle {
+    ContextBundle {
+        bundle: "runtime-deps",
+        summary: "Use this bundle for dependency and runtime policy sources.",
+        entries: vec![
+            BundleEntry {
+                path: "docs/dependency-policy.md".to_string(),
+                reason: "Dependency policy source.",
+            },
+            BundleEntry {
+                path: "docs/allocator-runtime-baseline.md".to_string(),
+                reason: "Allocator and runtime policy source.",
+            },
+            BundleEntry {
+                path: "docs/go-rust-semantic-mapping.md".to_string(),
+                reason: "Lifecycle and semantic mapping source.",
+            },
+        ],
+    }
+}
+
+fn behavior_baseline_bundle() -> ContextBundle {
+    ContextBundle {
+        bundle: "behavior-baseline",
+        summary: "Use this bundle for behavior/parity baseline sources.",
+        entries: vec![
+            BundleEntry {
+                path: "baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md".to_string(),
+                reason: "Topic-to-source map into frozen baseline.",
+            },
+            BundleEntry {
+                path: "baseline-2026.2.0/design-audit/REPO_REFERENCE.md".to_string(),
+                reason: "Baseline reference index.",
+            },
+            BundleEntry {
+                path: "baseline-2026.2.0/old-impl".to_string(),
+                reason: "Frozen behavior source tree.",
+            },
+        ],
     }
 }
 
@@ -175,201 +199,231 @@ pub fn brief(name: &str) -> Option<ContextBrief> {
 
 pub fn snapshot(name: &str) -> Option<ContextSnapshot> {
     match name {
-        "active-context" => Some(ContextSnapshot {
-            snapshot: "active-context",
-            summary: "Active context is file-driven and should come from docs/ACTIVE_CONTEXT.md when \
-                      present.",
-            facts: vec![
-                SnapshotFact {
-                    label: "preferred_source",
-                    value: "Use get_active_context to read docs/ACTIVE_CONTEXT.md with bounded output.",
-                },
-                SnapshotFact {
-                    label: "missing_behavior",
-                    value: "If docs/ACTIVE_CONTEXT.md is missing, do not infer current phase from code \
-                            constants.",
-                },
-            ],
-            source_paths: vec![
-                ACTIVE_CONTEXT_PATH.to_string(),
-                "docs/promotion-gates.md".to_string(),
-                "STATUS.md".to_string(),
-            ],
-        }),
-        "governing-files" => Some(ContextSnapshot {
-            snapshot: "governing-files",
-            summary: "Compact map of repository files by governance topic.",
-            facts: vec![
-                SnapshotFact {
-                    label: "scope_and_lane",
-                    value: "Use REWRITE_CHARTER.md and docs/compatibility-scope.md for scope boundaries.",
-                },
-                SnapshotFact {
-                    label: "current_state_and_phase",
-                    value: "Use STATUS.md and docs/promotion-gates.md for current state and phase \
-                            governance.",
-                },
-                SnapshotFact {
-                    label: "dependencies_and_runtime",
-                    value: "Use docs/dependency-policy.md and docs/allocator-runtime-baseline.md.",
-                },
-                SnapshotFact {
-                    label: "behavior_and_parity",
-                    value: "Use baseline-2026.2.0/old-impl and baseline-2026.2.0/design-audit.",
-                },
-            ],
-            source_paths: vec![
-                "REWRITE_CHARTER.md".to_string(),
-                "STATUS.md".to_string(),
-                "docs/promotion-gates.md".to_string(),
-                "docs/dependency-policy.md".to_string(),
-                "baseline-2026.2.0/old-impl".to_string(),
-            ],
-        }),
-        "scope-lane" => Some(ContextSnapshot {
-            snapshot: "scope-lane",
-            summary: "Compact map of scope/lane governance files.",
-            facts: vec![
-                SnapshotFact {
-                    label: "scope_owner",
-                    value: "Use REWRITE_CHARTER.md for non-negotiables and scope boundaries.",
-                },
-                SnapshotFact {
-                    label: "compatibility_owner",
-                    value: "Use docs/compatibility-scope.md for compatibility scope definition.",
-                },
-                SnapshotFact {
-                    label: "phase_owner",
-                    value: "Use docs/promotion-gates.md for phase governance.",
-                },
-            ],
-            source_paths: vec![
-                "REWRITE_CHARTER.md".to_string(),
-                "docs/compatibility-scope.md".to_string(),
-                "docs/promotion-gates.md".to_string(),
-            ],
-        }),
-        "repo-state" => Some(ContextSnapshot {
-            snapshot: "repo-state",
-            summary: "Compact source map for current repository state.",
-            facts: vec![
-                SnapshotFact {
-                    label: "state_index",
-                    value: "STATUS.md is the short current-state index.",
-                },
-                SnapshotFact {
-                    label: "state_details",
-                    value: "Use docs/status/* for focused current-state details.",
-                },
-                SnapshotFact {
-                    label: "active_context",
-                    value: "Use docs/ACTIVE_CONTEXT.md when present for current active context.",
-                },
-            ],
-            source_paths: vec![
-                "STATUS.md".to_string(),
-                "docs/status/rewrite-foundation.md".to_string(),
-                ACTIVE_CONTEXT_PATH.to_string(),
-            ],
-        }),
-        "active-phase" => Some(ContextSnapshot {
-            snapshot: "active-phase",
-            summary: "Active-phase truth is file-owned, not code-owned.",
-            facts: vec![
-                SnapshotFact {
-                    label: "phase_source",
-                    value: "Read docs/ACTIVE_CONTEXT.md first when present.",
-                },
-                SnapshotFact {
-                    label: "fallback_source",
-                    value: "If missing, read docs/promotion-gates.md directly.",
-                },
-                SnapshotFact {
-                    label: "guardrail",
-                    value: "Do not infer phase numbers or slice truth from hardcoded Rust constants.",
-                },
-            ],
-            source_paths: vec![
-                ACTIVE_CONTEXT_PATH.to_string(),
-                "docs/promotion-gates.md".to_string(),
-                "STATUS.md".to_string(),
-            ],
-        }),
-        "runtime-deps" => Some(ContextSnapshot {
-            snapshot: "runtime-deps",
-            summary: "Compact map of runtime/dependency policy files.",
-            facts: vec![
-                SnapshotFact {
-                    label: "dependency_policy",
-                    value: "Use docs/dependency-policy.md.",
-                },
-                SnapshotFact {
-                    label: "runtime_policy",
-                    value: "Use docs/allocator-runtime-baseline.md.",
-                },
-                SnapshotFact {
-                    label: "semantic_mapping",
-                    value: "Use docs/go-rust-semantic-mapping.md.",
-                },
-            ],
-            source_paths: vec![
-                "docs/dependency-policy.md".to_string(),
-                "docs/allocator-runtime-baseline.md".to_string(),
-                "docs/go-rust-semantic-mapping.md".to_string(),
-            ],
-        }),
-        "behavior-baseline" => Some(ContextSnapshot {
-            snapshot: "behavior-baseline",
-            summary: "Compact map of baseline behavior/parity sources.",
-            facts: vec![
-                SnapshotFact {
-                    label: "first_truth_source",
-                    value: "Use baseline-2026.2.0/old-impl code and tests.",
-                },
-                SnapshotFact {
-                    label: "second_truth_source",
-                    value: "Use baseline-2026.2.0/design-audit for routing and references.",
-                },
-                SnapshotFact {
-                    label: "guardrail",
-                    value: "Do not claim parity from rewrite shape alone.",
-                },
-            ],
-            source_paths: vec![
-                "baseline-2026.2.0/old-impl".to_string(),
-                "baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md".to_string(),
-                "baseline-2026.2.0/design-audit/REPO_REFERENCE.md".to_string(),
-            ],
-        }),
-        "lane-decisions" => Some(ContextSnapshot {
-            snapshot: "lane-decisions",
-            summary: "Use ADR files for lane decisions; code does not hardcode those decisions.",
-            facts: vec![
-                SnapshotFact {
-                    label: "transport_lane",
-                    value: "Read docs/adr/0002-transport-tls-crypto-lane.md.",
-                },
-                SnapshotFact {
-                    label: "pingora_lane",
-                    value: "Read docs/adr/0003-pingora-critical-path.md.",
-                },
-                SnapshotFact {
-                    label: "fips_lane",
-                    value: "Read docs/adr/0004-fips-in-alpha-definition.md.",
-                },
-                SnapshotFact {
-                    label: "deployment_lane",
-                    value: "Read docs/adr/0005-deployment-contract.md.",
-                },
-            ],
-            source_paths: vec![
-                "docs/adr/0002-transport-tls-crypto-lane.md".to_string(),
-                "docs/adr/0003-pingora-critical-path.md".to_string(),
-                "docs/adr/0004-fips-in-alpha-definition.md".to_string(),
-                "docs/adr/0005-deployment-contract.md".to_string(),
-            ],
-        }),
+        "active-context" => Some(active_context_snapshot()),
+        "governing-files" => Some(governing_files_snapshot()),
+        "scope-lane" => Some(scope_lane_snapshot()),
+        "repo-state" => Some(repo_state_snapshot()),
+        "active-phase" => Some(active_phase_snapshot()),
+        "runtime-deps" => Some(runtime_deps_snapshot()),
+        "behavior-baseline" => Some(behavior_baseline_snapshot()),
+        "lane-decisions" => Some(lane_decisions_snapshot()),
         _ => None,
+    }
+}
+
+fn active_context_snapshot() -> ContextSnapshot {
+    ContextSnapshot {
+        snapshot: "active-context",
+        summary: "Active context is file-driven and should come from docs/ACTIVE_CONTEXT.md when present.",
+        facts: vec![
+            SnapshotFact {
+                label: "preferred_source",
+                value: "Use get_active_context to read docs/ACTIVE_CONTEXT.md with bounded output.",
+            },
+            SnapshotFact {
+                label: "missing_behavior",
+                value: "If docs/ACTIVE_CONTEXT.md is missing, do not infer current phase from code \
+                        constants.",
+            },
+        ],
+        source_paths: vec![
+            ACTIVE_CONTEXT_PATH.to_string(),
+            "docs/promotion-gates.md".to_string(),
+            "STATUS.md".to_string(),
+        ],
+    }
+}
+
+fn governing_files_snapshot() -> ContextSnapshot {
+    ContextSnapshot {
+        snapshot: "governing-files",
+        summary: "Compact map of repository files by governance topic.",
+        facts: vec![
+            SnapshotFact {
+                label: "scope_and_lane",
+                value: "Use REWRITE_CHARTER.md and docs/compatibility-scope.md for scope boundaries.",
+            },
+            SnapshotFact {
+                label: "current_state_and_phase",
+                value: "Use STATUS.md and docs/promotion-gates.md for current state and phase governance.",
+            },
+            SnapshotFact {
+                label: "dependencies_and_runtime",
+                value: "Use docs/dependency-policy.md and docs/allocator-runtime-baseline.md.",
+            },
+            SnapshotFact {
+                label: "behavior_and_parity",
+                value: "Use baseline-2026.2.0/old-impl and baseline-2026.2.0/design-audit.",
+            },
+        ],
+        source_paths: vec![
+            "REWRITE_CHARTER.md".to_string(),
+            "STATUS.md".to_string(),
+            "docs/promotion-gates.md".to_string(),
+            "docs/dependency-policy.md".to_string(),
+            "baseline-2026.2.0/old-impl".to_string(),
+        ],
+    }
+}
+
+fn scope_lane_snapshot() -> ContextSnapshot {
+    ContextSnapshot {
+        snapshot: "scope-lane",
+        summary: "Compact map of scope/lane governance files.",
+        facts: vec![
+            SnapshotFact {
+                label: "scope_owner",
+                value: "Use REWRITE_CHARTER.md for non-negotiables and scope boundaries.",
+            },
+            SnapshotFact {
+                label: "compatibility_owner",
+                value: "Use docs/compatibility-scope.md for compatibility scope definition.",
+            },
+            SnapshotFact {
+                label: "phase_owner",
+                value: "Use docs/promotion-gates.md for phase governance.",
+            },
+        ],
+        source_paths: vec![
+            "REWRITE_CHARTER.md".to_string(),
+            "docs/compatibility-scope.md".to_string(),
+            "docs/promotion-gates.md".to_string(),
+        ],
+    }
+}
+
+fn repo_state_snapshot() -> ContextSnapshot {
+    ContextSnapshot {
+        snapshot: "repo-state",
+        summary: "Compact source map for current repository state.",
+        facts: vec![
+            SnapshotFact {
+                label: "state_index",
+                value: "STATUS.md is the short current-state index.",
+            },
+            SnapshotFact {
+                label: "state_details",
+                value: "Use docs/status/* for focused current-state details.",
+            },
+            SnapshotFact {
+                label: "active_context",
+                value: "Use docs/ACTIVE_CONTEXT.md when present for current active context.",
+            },
+        ],
+        source_paths: vec![
+            "STATUS.md".to_string(),
+            "docs/status/rewrite-foundation.md".to_string(),
+            ACTIVE_CONTEXT_PATH.to_string(),
+        ],
+    }
+}
+
+fn active_phase_snapshot() -> ContextSnapshot {
+    ContextSnapshot {
+        snapshot: "active-phase",
+        summary: "Active-phase truth is file-owned, not code-owned.",
+        facts: vec![
+            SnapshotFact {
+                label: "phase_source",
+                value: "Read docs/ACTIVE_CONTEXT.md first when present.",
+            },
+            SnapshotFact {
+                label: "fallback_source",
+                value: "If missing, read docs/promotion-gates.md directly.",
+            },
+            SnapshotFact {
+                label: "guardrail",
+                value: "Do not infer phase numbers or slice truth from hardcoded Rust constants.",
+            },
+        ],
+        source_paths: vec![
+            ACTIVE_CONTEXT_PATH.to_string(),
+            "docs/promotion-gates.md".to_string(),
+            "STATUS.md".to_string(),
+        ],
+    }
+}
+
+fn runtime_deps_snapshot() -> ContextSnapshot {
+    ContextSnapshot {
+        snapshot: "runtime-deps",
+        summary: "Compact map of runtime/dependency policy files.",
+        facts: vec![
+            SnapshotFact {
+                label: "dependency_policy",
+                value: "Use docs/dependency-policy.md.",
+            },
+            SnapshotFact {
+                label: "runtime_policy",
+                value: "Use docs/allocator-runtime-baseline.md.",
+            },
+            SnapshotFact {
+                label: "semantic_mapping",
+                value: "Use docs/go-rust-semantic-mapping.md.",
+            },
+        ],
+        source_paths: vec![
+            "docs/dependency-policy.md".to_string(),
+            "docs/allocator-runtime-baseline.md".to_string(),
+            "docs/go-rust-semantic-mapping.md".to_string(),
+        ],
+    }
+}
+
+fn behavior_baseline_snapshot() -> ContextSnapshot {
+    ContextSnapshot {
+        snapshot: "behavior-baseline",
+        summary: "Compact map of baseline behavior/parity sources.",
+        facts: vec![
+            SnapshotFact {
+                label: "first_truth_source",
+                value: "Use baseline-2026.2.0/old-impl code and tests.",
+            },
+            SnapshotFact {
+                label: "second_truth_source",
+                value: "Use baseline-2026.2.0/design-audit for routing and references.",
+            },
+            SnapshotFact {
+                label: "guardrail",
+                value: "Do not claim parity from rewrite shape alone.",
+            },
+        ],
+        source_paths: vec![
+            "baseline-2026.2.0/old-impl".to_string(),
+            "baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md".to_string(),
+            "baseline-2026.2.0/design-audit/REPO_REFERENCE.md".to_string(),
+        ],
+    }
+}
+
+fn lane_decisions_snapshot() -> ContextSnapshot {
+    ContextSnapshot {
+        snapshot: "lane-decisions",
+        summary: "Use ADR files for lane decisions; code does not hardcode those decisions.",
+        facts: vec![
+            SnapshotFact {
+                label: "transport_lane",
+                value: "Read docs/adr/0002-transport-tls-crypto-lane.md.",
+            },
+            SnapshotFact {
+                label: "pingora_lane",
+                value: "Read docs/adr/0003-pingora-critical-path.md.",
+            },
+            SnapshotFact {
+                label: "fips_lane",
+                value: "Read docs/adr/0004-fips-in-alpha-definition.md.",
+            },
+            SnapshotFact {
+                label: "deployment_lane",
+                value: "Read docs/adr/0005-deployment-contract.md.",
+            },
+        ],
+        source_paths: vec![
+            "docs/adr/0002-transport-tls-crypto-lane.md".to_string(),
+            "docs/adr/0003-pingora-critical-path.md".to_string(),
+            "docs/adr/0004-fips-in-alpha-definition.md".to_string(),
+            "docs/adr/0005-deployment-contract.md".to_string(),
+        ],
     }
 }
 

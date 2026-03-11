@@ -324,41 +324,12 @@ pub async fn top_hotspots(repo_root: &Path, scope: Option<&Path>, limit: usize) 
 pub async fn file_summary(repo_root: &Path, file_path: &Path) -> Result<FileSummary, &'static str> {
     let text = read_analyzable(file_path).await?;
     let rel = repo::make_relative(repo_root, file_path);
-
-    let (analysis_method, line_count, fn_count, todo_count, max_indent_depth, score, functions, code_smells) =
-        if let Some(ca) = analyze_with_crate(&text, file_path) {
-            let s = round2(compute_score_crate(&ca));
-            (
-                "ast",
-                ca.line_count,
-                ca.fn_count,
-                ca.todo_count,
-                ca.max_nesting as usize,
-                s,
-                ca.functions,
-                ca.code_smells,
-            )
-        } else {
-            let m = analyze_manual(&text);
-            let s = round2(compute_score_manual(&m));
-            (
-                "heuristic",
-                m.line_count,
-                m.fn_count,
-                m.todo_count,
-                m.max_indent_depth,
-                s,
-                Vec::new(),
-                Vec::new(),
-            )
-        };
-
+    let analysis = summarize_analysis(&text, file_path);
     let top_todos = collect_todos(&text, 10);
 
-    // For AST-analyzed files, derive long functions from function entries.
-    // For manual analysis, use brace-counting heuristic.
-    let long_fn_lines = if analysis_method == "ast" {
-        functions
+    let long_fn_lines = if analysis.analysis_method == "ast" {
+        analysis
+            .functions
             .iter()
             .filter(|f| f.length >= 60)
             .map(|f| f.line)
@@ -369,17 +340,58 @@ pub async fn file_summary(repo_root: &Path, file_path: &Path) -> Result<FileSumm
 
     Ok(FileSummary {
         path: rel,
-        line_count,
-        fn_count,
-        todo_count,
-        max_indent_depth,
-        score,
-        analysis_method,
+        line_count: analysis.line_count,
+        fn_count: analysis.fn_count,
+        todo_count: analysis.todo_count,
+        max_indent_depth: analysis.max_indent_depth,
+        score: analysis.score,
+        analysis_method: analysis.analysis_method,
         top_todos,
         long_fn_lines,
-        functions,
-        code_smells,
+        functions: analysis.functions,
+        code_smells: analysis.code_smells,
     })
+}
+
+/// Intermediate analysis result shared between summary and scoring paths.
+struct AnalysisSummary {
+    analysis_method: &'static str,
+    line_count: usize,
+    fn_count: usize,
+    todo_count: usize,
+    max_indent_depth: usize,
+    score: f64,
+    functions: Vec<FunctionEntry>,
+    code_smells: Vec<CodeSmellEntry>,
+}
+
+fn summarize_analysis(text: &str, file_path: &Path) -> AnalysisSummary {
+    if let Some(ca) = analyze_with_crate(text, file_path) {
+        let score = round2(compute_score_crate(&ca));
+        return AnalysisSummary {
+            analysis_method: "ast",
+            line_count: ca.line_count,
+            fn_count: ca.fn_count,
+            todo_count: ca.todo_count,
+            max_indent_depth: ca.max_nesting as usize,
+            score,
+            functions: ca.functions,
+            code_smells: ca.code_smells,
+        };
+    }
+
+    let m = analyze_manual(text);
+    let score = round2(compute_score_manual(&m));
+    AnalysisSummary {
+        analysis_method: "heuristic",
+        line_count: m.line_count,
+        fn_count: m.fn_count,
+        todo_count: m.todo_count,
+        max_indent_depth: m.max_indent_depth,
+        score,
+        functions: Vec::new(),
+        code_smells: Vec::new(),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -392,32 +404,9 @@ pub async fn touched_files_review(repo_root: &Path, paths: &[PathBuf]) -> Touche
     let mut skipped = Vec::new();
 
     for path in paths {
-        let rel = repo::make_relative(repo_root, path);
-
-        if !path.is_file() {
-            skipped.push(SkippedFile {
-                path: rel,
-                reason: "not a regular file",
-            });
-            continue;
-        }
-
-        if !mcp_fs::is_text_file(path) {
-            skipped.push(SkippedFile {
-                path: rel,
-                reason: "not a recognized text file",
-            });
-            continue;
-        }
-
-        match read_analyzable(path).await {
-            Ok(text) => {
-                let score = score_text(repo_root, path, &text);
-                files.push(score);
-            }
-            Err(reason) => {
-                skipped.push(SkippedFile { path: rel, reason });
-            }
+        match score_touched_file(repo_root, path).await {
+            Ok(score) => files.push(score),
+            Err(skip) => skipped.push(skip),
         }
     }
 
@@ -434,6 +423,28 @@ pub async fn touched_files_review(repo_root: &Path, paths: &[PathBuf]) -> Touche
         total_score,
         skipped,
     }
+}
+
+async fn score_touched_file(repo_root: &Path, path: &Path) -> Result<FileScore, SkippedFile> {
+    let rel = repo::make_relative(repo_root, path);
+
+    if !path.is_file() {
+        return Err(SkippedFile {
+            path: rel,
+            reason: "not a regular file",
+        });
+    }
+    if !mcp_fs::is_text_file(path) {
+        return Err(SkippedFile {
+            path: rel,
+            reason: "not a recognized text file",
+        });
+    }
+
+    let text = read_analyzable(path)
+        .await
+        .map_err(|reason| SkippedFile { path: rel, reason })?;
+    Ok(score_text(repo_root, path, &text))
 }
 
 // ---------------------------------------------------------------------------
@@ -612,17 +623,17 @@ fn collect_long_fns(text: &str, threshold: usize) -> Vec<usize> {
 
         brace_depth += brace_delta(line);
 
-        if let Some(start) = fn_start
-            && brace_depth <= 0
-            && line_number > start
-        {
-            let fn_len = line_number - start + 1;
-            if fn_len >= threshold {
-                long_starts.push(start);
-            }
-            fn_start = None;
-            brace_depth = 0;
+        let Some(start) = fn_start else { continue };
+        if brace_depth > 0 || line_number <= start {
+            continue;
         }
+
+        let fn_len = line_number - start + 1;
+        if fn_len >= threshold {
+            long_starts.push(start);
+        }
+        fn_start = None;
+        brace_depth = 0;
     }
 
     long_starts
@@ -697,22 +708,30 @@ async fn walk_dir_for_analysis(start: &Path, out: &mut BTreeSet<PathBuf>) {
         };
 
         while let Ok(Some(entry)) = read_dir.next_entry().await {
-            let path = entry.path();
-
-            let Ok(meta) = fs::symlink_metadata(&path).await else {
-                continue;
-            };
-
-            if meta.file_type().is_symlink() {
-                continue;
-            }
-
-            if meta.is_dir() {
-                stack.push(path);
-            } else if is_analyzable_file(&path, &meta) {
-                out.insert(path);
-            }
+            classify_dir_entry(entry, out, &mut stack).await;
         }
+    }
+}
+
+async fn classify_dir_entry(
+    entry: tokio::fs::DirEntry,
+    out: &mut BTreeSet<PathBuf>,
+    stack: &mut Vec<PathBuf>,
+) {
+    let path = entry.path();
+
+    let Ok(meta) = fs::symlink_metadata(&path).await else {
+        return;
+    };
+
+    if meta.file_type().is_symlink() {
+        return;
+    }
+
+    if meta.is_dir() {
+        stack.push(path);
+    } else if is_analyzable_file(&path, &meta) {
+        out.insert(path);
     }
 }
 

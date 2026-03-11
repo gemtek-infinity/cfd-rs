@@ -95,10 +95,7 @@ pub(super) async fn flush_egress(
     loop {
         match connection.send(buffer) {
             Ok((written, send_info)) => {
-                socket
-                    .send_to(&buffer[..written], send_info.to)
-                    .await
-                    .map_err(|error| format!("failed to send UDP packet to {}: {error}", send_info.to))?;
+                send_packet(socket, &buffer[..written], send_info.to).await?;
             }
             Err(quiche::Error::Done) => return Ok(()),
             Err(error) => {
@@ -106,4 +103,12 @@ pub(super) async fn flush_egress(
             }
         }
     }
+}
+
+async fn send_packet(socket: &UdpSocket, data: &[u8], to: SocketAddr) -> Result<(), String> {
+    socket
+        .send_to(data, to)
+        .await
+        .map_err(|error| format!("failed to send UDP packet to {to}: {error}"))?;
+    Ok(())
 }
