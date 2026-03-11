@@ -35,9 +35,9 @@ pub use crate::discovery::{
 };
 pub use crate::error::{ConfigError, Result};
 pub use crate::ingress::{
-    AccessConfig, CliIngressRequest, DurationSpec, IngressIpRule, IngressMatch, IngressRule, IngressService,
-    NO_INGRESS_RULES_CLI_MESSAGE, NormalizedIngress, OriginRequestConfig, RawIngressRule, find_matching_rule,
-    parse_cli_ingress,
+    AccessConfig, DurationSpec, IngressFlagRequest, IngressIpRule, IngressMatch, IngressRule, IngressService,
+    NO_INGRESS_RULES_FLAGS_MESSAGE, NormalizedIngress, OriginRequestConfig, RawIngressRule,
+    find_matching_rule, parse_ingress_flags,
 };
 pub use crate::normalized::{NormalizationWarning, NormalizedConfig};
 pub use crate::raw_config::{RawConfig, WarpRoutingConfig};

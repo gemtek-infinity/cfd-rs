@@ -1,14 +1,14 @@
 {
   "schema_version": 1,
-  "fixture_id": "cli-origin-url-http",
+  "fixture_id": "flag-origin-bastion",
   "producer": "go-truth",
   "report_kind": "ingress-report.v1",
   "comparison": "exact-json",
   "source_refs": [
-    "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices_URL/http"
+    "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/Valid bastion"
   ],
   "payload": {
-    "source_kind": "cli-single-origin",
+    "source_kind": "flag-single-origin",
     "rule_count": 1,
     "catch_all_rule_index": 0,
     "defaults": {
@@ -24,7 +24,7 @@
       "caPool": null,
       "noTLSVerify": false,
       "disableChunkedEncoding": false,
-      "bastionMode": false,
+      "bastionMode": true,
       "proxyAddress": "127.0.0.1",
       "proxyPort": 0,
       "proxyType": null,
@@ -38,8 +38,7 @@
         "punycode_hostname": null,
         "path": null,
         "service": {
-          "kind": "http",
-          "uri": "http://localhost:8080"
+          "kind": "bastion"
         },
         "origin_request": {
           "connectTimeout": "30s",
@@ -54,7 +53,7 @@
           "caPool": null,
           "noTLSVerify": false,
           "disableChunkedEncoding": false,
-          "bastionMode": false,
+          "bastionMode": true,
           "proxyAddress": "127.0.0.1",
           "proxyPort": 0,
           "proxyType": null,

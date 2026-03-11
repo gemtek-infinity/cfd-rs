@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fixture_id": "cli-origin-unix-socket",
+  "fixture_id": "flag-origin-unix-socket",
   "producer": "go-truth",
   "report_kind": "ingress-report.v1",
   "comparison": "exact-json",
@@ -8,7 +8,7 @@
     "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/Unix socket"
   ],
   "payload": {
-    "source_kind": "cli-single-origin",
+    "source_kind": "flag-single-origin",
     "rule_count": 1,
     "catch_all_rule_index": 0,
     "defaults": {

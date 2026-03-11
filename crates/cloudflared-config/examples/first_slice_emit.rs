@@ -11,7 +11,7 @@ use cloudflared_config::artifact::{
 };
 use cloudflared_config::{
     ConfigSource, DiscoveryDefaults, DiscoveryRequest, NormalizedIngress, OriginCertToken, discover_config,
-    load_normalized_config, parse_cli_ingress,
+    load_normalized_config, parse_ingress_flags,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,21 +19,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     fs::create_dir_all(&plan.output_dir)?;
 
     for fixture in &plan.fixtures {
-        let envelope = match fixture.category.as_str() {
-            "config-discovery" => emit_discovery_fixture(fixture)?,
-            "yaml-config" | "invalid-input" => emit_config_fixture(&plan.fixture_root, fixture)?,
-            "ordering-defaulting" => emit_ordering_fixture(&plan.fixture_root, fixture)?,
-            "credentials-origin-cert" => emit_origin_cert_fixture(&plan, fixture)?,
-            "ingress-normalization" => emit_cli_ingress_fixture(fixture)?,
-            other => {
-                return Err(format!("unsupported fixture category for current first slice: {other}").into());
-            }
-        };
-
-        let output_path = plan.output_dir.join(format!("{}.json", fixture.fixture_id));
-        fs::write(output_path, serde_json::to_string_pretty(&envelope)?)?;
+        let envelope = emit_fixture_for_category(&plan, fixture)?;
+        write_fixture_output(&plan.output_dir, fixture, &envelope)?;
     }
 
+    Ok(())
+}
+
+fn emit_fixture_for_category(
+    plan: &EmissionPlan,
+    fixture: &FixtureSpec,
+) -> Result<cloudflared_config::artifact::ArtifactEnvelope, Box<dyn std::error::Error>> {
+    match fixture.category.as_str() {
+        "config-discovery" => emit_discovery_fixture(fixture),
+        "yaml-config" | "invalid-input" => emit_config_fixture(&plan.fixture_root, fixture),
+        "ordering-defaulting" => emit_ordering_fixture(&plan.fixture_root, fixture),
+        "credentials-origin-cert" => emit_origin_cert_fixture(plan, fixture),
+        "ingress-normalization" => emit_flag_ingress_fixture(fixture),
+        other => Err(format!("unsupported fixture category for current first slice: {other}").into()),
+    }
+}
+
+fn write_fixture_output(
+    output_dir: &Path,
+    fixture: &FixtureSpec,
+    envelope: &cloudflared_config::artifact::ArtifactEnvelope,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output_path = output_dir.join(format!("{}.json", fixture.fixture_id));
+    fs::write(output_path, serde_json::to_string_pretty(envelope)?)?;
     Ok(())
 }
 
@@ -121,24 +134,24 @@ fn emit_ordering_fixture(
     }
 }
 
-fn emit_cli_ingress_fixture(
+fn emit_flag_ingress_fixture(
     fixture: &FixtureSpec,
 ) -> Result<cloudflared_config::artifact::ArtifactEnvelope, Box<dyn std::error::Error>> {
-    let Some(cli_case) = fixture.cli_ingress_case.as_ref() else {
-        return Err(format!("fixture {} is missing cli ingress case data", fixture.fixture_id).into());
+    let Some(flag_case) = fixture.flag_ingress_case.as_ref() else {
+        return Err(format!("fixture {} is missing flag ingress case data", fixture.fixture_id).into());
     };
 
-    match parse_cli_ingress(&cli_case.flags) {
-        Ok(normalized) => emit_cli_ingress_envelope(fixture, &normalized),
+    match parse_ingress_flags(&flag_case.flags) {
+        Ok(normalized) => emit_flag_ingress_envelope(fixture, &normalized),
         Err(error) => Ok(error_envelope(fixture, &error)?),
     }
 }
 
-fn emit_cli_ingress_envelope(
+fn emit_flag_ingress_envelope(
     fixture: &FixtureSpec,
     normalized: &NormalizedIngress,
 ) -> Result<cloudflared_config::artifact::ArtifactEnvelope, Box<dyn std::error::Error>> {
-    Ok(ingress_envelope(fixture, "cli-single-origin", normalized)?)
+    Ok(ingress_envelope(fixture, "flag-single-origin", normalized)?)
 }
 
 fn build_discovery_sandbox(case: &DiscoveryCase) -> Result<PathBuf, Box<dyn std::error::Error>> {

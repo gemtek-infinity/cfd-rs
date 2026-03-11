@@ -5,7 +5,8 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use cloudflared_config::{
-    ConfigError, ConfigSource, IngressService, find_matching_rule, load_normalized_config, parse_cli_ingress,
+    ConfigError, ConfigSource, IngressService, find_matching_rule, load_normalized_config,
+    parse_ingress_flags,
 };
 
 #[path = "support/mod.rs"]
@@ -60,9 +61,9 @@ fn unicode_ingress_fixture_matches_punycode_hostname() {
 }
 
 #[test]
-fn cli_origin_url_http_normalizes_to_http_service() {
-    let ingress =
-        parse_cli_ingress(&["--url=http://localhost:8080".to_owned()]).expect("cli origin should normalize");
+fn flag_origin_url_http_normalizes_to_http_service() {
+    let ingress = parse_ingress_flags(&["--url=http://localhost:8080".to_owned()])
+        .expect("flag origin should normalize");
 
     assert_eq!(ingress.rules.len(), 1);
     match &ingress.rules[0].service {
@@ -87,11 +88,11 @@ fn cli_origin_url_http_normalizes_to_http_service() {
 }
 
 #[test]
-fn cli_origin_no_origin_returns_expected_error_category() {
-    let error = parse_cli_ingress(&[]).expect_err("missing CLI origin should fail");
+fn flag_origin_no_origin_returns_expected_error_category() {
+    let error = parse_ingress_flags(&[]).expect_err("missing flag origin should fail");
 
-    assert!(matches!(error, ConfigError::NoIngressRulesCli));
-    assert_eq!(error.category(), "no-ingress-rules-cli");
+    assert!(matches!(error, ConfigError::NoIngressRulesFlags));
+    assert_eq!(error.category(), "no-ingress-rules-flags");
 }
 
 #[test]
@@ -103,9 +104,9 @@ fn harness_can_emit_ingress_related_rust_actual_artifacts() {
         .arg("--output-dir")
         .arg(&output_dir)
         .arg("--fixture-id")
-        .arg("cli-origin-hello-world")
+        .arg("flag-origin-hello-world")
         .arg("--fixture-id")
-        .arg("cli-origin-no-origin")
+        .arg("flag-origin-no-origin")
         .arg("--fixture-id")
         .arg("ordering-catch-all-last")
         .output()
@@ -117,26 +118,29 @@ fn harness_can_emit_ingress_related_rust_actual_artifacts() {
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let cli_artifact = output_dir.join("cli-origin-hello-world.json");
-    let cli_payload: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string(&cli_artifact).expect("CLI artifact should be readable"))
-            .expect("CLI artifact should be valid json");
-    assert_eq!(cli_payload["report_kind"], "ingress-report.v1");
+    let flag_artifact = output_dir.join("flag-origin-hello-world.json");
+    let flag_payload: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&flag_artifact).expect("flag artifact should be readable"))
+            .expect("flag artifact should be valid json");
+    assert_eq!(flag_payload["report_kind"], "ingress-report.v1");
     assert_eq!(
-        cli_payload["payload"]["rules"][0]["service"]["kind"],
+        flag_payload["payload"]["rules"][0]["service"]["kind"],
         "hello-world"
     );
-    assert_eq!(cli_payload["payload"]["defaults"]["keepAliveTimeout"], "1m30s");
-    assert_eq!(cli_payload["payload"]["defaults"]["proxyPort"], 0);
-    assert_eq!(cli_payload["payload"]["defaults"]["bastionMode"], false);
+    assert_eq!(flag_payload["payload"]["defaults"]["keepAliveTimeout"], "1m30s");
+    assert_eq!(flag_payload["payload"]["defaults"]["proxyPort"], 0);
+    assert_eq!(flag_payload["payload"]["defaults"]["bastionMode"], false);
 
-    let cli_error_artifact = output_dir.join("cli-origin-no-origin.json");
-    let cli_error_payload: serde_json::Value = serde_json::from_str(
-        &fs::read_to_string(&cli_error_artifact).expect("CLI error artifact should be readable"),
+    let flag_error_artifact = output_dir.join("flag-origin-no-origin.json");
+    let flag_error_payload: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(&flag_error_artifact).expect("flag error artifact should be readable"),
     )
-    .expect("CLI error artifact should be valid json");
-    assert_eq!(cli_error_payload["report_kind"], "error-report.v1");
-    assert_eq!(cli_error_payload["payload"]["category"], "no-ingress-rules-cli");
+    .expect("flag error artifact should be valid json");
+    assert_eq!(flag_error_payload["report_kind"], "error-report.v1");
+    assert_eq!(
+        flag_error_payload["payload"]["category"],
+        "no-ingress-rules-flags"
+    );
 
     let ordering_artifact = output_dir.join("ordering-catch-all-last.json");
     let ordering_payload: serde_json::Value = serde_json::from_str(

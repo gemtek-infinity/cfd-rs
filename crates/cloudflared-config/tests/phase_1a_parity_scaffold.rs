@@ -39,7 +39,7 @@ fn rust_parity_compare_entrypoint_is_real_for_matching_subset() {
         .arg("--fixture-id")
         .arg("origin-cert-json-token")
         .arg("--fixture-id")
-        .arg("cli-origin-no-origin")
+        .arg("flag-origin-no-origin")
         .output()
         .expect("python3 should be available to run the first-slice parity harness");
 

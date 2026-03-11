@@ -1,93 +1,89 @@
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Command {
-    Help,
-    Version,
-    Validate,
-    Run,
-}
+use super::{Cli, Command};
 
-impl Command {
-    fn as_str(&self) -> &'static str {
-        match self {
-            Self::Help => "help",
-            Self::Version => "version",
-            Self::Validate => "validate",
-            Self::Run => "run",
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct Cli {
-    pub(crate) command: Command,
-    pub(crate) config_path: Option<PathBuf>,
+#[derive(Default)]
+struct ParseState {
+    config_path: Option<PathBuf>,
+    command: Option<Command>,
+    help_requested: bool,
+    version_requested: bool,
 }
 
 pub(crate) fn parse_args(args: impl IntoIterator<Item = OsString>) -> Result<Cli, String> {
     let mut args = args.into_iter();
     let _ = args.next();
 
-    let mut config_path = None;
-    let mut command = None;
-    let mut help_requested = false;
-    let mut version_requested = false;
+    let mut state = ParseState::default();
 
     while let Some(arg) = args.next() {
-        if arg == OsStr::new("--config") {
-            let value = args
-                .next()
-                .ok_or_else(|| String::from("missing value for --config"))?;
-            set_config_path(&mut config_path, PathBuf::from(value))?;
-            continue;
-        }
-
-        if let Some(path) = parse_equals_flag(&arg, "--config") {
-            set_config_path(&mut config_path, PathBuf::from(path))?;
-            continue;
-        }
-
-        match arg.to_string_lossy().as_ref() {
-            "--help" | "-h" | "help" => {
-                help_requested = true;
-            }
-            "--version" | "-V" | "version" => {
-                version_requested = true;
-            }
-            "validate" => {
-                set_command(&mut command, Command::Validate)?;
-            }
-            "run" => {
-                set_command(&mut command, Command::Run)?;
-            }
-            other if other.starts_with('-') => {
-                return Err(format!("unknown flag: {other}"));
-            }
-            other => {
-                return Err(format!("unknown command or argument: {other}"));
-            }
-        }
+        handle_argument(arg, &mut args, &mut state)?;
     }
+
+    Ok(finalize_cli(state))
+}
+
+fn handle_argument(
+    arg: OsString,
+    args: &mut impl Iterator<Item = OsString>,
+    state: &mut ParseState,
+) -> Result<(), String> {
+    if arg == OsStr::new("--config") {
+        let value = args
+            .next()
+            .ok_or_else(|| String::from("missing value for --config"))?;
+        set_config_path(&mut state.config_path, PathBuf::from(value))?;
+        return Ok(());
+    }
+
+    if let Some(path) = parse_equals_flag(&arg, "--config") {
+        set_config_path(&mut state.config_path, PathBuf::from(path))?;
+        return Ok(());
+    }
+
+    match arg.to_string_lossy().as_ref() {
+        "--help" | "-h" | "help" => {
+            state.help_requested = true;
+            Ok(())
+        }
+        "--version" | "-V" | "version" => {
+            state.version_requested = true;
+            Ok(())
+        }
+        "validate" => set_command(&mut state.command, Command::Validate),
+        "run" => set_command(&mut state.command, Command::Run),
+        other if other.starts_with('-') => Err(format!("unknown flag: {other}")),
+        other => Err(format!("unknown command or argument: {other}")),
+    }
+}
+
+fn finalize_cli(state: ParseState) -> Cli {
+    let ParseState {
+        config_path,
+        command,
+        help_requested,
+        version_requested,
+    } = state;
 
     if help_requested {
-        return Ok(Cli {
+        return Cli {
             command: Command::Help,
             config_path,
-        });
-    }
-    if version_requested {
-        return Ok(Cli {
-            command: Command::Version,
-            config_path,
-        });
+        };
     }
 
-    Ok(Cli {
+    if version_requested {
+        return Cli {
+            command: Command::Version,
+            config_path,
+        };
+    }
+
+    Cli {
         command: command.unwrap_or(Command::Help),
         config_path,
-    })
+    }
 }
 
 fn parse_equals_flag<'a>(arg: &'a OsStr, name: &str) -> Option<&'a str> {
@@ -119,11 +115,12 @@ fn set_command(slot: &mut Option<Command>, command: Command) -> Result<(), Strin
 
 #[cfg(test)]
 mod tests {
-    use super::{Command, parse_args};
+    use super::parse_args;
+    use crate::surface::Command;
     use std::ffi::OsString;
     use std::path::PathBuf;
 
-    fn parse(parts: &[&str]) -> super::Cli {
+    fn parse(parts: &[&str]) -> crate::surface::Cli {
         let args = std::iter::once(OsString::from("cloudflared"))
             .chain(parts.iter().map(OsString::from))
             .collect::<Vec<_>>();

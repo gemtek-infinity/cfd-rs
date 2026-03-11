@@ -224,6 +224,38 @@ impl QuicTunnelService {
         command_tx: &mpsc::Sender<RuntimeCommand>,
         shutdown: CancellationToken,
     ) -> Result<ServiceExit, String> {
+        let mut session = self.initialize_quic_session(&target).await?;
+
+        if let Some(exit) = self
+            .await_handshake(&mut session, &target, command_tx, shutdown)
+            .await?
+        {
+            return Ok(exit);
+        }
+
+        self.report_established(&session, &identity, &target, command_tx)
+            .await;
+
+        if let Some(exit) = self
+            .cross_protocol_boundary(&mut session, &target, command_tx)
+            .await?
+        {
+            return Ok(exit);
+        }
+
+        self.teardown_session(&mut session, &target, command_tx).await;
+
+        Ok(ServiceExit::Deferred {
+            service: self.name(),
+            phase: "later runtime/protocol slices",
+            detail: format!(
+                "{} for tunnel {} against {}",
+                WIRE_PROTOCOL_DEFERRED_DETAIL, identity.tunnel_id, target.connect_addr
+            ),
+        })
+    }
+
+    async fn initialize_quic_session(&self, target: &QuicEdgeTarget) -> Result<QuicSessionState, String> {
         let bind_addr = wildcard_bind_addr(target.connect_addr);
         let socket = UdpSocket::bind(bind_addr)
             .await
@@ -232,10 +264,10 @@ impl QuicTunnelService {
             .local_addr()
             .map_err(|error| format!("failed to inspect UDP local address: {error}"))?;
 
-        let mut quic_config = build_quiche_config(&target)?;
+        let mut quic_config = build_quiche_config(target)?;
         let scid_bytes = Uuid::new_v4().into_bytes();
         let scid = ConnectionId::from_ref(scid_bytes.as_ref());
-        let mut connection = quiche::connect(
+        let connection = quiche::connect(
             Some(target.server_name.as_str()),
             &scid,
             local_addr,
@@ -244,88 +276,118 @@ impl QuicTunnelService {
         )
         .map_err(|error| format!("failed to initialize quiche client connection: {error}"))?;
 
-        let mut recv_buffer = [0_u8; 65_535];
-        let mut send_buffer = [0_u8; MAX_DATAGRAM_SIZE];
+        let mut session = QuicSessionState {
+            socket,
+            local_addr,
+            connection,
+            recv_buffer: [0_u8; 65_535],
+            send_buffer: [0_u8; MAX_DATAGRAM_SIZE],
+        };
 
-        flush_egress(&socket, &mut connection, &mut send_buffer)
+        flush_egress(&session.socket, &mut session.connection, &mut session.send_buffer)
             .await
             .map_err(|error| format!("failed to send initial QUIC packets: {error}"))?;
 
+        Ok(session)
+    }
+
+    async fn await_handshake(
+        &self,
+        session: &mut QuicSessionState,
+        target: &QuicEdgeTarget,
+        command_tx: &mpsc::Sender<RuntimeCommand>,
+        shutdown: CancellationToken,
+    ) -> Result<Option<ServiceExit>, String> {
         let establish_timer = time::sleep(QUIC_ESTABLISH_TIMEOUT);
         tokio::pin!(establish_timer);
 
         send_status(
             command_tx,
             self.name(),
-            format!("transport-session-state: handshaking local={local_addr}"),
+            format!(
+                "transport-session-state: handshaking local={}",
+                session.local_addr
+            ),
         )
         .await;
         send_transport_stage(
             command_tx,
             self.name(),
             TransportLifecycleStage::Handshaking,
-            format!("local={local_addr} remote={}", target.connect_addr),
+            format!("local={} remote={}", session.local_addr, target.connect_addr),
         )
         .await;
 
         loop {
-            if connection.is_established() {
-                break;
+            if session.connection.is_established() {
+                return Ok(None);
             }
 
-            if connection.is_closed() {
-                return Ok(ServiceExit::RetryableFailure {
+            if session.connection.is_closed() {
+                return Ok(Some(ServiceExit::RetryableFailure {
                     service: self.name(),
                     detail: format!(
                         "quic transport closed before establishment for edge {}",
                         target.connect_addr
                     ),
-                });
+                }));
             }
 
             tokio::select! {
                 _ = shutdown.cancelled() => {
                     send_status(command_tx, self.name(), "transport-session-state: teardown-before-establish".to_owned()).await;
-                    return Ok(ServiceExit::Completed { service: self.name() });
+                    return Ok(Some(ServiceExit::Completed { service: self.name() }));
                 }
                 _ = &mut establish_timer => {
-                    return Ok(ServiceExit::RetryableFailure {
+                    return Ok(Some(ServiceExit::RetryableFailure {
                         service: self.name(),
                         detail: format!("quic handshake timed out for edge {}", target.connect_addr),
-                    });
+                    }));
                 }
-                recv_result = socket.recv_from(&mut recv_buffer) => {
+                recv_result = session.socket.recv_from(&mut session.recv_buffer) => {
                     let (read, from) = recv_result
                         .map_err(|error| format!("failed to receive QUIC packet from edge: {error}"))?;
                     let recv_info = quiche::RecvInfo {
                         from,
-                        to: local_addr,
+                        to: session.local_addr,
                     };
 
-                    match connection.recv(&mut recv_buffer[..read], recv_info) {
+                    match session.connection.recv(&mut session.recv_buffer[..read], recv_info) {
                         Ok(_) | Err(quiche::Error::Done) => {}
                         Err(error) => {
-                            return Ok(ServiceExit::RetryableFailure {
+                            return Ok(Some(ServiceExit::RetryableFailure {
                                 service: self.name(),
                                 detail: format!("quic handshake failed while reading edge packets: {error}"),
-                            });
+                            }));
                         }
                     }
 
-                    flush_egress(&socket, &mut connection, &mut send_buffer)
-                        .await
-                        .map_err(|error| format!("failed to flush QUIC packets during handshake: {error}"))?;
+                    flush_egress(
+                        &session.socket,
+                        &mut session.connection,
+                        &mut session.send_buffer,
+                    )
+                    .await
+                    .map_err(|error| format!("failed to flush QUIC packets during handshake: {error}"))?;
                 }
             }
         }
+    }
 
+    async fn report_established(
+        &self,
+        session: &QuicSessionState,
+        identity: &TransportIdentity,
+        target: &QuicEdgeTarget,
+        command_tx: &mpsc::Sender<RuntimeCommand>,
+    ) {
         send_status(
             command_tx,
             self.name(),
             format!(
                 "transport-session-state: established peer={} early-data={} resumed-shape={}",
                 target.connect_addr,
-                connection.is_in_early_data(),
+                session.connection.is_in_early_data(),
                 identity.resumption.shape_label(),
             ),
         )
@@ -344,14 +406,21 @@ impl QuicTunnelService {
         let _ = command_tx
             .send(RuntimeCommand::ServiceReady { service: self.name() })
             .await;
+    }
 
+    async fn cross_protocol_boundary(
+        &self,
+        session: &mut QuicSessionState,
+        target: &QuicEdgeTarget,
+        command_tx: &mpsc::Sender<RuntimeCommand>,
+    ) -> Result<Option<ServiceExit>, String> {
         // Phase 3.5 + 4.1: Cross the wire/protocol boundary and report
         // the transport-owned stage transition explicitly.
         // Open the control stream on the established QUIC session.
         // This proves wire-level protocol behavior exists beyond
         // transport establishment. Registration RPC content and
         // incoming request stream handling remain deferred.
-        match connection.stream_send(CONTROL_STREAM_ID, &[], false) {
+        match session.connection.stream_send(CONTROL_STREAM_ID, &[], false) {
             Ok(_) | Err(quiche::Error::Done) => {
                 send_status(
                     command_tx,
@@ -368,14 +437,14 @@ impl QuicTunnelService {
                 .await;
             }
             Err(error) => {
-                return Ok(ServiceExit::RetryableFailure {
+                return Ok(Some(ServiceExit::RetryableFailure {
                     service: self.name(),
                     detail: format!("failed to open control stream at wire/protocol boundary: {error}"),
-                });
+                }));
             }
         }
 
-        flush_egress(&socket, &mut connection, &mut send_buffer)
+        flush_egress(&session.socket, &mut session.connection, &mut session.send_buffer)
             .await
             .map_err(|error| format!("failed to flush control stream at wire/protocol boundary: {error}"))?;
 
@@ -408,9 +477,18 @@ impl QuicTunnelService {
         )
         .await;
 
+        Ok(None)
+    }
+
+    async fn teardown_session(
+        &self,
+        session: &mut QuicSessionState,
+        target: &QuicEdgeTarget,
+        command_tx: &mpsc::Sender<RuntimeCommand>,
+    ) {
         // Graceful close — the wire/protocol boundary has been crossed.
-        let _ = connection.close(true, 0x00, b"protocol boundary crossed");
-        let _ = flush_egress(&socket, &mut connection, &mut send_buffer).await;
+        let _ = session.connection.close(true, 0x00, b"protocol boundary crossed");
+        let _ = flush_egress(&session.socket, &mut session.connection, &mut session.send_buffer).await;
         send_transport_stage(
             command_tx,
             self.name(),
@@ -424,16 +502,15 @@ impl QuicTunnelService {
             "transport-session-state: teardown".to_owned(),
         )
         .await;
-
-        Ok(ServiceExit::Deferred {
-            service: self.name(),
-            phase: "later runtime/protocol slices",
-            detail: format!(
-                "{} for tunnel {} against {}",
-                WIRE_PROTOCOL_DEFERRED_DETAIL, identity.tunnel_id, target.connect_addr
-            ),
-        })
     }
+}
+
+struct QuicSessionState {
+    socket: UdpSocket,
+    local_addr: SocketAddr,
+    connection: quiche::Connection,
+    recv_buffer: [u8; 65_535],
+    send_buffer: [u8; MAX_DATAGRAM_SIZE],
 }
 
 #[derive(Debug, Clone)]

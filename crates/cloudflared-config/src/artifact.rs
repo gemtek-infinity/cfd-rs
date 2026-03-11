@@ -34,7 +34,7 @@ pub struct FixtureSpec {
     #[serde(default)]
     pub ordering_case: Option<OrderingCase>,
     #[serde(default)]
-    pub cli_ingress_case: Option<CliIngressCase>,
+    pub flag_ingress_case: Option<FlagIngressCase>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -49,7 +49,7 @@ pub struct OrderingCase {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct CliIngressCase {
+pub struct FlagIngressCase {
     pub flags: Vec<String>,
 }
 

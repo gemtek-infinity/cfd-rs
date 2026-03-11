@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "fixture_id": "cli-origin-no-origin",
+  "fixture_id": "flag-origin-no-origin",
   "producer": "go-truth",
   "report_kind": "error-report.v1",
   "comparison": "error-category",
@@ -8,7 +8,7 @@
     "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/No origins defined"
   ],
   "payload": {
-    "category": "no-ingress-rules-cli",
-    "message": "No ingress rules were defined in provided config (if any) nor from the cli, cloudflared will return 503 for all incoming HTTP requests"
+    "category": "no-ingress-rules-flags",
+    "message": "No ingress rules were defined in provided config (if any) nor from the provided flags, cloudflared will return 503 for all incoming HTTP requests"
   }
 }

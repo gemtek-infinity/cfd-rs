@@ -3,29 +3,29 @@ schema = 1
 [[case]]
 expected_service_kind = "hello-world"
 flags = ["--hello-world=true"]
-id = "cli-origin-hello-world"
+id = "flag-origin-hello-world"
 
 [[case]]
 expected_service_kind = "bastion"
 flags = ["--bastion=true"]
-id = "cli-origin-bastion"
+id = "flag-origin-bastion"
 
 [[case]]
 expected_service_kind = "http"
 flags = ["--url=http://localhost:8080"]
-id = "cli-origin-url-http"
+id = "flag-origin-url-http"
 
 [[case]]
 expected_service_kind = "tcp-over-websocket"
 flags = ["--url=tcp://localhost:8080"]
-id = "cli-origin-url-tcp"
+id = "flag-origin-url-tcp"
 
 [[case]]
 expected_service_kind = "unix-socket"
 flags = ["--unix-socket=unix://service"]
-id = "cli-origin-unix-socket"
+id = "flag-origin-unix-socket"
 
 [[case]]
-expected_error = "no-ingress-rules-cli"
+expected_error = "no-ingress-rules-flags"
 flags = []
-id = "cli-origin-no-origin"
+id = "flag-origin-no-origin"

@@ -23,6 +23,7 @@ import (
 )
 
 const schemaVersion = 1
+const noIngressRulesFlagsMessage = "No ingress rules were defined in provided config (if any) nor from the provided flags, cloudflared will return 503 for all incoming HTTP requests"
 
 type emissionPlan struct {
 	RepoRoot    string        `json:"repo_root"`
@@ -40,7 +41,7 @@ type fixtureSpec struct {
 	DiscoveryCase    *discoveryCase `json:"discovery_case,omitempty"`
 	OriginCertSource *string        `json:"origin_cert_source,omitempty"`
 	OrderingCase     *orderingCase  `json:"ordering_case,omitempty"`
-	CliIngressCase   *cliIngressCase `json:"cli_ingress_case,omitempty"`
+	FlagIngressCase   *flagIngressCase `json:"flag_ingress_case,omitempty"`
 }
 
 type discoveryCase struct {
@@ -52,7 +53,7 @@ type orderingCase struct {
 	Input string `json:"input"`
 }
 
-type cliIngressCase struct {
+type flagIngressCase struct {
 	Flags []string `json:"flags"`
 }
 
@@ -254,7 +255,7 @@ func emitFixture(plan emissionPlan, fixture fixtureSpec) (artifactEnvelope, erro
 	case "credentials-origin-cert":
 		return emitOriginCertFixture(plan, fixture)
 	case "ingress-normalization":
-		return emitCLIIngressFixture(fixture)
+		return emitFlagIngressFixture(fixture)
 	default:
 		return artifactEnvelope{}, fmt.Errorf("unsupported fixture category: %s", fixture.Category)
 	}
@@ -352,7 +353,7 @@ func emitNormalizedConfigFixture(plan emissionPlan, fixture fixtureSpec, input s
 
 	var ing ingress.Ingress
 	if useConfigAndCLI {
-		cliCtx := newCLIContext(nil)
+		cliCtx := newFlagContext(nil)
 		logger := zerolog.Nop()
 		ing, err = ingress.ParseIngressFromConfigAndCLI(configuration, cliCtx, &logger)
 	} else {
@@ -398,21 +399,21 @@ func emitOriginCertFixture(plan emissionPlan, fixture fixtureSpec) (artifactEnve
 	return newEnvelope(fixture, "go-truth", "credential-report.v1", payload)
 }
 
-func emitCLIIngressFixture(fixture fixtureSpec) (artifactEnvelope, error) {
-	if fixture.CliIngressCase == nil {
-		return artifactEnvelope{}, fmt.Errorf("fixture %s missing cli ingress case", fixture.FixtureID)
+func emitFlagIngressFixture(fixture fixtureSpec) (artifactEnvelope, error) {
+	if fixture.FlagIngressCase == nil {
+		return artifactEnvelope{}, fmt.Errorf("fixture %s missing flag ingress case", fixture.FixtureID)
 	}
-	if !hasCLIOrigin(fixture.CliIngressCase.Flags) {
-		return newErrorEnvelope(fixture, "no-ingress-rules-cli", ingress.ErrNoIngressRulesCLI.Error())
+	if !hasFlagOrigin(fixture.FlagIngressCase.Flags) {
+		return newErrorEnvelope(fixture, "no-ingress-rules-flags", noIngressRulesFlagsMessage)
 	}
-	cliCtx := newCLIContext(fixture.CliIngressCase.Flags)
+	cliCtx := newFlagContext(fixture.FlagIngressCase.Flags)
 	logger := zerolog.Nop()
 	ing, err := ingress.ParseIngressFromConfigAndCLI(&config.Configuration{}, cliCtx, &logger)
 	if err != nil {
 		return newErrorEnvelope(fixture, classifyConfigError(err), err.Error())
 	}
 	payload := ingressReportPayload{
-		SourceKind:        "cli-single-origin",
+		SourceKind:        "flag-single-origin",
 		RuleCount:         len(ing.Rules),
 		CatchAllRuleIndex: len(ing.Rules) - 1,
 		Defaults:          canonicalOriginRequest(ing.Defaults),
@@ -610,7 +611,7 @@ func classifyConfigError(err error) string {
 	case strings.Contains(message, "Hostname cannot contain a port"):
 		return "ingress-hostname-contains-port"
 	case strings.Contains(message, "No ingress rules were defined"):
-		return "no-ingress-rules-cli"
+		return "no-ingress-rules-flags"
 	default:
 		return "invariant-violation"
 	}
@@ -634,7 +635,7 @@ func classifyCredentialError(err error) string {
 	}
 }
 
-func newCLIContext(flags []string) *cli.Context {
+func newFlagContext(flags []string) *cli.Context {
 	flagSet := flag.NewFlagSet("first-slice-capture", flag.ContinueOnError)
 	flagSet.Bool(ingress.HelloWorldFlag, false, "")
 	flagSet.Bool(config.BastionFlag, false, "")
@@ -642,15 +643,15 @@ func newCLIContext(flags []string) *cli.Context {
 	flagSet.String("unix-socket", "", "")
 	cliCtx := cli.NewContext(cli.NewApp(), flagSet, nil)
 	for _, raw := range flags {
-		name, value := splitCLIFlag(raw)
+		name, value := splitFlagArg(raw)
 		_ = cliCtx.Set(name, value)
 	}
 	return cliCtx
 }
 
-func hasCLIOrigin(flags []string) bool {
+func hasFlagOrigin(flags []string) bool {
 	for _, raw := range flags {
-		name, value := splitCLIFlag(raw)
+		name, value := splitFlagArg(raw)
 		switch name {
 		case ingress.HelloWorldFlag, config.BastionFlag:
 			if value == "true" || value == "" {
@@ -665,7 +666,7 @@ func hasCLIOrigin(flags []string) bool {
 	return false
 }
 
-func splitCLIFlag(raw string) (string, string) {
+func splitFlagArg(raw string) (string, string) {
 	trimmed := strings.TrimPrefix(raw, "--")
 	if name, value, ok := strings.Cut(trimmed, "="); ok {
 		return name, value

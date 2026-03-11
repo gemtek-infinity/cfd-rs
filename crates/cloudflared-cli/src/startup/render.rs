@@ -1,31 +1,8 @@
-use std::path::PathBuf;
+use cloudflared_config::{ConfigSource, DiscoveryAction, IngressService, NormalizationWarning};
 
-use cloudflared_config::{
-    ConfigError, ConfigSource, DiscoveryAction, DiscoveryOutcome, DiscoveryRequest, IngressService,
-    NormalizationWarning, NormalizedConfig, discover_config, load_normalized_config,
-};
+use crate::runtime::RuntimeExecution;
 
-use crate::runtime;
-
-#[derive(Debug)]
-pub(crate) struct StartupSurface {
-    pub(crate) discovery: DiscoveryOutcome,
-    pub(crate) normalized: NormalizedConfig,
-}
-
-pub(crate) fn resolve_startup(config_path: Option<PathBuf>) -> Result<StartupSurface, ConfigError> {
-    let request = DiscoveryRequest {
-        explicit_config: config_path,
-        ..DiscoveryRequest::default()
-    };
-    let discovery = discover_config(&request)?;
-    let normalized = load_normalized_config(&discovery.path, discovery.source.clone())?;
-
-    Ok(StartupSurface {
-        discovery,
-        normalized,
-    })
-}
+use super::StartupSurface;
 
 pub(crate) fn render_validate_output(startup: &StartupSurface) -> String {
     let mut lines = vec![String::from("OK: admitted alpha startup surface validated")];
@@ -33,7 +10,7 @@ pub(crate) fn render_validate_output(startup: &StartupSurface) -> String {
     lines.join("\n") + "\n"
 }
 
-pub(crate) fn render_run_output(startup: &StartupSurface, report: &runtime::RuntimeExecution) -> String {
+pub(crate) fn render_run_output(startup: &StartupSurface, report: &RuntimeExecution) -> String {
     let mut lines = vec![String::from("Resolved admitted alpha startup surface")];
     lines.extend(render_startup_lines(startup));
     lines.extend(report.summary_lines.iter().cloned());

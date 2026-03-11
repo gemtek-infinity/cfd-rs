@@ -115,7 +115,7 @@ comparison = "exact-json"
 go_truth = [
   "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/Valid hello-world",
 ]
-id = "cli-origin-hello-world"
+id = "flag-origin-hello-world"
 input = "ingress-normalization/cases.toml"
 
 [[fixture]]
@@ -124,21 +124,21 @@ comparison = "exact-json"
 go_truth = [
   "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/Valid bastion",
 ]
-id = "cli-origin-bastion"
+id = "flag-origin-bastion"
 input = "ingress-normalization/cases.toml"
 
 [[fixture]]
 category = "ingress-normalization"
 comparison = "exact-json"
 go_truth = ["baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices_URL/http"]
-id = "cli-origin-url-http"
+id = "flag-origin-url-http"
 input = "ingress-normalization/cases.toml"
 
 [[fixture]]
 category = "ingress-normalization"
 comparison = "exact-json"
 go_truth = ["baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices_URL/tcp"]
-id = "cli-origin-url-tcp"
+id = "flag-origin-url-tcp"
 input = "ingress-normalization/cases.toml"
 
 [[fixture]]
@@ -147,7 +147,7 @@ comparison = "exact-json"
 go_truth = [
   "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/Unix socket",
 ]
-id = "cli-origin-unix-socket"
+id = "flag-origin-unix-socket"
 input = "ingress-normalization/cases.toml"
 
 [[fixture]]
@@ -156,7 +156,7 @@ comparison = "error-category"
 go_truth = [
   "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/No origins defined",
 ]
-id = "cli-origin-no-origin"
+id = "flag-origin-no-origin"
 input = "ingress-normalization/cases.toml"
 
 [[fixture]]
