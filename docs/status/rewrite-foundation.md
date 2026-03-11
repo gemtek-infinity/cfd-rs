@@ -56,8 +56,11 @@ If sources disagree, use this precedence order:
 
 1. `baseline-2026.2.0/old-impl/` code and tests
 2. `baseline-2026.2.0/design-audit/`
-3. `AGENTS.md`
-4. `SKILLS.md`
+3. `REWRITE_CHARTER.md`
+4. `STATUS.md`
+5. matching policy docs under `docs/`
+
+`AGENTS.md` and `SKILLS.md` are workflow notes and do not override the above.
 
 ### Governance Documents
 
