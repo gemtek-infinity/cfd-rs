@@ -83,11 +83,13 @@ That means:
 
 The current manifests admit only the dependencies needed by the binary runtime
 baseline, the active first-slice config implementation, the active QUIC tunnel
-core, and the existing workspace tool surface:
+core, the admitted Pingora and observability seams, and the existing workspace
+tool surface:
 
-- `mimalloc`, `tokio`, `tokio-util`, and `quiche` in `cloudflared-cli`
-- shared workspace truth for `serde`, `serde_json`, `serde_yaml`, `thiserror`,
-  `url`, and `uuid`
+- `mimalloc`, `tokio`, `tokio-util`, `quiche`, `pingora-http`, `tracing`, and
+  `tracing-subscriber` in `cloudflared-cli`
+- shared workspace truth for `pem`, `serde`, `serde_json`, `serde_yaml`,
+  `thiserror`, `url`, and `uuid`
 - `rmcp`, `schemars`, and `tokio` in `tools/mcp-cfd-rs`
 
 Reason:
@@ -100,6 +102,14 @@ Reason:
   `cloudflared-cli` may use `quiche` on the locked quiche + BoringSSL lane for
   real transport ownership and handshake/session state under the runtime
   boundary
+- Phase 3.4 has now started, so the admitted Pingora seam in
+  `cloudflared-cli` may use `pingora-http` inside its owned proxy boundary for
+  the first narrow origin path
+- Phase 3.7 has now started, so the active origin-cert path may use the mature
+  `pem` crate through owned credential adapters in `cloudflared-config`
+- Phase 4.1 has now started, so the admitted runtime observability surface in
+  `cloudflared-cli` may use `tracing` and `tracing-subscriber` for live,
+  owner-scoped reporting at the binary boundary
 - config, credential, and ingress normalization work is active in
   `cloudflared-config`, so its admitted slice dependencies now exist honestly in
   manifests

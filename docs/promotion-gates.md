@@ -332,6 +332,29 @@ The minimum runnable alpha exists on the frozen Linux production-alpha lane.
 
 Harden, validate, measure, and prove the alpha in real use.
 
+### Phase 4.1 — Observability And Operability
+
+#### Purpose
+
+Make the admitted alpha operable and inspectable in real use without widening
+scope into performance proof, failure-mode proof, or deployment proof.
+
+#### Required conditions
+
+- runtime-owned lifecycle and readiness truth are visible while `run` executes
+- transport, protocol, and proxy report their own state transitions through
+  explicit owned seams
+- startup, restart, shutdown, and failure boundaries are inspectable without
+  implying broader subsystem completeness
+- minimal counters exist for the current alpha path without turning this phase
+  into a broad telemetry platform
+
+#### Exit condition
+
+Phase 4.1 is complete when the current alpha can be run, inspected, and
+debugged honestly through narrow logs, readiness, and minimal operability
+reporting.
+
 ### Exit condition
 
 The promoted alpha scope is validated well enough to be credible in real use.
@@ -364,9 +387,11 @@ At the current repo state:
 
 - Big Phase 1 is done
 - Big Phase 2 is closed and frozen
-- Big Phase 3 is current
+- Big Phase 3 runnable-alpha admission remains intact
 - Phase 3.3 QUIC tunnel core is admitted
 - Phase 3.4 Pingora proxy seam (3.4a–c) is admitted
 - Phase 3.5 wire/protocol boundary is admitted
 - Phase 3.6 security/compliance operational boundary is admitted
 - Phase 3.7 standard-format crate integration boundary is admitted
+- Phase 4.1 observability and operability is admitted
+- 4.2 performance proof, 4.3 failure-mode proof, and 4.4 deployment proof are later

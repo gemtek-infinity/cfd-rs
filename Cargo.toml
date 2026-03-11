@@ -43,6 +43,8 @@ tokio = { version = "1.50.0", features = [
   "time",
 ] }
 tokio-util = { version = "0.7.16", features = ["rt"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.20", default-features = false, features = ["fmt"] }
 url = { version = "2.5.8", features = ["serde"] }
 uuid = { version = "1.22.0", default-features = false, features = ["serde", "std", "v4", "v7"] }
 

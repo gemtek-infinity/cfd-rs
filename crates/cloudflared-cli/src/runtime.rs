@@ -3,10 +3,10 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::{env, fs};
 
-use crate::protocol::{self, ProtocolReceiver};
-use crate::proxy::PingoraProxySeam;
+use crate::protocol::{self, ProtocolBridgeState, ProtocolReceiver};
+use crate::proxy::{PingoraProxySeam, ProxySeamState};
 use crate::startup::config_source_label;
-use crate::transport::QuicTunnelServiceFactory;
+use crate::transport::{QuicTunnelServiceFactory, TransportLifecycleStage};
 
 use cloudflared_config::{ConfigSource, DiscoveryOutcome, NormalizedConfig};
 use tokio::runtime::Builder;
@@ -14,6 +14,8 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio::time;
 use tokio_util::sync::CancellationToken;
+use tracing::{error, info, warn};
+use tracing_subscriber::fmt;
 
 #[cfg(target_family = "unix")]
 use tokio::signal::unix::{SignalKind, signal};
@@ -21,11 +23,14 @@ use tokio::signal::unix::{SignalKind, signal};
 const PRIMARY_SERVICE_NAME: &str = "quic-tunnel-core";
 const FROZEN_TARGET_TRIPLE: &str = "x86_64-unknown-linux-gnu";
 const TRANSPORT_CRYPTO_LANE: &str = "quiche+boringssl";
+const READINESS_SCOPE: &str = "narrow-alpha-control-plane-only";
 const GLIBC_RUNTIME_MARKERS: &[&str] = &[
     "/lib64/ld-linux-x86-64.so.2",
     "/lib/x86_64-linux-gnu/libc.so.6",
     "/usr/lib64/libc.so.6",
 ];
+
+static RUNTIME_LOGGING: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub(crate) struct RuntimeConfig {
@@ -104,6 +109,18 @@ impl RuntimeExit {
     }
 }
 
+pub(crate) fn install_runtime_logging() {
+    RUNTIME_LOGGING.get_or_init(|| {
+        let subscriber = fmt()
+            .with_writer(std::io::stderr)
+            .without_time()
+            .with_target(false)
+            .compact()
+            .finish();
+        let _ = tracing::subscriber::set_global_default(subscriber);
+    });
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LifecycleState {
     Starting,
@@ -125,13 +142,58 @@ impl LifecycleState {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ReadinessState {
+    Starting,
+    WaitingForProxyAdmission,
+    WaitingForTransport,
+    WaitingForProtocolBridge,
+    Ready,
+    Stopping,
+    Failed,
+}
+
+impl ReadinessState {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Starting => "starting",
+            Self::WaitingForProxyAdmission => "waiting-for-proxy-admission",
+            Self::WaitingForTransport => "waiting-for-transport",
+            Self::WaitingForProtocolBridge => "waiting-for-protocol-bridge",
+            Self::Ready => "ready",
+            Self::Stopping => "stopping",
+            Self::Failed => "failed",
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum RuntimeCommand {
-    ServiceReady { service: &'static str },
-    ServiceStatus { service: &'static str, detail: String },
+    ServiceReady {
+        service: &'static str,
+    },
+    ServiceStatus {
+        service: &'static str,
+        detail: String,
+    },
+    TransportStage {
+        service: &'static str,
+        stage: TransportLifecycleStage,
+        detail: String,
+    },
+    ProtocolState {
+        state: ProtocolBridgeState,
+        detail: String,
+    },
+    ProxyState {
+        state: ProxySeamState,
+        detail: String,
+    },
     ServiceExited(ServiceExit),
     ShutdownRequested(ShutdownReason),
-    ControlPlaneFailure { detail: String },
+    ControlPlaneFailure {
+        detail: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -235,8 +297,16 @@ struct ApplicationRuntime<F> {
     shutdown: CancellationToken,
     summary_lines: Vec<String>,
     lifecycle_state: LifecycleState,
+    readiness_state: ReadinessState,
     restart_attempts: u32,
     protocol_receiver: Option<ProtocolReceiver>,
+    transport_stage: Option<TransportLifecycleStage>,
+    protocol_state: ProtocolBridgeState,
+    proxy_state: Option<ProxySeamState>,
+    proxy_admissions: u32,
+    protocol_registrations: u32,
+    transport_failures: u32,
+    failure_events: u32,
 }
 
 impl<F> ApplicationRuntime<F>
@@ -262,8 +332,20 @@ where
             shutdown: CancellationToken::new(),
             summary_lines: Vec::new(),
             lifecycle_state: LifecycleState::Starting,
+            readiness_state: ReadinessState::Starting,
             restart_attempts: 0,
+            transport_stage: None,
+            protocol_state: if protocol_receiver.is_some() {
+                ProtocolBridgeState::BridgeCreated
+            } else {
+                ProtocolBridgeState::BridgeUnavailable
+            },
             protocol_receiver,
+            proxy_state: None,
+            proxy_admissions: 0,
+            protocol_registrations: 0,
+            transport_failures: 0,
+            failure_events: 0,
         }
     }
 
@@ -290,18 +372,30 @@ where
             self.policy.restart_backoff.as_millis(),
             self.policy.shutdown_grace_period.as_millis()
         ));
+        self.summary_lines
+            .push(format!("readiness-scope: {READINESS_SCOPE}"));
 
         if let Err(detail) = self.record_security_compliance_boundary() {
             return self.finish(RuntimeExit::Failed { detail }).await;
         }
 
         self.record_state(LifecycleState::Starting, "startup sequencing entered");
+        self.record_readiness(ReadinessState::Starting, "runtime startup sequencing entered");
+        self.record_protocol_state(
+            self.protocol_state,
+            if matches!(self.protocol_state, ProtocolBridgeState::BridgeCreated) {
+                "runtime created protocol bridge endpoints"
+            } else {
+                "protocol bridge omitted by runtime harness"
+            },
+        );
 
         self.spawn_signal_bridge();
         self.spawn_harness_shutdown();
-        // 3.4b+c: proxy seam enters lifecycle before the primary transport
-        // service, receives ingress rules from the runtime, and provides the
-        // first admitted origin/proxy path (http_status routing).
+        // 3.4b+c + 4.1: proxy seam enters lifecycle before the primary
+        // transport service, receives ingress rules from the runtime,
+        // provides the first admitted origin/proxy path, and reports
+        // owner-scoped proxy/protocol operability state back to runtime.
         self.spawn_proxy_seam();
         self.spawn_primary_service(0);
 
@@ -394,27 +488,63 @@ where
                 if self.lifecycle_state == LifecycleState::Starting {
                     self.record_state(LifecycleState::Running, format!("service ready: {service}"));
                 }
+                self.refresh_readiness(format!("{service} reported ready"));
                 None
             }
             RuntimeCommand::ServiceStatus { service, detail } => {
                 self.summary_lines
                     .push(format!("service-status[{service}]: {detail}"));
+                info!("service-status service={service} detail={detail}");
+                None
+            }
+            RuntimeCommand::TransportStage {
+                service,
+                stage,
+                detail,
+            } => {
+                self.transport_stage = Some(stage);
+                self.summary_lines
+                    .push(format!("transport-stage[{service}]: {}", stage.as_str()));
+                self.summary_lines
+                    .push(format!("transport-detail[{service}]: {detail}"));
+                info!(
+                    "transport-stage service={service} stage={} detail={detail}",
+                    stage.as_str()
+                );
+                self.refresh_readiness(format!("transport reached {}", stage.as_str()));
+                None
+            }
+            RuntimeCommand::ProtocolState { state, detail } => {
+                self.record_protocol_state(state, detail);
+                self.refresh_readiness(format!("protocol bridge reached {}", state.as_str()));
+                None
+            }
+            RuntimeCommand::ProxyState { state, detail } => {
+                self.record_proxy_state(state, detail);
+                self.refresh_readiness(format!("proxy seam reached {}", state.as_str()));
                 None
             }
             RuntimeCommand::ServiceExited(ServiceExit::Completed { service }) => Some(RuntimeExit::Failed {
                 detail: format!("{service} exited without a runtime shutdown request"),
             }),
             RuntimeCommand::ServiceExited(ServiceExit::RetryableFailure { service, detail }) => {
+                self.record_failure_boundary(service, "retryable", &detail);
+                self.transport_failures += 1;
                 if self.restart_attempts < self.policy.max_restart_attempts {
                     self.restart_attempts += 1;
                     self.summary_lines.push(format!(
                         "supervision-restart-attempt: {} service={} detail={detail}",
                         self.restart_attempts, service
                     ));
+                    warn!(
+                        "runtime-restart service={service} attempt={} detail={detail}",
+                        self.restart_attempts
+                    );
                     self.record_state(
                         LifecycleState::Starting,
                         format!("restarting {service} after retryable failure"),
                     );
+                    self.refresh_readiness(format!("runtime restarting {service} after retryable failure"));
                     time::sleep(self.policy.restart_backoff).await;
                     self.spawn_primary_service(self.restart_attempts);
                     None
@@ -433,9 +563,13 @@ where
                 detail,
             }) => Some(RuntimeExit::Deferred {
                 phase,
-                detail: format!("{service}: {detail}"),
+                detail: {
+                    self.record_failure_boundary(service, "deferred", &detail);
+                    format!("{service}: {detail}")
+                },
             }),
             RuntimeCommand::ServiceExited(ServiceExit::Fatal { service, detail }) => {
+                self.record_failure_boundary(service, "fatal", &detail);
                 Some(RuntimeExit::Failed {
                     detail: format!("{service}: {detail}"),
                 })
@@ -443,9 +577,13 @@ where
             RuntimeCommand::ShutdownRequested(reason) => {
                 self.summary_lines
                     .push(format!("shutdown-reason: {}", reason.as_str()));
+                info!("runtime-shutdown-request reason={}", reason.as_str());
                 Some(RuntimeExit::Clean)
             }
-            RuntimeCommand::ControlPlaneFailure { detail } => Some(RuntimeExit::Failed { detail }),
+            RuntimeCommand::ControlPlaneFailure { detail } => {
+                self.record_failure_boundary("runtime-control-plane", "fatal", &detail);
+                Some(RuntimeExit::Failed { detail })
+            }
         }
     }
 
@@ -456,6 +594,7 @@ where
             RuntimeExit::Failed { detail } => format!("runtime failure: {detail}"),
         };
         self.record_state(LifecycleState::Stopping, stopping_reason);
+        self.record_readiness(ReadinessState::Stopping, "runtime shutdown sequencing entered");
 
         if matches!(exit, RuntimeExit::Deferred { .. }) {
             self.summary_lines.push(format!(
@@ -468,17 +607,155 @@ where
         self.drain_child_tasks().await;
 
         match exit {
-            RuntimeExit::Clean => self.record_state(LifecycleState::Stopped, "runtime stopped cleanly"),
-            RuntimeExit::Deferred { .. } | RuntimeExit::Failed { .. } => self.record_state(
-                LifecycleState::Failed,
-                "runtime stopped with a deferred or failed service boundary",
-            ),
+            RuntimeExit::Clean => {
+                self.record_state(LifecycleState::Stopped, "runtime stopped cleanly");
+                self.record_readiness(ReadinessState::Stopping, "runtime stopped after clean shutdown");
+            }
+            RuntimeExit::Deferred { .. } | RuntimeExit::Failed { .. } => {
+                self.record_state(
+                    LifecycleState::Failed,
+                    "runtime stopped with a deferred or failed service boundary",
+                );
+                self.record_readiness(
+                    ReadinessState::Failed,
+                    "runtime stopped after deferred or failed service boundary",
+                );
+            }
         }
+
+        self.record_operability_summary();
 
         RuntimeExecution {
             summary_lines: self.summary_lines,
             exit,
         }
+    }
+
+    fn record_proxy_state(&mut self, state: ProxySeamState, detail: String) {
+        self.proxy_state = Some(state);
+        if state == ProxySeamState::Admitted {
+            self.proxy_admissions += 1;
+        }
+
+        self.summary_lines
+            .push(format!("proxy-state: {}", state.as_str()));
+        self.summary_lines.push(format!("proxy-detail: {detail}"));
+        info!("proxy-state state={} detail={detail}", state.as_str());
+    }
+
+    fn record_protocol_state(&mut self, state: ProtocolBridgeState, detail: impl Into<String>) {
+        self.protocol_state = state;
+        if state == ProtocolBridgeState::RegistrationObserved {
+            self.protocol_registrations += 1;
+        }
+
+        let detail = detail.into();
+        self.summary_lines
+            .push(format!("protocol-state: {}", state.as_str()));
+        self.summary_lines.push(format!("protocol-detail: {detail}"));
+        info!("protocol-state state={} detail={detail}", state.as_str());
+    }
+
+    fn record_failure_boundary(&mut self, owner: &'static str, class: &'static str, detail: &str) {
+        self.failure_events += 1;
+        self.summary_lines.push(format!(
+            "failure-visibility: owner={owner} class={class} detail={detail}"
+        ));
+        error!("failure-boundary owner={owner} class={class} detail={detail}");
+    }
+
+    fn refresh_readiness(&mut self, reason: impl Into<String>) {
+        let next = if self.lifecycle_state == LifecycleState::Failed {
+            ReadinessState::Failed
+        } else if matches!(
+            self.lifecycle_state,
+            LifecycleState::Stopping | LifecycleState::Stopped
+        ) {
+            ReadinessState::Stopping
+        } else if !matches!(
+            self.proxy_state,
+            Some(
+                ProxySeamState::Admitted
+                    | ProxySeamState::RegistrationObserved
+                    | ProxySeamState::ShutdownAcknowledged
+            )
+        ) {
+            ReadinessState::WaitingForProxyAdmission
+        } else if !matches!(
+            self.transport_stage,
+            Some(
+                TransportLifecycleStage::Established
+                    | TransportLifecycleStage::ControlStreamOpened
+                    | TransportLifecycleStage::Teardown
+            )
+        ) {
+            ReadinessState::WaitingForTransport
+        } else if self.protocol_state != ProtocolBridgeState::RegistrationObserved {
+            ReadinessState::WaitingForProtocolBridge
+        } else {
+            ReadinessState::Ready
+        };
+
+        if next != self.readiness_state {
+            self.record_readiness(next, reason);
+        }
+    }
+
+    fn record_readiness(&mut self, state: ReadinessState, reason: impl Into<String>) {
+        let reason = reason.into();
+        self.readiness_state = state;
+        self.summary_lines
+            .push(format!("readiness-state: {}", state.as_str()));
+        self.summary_lines.push(format!("readiness-reason: {reason}"));
+        info!(
+            "readiness-transition state={} scope={READINESS_SCOPE} reason={reason}",
+            state.as_str()
+        );
+    }
+
+    fn record_operability_summary(&mut self) {
+        let transport_stage = self
+            .transport_stage
+            .map(|stage| stage.as_str())
+            .unwrap_or("not-reported");
+        let proxy_state = self
+            .proxy_state
+            .map(|state| state.as_str())
+            .unwrap_or("not-reported");
+
+        self.summary_lines.push(format!(
+            "operability-status: lifecycle={} readiness={} transport-stage={} protocol-state={} \
+             proxy-state={}",
+            self.lifecycle_state.as_str(),
+            self.readiness_state.as_str(),
+            transport_stage,
+            self.protocol_state.as_str(),
+            proxy_state
+        ));
+        self.summary_lines.push(format!(
+            "operability-metrics: restart-attempts={} proxy-admissions={} protocol-registrations={} \
+             transport-failures={} failure-events={}",
+            self.restart_attempts,
+            self.proxy_admissions,
+            self.protocol_registrations,
+            self.transport_failures,
+            self.failure_events
+        ));
+        info!(
+            "operability-summary lifecycle={} readiness={} transport-stage={} protocol-state={} \
+             proxy-state={} restart-attempts={} proxy-admissions={} protocol-registrations={} \
+             transport-failures={} failure-events={}",
+            self.lifecycle_state.as_str(),
+            self.readiness_state.as_str(),
+            transport_stage,
+            self.protocol_state.as_str(),
+            proxy_state,
+            self.restart_attempts,
+            self.proxy_admissions,
+            self.protocol_registrations,
+            self.transport_failures,
+            self.failure_events
+        );
     }
 
     fn spawn_proxy_seam(&mut self) {
@@ -623,10 +900,11 @@ where
 
     fn record_state(&mut self, state: LifecycleState, reason: impl Into<String>) {
         self.lifecycle_state = state;
+        let reason = reason.into();
         self.summary_lines
             .push(format!("lifecycle-state: {}", state.as_str()));
-        self.summary_lines
-            .push(format!("lifecycle-reason: {}", reason.into()));
+        self.summary_lines.push(format!("lifecycle-reason: {reason}"));
+        info!("lifecycle-transition state={} reason={reason}", state.as_str());
     }
 }
 
@@ -815,6 +1093,7 @@ mod tests {
             &execution,
             "runtime-config-path: /tmp/runtime-test.yml"
         ));
+        assert!(summary_contains(&execution, "protocol-state: bridge-unavailable"));
     }
 
     #[test]
@@ -832,6 +1111,7 @@ mod tests {
         assert!(summary_contains(&execution, "shutdown-reason: harness"));
         assert!(summary_contains(&execution, "lifecycle-state: stopping"));
         assert!(summary_contains(&execution, "lifecycle-state: stopped"));
+        assert!(summary_contains(&execution, "readiness-state: stopping"));
     }
 
     #[test]
@@ -849,6 +1129,10 @@ mod tests {
             &execution,
             "restarting test-service after retryable failure"
         ));
+        assert!(summary_contains(
+            &execution,
+            "operability-metrics: restart-attempts=1"
+        ));
     }
 
     #[test]
@@ -858,6 +1142,10 @@ mod tests {
         assert!(matches!(execution.exit, RuntimeExit::Failed { .. }));
         assert!(summary_contains(&execution, "primary-service=quic-tunnel-core"));
         assert!(summary_contains(&execution, "lifecycle-state: failed"));
+        assert!(summary_contains(
+            &execution,
+            "operability-status: lifecycle=failed readiness=failed"
+        ));
     }
 
     #[test]
@@ -881,6 +1169,10 @@ mod tests {
         assert!(summary_contains(
             &execution,
             "security-host-contract: linux-x86_64-gnu-glibc markers present"
+        ));
+        assert!(summary_contains(
+            &execution,
+            "readiness-scope: narrow-alpha-control-plane-only"
         ));
     }
 
@@ -906,6 +1198,10 @@ mod tests {
             &execution,
             "runtime failure: test-service: fatal lifecycle boundary triggered"
         ));
+        assert!(summary_contains(
+            &execution,
+            "failure-visibility: owner=test-service class=fatal"
+        ));
         assert!(!summary_contains(&execution, "supervision-restart-attempt:"));
     }
 
@@ -924,6 +1220,7 @@ mod tests {
             &execution,
             "service-status[pingora-proxy-seam]: origin-proxy-admitted"
         ));
+        assert!(summary_contains(&execution, "proxy-state: admitted"));
         assert!(summary_contains(&execution, "child-task-stopped: proxy-seam"));
     }
 
@@ -941,5 +1238,18 @@ mod tests {
         assert!(summary_contains(&execution, "proxy-seam: origin-proxy admitted"));
         assert!(summary_contains(&execution, "supervision-restart-attempt: 1"));
         assert!(summary_contains(&execution, "child-task-stopped: proxy-seam"));
+    }
+
+    #[test]
+    fn runtime_reports_operability_snapshot_when_transport_inputs_are_missing() {
+        let execution = super::run(runtime_config());
+
+        assert!(matches!(execution.exit, RuntimeExit::Failed { .. }));
+        assert!(summary_contains(&execution, "protocol-state: bridge-created"));
+        assert!(summary_contains(&execution, "proxy-state: admitted"));
+        assert!(summary_contains(
+            &execution,
+            "operability-metrics: restart-attempts=0 proxy-admissions=1"
+        ));
     }
 }
