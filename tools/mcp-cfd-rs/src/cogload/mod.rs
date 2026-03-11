@@ -7,7 +7,7 @@ pub mod unified;
 
 // Re-export the public query API — this is what `server.rs` calls.
 pub use queries::{code_smells, file_summary, function_complexity, top_hotspots, touched_files_review};
-pub use unified::{evaluate_ci_gate, run_unified_analysis};
+pub use unified::{evaluate_ci_gate_filtered, run_unified_analysis};
 
 // ---------------------------------------------------------------------------
 // Tests — kept here to exercise the integrated behavior across submodules.

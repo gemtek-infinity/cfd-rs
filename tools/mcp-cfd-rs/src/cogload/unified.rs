@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashSet;
 use std::path::Path;
 
 // ---------------------------------------------------------------------------
@@ -422,6 +423,31 @@ pub fn evaluate_ci_gate(report: &UnifiedReport) -> CiGateResult {
     }
 }
 
+/// Evaluate CI gate rules, optionally filtering violations to only the
+/// given set of repo-relative paths.  When a filter is provided the
+/// whole-scope `debt_density` gate is skipped because it is not
+/// meaningful for a subset of files.
+pub fn evaluate_ci_gate_filtered(report: &UnifiedReport, touched: Option<&HashSet<String>>) -> CiGateResult {
+    let mut raw = evaluate_ci_gate(report);
+
+    let Some(touched) = touched else {
+        return raw;
+    };
+
+    let keep = |v: &CiViolation| -> bool {
+        if v.path.is_empty() {
+            // Whole-scope metrics (e.g. debt_density) — skip when filtering.
+            return false;
+        }
+        touched.contains(&v.path)
+    };
+
+    raw.blocking.retain(keep);
+    raw.warnings.retain(keep);
+    raw.pass = raw.blocking.is_empty();
+    raw
+}
+
 fn evaluate_item_gates(item: &UnifiedItem, blocking: &mut Vec<CiViolation>, warnings: &mut Vec<CiViolation>) {
     let path = &item.path;
     let function = item.function.clone();
@@ -489,7 +515,18 @@ fn evaluate_item_gates(item: &UnifiedItem, blocking: &mut Vec<CiViolation>, warn
         }
     }
 
-    // Function-level complexity gates
+    // Function-level complexity gates — only apply to individual function
+    // items. File-level items carry aggregate totals that must not be compared
+    // against per-function thresholds. God-object aggregates (impl-block
+    // roll-ups) are already covered by the god_object gate above.
+    if matches!(item.item_type, UnifiedItemType::File) {
+        return;
+    }
+
+    if item.god_object.is_some() {
+        return;
+    }
+
     let Some(metrics) = &item.metrics else {
         return;
     };

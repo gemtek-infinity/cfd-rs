@@ -107,6 +107,10 @@ struct DebtmapUnifiedAnalysisRequest {
 struct DebtmapCiGateRequest {
     /// Optional sub-path to scope the analysis.
     path_prefix: Option<String>,
+    /// Optional list of repo-relative file paths to restrict violations to.
+    /// When provided, only violations in these files are reported; the
+    /// debt_density gate is skipped (it is a whole-scope metric).
+    paths: Option<Vec<String>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -660,14 +664,15 @@ impl CfdRsMemory {
 
     #[tool(
         description = "Evaluate CI gate rules against the repo. Returns pass/fail with blocking violations \
-                       and warnings. Blocking rules: priority critical/high, god_object_score >= 45, \
-                       debt_density > 50/1K LOC, cyclomatic >= 31, cognitive >= 25. Warning rules: priority \
+                       and warnings. When `paths` is provided, only violations in those files are reported \
+                       and the debt_density gate is skipped. Blocking rules: priority critical/high, \
+                       god_object_score >= 45, cyclomatic >= 31, cognitive >= 25. Warning rules: priority \
                        medium, god_object_score < 45, coupling Hub/highly_coupled, cyclomatic 21-30, \
                        cognitive 15-24."
     )]
     async fn debtmap_ci_gate(
         &self,
-        Parameters(DebtmapCiGateRequest { path_prefix }): Parameters<DebtmapCiGateRequest>,
+        Parameters(DebtmapCiGateRequest { path_prefix, paths }): Parameters<DebtmapCiGateRequest>,
     ) -> String {
         let span = log::ToolSpan::start("debtmap_ci_gate");
 
@@ -682,12 +687,21 @@ impl CfdRsMemory {
             None => None,
         };
 
-        span.detail(&format!("prefix={:?}", path_prefix));
+        let touched_filter: Option<std::collections::HashSet<String>> =
+            paths.map(|p| p.into_iter().collect());
+
+        span.detail(&format!(
+            "prefix={:?} touched_filter={}",
+            path_prefix,
+            touched_filter
+                .as_ref()
+                .map_or("none".to_string(), |s| format!("{} files", s.len())),
+        ));
 
         // Run full analysis with a high limit so CI gate sees everything.
         match cogload::run_unified_analysis(&self.repo_root, scope.as_deref(), 500).await {
             Ok(report) => {
-                let gate = cogload::evaluate_ci_gate(&report);
+                let gate = cogload::evaluate_ci_gate_filtered(&report, touched_filter.as_ref());
                 span.done(&format!(
                     "pass={} blocking={} warnings={}",
                     gate.pass,
