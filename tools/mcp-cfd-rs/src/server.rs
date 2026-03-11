@@ -85,6 +85,16 @@ struct DebtmapTouchedFilesRequest {
     paths: Vec<String>,
 }
 
+#[derive(Debug, Deserialize, JsonSchema)]
+struct DebtmapCodeSmellsRequest {
+    path: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct DebtmapFunctionComplexityRequest {
+    path: String,
+}
+
 // ---------------------------------------------------------------------------
 // Server handler
 // ---------------------------------------------------------------------------
@@ -551,6 +561,69 @@ impl CfdRsMemory {
             review.skipped.len(),
         ));
         to_json(review)
+    }
+
+    #[tool(
+        description = "Detect code smells in a single file using the debtmap crate's AST analysis. Works \
+                       best for Rust, TypeScript, and JavaScript files."
+    )]
+    async fn debtmap_code_smells(
+        &self,
+        Parameters(DebtmapCodeSmellsRequest { path }): Parameters<DebtmapCodeSmellsRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("debtmap_code_smells");
+
+        let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
+            Ok(p) => p,
+            Err(error) => {
+                span.error(error);
+                return path_error(error, &path);
+            }
+        };
+
+        match debtmap::code_smells(&self.repo_root, &resolved).await {
+            Ok(report) => {
+                span.done(&format!("path={} smells={}", report.path, report.total));
+                to_json(report)
+            }
+            Err(error) => {
+                span.error(error);
+                path_error(error, &path)
+            }
+        }
+    }
+
+    #[tool(
+        description = "Return per-function complexity breakdown for a single file. Uses AST analysis for \
+                       Rust, TypeScript, and JavaScript; heuristic fallback for other languages."
+    )]
+    async fn debtmap_function_complexity(
+        &self,
+        Parameters(DebtmapFunctionComplexityRequest { path }): Parameters<DebtmapFunctionComplexityRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("debtmap_function_complexity");
+
+        let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
+            Ok(p) => p,
+            Err(error) => {
+                span.error(error);
+                return path_error(error, &path);
+            }
+        };
+
+        match debtmap::function_complexity(&self.repo_root, &resolved).await {
+            Ok(report) => {
+                span.done(&format!(
+                    "path={} fn_count={} method={}",
+                    report.path, report.fn_count, report.analysis_method,
+                ));
+                to_json(report)
+            }
+            Err(error) => {
+                span.error(error);
+                path_error(error, &path)
+            }
+        }
     }
 }
 

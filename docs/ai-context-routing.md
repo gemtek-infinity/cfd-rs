@@ -167,6 +167,7 @@ Choose the smallest MCP surface that fits the question:
 - use a bundle when you need a curated multi-file pack for a known question type
 - use search, listing, metadata, and line reads only after the smallest curated surface stops being enough
 - use Debtmap only for hotspot triage, touched-files review, or bounded cognitive-load inspection
+- ignore files with a Debtmap score below 15.0 — they carry negligible cognitive load
 
 Examples:
 

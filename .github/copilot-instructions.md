@@ -54,6 +54,7 @@ For refactor, hotspot, architecture-shaping, or medium/large code-change tasks:
    - then a narrow path prefix
    - only then broader hotspot queries if still needed
 4. use Debtmap as a hotspot and review aid, not as behavior truth
+5. ignore files with a Debtmap score below 15.0 — they carry negligible cognitive load
 
 If the MCP Debtmap surface is unavailable, inaccessible, or insufficient:
 1. say that explicitly
