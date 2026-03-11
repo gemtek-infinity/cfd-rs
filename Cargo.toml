@@ -19,6 +19,7 @@ version = "2026.2.0-alpha.202603"
 # monorepo dependencies
 cloudflared-config = { path = "crates/cloudflared-config" }
 # crates.io dependencies
+pem = "3.0.6"
 pingora-http = "0.8"
 mimalloc = { version = "0.1.48", default-features = false, features = [
   "extended",

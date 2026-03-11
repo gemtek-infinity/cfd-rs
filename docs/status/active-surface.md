@@ -3,14 +3,15 @@
 This file captures the currently admitted executable surface and the immediate
 deferred scope around it.
 
-## Active Phase 3.6 Focus
+## Active Phase 3.7 Focus
 
 Phase 3.3 owns the QUIC tunnel core. Phase 3.4 adds the Pingora proxy seam
 above it. Phase 3.5 adds the wire/protocol boundary between them. Phase 3.6
 adds a narrow security/compliance operational boundary around the admitted
-quiche + BoringSSL lane.
+quiche + BoringSSL lane. Phase 3.7 admits the minimum standard-format crate
+boundary required by the active runtime path.
 
-What exists now (3.3 + 3.4a–c + 3.5 + 3.6):
+What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7):
 
 - `run` enters a real quiche-based transport service under the runtime boundary
 - connection/session ownership and QUIC handshake state are explicit
@@ -36,6 +37,11 @@ What exists now (3.3 + 3.4a–c + 3.5 + 3.6):
 - runtime startup now enforces Linux GNU/glibc deployment-contract assumptions
   for the admitted lane and fails honestly when required host assumptions are
   missing
+- the active origin-cert runtime path now uses a workspace-managed mature PEM
+  crate through owned credential adapters in
+  `crates/cloudflared-config/src/credentials.rs`
+- direct third-party PEM handling remains confined to that owned credential
+  boundary rather than leaking across runtime, transport, proxy, or app code
 
 What the current surface does not imply:
 
@@ -44,14 +50,13 @@ What the current surface does not imply:
 - that the admitted origin path is general proxy completeness
 - that the bounded security/compliance operational boundary constitutes
   certification, whole-program compliance, or validated FIPS implementation
-- that standard-format crate integration beyond active-slice need exists
+- that broader standard-format crate integration beyond active-slice need
+  exists
 - that packaging, installers, updaters, or deployment tooling already exist
 
 ## Deferred Within Big Phase 3
 
-The following later Big Phase 3 slices remain intentionally deferred:
-
-- 3.7 standard-format crate integration boundary
+No later Big Phase 3 slice is admitted here beyond the active 3.7 minimum.
 
 ## Deferred Beyond Big Phase 3
 
@@ -77,8 +82,12 @@ Phase 3.6 (security/compliance operational boundary):
 
 Phase 3.7 (standard-format crate integration boundary):
 
-- no standard-format crate integration beyond the active-slice minimum
-  has been admitted
+- the admitted standard-format boundary is limited to PEM container handling
+  needed by the active origin-cert runtime path
+- the PEM crate enters through owned credential adapters in
+  `crates/cloudflared-config/src/credentials.rs`
+- broader certificate/key container handling, broader format coverage, and
+  later protocol/runtime parsing work remain deferred
 
 Immediate narrowness caveat:
 

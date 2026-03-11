@@ -352,7 +352,7 @@ impl QuicTunnelService {
 
         Ok(ServiceExit::Deferred {
             service: self.name(),
-            phase: "Big Phase 3.7+",
+            phase: "later runtime/protocol slices",
             detail: format!(
                 "{} for tunnel {} against {}",
                 WIRE_PROTOCOL_DEFERRED_DETAIL, identity.tunnel_id, target.connect_addr
@@ -578,7 +578,7 @@ fn origin_cert_path(credentials: &cloudflared_config::CredentialSurface) -> Opti
 #[cfg(test)]
 mod tests {
     use super::{
-        EDGE_QUIC_ALPN, QuicEdgeTarget, QuicTunnelServiceFactory, build_quiche_config,
+        EDGE_QUIC_ALPN, QuicEdgeTarget, QuicTunnelServiceFactory, TransportIdentity, build_quiche_config,
         default_ca_bundle_path, edge_host_label,
     };
     use crate::protocol;
@@ -671,6 +671,47 @@ mod tests {
             action: DiscoveryAction::UseExisting,
             source: ConfigSource::ExplicitPath(root.join("runtime-test.yaml")),
             path: root.join("runtime-test.yaml"),
+            created_paths: Vec::new(),
+            written_config: None,
+        };
+
+        crate::runtime::RuntimeConfig::new(discovery, normalized)
+    }
+
+    fn runtime_config_with_origin_cert(root: &Path) -> crate::runtime::RuntimeConfig {
+        let origin_cert_path = root.join("cert.pem");
+        let origin_cert = cloudflared_config::OriginCertToken {
+            zone_id: "zone".to_owned(),
+            account_id: "account".to_owned(),
+            api_token: "token".to_owned(),
+            endpoint: Some("FED".to_owned()),
+        };
+        fs::write(
+            &origin_cert_path,
+            origin_cert
+                .encode_pem()
+                .expect("origin cert fixture should encode"),
+        )
+        .expect("origin cert fixture should be written");
+
+        let raw = RawConfig::from_yaml_str(
+            "runtime-origin-cert.yaml",
+            &format!(
+                "tunnel: 11111111-1111-1111-1111-111111111111\norigincert: {}\ningress:\n  - service: \
+                 http_status:503\n",
+                origin_cert_path.display()
+            ),
+        )
+        .expect("runtime transport config should parse");
+        let normalized = NormalizedConfig::from_raw(
+            ConfigSource::ExplicitPath(root.join("runtime-origin-cert.yaml")),
+            raw,
+        )
+        .expect("runtime transport config should normalize");
+        let discovery = DiscoveryOutcome {
+            action: DiscoveryAction::UseExisting,
+            source: ConfigSource::ExplicitPath(root.join("runtime-origin-cert.yaml")),
+            path: root.join("runtime-origin-cert.yaml"),
             created_paths: Vec::new(),
             written_config: None,
         };
@@ -807,6 +848,20 @@ mod tests {
     }
 
     #[test]
+    fn transport_identity_reads_origin_cert_through_owned_pem_boundary() {
+        let root = temp_dir("origin-cert-runtime");
+        let runtime_config = runtime_config_with_origin_cert(&root);
+
+        let identity = TransportIdentity::from_runtime_config(&runtime_config)
+            .expect("origin cert should resolve runtime identity");
+
+        assert_eq!(identity.identity_source, "origin-cert");
+        assert_eq!(identity.endpoint_hint.as_deref(), Some("fed"));
+
+        fs::remove_dir_all(root).expect("temp directory should be removable");
+    }
+
+    #[test]
     fn runtime_crosses_wire_protocol_boundary_after_quic_establish() {
         let root = temp_dir("quic-runtime");
         let server_addr = spawn_test_server(&root);
@@ -828,12 +883,12 @@ mod tests {
             Some(protocol_receiver),
         );
 
-        // 3.6: deferral now moves from "Big Phase 3.6" to "Big Phase 3.7+"
-        // because the wire/protocol boundary is now crossed.
+        // The runtime now stops honestly at the post-transport protocol boundary
+        // without tying that deferred work to a stale numbered phase label.
         assert!(matches!(
             execution.exit,
             RuntimeExit::Deferred {
-                phase: "Big Phase 3.7+",
+                phase: "later runtime/protocol slices",
                 ..
             }
         ));

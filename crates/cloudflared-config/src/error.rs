@@ -70,6 +70,9 @@ pub enum ConfigError {
     #[error("cannot decode empty certificate")]
     OriginCertEmpty,
 
+    #[error("invalid PEM encoding in the certificate")]
+    OriginCertInvalidPem,
+
     #[error("unknown block {block_type} in the certificate")]
     OriginCertUnknownBlock { block_type: String },
 
@@ -181,6 +184,10 @@ impl ConfigError {
         }
     }
 
+    pub fn origin_cert_invalid_pem(_detail: impl Into<String>) -> Self {
+        Self::OriginCertInvalidPem
+    }
+
     pub fn origin_cert_needs_refresh(path: impl Into<PathBuf>) -> Self {
         Self::OriginCertNeedsRefresh { path: path.into() }
     }
@@ -215,6 +222,7 @@ impl ConfigError {
             Self::CreateFile { .. } => "create-file",
             Self::WriteFile { .. } => "write-file",
             Self::OriginCertEmpty => "origin-cert-empty",
+            Self::OriginCertInvalidPem => "origin-cert-invalid-pem",
             Self::OriginCertUnknownBlock { .. } => "origin-cert-unknown-block",
             Self::OriginCertMultipleTokens => "origin-cert-multiple-tokens",
             Self::OriginCertMissingToken => "origin-cert-missing-token",
