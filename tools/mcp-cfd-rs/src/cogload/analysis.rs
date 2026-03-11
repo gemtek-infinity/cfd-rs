@@ -86,7 +86,7 @@ pub fn analyze_with_crate(content: &str, path: &Path) -> Option<CrateAnalysis> {
         .debt_items
         .iter()
         .filter(|item| !is_marker_debt(&item.debt_type))
-        .map(|item| debtmap::debt::calculate_debt_score(item))
+        .map(debtmap::debt::calculate_debt_score)
         .sum();
 
     let todo_items = debtmap::find_todos_and_fixmes(content, path);

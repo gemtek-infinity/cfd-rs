@@ -7,7 +7,7 @@ use rmcp::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs as tokio_fs;
 
 // ---------------------------------------------------------------------------
@@ -773,8 +773,8 @@ impl ServerHandler for CfdRsMemory {
 
 /// Resolve a list of repo-relative paths, returning all or the first error.
 fn resolve_paths(
-    repo_root: &PathBuf,
-    repo_root_canon: &PathBuf,
+    repo_root: &Path,
+    repo_root_canon: &Path,
     paths: &[String],
 ) -> Result<Vec<PathBuf>, (&'static str, String)> {
     let mut resolved = Vec::with_capacity(paths.len());
