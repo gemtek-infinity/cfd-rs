@@ -33,8 +33,9 @@ What exists now:
   operability counters for the admitted alpha path
 - a Phase 4.2 performance validation surface in `crates/cloudflared-cli/`
   that emits deterministic stage-transition timing evidence, cold vs resumed
-  path distinction, machine-readable performance evidence, and explicit
-  regression thresholds for the admitted alpha harness path
+  path distinction, 0-RTT lane configuration truth, pipeline latency
+  measurement, machine-readable performance evidence with explicit honesty
+  scope, and regression thresholds for the admitted alpha harness path
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 

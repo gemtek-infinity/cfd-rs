@@ -8,6 +8,8 @@
 //! - stage transition timing within the runtime command dispatch loop
 //! - cold-start (attempt 0) vs resumed (attempt > 0) path distinction
 //! - time from runtime start to each subsystem milestone
+//! - pipeline latency from proxy admission to full readiness
+//! - 0-RTT lane configuration truth for the admitted transport path
 //!
 //! What this does not measure:
 //! - real QUIC wire latency (deferred until real transport is testable)
@@ -27,6 +29,8 @@ use crate::transport::TransportLifecycleStage;
 pub(in crate::runtime) struct RegressionThresholds;
 
 impl RegressionThresholds {
+    /// Maximum proxy-to-readiness pipeline latency.
+    pub(in crate::runtime) const PIPELINE_LATENCY_MAX: Duration = Duration::from_secs(2);
     /// Maximum time from runtime start to proxy admission.
     pub(in crate::runtime) const PROXY_ADMISSION_MAX: Duration = Duration::from_millis(500);
     /// Maximum time from runtime start to readiness (full pipeline).
@@ -45,7 +49,9 @@ pub(in crate::runtime) struct StageTiming {
     proxy_admitted: Option<Instant>,
     service_ready: Option<Instant>,
     transport_identity: Option<Instant>,
+    transport_resolving_edge: Option<Instant>,
     transport_dialing: Option<Instant>,
+    transport_handshaking: Option<Instant>,
     transport_established: Option<Instant>,
     control_stream_opened: Option<Instant>,
     protocol_registration: Option<Instant>,
@@ -62,7 +68,9 @@ impl StageTiming {
             proxy_admitted: None,
             service_ready: None,
             transport_identity: None,
+            transport_resolving_edge: None,
             transport_dialing: None,
+            transport_handshaking: None,
             transport_established: None,
             control_stream_opened: None,
             protocol_registration: None,
@@ -92,8 +100,14 @@ impl StageTiming {
             TransportLifecycleStage::IdentityLoaded => {
                 self.transport_identity.get_or_insert(now);
             }
+            TransportLifecycleStage::ResolvingEdge => {
+                self.transport_resolving_edge.get_or_insert(now);
+            }
             TransportLifecycleStage::Dialing => {
                 self.transport_dialing.get_or_insert(now);
+            }
+            TransportLifecycleStage::Handshaking => {
+                self.transport_handshaking.get_or_insert(now);
             }
             TransportLifecycleStage::Established => {
                 self.transport_established.get_or_insert(now);
@@ -101,9 +115,7 @@ impl StageTiming {
             TransportLifecycleStage::ControlStreamOpened => {
                 self.control_stream_opened.get_or_insert(now);
             }
-            TransportLifecycleStage::ResolvingEdge
-            | TransportLifecycleStage::Handshaking
-            | TransportLifecycleStage::Teardown => {}
+            TransportLifecycleStage::Teardown => {}
         }
     }
 
@@ -141,6 +153,22 @@ impl StageTiming {
             .map(|t| t.duration_since(self.runtime_start).as_millis() as u64)
     }
 
+    fn pipeline_latency_ms(&self) -> Option<u64> {
+        match (self.proxy_admitted, self.readiness_reached) {
+            (Some(admitted), Some(ready)) if ready >= admitted => {
+                Some(ready.duration_since(admitted).as_millis() as u64)
+            }
+            _ => None,
+        }
+    }
+
+    fn handshake_duration_ms(&self) -> Option<u64> {
+        match (self.transport_handshaking, self.transport_established) {
+            (Some(start), Some(end)) if end >= start => Some(end.duration_since(start).as_millis() as u64),
+            _ => None,
+        }
+    }
+
     /// Build the machine-readable performance evidence lines.
     ///
     /// Each line is a key=value pair suitable for structured log parsing,
@@ -155,6 +183,15 @@ impl StageTiming {
 
         lines.push(format!("perf-evidence-path: {path_label}"));
 
+        // 0-RTT lane evidence: report the admitted transport configuration
+        // honestly. The lane is quiche+boringssl with enable_early_data().
+        // Actual 0-RTT session resumption savings remain deferred.
+        lines.push(
+            "perf-zero-rtt-lane: quiche+boringssl (early_data enabled, session resumption measurement \
+             deferred)"
+                .to_owned(),
+        );
+
         if let Some(ms) = self.elapsed_ms(self.proxy_admitted) {
             lines.push(format!("perf-stage-ms[proxy-admitted]: {ms}"));
         }
@@ -167,8 +204,16 @@ impl StageTiming {
             lines.push(format!("perf-stage-ms[transport-identity]: {ms}"));
         }
 
+        if let Some(ms) = self.elapsed_ms(self.transport_resolving_edge) {
+            lines.push(format!("perf-stage-ms[transport-resolving-edge]: {ms}"));
+        }
+
         if let Some(ms) = self.elapsed_ms(self.transport_dialing) {
             lines.push(format!("perf-stage-ms[transport-dialing]: {ms}"));
+        }
+
+        if let Some(ms) = self.elapsed_ms(self.transport_handshaking) {
+            lines.push(format!("perf-stage-ms[transport-handshaking]: {ms}"));
         }
 
         if let Some(ms) = self.elapsed_ms(self.transport_established) {
@@ -187,6 +232,14 @@ impl StageTiming {
             lines.push(format!("perf-stage-ms[readiness-reached]: {ms}"));
         }
 
+        if let Some(ms) = self.handshake_duration_ms() {
+            lines.push(format!("perf-handshake-duration-ms: {ms}"));
+        }
+
+        if let Some(ms) = self.pipeline_latency_ms() {
+            lines.push(format!("perf-pipeline-latency-ms: {ms}"));
+        }
+
         if let Some(ms) = self.restart_to_ready_ms() {
             lines.push(format!("perf-restart-overhead-ms: {ms}"));
         }
@@ -194,6 +247,13 @@ impl StageTiming {
         if let Some(ms) = self.total_runtime_ms() {
             lines.push(format!("perf-total-runtime-ms: {ms}"));
         }
+
+        // Honesty scope: state what is measured vs deferred.
+        lines.push(
+            "perf-evidence-scope: in-process-harness-timing (real wire latency, 0-RTT resumption savings, \
+             and end-to-end request latency are deferred)"
+                .to_owned(),
+        );
 
         lines
     }
@@ -258,6 +318,16 @@ impl StageTiming {
                     "total-runtime exceeded {}ms threshold: {}ms",
                     RegressionThresholds::TOTAL_RUNTIME_MAX.as_millis(),
                     elapsed.as_millis()
+                ));
+            }
+        }
+
+        if let Some(pipeline_ms) = self.pipeline_latency_ms() {
+            let pipeline = Duration::from_millis(pipeline_ms);
+            if pipeline > RegressionThresholds::PIPELINE_LATENCY_MAX {
+                violations.push(format!(
+                    "pipeline-latency exceeded {}ms threshold: {pipeline_ms}ms",
+                    RegressionThresholds::PIPELINE_LATENCY_MAX.as_millis(),
                 ));
             }
         }
