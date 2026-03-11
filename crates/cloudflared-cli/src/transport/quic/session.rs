@@ -5,7 +5,7 @@ use tokio::net::UdpSocket;
 use uuid::Uuid;
 
 use super::MAX_DATAGRAM_SIZE;
-use super::edge::{QuicEdgeTarget, wildcard_bind_addr};
+use super::edge::{PeerVerification, QuicEdgeTarget, wildcard_bind_addr};
 
 const EDGE_QUIC_ALPN: &[&[u8]] = &[b"argotunnel"];
 const QUIC_IDLE_TIMEOUT_MS: u64 = 30_000;
@@ -56,20 +56,22 @@ pub(super) fn build_quiche_config(target: &QuicEdgeTarget) -> Result<quiche::Con
     config
         .set_application_protos(EDGE_QUIC_ALPN)
         .map_err(|error| format!("failed to set QUIC ALPN: {error}"))?;
-    config.verify_peer(target.verify_peer);
-    if target.verify_peer {
-        let ca_bundle_path = target
-            .ca_bundle_path
-            .as_ref()
-            .ok_or_else(|| String::from("peer verification requested without a CA bundle path"))?;
-        config
-            .load_verify_locations_from_file(&ca_bundle_path.to_string_lossy())
-            .map_err(|error| {
-                format!(
-                    "failed to load CA bundle {} for QUIC edge verification: {error}",
-                    ca_bundle_path.display()
-                )
-            })?;
+
+    match &target.verification {
+        PeerVerification::Verified { ca_bundle_path } => {
+            config.verify_peer(true);
+            config
+                .load_verify_locations_from_file(&ca_bundle_path.to_string_lossy())
+                .map_err(|error| {
+                    format!(
+                        "failed to load CA bundle {} for QUIC edge verification: {error}",
+                        ca_bundle_path.display()
+                    )
+                })?;
+        }
+        PeerVerification::Unverified => {
+            config.verify_peer(false);
+        }
     }
 
     config.enable_early_data();

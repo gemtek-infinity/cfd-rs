@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::runtime::{RuntimeExit, RuntimeHarness, run_with_factory};
+use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_factory};
 
 use super::fixtures::{runtime_config, summary_contains};
 use super::harness::{TestBehavior, TestFactory};
@@ -10,7 +10,9 @@ fn runtime_admits_proxy_seam_with_origin_path() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(25))
+            .build(),
         None,
     );
 
@@ -29,7 +31,9 @@ fn proxy_seam_survives_primary_service_restart() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(50)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(50))
+            .build(),
         None,
     );
 

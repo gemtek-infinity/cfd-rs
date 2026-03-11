@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::runtime::{RuntimeExit, RuntimeHarness, run_with_factory};
+use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_factory};
 
 use super::fixtures::{runtime_config, summary_contains};
 use super::harness::{TestBehavior, TestFactory};
@@ -10,7 +10,9 @@ fn runtime_reports_security_compliance_boundary_as_bounded() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(25))
+            .build(),
         None,
     );
 

@@ -21,8 +21,8 @@ mod tests;
 use self::state::{LifecycleState, ReadinessState, RuntimeStatus};
 use self::types::RuntimePolicy;
 pub(crate) use self::types::{
-    ChildTask, RuntimeCommand, RuntimeConfig, RuntimeExecution, RuntimeExit, RuntimeHarness, RuntimeService,
-    RuntimeServiceFactory, ServiceExit, ShutdownReason,
+    ChildTask, HarnessBuilder, RuntimeCommand, RuntimeConfig, RuntimeExecution, RuntimeExit, RuntimeHarness,
+    RuntimeService, RuntimeServiceFactory, ServiceExit, ShutdownReason,
 };
 
 const PRIMARY_SERVICE_NAME: &str = "quic-tunnel-core";
@@ -187,7 +187,7 @@ pub(crate) fn run(config: RuntimeConfig) -> RuntimeExecution {
     run_with_factory(
         config,
         QuicTunnelServiceFactory::production(protocol_sender),
-        RuntimeHarness::production(),
+        HarnessBuilder::production().build(),
         Some(protocol_receiver),
     )
 }

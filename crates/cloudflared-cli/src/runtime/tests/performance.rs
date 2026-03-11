@@ -6,7 +6,7 @@
 
 use std::time::Duration;
 
-use crate::runtime::{RuntimeExit, RuntimeHarness, run_with_factory};
+use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_factory};
 
 use super::fixtures::{runtime_config, summary_contains};
 use super::harness::{TestBehavior, TestFactory};
@@ -18,7 +18,9 @@ fn cold_path_emits_performance_evidence() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(25))
+            .build(),
         None,
     );
 
@@ -34,7 +36,9 @@ fn cold_path_passes_regression_threshold_gate() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(25))
+            .build(),
         None,
     );
 
@@ -57,7 +61,9 @@ fn resumed_path_emits_performance_evidence_after_restart() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(50)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(50))
+            .build(),
         None,
     );
 
@@ -72,7 +78,9 @@ fn resumed_path_passes_regression_threshold_gate() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(50)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(50))
+            .build(),
         None,
     );
 
@@ -91,7 +99,7 @@ fn failed_path_emits_performance_evidence() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::FatalFailure]),
-        RuntimeHarness::for_tests(),
+        HarnessBuilder::for_tests().build(),
         None,
     );
 
@@ -108,7 +116,9 @@ fn performance_evidence_lines_have_structured_format() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(25))
+            .build(),
         None,
     );
 
@@ -142,7 +152,9 @@ fn stage_timing_values_are_nonnegative() {
     let execution = run_with_factory(
         runtime_config(),
         TestFactory::new([TestBehavior::WaitForShutdown]),
-        RuntimeHarness::for_tests().with_shutdown_after(Duration::from_millis(25)),
+        HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_millis(25))
+            .build(),
         None,
     );
 
