@@ -54,14 +54,23 @@ What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2):
 - the runtime now emits a minimal final operability snapshot with restart,
   proxy-admission, protocol-registration, and failure counters
 - transport lifecycle stage transitions are now timed relative to runtime start
-  with wall-clock millisecond-resolution evidence
+  with wall-clock millisecond-resolution evidence, including handshake and
+  edge-resolution stages when the real transport path is exercised
 - cold-start (attempt 0) vs resumed (attempt > 0) transport paths are
   distinguished in performance evidence output
 - machine-readable performance evidence lines (`perf-*`) are emitted at
   runtime finish for structured log parsing and CI gate evaluation
+- 0-RTT lane configuration truth is reported as evidence (quiche+boringssl
+  with early_data enabled); actual session resumption savings remain deferred
+- pipeline latency from proxy admission to full readiness is measured and
+  gated as a regression threshold
+- handshake duration (handshaking-to-established) is measured when the real
+  transport handshake path is exercised
 - explicit regression thresholds gate proxy-admission, service-ready,
-  readiness, restart-overhead, and total-runtime timing
+  readiness, restart-overhead, pipeline-latency, and total-runtime timing
 - threshold violations are reported as a pass/fail gate in summary output
+- evidence scope is honestly reported, distinguishing in-process harness
+  timing from deferred real wire latency and 0-RTT resumption measurement
 
 What the current surface does not imply:
 
