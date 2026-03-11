@@ -36,6 +36,17 @@ struct SearchPathsRequest {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+struct GrepPathsRequest {
+    /// Regex pattern (case-insensitive). Supports alternation (e.g. `foo|bar`),
+    /// character classes, and standard regex syntax.
+    pattern: String,
+    /// Repo-relative files or directories to search within.
+    paths: Vec<String>,
+    /// Maximum number of matched lines to return (default: 50, max: 200).
+    max_results: Option<u32>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 struct ContextBundleRequest {
     bundle: String,
 }
@@ -189,10 +200,60 @@ impl CfdRsMemory {
         self.search_and_respond(&span, &roots, &query, max).await
     }
 
+    #[tool(
+        description = "Regex search across repo-relative files or directories, returning matched lines with \
+                       file paths and 1-based line numbers. Case-insensitive. Use for pattern-based queries \
+                       like `Big Phase|production.alpha|widen` or exact phrase searches."
+    )]
+    async fn grep_paths(
+        &self,
+        Parameters(GrepPathsRequest {
+            pattern,
+            paths,
+            max_results,
+        }): Parameters<GrepPathsRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("grep_paths");
+
+        if paths.is_empty() {
+            span.error("paths must not be empty");
+            return path_error("paths must not be empty", "");
+        }
+
+        if pattern.is_empty() {
+            span.error("pattern must not be empty");
+            return path_error("pattern must not be empty", "");
+        }
+
+        let roots = match resolve_paths(&self.repo_root, &self.repo_root_canon, &paths) {
+            Ok(r) => r,
+            Err((error, path)) => {
+                span.error(error);
+                return path_error(error, &path);
+            }
+        };
+
+        let max = max_results.unwrap_or(50).clamp(1, 200) as usize;
+
+        span.detail(&format!("pattern={} roots={} max={}", pattern, roots.len(), max));
+
+        match search::grep_roots(&self.repo_root, &roots, &pattern, max).await {
+            Ok(hits) => {
+                span.done(&format!("hits={}", hits.len()));
+                to_json(hits)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error }))
+            }
+        }
+    }
+
     // -- listing tools ------------------------------------------------------
 
     #[tool(
-        description = "List repo paths under a repo-relative directory, with optional recursion and \
+        description = "List repo paths under a repo-relative directory. Use `base_path` (not `paths`) to \
+                       specify the directory, e.g. base_path='docs/status'. Supports optional recursion and \
                        extension filtering."
     )]
     async fn list_paths(
@@ -332,7 +393,7 @@ impl CfdRsMemory {
         Parameters(ReadFileRequest { path, max_chars }): Parameters<ReadFileRequest>,
     ) -> String {
         let span = log::ToolSpan::start("read_file");
-        let max_chars = max_chars.unwrap_or(4000).clamp(200, 12000) as usize;
+        let max_chars = max_chars.unwrap_or(8000).clamp(200, 32000) as usize;
 
         let resolved = match self.resolve_repo_file(&path) {
             Ok(p) => p,
@@ -375,7 +436,7 @@ impl CfdRsMemory {
         }): Parameters<ReadFileLinesRequest>,
     ) -> String {
         let span = log::ToolSpan::start("read_file_lines");
-        let max_chars = max_chars.unwrap_or(4000).clamp(200, 16000) as usize;
+        let max_chars = max_chars.unwrap_or(8000).clamp(200, 32000) as usize;
 
         if start_line == 0 || end_line < start_line {
             span.error("invalid line range");
