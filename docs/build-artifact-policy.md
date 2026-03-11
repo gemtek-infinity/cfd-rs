@@ -41,14 +41,18 @@ PR CI may be narrower than release or manual artifact builds.
 
 Current PR CI policy:
 
-- validate the generic Linux workspace
-- run formatting, `cargo check`, `cargo clippy`, and `cargo test`
+- validate the generic Linux workspace using path-sensitive job selection
+- application crates (`crates/**`) are validated with formatting, `cargo check`,
+  `cargo clippy`, and `cargo test` when application or workspace files change
+- tool crates (`tools/**`) are validated separately only when tool or workspace
+  files change, so the debtmap dependency tree is not compiled for app-only PRs
 - do not treat PR validation as proof that both shipped CPU lanes are fully
   operational unless lane-specific artifact builds also run
 
 Current workflow mapping:
 
-- `.github/workflows/on-pr-push.yml` validates the generic workspace
+- `.github/workflows/on-pr-push.yml` validates the workspace via conditional
+  `validate-app` and `validate-tools` jobs
 
 ## Release artifact policy
 
@@ -114,8 +118,9 @@ Merge or manual artifact workflows:
 
 Current repo posture:
 
-- PR CI validates the generic workspace
-- merge or manual preview artifact workflows may be more specific than PR CI
+- PR CI validates the generic workspace via path-sensitive conditional jobs
+- merge or manual preview artifact workflows run a single test gate before
+  the lane-specific build matrix
 - full release publication and packaging automation are still outside this
   policy slice unless the workflow actually exists
 
