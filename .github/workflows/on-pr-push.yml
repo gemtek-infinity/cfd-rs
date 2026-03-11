@@ -22,8 +22,38 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  validate:
+  # Detect which workspace surfaces changed so downstream jobs can skip
+  # unnecessary work (e.g. compiling the MCP tool crate and its debtmap
+  # dependency tree when only application crates changed).
+  changes:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+      tools: ${{ steps.filter.outputs.tools }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'crates/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rustfmt.toml'
+            tools:
+              - 'tools/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.debtmap.toml'
+
+  # Validate application crates — runs on every non-draft PR.
+  validate-app:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -40,11 +70,94 @@ jobs:
           rustup toolchain install nightly --profile minimal --no-self-update
           rustup component add rustfmt --toolchain nightly
           rustup run nightly rustfmt -V
+      - name: Cache Cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-app-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-app-
       - name: Format (nightly rustfmt)
         run: cargo +nightly fmt --all --check
       - name: Check (stable)
-        run: cargo check --workspace --locked
+        run: |
+          cargo check --locked \
+            -p cloudflared-cli \
+            -p cloudflared-config \
+            -p cloudflared-core \
+            -p cloudflared-proto
       - name: Clippy (stable)
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: |
+          cargo clippy --all-targets --locked \
+            -p cloudflared-cli \
+            -p cloudflared-config \
+            -p cloudflared-core \
+            -p cloudflared-proto \
+            -- -D warnings
       - name: Test (stable)
-        run: cargo test --workspace --locked
+        run: |
+          cargo test --locked \
+            -p cloudflared-cli \
+            -p cloudflared-config \
+            -p cloudflared-core \
+            -p cloudflared-proto
+
+  # Validate MCP tool crate — runs only when tool or workspace files change.
+  validate-tools:
+    needs: changes
+    if: ${{ needs.changes.outputs.tools == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install stable toolchain
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup component add clippy --toolchain stable
+          rustup default stable
+          rustc -Vv
+          cargo -V
+      - name: Cache Cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-tools-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-tools-
+      - name: Check (stable)
+        run: cargo check --locked -p cfd-rs-memory
+      - name: Clippy (stable)
+        run: cargo clippy --all-targets --locked -p cfd-rs-memory -- -D warnings
+      - name: Test (stable)
+        run: cargo test --locked -p cfd-rs-memory
+
+  # Single required status check for branch protection.  Succeeds only when
+  # every non-skipped upstream job succeeded; fails if any actually failed.
+  # Mark only this job as "required" in GitHub branch protection settings.
+  ci-gate:
+    if: ${{ always() }}
+    needs: [changes, validate-app, validate-tools]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check upstream results
+        run: |
+          echo "validate-app: ${{ needs.validate-app.result }}"
+          echo "validate-tools: ${{ needs.validate-tools.result }}"
+
+          # A job is acceptable if it succeeded or was legitimately skipped.
+          for result in "${{ needs.validate-app.result }}" "${{ needs.validate-tools.result }}"; do
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              echo "::error::Upstream job failed or was cancelled (result: $result)"
+              exit 1
+            fi
+          done
+
+          echo "All upstream jobs passed or were skipped."

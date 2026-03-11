@@ -53,6 +53,22 @@ impl RuntimeService for TestService {
                         }))
                         .await;
                 }
+                TestBehavior::DeferredExit => {
+                    let _ = command_tx
+                        .send(RuntimeCommand::ServiceExited(ServiceExit::Deferred {
+                            service: "test-service",
+                            phase: "later-subsystem",
+                            detail: "deferred boundary reached in test".to_owned(),
+                        }))
+                        .await;
+                }
+                TestBehavior::ControlPlaneFailure => {
+                    let _ = command_tx
+                        .send(RuntimeCommand::ControlPlaneFailure {
+                            detail: "simulated control-plane failure in test".to_owned(),
+                        })
+                        .await;
+                }
             }
 
             ChildTask::Service("test-service")

@@ -12,6 +12,8 @@ pub(super) enum TestBehavior {
     WaitForShutdown,
     RetryableFailure,
     FatalFailure,
+    DeferredExit,
+    ControlPlaneFailure,
 }
 
 #[derive(Clone)]
