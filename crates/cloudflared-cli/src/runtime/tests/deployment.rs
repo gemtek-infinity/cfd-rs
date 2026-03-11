@@ -210,9 +210,16 @@ fn deployment_evidence_declares_operational_caveats() {
         execution.summary_lines
     );
     assert!(summary_contains(&execution, "alpha-only"));
-    assert!(summary_contains(&execution, "narrow-origin-path(http_status)"));
-    assert!(summary_contains(&execution, "no-rpc-registration"));
-    assert!(summary_contains(&execution, "no-incoming-streams"));
+    assert!(summary_contains(
+        &execution,
+        "limited-origin-dispatch(http_status+hello_world+http-wired-no-proxy)"
+    ));
+    assert!(summary_contains(&execution, "no-capnp-registration-rpc"));
+    assert!(summary_contains(
+        &execution,
+        "no-origin-cert-registration-content"
+    ));
+    assert!(summary_contains(&execution, "no-stream-roundtrip"));
     assert!(summary_contains(&execution, "no-config-reload"));
 }
 

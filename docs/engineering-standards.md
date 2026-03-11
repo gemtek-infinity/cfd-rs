@@ -118,6 +118,9 @@ Use Rust's type system where it clearly removes invalid states or reduces meanin
 Prefer:
 
 - newtypes for real semantic distinctions
+- standard-library and mature-crate domain types such as `Uuid`, `SocketAddr`,
+  `IpAddr`, and validated byte newtypes before falling back to raw `String` or
+  `Vec<u8>` storage
 - enums for closed state sets
 - builders when construction is genuinely wide or staged
 - typestate when lifecycle misuse is a real risk and the benefit is clear

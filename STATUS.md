@@ -46,13 +46,23 @@ What exists now:
   contract at runtime startup, declares known deployment gaps and operational
   caveats explicitly, and provides a documented repeatable build-to-run flow
   for the declared Linux production-alpha lane
+- a Phase 5.1 broader proxy, wire-format, and stream-serving surface:
+  wire-format types in `crates/cloudflared-proto/` (ConnectRequest,
+  ConnectionType, Metadata, registration types), origin service dispatch
+  beyond http\_status-only (HelloWorld, HTTP-origin dispatch wiring,
+  unimplemented-service honest labelling), bounded credentials-file
+  registration request/response exchange on the control stream, incoming
+  QUIC data stream acceptance with ConnectRequest parsing, and stream-to-proxy
+  forwarding through the protocol bridge
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 
 What does not exist yet:
 
-- broader Pingora proxy completeness beyond the narrow admitted origin path
-- registration RPC content (capnp) and incoming request stream handling
+- Cap'n Proto registration RPC parity, origin-cert registration content,
+  and full request stream round-trip through origin and back to edge
+- broader Pingora proxy completeness beyond the admitted origin-dispatch
+  surface (WebSocket upgrade, TCP streaming, actual HTTP origin proxying)
 - broader standard-format integration beyond the active origin-cert path and
   broader compliance proof work
 - broad admin APIs and broader performance proof beyond the admitted harness

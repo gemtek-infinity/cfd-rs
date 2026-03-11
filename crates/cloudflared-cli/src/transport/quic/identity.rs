@@ -1,7 +1,7 @@
 use std::fmt;
 use std::path::PathBuf;
 
-use cloudflared_config::{OriginCertLocator, OriginCertToken, TunnelCredentialsFile};
+use cloudflared_config::{OriginCertLocator, OriginCertToken, TunnelCredentialsFile, TunnelSecret};
 use uuid::Uuid;
 
 use crate::runtime::RuntimeConfig;
@@ -27,7 +27,14 @@ pub(super) struct TransportIdentity {
     pub(super) tunnel_id: Uuid,
     pub(super) identity_source: IdentitySource,
     pub(super) endpoint_hint: Option<String>,
+    pub(super) registration_auth: Option<RegistrationAuth>,
     pub(super) resumption: ResumptionShape,
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct RegistrationAuth {
+    pub(super) account_tag: String,
+    pub(super) tunnel_secret: TunnelSecret,
 }
 
 impl TransportIdentity {
@@ -42,42 +49,48 @@ impl TransportIdentity {
         })?;
 
         let credentials = &normalized.credentials;
-        let (identity_source, endpoint_hint) = if let Some(path) = credentials.credentials_file.as_ref() {
-            let tunnel_credentials = TunnelCredentialsFile::from_json_path(path).map_err(|error| {
-                format!(
-                    "failed to load tunnel credentials file {}: {error}",
-                    path.display()
+        let (identity_source, endpoint_hint, registration_auth) =
+            if let Some(path) = credentials.credentials_file.as_ref() {
+                let tunnel_credentials = TunnelCredentialsFile::from_json_path(path).map_err(|error| {
+                    format!(
+                        "failed to load tunnel credentials file {}: {error}",
+                        path.display()
+                    )
+                })?;
+
+                if tunnel_credentials.tunnel_id != tunnel_id {
+                    return Err(format!(
+                        "tunnel UUID {} does not match credentials file tunnel ID {}",
+                        tunnel_id, tunnel_credentials.tunnel_id
+                    ));
+                }
+
+                (
+                    IdentitySource::CredentialsFile,
+                    tunnel_credentials
+                        .endpoint
+                        .map(|value| value.to_ascii_lowercase()),
+                    Some(RegistrationAuth {
+                        account_tag: tunnel_credentials.account_tag,
+                        tunnel_secret: tunnel_credentials.tunnel_secret,
+                    }),
                 )
-            })?;
-
-            if tunnel_credentials.tunnel_id != tunnel_id {
-                return Err(format!(
-                    "tunnel UUID {} does not match credentials file tunnel ID {}",
-                    tunnel_id, tunnel_credentials.tunnel_id
+            } else if let Some(path) = origin_cert_path(credentials) {
+                let origin_cert = OriginCertToken::from_pem_path(&path)
+                    .map_err(|error| format!("failed to read origin cert {}: {error}", path.display()))?;
+                (IdentitySource::OriginCert, origin_cert.endpoint, None)
+            } else {
+                return Err(String::from(
+                    "quic tunnel core requires credentials-file or origincert to resolve edge interaction \
+                     semantics",
                 ));
-            }
-
-            (
-                IdentitySource::CredentialsFile,
-                tunnel_credentials
-                    .endpoint
-                    .map(|value| value.to_ascii_lowercase()),
-            )
-        } else if let Some(path) = origin_cert_path(credentials) {
-            let origin_cert = OriginCertToken::from_pem_path(&path)
-                .map_err(|error| format!("failed to read origin cert {}: {error}", path.display()))?;
-            (IdentitySource::OriginCert, origin_cert.endpoint)
-        } else {
-            return Err(String::from(
-                "quic tunnel core requires credentials-file or origincert to resolve edge interaction \
-                 semantics",
-            ));
-        };
+            };
 
         Ok(Self {
             tunnel_id,
             identity_source,
             endpoint_hint,
+            registration_auth,
             resumption: ResumptionShape::EarlyDataEnabled,
         })
     }

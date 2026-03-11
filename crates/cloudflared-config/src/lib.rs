@@ -26,7 +26,7 @@ pub mod raw_config;
 
 pub use crate::credentials::{
     CredentialSurface, FED_ENDPOINT, OriginCertLocator, OriginCertToken, OriginCertUser,
-    TunnelCredentialsFile, TunnelReference,
+    TunnelCredentialsFile, TunnelReference, TunnelSecret,
 };
 pub use crate::discovery::{
     ConfigSource, DiscoveryAction, DiscoveryCandidate, DiscoveryDefaults, DiscoveryOrigin, DiscoveryOutcome,

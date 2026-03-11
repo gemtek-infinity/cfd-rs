@@ -112,12 +112,24 @@ fn handle_request_returns_502_for_empty_ingress() {
 fn handle_request_returns_502_for_unimplemented_origin() {
     let seam = PingoraProxySeam::new(vec![IngressRule {
         matcher: IngressMatch::default(),
-        service: IngressService::HelloWorld,
+        service: IngressService::SocksProxy,
         origin_request: OriginRequestConfig::default(),
     }]);
     let request = build_request("GET", b"/", None);
     let response = seam.handle_request(&request);
     assert_eq!(response.status.as_u16(), 502);
+}
+
+#[test]
+fn handle_request_returns_200_for_hello_world() {
+    let seam = PingoraProxySeam::new(vec![IngressRule {
+        matcher: IngressMatch::default(),
+        service: IngressService::HelloWorld,
+        origin_request: OriginRequestConfig::default(),
+    }]);
+    let request = build_request("GET", b"/", None);
+    let response = seam.handle_request(&request);
+    assert_eq!(response.status.as_u16(), 200);
 }
 
 #[test]
@@ -214,7 +226,7 @@ async fn proxy_seam_receives_protocol_registration() {
     // Simulate transport sending registration event.
     protocol_sender
         .send(ProtocolEvent::Registered {
-            peer: "127.0.0.1:7844".to_owned(),
+            peer: "127.0.0.1:7844".parse().expect("socket addr should parse"),
         })
         .await
         .expect("protocol bridge should stay available during registration test");

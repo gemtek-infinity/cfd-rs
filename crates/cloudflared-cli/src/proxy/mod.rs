@@ -1,6 +1,6 @@
-//! Phase 3.4a–c + 3.5 + 4.1: Pingora proxy-layer seam with lifecycle
-//! participation, first admitted origin/proxy path, wire/protocol bridge
-//! reception, and owner-scoped operability reporting.
+//! Phase 3.4a–c + 3.5 + 4.1 + 5.1: Pingora proxy-layer seam with lifecycle
+//! participation, origin service dispatch, wire/protocol bridge reception,
+//! incoming request stream handling, and owner-scoped operability reporting.
 //!
 //! This module is the owned entry point for Pingora in the production-alpha
 //! path. All direct Pingora types and API usage are confined here. The rest
@@ -17,15 +17,22 @@
 //! 4.1 admitted: reports proxy admission, observed registration, bridge
 //!     closure, and shutdown acknowledgement through the runtime-owned
 //!     operability surface.
+//! 5.1 admitted: broader origin service dispatch (HelloWorld, Http origin
+//!     routing wired, unimplemented services reported honestly), incoming
+//!     stream handling via ConnectRequest dispatch through ingress matching.
 
 use cloudflared_config::{IngressRule, IngressService, find_matching_rule};
+use cloudflared_proto::stream::ConnectRequest;
 use pingora_http::{RequestHeader, ResponseHeader};
+use std::net::SocketAddr;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
 use crate::protocol::{ProtocolBridgeState, ProtocolEvent, ProtocolReceiver};
 use crate::runtime::{ChildTask, RuntimeCommand};
+
+pub(crate) mod origin;
 
 pub(crate) const PROXY_SEAM_NAME: &str = "pingora-proxy-seam";
 
@@ -94,12 +101,23 @@ impl PingoraProxySeam {
         }
     }
 
+    /// Handle an incoming ConnectRequest through ingress-routed dispatch.
+    ///
+    /// This is the broader Phase 5.1 entry point from the stream handler
+    /// into the proxy. Routes the request through ingress matching and
+    /// dispatches to the matched origin service.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn handle_connect_request(&self, request: &ConnectRequest) -> origin::OriginResponse {
+        origin::proxy_connect_request(&self.ingress, request)
+    }
+
     /// Spawn the proxy seam as a runtime-owned lifecycle participant.
     ///
     /// Reports the admitted origin/proxy path and ingress rule count at
     /// startup. When a protocol bridge is provided, waits for
-    /// registration events from the transport layer and reports owned
-    /// proxy/protocol visibility before shutdown.
+    /// registration events and incoming stream requests from the
+    /// transport layer, dispatches them through ingress matching, and
+    /// reports owned proxy/protocol visibility before shutdown.
     pub(crate) fn spawn(
         self,
         command_tx: mpsc::Sender<RuntimeCommand>,
@@ -120,13 +138,13 @@ impl PingoraProxySeam {
                 .send(RuntimeCommand::ServiceStatus {
                     service: PROXY_SEAM_NAME,
                     detail: format!(
-                        "origin-proxy-admitted: http_status path active, ingress-rules={ingress_count}"
+                        "origin-proxy-admitted: broader dispatch active, ingress-rules={ingress_count}"
                     ),
                 })
                 .await;
 
             if let Some(rx) = protocol_rx {
-                handle_protocol_bridge(rx, &command_tx, &shutdown).await;
+                handle_protocol_bridge(&self, rx, &command_tx, &shutdown).await;
             } else {
                 shutdown.cancelled().await;
             }
@@ -151,11 +169,13 @@ impl PingoraProxySeam {
 
 /// Handle protocol bridge events until shutdown or bridge closure.
 async fn handle_protocol_bridge(
+    seam: &PingoraProxySeam,
     mut rx: ProtocolReceiver,
     command_tx: &mpsc::Sender<RuntimeCommand>,
     shutdown: &CancellationToken,
 ) {
     let mut registration_observed = false;
+    let mut streams_dispatched: u64 = 0;
 
     loop {
         tokio::select! {
@@ -165,6 +185,27 @@ async fn handle_protocol_bridge(
                     Some(ProtocolEvent::Registered { peer }) => {
                         registration_observed = true;
                         send_registration_observed(&peer, command_tx).await;
+                    }
+                    Some(ProtocolEvent::IncomingStream { stream_id, request }) => {
+                        let response = seam.handle_connect_request(&request);
+                        streams_dispatched += 1;
+                        send_stream_dispatched(
+                            stream_id,
+                            &request,
+                            &response,
+                            streams_dispatched,
+                            command_tx,
+                        ).await;
+                    }
+                    Some(ProtocolEvent::RegistrationComplete { conn_uuid, location }) => {
+                        let _ = command_tx
+                            .send(RuntimeCommand::ServiceStatus {
+                                service: PROXY_SEAM_NAME,
+                                detail: format!(
+                                    "registration-complete: uuid={conn_uuid} location={location}"
+                                ),
+                            })
+                            .await;
                     }
                     None => {
                         send_bridge_closed(registration_observed, command_tx).await;
@@ -177,7 +218,7 @@ async fn handle_protocol_bridge(
     }
 }
 
-async fn send_registration_observed(peer: &str, command_tx: &mpsc::Sender<RuntimeCommand>) {
+async fn send_registration_observed(peer: &SocketAddr, command_tx: &mpsc::Sender<RuntimeCommand>) {
     let _ = command_tx
         .send(RuntimeCommand::ProtocolState {
             state: ProtocolBridgeState::RegistrationObserved,
@@ -218,23 +259,59 @@ async fn send_bridge_closed(registration_observed: bool, command_tx: &mpsc::Send
         .await;
 }
 
+async fn send_stream_dispatched(
+    stream_id: u64,
+    request: &ConnectRequest,
+    response: &origin::OriginResponse,
+    total_dispatched: u64,
+    command_tx: &mpsc::Sender<RuntimeCommand>,
+) {
+    let response_label = match response {
+        origin::OriginResponse::Http(header) => {
+            format!("http-{}", header.status.as_u16())
+        }
+        origin::OriginResponse::StreamEstablished => "stream-established".to_owned(),
+        origin::OriginResponse::Unimplemented { service_label } => {
+            format!("unimplemented:{service_label}")
+        }
+    };
+
+    let _ = command_tx
+        .send(RuntimeCommand::ServiceStatus {
+            service: PROXY_SEAM_NAME,
+            detail: format!(
+                "stream-dispatch: stream={stream_id} type={} dest={} result={response_label} \
+                 total={total_dispatched}",
+                request.connection_type, request.dest,
+            ),
+        })
+        .await;
+}
+
 /// Dispatch a request to the matched origin service.
+///
+/// Phase 3.4c path — retained for the `RequestHeader`-based entry point.
+/// The Phase 5.1 `ConnectRequest`-based path uses `origin::dispatch_to_origin`
+/// directly.
 #[cfg_attr(not(test), allow(dead_code))]
 fn dispatch_origin(service: &IngressService) -> ResponseHeader {
     match service {
-        IngressService::HttpStatus(code) => self::build_status_response(*code),
-        _ => self::build_status_response(502),
+        IngressService::HttpStatus(code) => origin::build_status_response(*code),
+        IngressService::HelloWorld => {
+            let mut header = ResponseHeader::build(200, None).expect("200 is always a valid status code");
+            let _ = header.insert_header("Content-Type", "text/html; charset=utf-8");
+            header
+        }
+        _ => origin::build_status_response(502),
     }
 }
 
 /// Build a response with the given HTTP status code.
 ///
-/// Status codes from config-validated ingress rules are guaranteed to be
-/// in 100–999. Hardcoded codes (like 502) are valid by construction.
+/// Delegates to `origin::build_status_response` for consistency.
 #[cfg_attr(not(test), allow(dead_code))]
 fn build_status_response(code: u16) -> ResponseHeader {
-    ResponseHeader::build(code, None)
-        .expect("status codes from validated config or hardcoded constants are always valid")
+    origin::build_status_response(code)
 }
 
 /// Extract the request host for ingress matching.

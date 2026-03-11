@@ -112,6 +112,8 @@ Prefer idiomatic Rust when it improves clarity, correctness, and maintainability
 Prefer:
 
 - standard library and conventional Rust patterns
+- domain-specific standard-library and crate-provided types over free-form
+    `String` and `Vec<u8>` when the value shape is already known
 - `?` for straightforward error propagation
 - `Option` and `Result` used directly rather than reinvented status patterns
 - `Self`, `Self::`, and local module paths when they improve readability

@@ -11,9 +11,11 @@ workspace = true
 
 [dependencies]
 cloudflared-config.workspace = true
+cloudflared-proto.workspace = true
 mimalloc.workspace = true
 pingora-http.workspace = true
 quiche.workspace = true
+serde_json.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
@@ -23,3 +25,6 @@ uuid.workspace = true
 [[bin]]
 name = "cloudflared"
 path = "src/main.rs"
+
+[dev-dependencies]
+url.workspace = true

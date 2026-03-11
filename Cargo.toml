@@ -18,15 +18,17 @@ version = "2026.2.0-alpha.202603"
 [workspace.dependencies]
 # monorepo dependencies
 cloudflared-config = { path = "crates/cloudflared-config" }
+cloudflared-proto = { path = "crates/cloudflared-proto" }
 # crates.io dependencies
-pem = "3.0.6"
-pingora-http = "0.8"
+base64 = "0.22.1"
 mimalloc = { version = "0.1.48", default-features = false, features = [
   "extended",
   "local_dynamic_tls",
   "no_thp",
   "override",
 ] }
+pem = "3.0.6"
+pingora-http = "0.8"
 quiche = { version = "0.26.1", default-features = false, features = ["boringssl-vendored"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.149", default-features = false, features = ["std"] }
