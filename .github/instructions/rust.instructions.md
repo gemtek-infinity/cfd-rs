@@ -11,6 +11,10 @@ When editing Rust code or Cargo manifests in this repository:
 - follow `docs/dependency-policy.md` before changing manifests
 - use `[workspace.dependencies]` as the default review surface for normal workspace-managed third-party dependencies
 - keep crate-local dependency truth only when the dependency is intentionally private, tool-specific, experimental, or slice-isolated
+- prefer strong domain types over generic `String` and `Vec<u8>` storage when a
+	semantic type already exists or a small owned newtype would remove ambiguity
+- prefer mature, production-ready crates for parsing, encoding, validation, and
+	typed boundary handling over handwritten edge-case logic
 - for first-slice work, prefer synchronous and deterministic code
 - do not introduce async/runtime structure early unless the accepted slice requires it
 - avoid repo-wide refactors unless explicitly requested

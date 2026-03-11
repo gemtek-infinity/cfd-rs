@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{FED_ENDPOINT, OriginCertToken, OriginCertUser, TunnelCredentialsFile};
+use super::{FED_ENDPOINT, OriginCertToken, OriginCertUser, TunnelCredentialsFile, TunnelSecret};
 
 fn ok<T, E: std::fmt::Display>(result: std::result::Result<T, E>) -> T {
     match result {
@@ -12,12 +12,22 @@ fn ok<T, E: std::fmt::Display>(result: std::result::Result<T, E>) -> T {
 #[test]
 fn tunnel_credentials_json_round_trips() {
     let creds = ok(TunnelCredentialsFile::from_json_str(
-        r#"{"AccountTag":"account","TunnelSecret":"secret","TunnelID":"11111111-1111-1111-1111-111111111111"}"#,
+        r#"{"AccountTag":"account","TunnelSecret":"c2VjcmV0","TunnelID":"11111111-1111-1111-1111-111111111111"}"#,
     ));
     let serialized = ok(creds.to_pretty_json());
 
+    assert_eq!(creds.tunnel_secret.as_bytes(), b"secret");
     assert!(serialized.contains("AccountTag"));
+    assert!(serialized.contains("c2VjcmV0"));
     assert!(serialized.contains("11111111-1111-1111-1111-111111111111"));
+}
+
+#[test]
+fn tunnel_secret_serializes_as_base64() {
+    let secret = TunnelSecret::from_bytes(b"secret".to_vec());
+    let json = serde_json::to_string(&secret).expect("secret should serialize");
+
+    assert_eq!(json, "\"c2VjcmV0\"");
 }
 
 #[test]

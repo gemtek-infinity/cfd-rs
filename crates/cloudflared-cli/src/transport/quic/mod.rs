@@ -25,9 +25,6 @@ use self::identity::TransportIdentity;
 
 const QUIC_ESTABLISH_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_DATAGRAM_SIZE: usize = 1350;
-const WIRE_PROTOCOL_DEFERRED_DETAIL: &str = "wire/protocol boundary crossed (control stream opened, proxy \
-                                             notified), but registration RPC and incoming stream handling \
-                                             remain deferred";
 
 #[derive(Debug, Clone)]
 pub(crate) struct QuicTunnelServiceFactory {

@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use pem::{Pem, encode, parse_many};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -50,12 +51,41 @@ impl CredentialSurface {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TunnelSecret(Vec<u8>);
+
+impl TunnelSecret {
+    pub fn from_bytes(bytes: impl Into<Vec<u8>>) -> Self {
+        Self(bytes.into())
+    }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl Serialize for TunnelSecret {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
+        serializer.serialize_str(&BASE64_STANDARD.encode(&self.0))
+    }
+}
+
+impl<'de> Deserialize<'de> for TunnelSecret {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+        let encoded = String::deserialize(deserializer)?;
+        BASE64_STANDARD
+            .decode(encoded.as_bytes())
+            .map(Self)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct TunnelCredentialsFile {
     #[serde(rename = "AccountTag")]
     pub account_tag: String,
     #[serde(rename = "TunnelSecret")]
-    pub tunnel_secret: String,
+    pub tunnel_secret: TunnelSecret,
     #[serde(rename = "TunnelID")]
     pub tunnel_id: Uuid,
     #[serde(rename = "Endpoint", default, skip_serializing_if = "Option::is_none")]

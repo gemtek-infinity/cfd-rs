@@ -28,7 +28,7 @@ The governing ADR is `docs/adr/0005-deployment-contract.md`.
 
 ### Generic local build
 
-```
+```bash
 cargo build --release --locked -p cloudflared-cli
 ```
 
@@ -38,7 +38,7 @@ The resulting binary is at `target/release/cloudflared`.
 
 For `x86-64-v2` (baseline):
 
-```
+```bash
 RUSTFLAGS="-C target-cpu=x86-64-v2 -C strip=symbols" \
   cargo build --release --locked \
   --target x86_64-unknown-linux-gnu \
@@ -47,7 +47,7 @@ RUSTFLAGS="-C target-cpu=x86-64-v2 -C strip=symbols" \
 
 For `x86-64-v4` (AVX-512 capable):
 
-```
+```bash
 RUSTFLAGS="-C target-cpu=x86-64-v4 -C strip=symbols" \
   cargo build --release --locked \
   --target x86_64-unknown-linux-gnu \
@@ -58,7 +58,7 @@ The resulting binary is at `target/x86_64-unknown-linux-gnu/release/cloudflared`
 
 ### Validate startup
 
-```
+```bash
 ./cloudflared --config /path/to/config.yml validate
 ```
 
@@ -66,7 +66,7 @@ Expected output includes `OK: admitted alpha startup surface validated`.
 
 ### Run
 
-```
+```bash
 ./cloudflared --config /path/to/config.yml run
 ```
 
@@ -95,10 +95,16 @@ contract, and exits with an honest failure.
 ## Operational Caveats
 
 - **Alpha only**: this is a production-alpha surface, not a hardened release
-- **Narrow origin path**: only `http_status` ingress rules are implemented;
-  all other origin service types return 502
-- **No RPC registration**: capnp registration content is not implemented
-- **No incoming streams**: request stream handling is deferred
+- **Limited origin dispatch**: `http_status` and `hello_world` are admitted;
+  HTTP-origin dispatch is wired but returns 502 until actual proxying exists;
+  remaining origin service types return 502 honestly
+- **No Cap'n Proto registration RPC**: the bounded control-stream
+  registration exchange is not parity-complete with the frozen Cap'n Proto
+  registration protocol
+- **No origin-cert registration content**: only the credentials-file path
+  currently emits bounded registration request content on the control stream
+- **No stream round-trip**: incoming QUIC streams are accepted and parsed,
+  but are not yet round-tripped through origin and back to edge
 - **No config reload**: config is frozen at startup; no SIGHUP handler or
   reload command exists
 - **No broad proxy**: the proxy seam is confined to the first admitted path

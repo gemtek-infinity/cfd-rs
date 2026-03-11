@@ -1,16 +1,19 @@
 use super::QuicTunnelServiceFactory;
 use super::edge::{PeerVerification, QuicEdgeTarget, edge_host_label};
 use super::identity::{IdentitySource, TransportIdentity};
+use super::lifecycle::serialize_registration_response;
 use super::session::build_quiche_config;
 use crate::protocol;
 use crate::runtime::{RuntimeExit, run_with_factory};
 use cloudflared_config::{ConfigSource, DiscoveryAction, DiscoveryOutcome, NormalizedConfig, RawConfig};
+use cloudflared_proto::registration::RegisterConnectionResponse;
 use std::fs;
 use std::io::ErrorKind;
 use std::net::{SocketAddr, UdpSocket};
 use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use uuid::Uuid;
 
 const TEST_CERT_PEM: &str = concat!(
     "-----BEGIN CERTIFICATE-----\n",
@@ -69,7 +72,7 @@ fn runtime_config(root: &Path, server_addr: SocketAddr) -> crate::runtime::Runti
     fs::write(
         &credentials_path,
         format!(
-            "{{\"AccountTag\":\"account\",\"TunnelSecret\":\"secret\",\"TunnelID\":\"\
+            "{{\"AccountTag\":\"account\",\"TunnelSecret\":\"c2VjcmV0\",\"TunnelID\":\"\
              11111111-1111-1111-1111-111111111111\",\"Endpoint\":\"{}\"}}",
             server_addr.ip()
         ),
@@ -172,7 +175,7 @@ fn build_test_quiche_server_config(cert_path: &Path, key_path: &Path) -> quiche:
         .expect("test ALPN should be configured");
     config.verify_peer(false);
     config.enable_early_data();
-    config.set_max_idle_timeout(30_000);
+    config.set_max_idle_timeout(3_000);
     config.set_max_recv_udp_payload_size(1350);
     config.set_max_send_udp_payload_size(1350);
     config.set_initial_max_data(1_000_000);
@@ -191,12 +194,19 @@ fn run_test_quic_server(socket: UdpSocket, mut config: quiche::Config) {
     let local_addr = socket
         .local_addr()
         .expect("server address should remain available");
-    let mut connection = None;
+    let mut connection: Option<quiche::Connection> = None;
+    let mut registration_responded = false;
 
     loop {
         let (read, from) = match socket.recv_from(&mut recv_buf) {
             Ok(result) => result,
             Err(error) if error.kind() == ErrorKind::WouldBlock || error.kind() == ErrorKind::TimedOut => {
+                // Close the QUIC connection gracefully before exiting so
+                // the client side detects closure quickly.
+                if let Some(conn) = connection.as_mut() {
+                    let _ = conn.close(true, 0, b"test-done");
+                    flush_test_server_egress(conn, &socket, &mut send_buf);
+                }
                 break;
             }
             Err(error) => panic!("unexpected test server recv error: {error}"),
@@ -216,10 +226,52 @@ fn run_test_quic_server(socket: UdpSocket, mut config: quiche::Config) {
         let recv_info = quiche::RecvInfo { from, to: local_addr };
         let _ = conn.recv(&mut recv_buf[..read], recv_info);
 
+        if !registration_responded {
+            registration_responded = respond_to_registration_stream(conn, &socket, &mut send_buf);
+        }
+
         flush_test_server_egress(conn, &socket, &mut send_buf);
 
         if conn.is_closed() {
             break;
+        }
+    }
+}
+
+fn respond_to_registration_stream(
+    conn: &mut quiche::Connection,
+    socket: &UdpSocket,
+    send_buf: &mut [u8],
+) -> bool {
+    if !conn.is_established() {
+        return false;
+    }
+
+    let mut read_buf = [0_u8; 4096];
+
+    loop {
+        match conn.stream_recv(protocol::CONTROL_STREAM_ID, &mut read_buf) {
+            Ok((read, fin)) => {
+                if read == 0 || !fin {
+                    continue;
+                }
+
+                let _request: serde_json::Value = serde_json::from_slice(&read_buf[..read])
+                    .expect("registration request should be valid JSON");
+                let response =
+                    RegisterConnectionResponse::success(cloudflared_proto::registration::ConnectionDetails {
+                        uuid: Uuid::parse_str("22222222-2222-2222-2222-222222222222")
+                            .expect("uuid should parse"),
+                        location: "TEST".to_owned(),
+                        is_remotely_managed: false,
+                    });
+                let payload = serialize_registration_response(&response);
+                let _ = conn.stream_send(protocol::CONTROL_STREAM_ID, &payload, true);
+                flush_test_server_egress(conn, socket, send_buf);
+                return true;
+            }
+            Err(quiche::Error::Done) | Err(quiche::Error::InvalidStreamState(_)) => return false,
+            Err(error) => panic!("unexpected control stream recv error: {error}"),
         }
     }
 }
@@ -306,18 +358,16 @@ fn runtime_crosses_wire_protocol_boundary_after_quic_establish() {
                 verification: PeerVerification::Unverified,
             },
         ),
-        crate::runtime::HarnessBuilder::for_tests().build(),
+        crate::runtime::HarnessBuilder::for_tests()
+            .with_shutdown_after(Duration::from_secs(5))
+            .build(),
         Some(protocol_receiver),
     );
 
+    // After Phase 5.1 the transport enters the stream-serving loop,
+    // so the harness shutdown fires and the runtime exits gracefully.
     assert!(
-        matches!(
-            execution.exit,
-            RuntimeExit::Deferred {
-                phase: "later runtime/protocol slices",
-                ..
-            }
-        ),
+        matches!(execution.exit, RuntimeExit::Clean),
         "unexpected runtime exit: {:?}",
         execution.exit
     );
@@ -341,6 +391,18 @@ fn runtime_crosses_wire_protocol_boundary_after_quic_establish() {
             .iter()
             .any(|line| line.contains("protocol-boundary: registration event sent to proxy layer")),
         "should report registration event sent through protocol bridge"
+    );
+    assert!(
+        execution.summary_lines.iter().any(|line| line.contains(
+            "protocol-boundary: registration response received uuid=22222222-2222-2222-2222-222222222222 \
+             location=TEST"
+        )),
+        "should report bounded registration response details"
+    );
+    assert!(
+        execution.summary_lines.iter().any(|line| line
+            .contains("registration-complete: uuid=22222222-2222-2222-2222-222222222222 location=TEST")),
+        "proxy seam should observe registration completion details"
     );
     assert!(
         execution

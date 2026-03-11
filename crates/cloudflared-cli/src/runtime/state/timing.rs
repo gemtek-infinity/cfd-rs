@@ -115,6 +115,9 @@ impl StageTiming {
             TransportLifecycleStage::ControlStreamOpened => {
                 self.control_stream_opened.get_or_insert(now);
             }
+            TransportLifecycleStage::ServingStreams => {
+                // Serving streams follows established — no separate timestamp
+            }
             TransportLifecycleStage::Teardown => {}
         }
     }

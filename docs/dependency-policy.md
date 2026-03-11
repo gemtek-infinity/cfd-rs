@@ -25,6 +25,15 @@ Dependencies are admitted only when all of the following are true:
 4. the dependency does not quietly redesign externally visible behavior
 5. a standard-library alternative is not sufficient
 
+When multiple valid choices still satisfy those rules:
+
+- prefer stronger domain typing over generic `String` or `Vec<u8>` storage when
+  the value already has a stable semantic shape such as `Uuid`, `SocketAddr`,
+  `IpAddr`, `Url`, or a dedicated newtype
+- prefer mature, production-ready, actively maintained crates for encoding,
+  decoding, parsing, and validation work over ad hoc local representations or
+  handwritten edge-case handling
+
 ## Phase 2.6 Default Rules
 
 The default dependency truth for the workspace is now:
@@ -89,7 +98,7 @@ tool surface:
 - `mimalloc`, `tokio`, `tokio-util`, `quiche`, `pingora-http`, `tracing`, and
   `tracing-subscriber` in `cloudflared-cli`
 - shared workspace truth for `pem`, `serde`, `serde_json`, `serde_yaml`,
-  `thiserror`, `url`, and `uuid`
+  `thiserror`, `url`, `uuid`, and `base64`
 - `rmcp`, `schemars`, and `tokio` in `tools/mcp-cfd-rs`
 
 Reason:
@@ -113,6 +122,9 @@ Reason:
 - config, credential, and ingress normalization work is active in
   `cloudflared-config`, so its admitted slice dependencies now exist honestly in
   manifests
+- credentials-file handling now depends on the mature `base64` crate so the
+  tunnel secret is decoded into owned bytes at the config boundary rather than
+  being carried as an encoded string into runtime and transport code
 - several first-slice crates are centralized in the root manifest already
   because root-manifest-first review and feature consistency are part of the
   accepted Phase 2.6 policy, not merely an after-the-fact consequence of broad

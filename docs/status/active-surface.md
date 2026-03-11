@@ -3,7 +3,7 @@
 This file captures the currently admitted executable surface and the immediate
 deferred scope around it.
 
-## Active Phase 4.4 Surface
+## Active Phase 5.1 Surface
 
 Phase 3.3 owns the QUIC tunnel core. Phase 3.4 adds the Pingora proxy seam
 above it. Phase 3.5 adds the wire/protocol boundary between them. Phase 3.6
@@ -14,10 +14,12 @@ observability and operability surface required to run and inspect that alpha
 honestly. Phase 4.2 adds deterministic performance validation with
 stage-transition timing evidence, cold vs resumed path distinction, and
 explicit regression thresholds. Phase 4.3 adds deterministic failure-mode and
-recovery proof for the admitted alpha path. Phase 4.4 is the current admitted
-slice and adds internal deployment proof for the admitted alpha lane.
+recovery proof for the admitted alpha path. Phase 4.4 adds internal
+deployment proof for the admitted alpha lane. Phase 5.1 is the current
+admitted slice and adds broader proxy dispatch, wire-format types, and
+incoming QUIC data stream handling.
 
-What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2 + 4.3 + 4.4):
+What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2 + 4.3 + 4.4 + 5.1):
 
 - `run` enters a real quiche-based transport service under the runtime boundary
 - connection/session ownership and QUIC handshake state are explicit
@@ -97,20 +99,43 @@ What exists now (3.3 + 3.4a–c + 3.5 + 3.6 + 3.7 + 4.1 + 4.2 + 4.3 + 4.4):
   are reported in deployment evidence
 - known deployment gaps (no systemd unit, no installer, no container image,
   no updater, no log rotation) are declared explicitly
-- operational caveats (alpha-only, narrow origin path, no RPC registration,
-  no incoming streams, no config reload) are declared explicitly
+- operational caveats (alpha-only, limited origin dispatch, no Cap'n Proto
+  registration RPC, no origin-cert registration content, no stream
+  round-trip, no config reload) are declared explicitly
 - deployment evidence scope is honestly bounded to in-process contract
   validation
 - operator-facing deployment notes exist in `docs/deployment-notes.md`
   matching the declared deployment contract from ADR-0005
 - the CI merge workflow produces lane-specific preview artifacts for both
   shipped GNU lanes (x86-64-v2 and x86-64-v4)
+- wire-format types for per-stream request/response exchange are owned by
+  `crates/cloudflared-proto/` (ConnectionType, ConnectRequest,
+  ConnectResponse, Metadata)
+- registration RPC type boundaries (TunnelAuth, ConnectionOptions,
+  ConnectionDetails) are defined in `crates/cloudflared-proto/`
+- the control stream now carries a bounded credentials-file registration
+  request/response exchange; successful responses produce
+  `RegistrationComplete` events with connection UUID and location
+- the proxy seam now dispatches broader origin services: HelloWorld returns
+  a real HTML response, Http-origin dispatch is wired (returns 502 until
+  actual proxying is implemented), and unimplemented services are labeled
+  honestly
+- the origin dispatch surface is owned by
+  `crates/cloudflared-cli/src/proxy/origin.rs`
+- after QUIC establishment the transport enters a stream-serving loop that
+  accepts server-initiated bidi streams, parses ConnectRequest wire format,
+  and forwards IncomingStream events through the protocol bridge
+- the protocol bridge now carries IncomingStream and RegistrationComplete
+  events in addition to the original registration event
+- the transport lifecycle includes a ServingStreams stage after Established
 
 What the current surface does not imply:
 
-- that registration RPC content (capnp) is implemented
-- that incoming request stream handling exists
-- that the admitted origin path is general proxy completeness
+- that Cap'n Proto registration RPC parity is implemented
+- that origin-cert identity currently emits registration content
+- that incoming streams are round-tripped through origin and back to edge
+- that the admitted origin dispatch is general proxy completeness (actual
+  HTTP proxying, WebSocket upgrade, TCP streaming remain deferred)
 - that the bounded security/compliance operational boundary constitutes
   certification, whole-program compliance, or validated FIPS implementation
 - that broader standard-format crate integration beyond active-slice need
@@ -135,14 +160,15 @@ The following remain intentionally out of the current executable-surface task:
 
 - broader platform parity beyond Linux
 - broader artifact scope beyond GNU `x86-64-v2` and `x86-64-v4`
-- broader Pingora proxy completeness beyond the narrow admitted origin path
-- registration RPC, incoming stream handling, and broader protocol work
-  outside their later owning slices
+- broader Pingora proxy completeness beyond the admitted origin-dispatch
+  surface (actual HTTP proxying, WebSocket upgrade, TCP streaming)
+- Cap'n Proto registration RPC parity, origin-cert registration content,
+  and full request stream round-trip through origin and back to edge
 - packaging, deployment tooling, container support, and
   certification-proving work beyond the current numbered Big Phase 3 slice list
 - broader deployment/management work beyond the admitted 4.4 deployment proof
-  surface (real systemd unit files, installers, container images, updaters,
-  log rotation)
+  surface and 5.1 stream-serving surface (real systemd unit files, installers,
+  container images, updaters, log rotation)
 - broader performance proof beyond the admitted harness path
 
 ## Follow-On Constraints For Later Slices
@@ -166,9 +192,12 @@ Phase 3.7 (standard-format crate integration boundary):
 
 Immediate narrowness caveat:
 
-- the admitted origin path is `http_status` only; all other origin service
-  types return 502 until later slices implement real origin connections
+- the admitted origin dispatch handles `http_status` and `hello_world`;
+  Http-origin dispatch is wired but returns 502 until actual proxying;
+  remaining origin types return 502 honestly
 - `PingoraProxySeam` is not a general Pingora proxy; it is a confined
-  entry point for the first admitted path
-- the protocol bridge carries registration events only; incoming request
-  streams and registration RPC content remain deferred
+  entry point for the admitted dispatch surface
+- incoming QUIC data streams are accepted and parsed but not yet
+  round-tripped through origin and back to edge
+- bounded credentials-file registration exchange exists; Cap'n Proto parity
+  and origin-cert registration content remain deferred

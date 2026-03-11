@@ -334,13 +334,16 @@ name = "cloudflared-cli"
 version = "2026.2.0-alpha.202603"
 dependencies = [
  "cloudflared-config",
+ "cloudflared-proto",
  "mimalloc",
  "pingora-http",
  "quiche",
+ "serde_json",
  "tokio",
  "tokio-util",
  "tracing",
  "tracing-subscriber",
+ "url",
  "uuid",
 ]
 
@@ -348,6 +351,7 @@ dependencies = [
 name = "cloudflared-config"
 version = "2026.2.0-alpha.202603"
 dependencies = [
+ "base64",
  "pem",
  "serde",
  "serde_json",
@@ -364,6 +368,10 @@ version = "2026.2.0-alpha.202603"
 [[package]]
 name = "cloudflared-proto"
 version = "2026.2.0-alpha.202603"
+dependencies = [
+ "serde",
+ "uuid",
+]
 
 [[package]]
 name = "cmake"

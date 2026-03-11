@@ -6,6 +6,7 @@ pub(crate) enum TransportLifecycleStage {
     Handshaking,
     Established,
     ControlStreamOpened,
+    ServingStreams,
     Teardown,
 }
 
@@ -18,6 +19,7 @@ impl TransportLifecycleStage {
             Self::Handshaking => "handshaking",
             Self::Established => "established",
             Self::ControlStreamOpened => "control-stream-opened",
+            Self::ServingStreams => "serving-streams",
             Self::Teardown => "teardown",
         }
     }
@@ -25,7 +27,7 @@ impl TransportLifecycleStage {
     pub(crate) fn is_connected(self) -> bool {
         matches!(
             self,
-            Self::Established | Self::ControlStreamOpened | Self::Teardown
+            Self::Established | Self::ControlStreamOpened | Self::ServingStreams | Self::Teardown
         )
     }
 }

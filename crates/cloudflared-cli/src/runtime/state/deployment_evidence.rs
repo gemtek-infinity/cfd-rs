@@ -80,8 +80,10 @@ impl RuntimeStatus {
         );
 
         self.summary_lines.push(
-            "deploy-operational-caveats: alpha-only, narrow-origin-path(http_status), no-rpc-registration, \
-             no-incoming-streams, no-config-reload"
+            "deploy-operational-caveats: alpha-only, \
+             limited-origin-dispatch(http_status+hello_world+http-wired-no-proxy), \
+             no-capnp-registration-rpc, no-origin-cert-registration-content, no-stream-roundtrip, \
+             no-config-reload"
                 .to_owned(),
         );
 
