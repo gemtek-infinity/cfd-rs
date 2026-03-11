@@ -1,3 +1,4 @@
+mod deployment_evidence;
 mod failure;
 mod operability;
 mod readiness;

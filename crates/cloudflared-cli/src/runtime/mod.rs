@@ -176,6 +176,7 @@ where
         self.status.record_timing_finished();
         self.status.record_performance_evidence();
         self.status.record_failure_evidence();
+        self.status.record_deployment_evidence();
 
         RuntimeExecution {
             summary_lines: self.status.into_summary_lines(),

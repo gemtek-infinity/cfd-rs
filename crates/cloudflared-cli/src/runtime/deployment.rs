@@ -32,9 +32,12 @@ where
         } else {
             "not-detected"
         };
+        self.status.deployment.systemd_detected = is_systemd_supervision_detected();
         self.status.push_summary(format!(
             "security-supervision-signal: {systemd} (systemd expected by deployment contract)"
         ));
+
+        self.status.deployment.config_path = Some(self.config.config_path().display().to_string());
 
         Ok(())
     }
@@ -63,7 +66,10 @@ where
             );
         }
 
-        if !glibc_runtime_marker_present(GLIBC_RUNTIME_MARKERS) {
+        let glibc_present = glibc_runtime_marker_present(GLIBC_RUNTIME_MARKERS);
+        self.status.deployment.glibc_present = glibc_present;
+
+        if !glibc_present {
             return Err(format!(
                 "security/compliance operational boundary requires GNU/glibc host runtime markers; none \
                  found in {}",
@@ -71,6 +77,7 @@ where
             ));
         }
 
+        self.status.deployment.host_validated = true;
         self.status
             .push_summary("security-host-contract: linux-x86_64-gnu-glibc markers present");
 

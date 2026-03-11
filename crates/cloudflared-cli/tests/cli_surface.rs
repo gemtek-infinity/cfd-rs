@@ -119,6 +119,24 @@ fn run_exits_nonzero_when_quic_transport_inputs_are_missing() {
     assert!(stderr.contains("failure-boundary owner=quic-tunnel-core class=fatal"));
     assert!(stderr.contains("quic tunnel core requires credentials-file or origincert"));
 
+    // Phase 4.4: deployment evidence is emitted even on failure exit
+    assert!(
+        stdout.contains("deploy-contract: linux-x86_64-gnu-glibc"),
+        "run output should contain deployment contract evidence"
+    );
+    assert!(
+        stdout.contains("deploy-host-validation: passed"),
+        "run output should confirm host validation passed"
+    );
+    assert!(
+        stdout.contains("deploy-known-gaps:"),
+        "run output should declare known deployment gaps"
+    );
+    assert!(
+        stdout.contains("deploy-evidence-scope:"),
+        "run output should declare deployment evidence scope"
+    );
+
     fs::remove_dir_all(root).expect("temp directory should be removable");
 }
 

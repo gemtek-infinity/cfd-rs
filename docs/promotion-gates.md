@@ -381,6 +381,60 @@ Phase 4.2 is complete when the admitted alpha path emits deterministic
 performance evidence with regression thresholds that can gate CI and detect
 stage-transition regressions.
 
+### Phase 4.3 — Failure-Mode And Recovery Proof
+
+#### Purpose
+
+Prove the admitted alpha surface behaves sanely under disruption without
+implying broader transport, deployment, or recovery completeness.
+
+#### Required conditions
+
+- reconnect/retry behavior is bounded and visible in evidence output
+- shutdown behavior is observable through lifecycle state transitions and
+  child-task drain reporting
+- dependency-boundary failures are reported with explicit owner and class at
+  each failure event
+- config-reload is honestly declared as not supported
+- malformed YAML, invalid ingress rules, and structurally invalid config
+  fields fail at the config boundary with typed error categories
+- machine-readable failure evidence is emitted at runtime finish
+- evidence is honest about what is proven (in-process harness failure proof)
+  vs what remains deferred (real transport reconnect, deployment-level
+  recovery, config-reload behavior)
+
+#### Exit condition
+
+Phase 4.3 is complete when the admitted alpha path emits deterministic
+failure-mode and recovery evidence with honest scope boundaries.
+
+### Phase 4.4 — Internal Deployment Proof
+
+#### Purpose
+
+Demonstrate that the admitted alpha surface is believable in real operational
+use without overstating unsupported behavior.
+
+#### Required conditions
+
+- the deployment contract is validated at runtime startup and the result is
+  visible in evidence output
+- machine-readable deployment evidence is emitted at runtime finish
+- build-to-run flow is repeatable and documented for the declared lane
+- known deployment gaps are declared explicitly (no systemd unit, no
+  installer, no container image, no updater, no log rotation)
+- operational caveats are declared explicitly (alpha-only, narrow origin path,
+  no RPC registration, no incoming streams, no config reload)
+- evidence scope is honestly bounded to in-process contract validation
+- deployment notes exist and match the declared deployment contract
+- the CI merge workflow produces lane-specific preview artifacts
+
+#### Exit condition
+
+Phase 4.4 is complete when a reviewer can follow a repeatable build-to-run
+flow for the declared lane, deployment notes match the actual contract,
+operational caveats are explicit, and known gaps are stated honestly.
+
 ### Exit condition
 
 The promoted alpha scope is validated well enough to be credible in real use.
@@ -457,6 +511,7 @@ At the current repo state:
 - Phase 3.7 standard-format crate integration boundary is admitted
 - Phase 4.1 observability and operability is admitted
 - Phase 4.2 performance validation is admitted
-- 4.3 failure-mode proof and 4.4 deployment proof are later within Big Phase 4
+- Phase 4.3 failure-mode and recovery proof is admitted
+- Phase 4.4 deployment proof is admitted
 - Big Phase 5 completes remaining frozen-baseline feature/surface and proves
   production alpha
