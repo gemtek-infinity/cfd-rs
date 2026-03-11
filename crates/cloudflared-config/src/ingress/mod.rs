@@ -12,9 +12,10 @@ pub use self::types::{
     NormalizedIngress, OriginRequestConfig, RawIngressRule,
 };
 
-pub const NO_INGRESS_RULES_FLAGS_MESSAGE: &str = "No ingress rules were defined in provided config (if any) \
-                                                  nor from the provided flags, cloudflared will return 503 \
-                                                  for all incoming HTTP requests";
+pub const NO_INGRESS_RULES_FLAGS_MESSAGE: &str = concat!(
+    "No ingress rules were defined in provided config (if any) nor from the provided flags, ",
+    "cloudflared will return 503 for all incoming HTTP requests"
+);
 
 const DEFAULT_HTTP_CONNECT_TIMEOUT: &str = "30s";
 const DEFAULT_TLS_TIMEOUT: &str = "10s";
