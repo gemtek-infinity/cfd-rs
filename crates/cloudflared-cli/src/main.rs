@@ -1,12 +1,10 @@
 #![forbid(unsafe_code)]
 
-mod app;
-mod cli;
-mod output;
 mod protocol;
 mod proxy;
 mod runtime;
 mod startup;
+mod surface;
 mod transport;
 
 use std::env;
@@ -18,11 +16,12 @@ use mimalloc::MiMalloc;
 static GLOBAL_ALLOCATOR: MiMalloc = MiMalloc;
 
 fn main() -> ExitCode {
-    let output = app::execute(env::args_os());
+    let output = surface::execute(env::args_os());
 
     if !output.stdout.is_empty() {
         print!("{}", output.stdout);
     }
+
     if !output.stderr.is_empty() {
         eprint!("{}", output.stderr);
     }

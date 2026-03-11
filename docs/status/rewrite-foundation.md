@@ -20,10 +20,10 @@ compares green. It also now contains a narrow Phase 3.3 QUIC tunnel core in
 `crates/cloudflared-cli/` that owns startup, supervision, transport session
 establishment, and runtime config handoff. Phase 3.4 adds a Pingora proxy seam
 with runtime lifecycle participation and a first admitted origin/proxy path
-(`http_status` routing) confined to `crates/cloudflared-cli/src/proxy.rs`. The
+(`http_status` routing) confined to `crates/cloudflared-cli/src/proxy/`. The
 admitted origin path is intentionally narrow. Phase 3.7 now admits a minimal
 standard-format crate boundary for the active origin-cert PEM path through the
-owned credential seam in `crates/cloudflared-config/src/credentials.rs`.
+owned credential seam in `crates/cloudflared-config/src/credentials/`.
 Broader wire/protocol behavior and general proxy completeness remain later
 slices. Most broader
 production-alpha subsystem behavior is still unported.
@@ -56,8 +56,11 @@ If sources disagree, use this precedence order:
 
 1. `baseline-2026.2.0/old-impl/` code and tests
 2. `baseline-2026.2.0/design-audit/`
-3. `AGENTS.md`
-4. `SKILLS.md`
+3. `REWRITE_CHARTER.md`
+4. `STATUS.md`
+5. matching policy docs under `docs/`
+
+`AGENTS.md` and `SKILLS.md` are workflow notes and do not override the above.
 
 ### Governance Documents
 
@@ -91,7 +94,7 @@ The following top-level rewrite decisions are part of the active scaffold:
   - Phase 3.5 wire/protocol boundary is admitted
   - Phase 3.6 security/compliance operational boundary is admitted
   - Phase 3.7 standard-format crate integration boundary is admitted
-- Big Phase 4 has started narrowly:
+- Big Phase 4 is admitted narrowly at 4.1:
   - Phase 4.1 observability and operability is admitted around the existing
     runnable-alpha surface
   - 4.2 performance proof, 4.3 failure-mode proof, and 4.4 deployment proof

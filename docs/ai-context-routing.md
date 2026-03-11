@@ -1,9 +1,7 @@
 # AI Context Routing
 
 This file is the thin entry map for AI and human cold starts.
-
-Use it to choose the minimum files and tools needed for a task before loading
-larger documents.
+Use it to choose the minimum files and tools needed for a task before loading larger documents.
 
 ## Retrieval Order
 
@@ -116,6 +114,25 @@ Load first:
 These files are workflow notes.
 They do not override charter, status, or policy docs.
 
+### Refactor, hotspot, and cognitive-load work
+
+Load first:
+
+- `docs/ai-context-routing.md`
+- `.github/copilot-instructions.md`
+- `.github/instructions/rust.instructions.md`
+
+Then use MCP in this order:
+
+1. a compact context snapshot or brief to identify the owning boundary and smallest relevant file set
+2. the MCP Debtmap surface for touched-files review or narrow path-prefix hotspot review
+3. direct targeted file reads only after the first bounded MCP slice is known
+
+Debtmap is a hotspot and review aid, not behavior truth.
+Use frozen baseline code/tests for behavior and parity truth.
+
+Do not start refactor work with broad repo-wide Debtmap output if a touched-files or narrow path-prefix query can answer first.
+
 ## MCP Routing
 
 When using the local read-only MCP server:
@@ -129,6 +146,18 @@ When using the local read-only MCP server:
 7. read only the needed lines or chunk
 8. widen the search only if the first path set does not answer the question
 
+For refactor, hotspot, and cognitive-load tasks:
+
+1. use MCP routing first to identify the owning boundary and smallest file set
+2. then consult the MCP Debtmap surface first when available
+3. prefer touched-files review first
+4. then prefer narrow path-prefix hotspot review
+5. use broader hotspot queries only when the bounded query still leaves uncertainty
+
+If the MCP server is unavailable, inaccessible, or insufficient for the question, say so explicitly before widening to broader manual reads.
+
+If the MCP Debtmap surface is unavailable, inaccessible, or insufficient for a refactor or hotspot task, say so explicitly before falling back to bounded direct review.
+
 The MCP server should be used for small grounded slices, not broad document dumping.
 
 Choose the smallest MCP surface that fits the question:
@@ -137,12 +166,177 @@ Choose the smallest MCP surface that fits the question:
 - use a brief when you need the first file to open and the next two or three likely follow-ups
 - use a bundle when you need a curated multi-file pack for a known question type
 - use search, listing, metadata, and line reads only after the smallest curated surface stops being enough
+- use Debtmap only for hotspot triage, touched-files review, or bounded cognitive-load inspection
+- use the file-level Debtmap score categories below instead of inventing local thresholds per task
 
 Examples:
 
 - use a snapshot for questions like "what phase is active now?", "what owns dependency truth?", "which file owns this topic?", or "what is the transport/Pingora/FIPS lane?"
 - use a brief for questions like "which file should I open first for repo state or parity work?"
 - use a bundle for questions like "give me the narrow file pack for runtime/dependency policy" or "give me the baseline files for behavior/parity routing"
+- use Debtmap for questions like "what are the top hotspots in this path?", "summarize this touched file's cognitive load", or "review only these changed files for hotspot concentration"
+
+## Debtmap Score Categories
+
+Treat the MCP Debtmap file score and the per-function complexity metrics as
+separate score families.
+
+### File-level MCP score
+
+Use these categories for `debtmap_top_hotspots`, `debtmap_file_summary`, and
+`debtmap_touched_files_review`:
+
+- `0.00-14.99` `negligible`
+  - below hotspot triage threshold; ignore in normal review
+- `15.00-29.99` `reviewable`
+  - visible cognitive load; review when already in the file
+- `30.00-44.99` `hotspot`
+  - reduce when touched
+- `45.00-74.99` `high_hotspot`
+  - refactor now
+- `75.00+` `critical_hotspot`
+  - stop-and-split territory before more feature work
+
+Operational rule:
+
+- below `15.0` is negligible cognitive load
+- `15.0-29.99` is `reviewable` — review when already in the file
+- `30.0-44.99` is `reduce_when_touched`
+- `45.0+` is the hard `refactor_now` limit
+
+### Function-level complexity metrics
+
+Use these categories for `debtmap_function_complexity` output:
+
+- cyclomatic complexity: `1-10` `low`, `11-20` `moderate`, `21-30` `high`, `31+` `very_high`
+- cognitive complexity: `0-9` `low`, `10-14` `moderate`, `15-24` `high`, `25+` `very_high`
+- total complexity (`cyclomatic + cognitive`): `<20` `trivial`, `20-35` `moderate`, `36-49` `high`, `50+` `excessive`
+
+Operational rule for active-path code:
+
+- cognitive `25+`, cyclomatic `31+`, or total complexity `50+` is `refactor_now`
+- cognitive `15-24`, cyclomatic `21-30`, or total complexity `36-49` is `reduce_when_touched`
+
+### Marker-debt exclusion
+
+TODO, FIXME, and TestTodo markers are expected during rewrite phases and do
+not represent actual code complexity.  The file-level score intentionally
+excludes marker-debt so that rewrite bookkeeping does not inflate files into
+hotspot territory.
+
+The scoring formula separates debt items into two families:
+
+- **complexity-debt** — `Complexity`, `CodeSmell`, `ErrorSwallowing`,
+  `Duplication`, `ResourceManagement`, and all other non-marker types.
+  These contribute to the file-level score via `sqrt(sum)`.
+- **marker-debt** — `Todo`, `Fixme`, `TestTodo`.  These are reported as
+  `todo_count` and visible in `debtmap_file_summary` output, but they do
+  not contribute to the score or change the score category.
+
+Rationale: high cyclomatic / cognitive complexity costs both human cognitive
+load and LLM context window.  Marker-debt does not.
+
+### Unified analysis and structural detection
+
+The MCP `debtmap_unified_analysis` tool runs the full debtmap pipeline
+(identical to `debtmap analyze`) and returns God Object, coupling, cohesion,
+and call-graph results.  Use it for deep structural analysis, not routine
+edits.
+
+The MCP `debtmap_ci_gate` tool evaluates CI gate rules against the unified
+analysis.  Its output is pass/fail with blocking violations and warnings.
+
+### CI gate rules
+
+These rules are enforced by `debtmap_ci_gate` and should also be applied by
+human reviewers and AI agents during code review.
+
+**Blocking** (must fix before merge):
+
+| Rule | Threshold | Detail |
+| ---- | --------- | ------ |
+| priority | `critical` or `high` | Unified score ≥ 45.0 |
+| god\_object\_score | ≥ 45.0 | GodClass, GodFile, or GodModule detection |
+| debt\_density | > 50.0 per 1K LOC | Project-wide density gate |
+| cyclomatic | ≥ 31 | Per-function cyclomatic complexity |
+| cognitive | ≥ 25 | Per-function cognitive complexity |
+
+**Warning** (visible, non-blocking):
+
+| Rule | Threshold | Detail |
+| ---- | --------- | ------ |
+| priority | `medium` | Unified score 15.0-44.99 |
+| god\_object\_score | < 45.0 | Monitor — not yet blocking |
+| coupling | `highly_coupled` or `Hub` | High afferent + efferent coupling |
+| cyclomatic | 21-30 | Per-function cyclomatic watch |
+| cognitive | 15-24 | Per-function cognitive watch |
+
+Operational guidance:
+
+- Run `debtmap_ci_gate` (or `debtmap validate` in CI) before merging PRs
+- Blocking violations must be resolved; warnings should be tracked
+- God Object detection identifies GodClass (single struct with too many
+  responsibilities), GodFile (file with too many functions), and GodModule
+  (module with too many related types)
+- Coupling classifications track afferent (Ca) and efferent (Ce) coupling;
+  `Hub` means a module is both heavily depended on and depends on many others
+
+### Shared config
+
+Both the debtmap CLI and the MCP `debtmap_unified_analysis` / `debtmap_ci_gate`
+tools read the project `.debtmap.toml` file for analysis thresholds
+(`complexity`, `duplication`, ignore patterns, etc.) via the debtmap crate's
+multi-source config loader.
+
+The MCP-level score categories (file 15/30/45/75, function cyclomatic
+11/21/31, cognitive 10/15/25) are this repository's own categorization
+layer on top of the raw debtmap scores.  They are documented in this file
+and are not part of `.debtmap.toml`.
+
+## Debtmap Workflow — Human
+
+When a human makes changes to this repository:
+
+1. Run `debtmap analyze` (or `debtmap analyze --plain`) on the workspace to
+   check for structural issues (God Objects, coupling, cohesion).
+2. Run `debtmap validate` to check against the project's threshold gates.
+3. If either reports blocking-level findings in touched or new code, fix them
+   before opening a PR.
+4. Warnings should be reviewed; track them for later reduction if not
+   immediately fixable.
+5. If `.debtmap.toml` thresholds need adjustment, update the file and confirm
+   both CLI and MCP produce the same results.
+
+Quick reference:
+
+- `debtmap analyze -q --no-tui --plain .` — quiet, non-interactive full
+  analysis
+- `debtmap validate .` — threshold validation against project config
+
+## Debtmap Workflow — AI Agent
+
+When an AI agent makes changes to this repository, before the test/validation
+stage:
+
+1. Call `debtmap_ci_gate` (no scope needed for project-wide, or set
+   `path_prefix` to scope).
+2. If `pass` is `true`, proceed to tests.
+3. If `pass` is `false`:
+   - Check each blocking violation's `path` and `function`.
+   - If the violation is in a file the agent touched or created, the agent
+     must fix it before completing the task.
+   - If the violation is in untouched code, report it to the human:
+     "Blocking debtmap violation in `<path>` (`<rule>: <detail>`).
+     This is not related to the current change but will block PR merge."
+4. Warnings should be noted but do not block task completion.
+
+For more targeted review after edits:
+
+1. Call `debtmap_touched_files_review` with the list of changed files.
+2. If any touched file has a score ≥ 30.0, apply the bounded cognitive-load
+   pass from `.github/instructions/rust.instructions.md`.
+3. If any touched file has a score ≥ 45.0, split or reduce the file before
+   completing the task.
 
 ## Anti-Drift Rules
 

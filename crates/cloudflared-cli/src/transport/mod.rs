@@ -21,6 +21,13 @@ impl TransportLifecycleStage {
             Self::Teardown => "teardown",
         }
     }
+
+    pub(crate) fn is_connected(self) -> bool {
+        matches!(
+            self,
+            Self::Established | Self::ControlStreamOpened | Self::Teardown
+        )
+    }
 }
 
 mod quic;

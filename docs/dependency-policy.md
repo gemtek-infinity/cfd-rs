@@ -95,19 +95,19 @@ tool surface:
 Reason:
 
 - allocator policy is still a process-wide runtime baseline owned by the binary
-- Phase 3.2 has now started, so the admitted runtime/lifecycle shell in
+- Phase 3.2 runtime/lifecycle shell is admitted, so the admitted runtime/lifecycle shell in
   `cloudflared-cli` may use `tokio` and `tokio-util` for owned task tracking,
   bounded command flow, and cancellation at the binary boundary
-- Phase 3.3 has now started, so the admitted QUIC tunnel core in
+- Phase 3.3 QUIC tunnel core is admitted, so the admitted QUIC tunnel core in
   `cloudflared-cli` may use `quiche` on the locked quiche + BoringSSL lane for
   real transport ownership and handshake/session state under the runtime
   boundary
-- Phase 3.4 has now started, so the admitted Pingora seam in
+- Phase 3.4 Pingora seam is admitted, so the admitted Pingora seam in
   `cloudflared-cli` may use `pingora-http` inside its owned proxy boundary for
   the first narrow origin path
-- Phase 3.7 has now started, so the active origin-cert path may use the mature
+- Phase 3.7 standard-format boundary is admitted, so the active origin-cert path may use the mature
   `pem` crate through owned credential adapters in `cloudflared-config`
-- Phase 4.1 has now started, so the admitted runtime observability surface in
+- Phase 4.1 observability and operability is admitted, so the admitted runtime observability surface in
   `cloudflared-cli` may use `tracing` and `tracing-subscriber` for live,
   owner-scoped reporting at the binary boundary
 - config, credential, and ingress normalization work is active in

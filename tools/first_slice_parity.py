@@ -444,7 +444,7 @@ def build_emission_fixture(fixture: Fixture) -> dict[str, object]:
     ):
         payload["ordering_case"] = load_ordering_case(fixture.fixture_id)
     if fixture.category == "ingress-normalization":
-        payload["cli_ingress_case"] = load_cli_ingress_case(fixture.fixture_id)
+        payload["flag_ingress_case"] = load_flag_ingress_case(fixture.fixture_id)
     return payload
 
 
@@ -773,7 +773,7 @@ def load_ordering_case(fixture_id: str) -> dict[str, object]:
     raise SystemExit(f"missing ordering/defaulting case for fixture {fixture_id}")
 
 
-def load_cli_ingress_case(fixture_id: str) -> dict[str, object]:
+def load_flag_ingress_case(fixture_id: str) -> dict[str, object]:
     cases_path = FIXTURE_ROOT / "ingress-normalization" / "cases.toml"
     with cases_path.open("rb") as handle:
         raw = tomllib.load(handle)

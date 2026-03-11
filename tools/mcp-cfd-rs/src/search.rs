@@ -55,28 +55,33 @@ pub async fn search_roots(
     Ok(hits)
 }
 
+fn is_searchable_file(path: &Path, size: u64) -> bool {
+    size <= MAX_SEARCHABLE_FILE_SIZE && is_text_file(path)
+}
+
 async fn collect_text_files(path: &Path, out: &mut BTreeSet<PathBuf>) {
     let Ok(meta) = fs::symlink_metadata(path).await else {
         return;
     };
 
-    let file_type = meta.file_type();
-    if file_type.is_symlink() {
+    if meta.file_type().is_symlink() {
         return;
     }
 
     if meta.is_file() {
-        if is_text_file(path) && meta.len() <= MAX_SEARCHABLE_FILE_SIZE {
+        if is_searchable_file(path, meta.len()) {
             out.insert(path.to_path_buf());
         }
         return;
     }
 
-    if !meta.is_dir() {
-        return;
+    if meta.is_dir() {
+        walk_dir(path, out).await;
     }
+}
 
-    let mut stack = vec![path.to_path_buf()];
+async fn walk_dir(start: &Path, out: &mut BTreeSet<PathBuf>) {
+    let mut stack = vec![start.to_path_buf()];
 
     while let Some(dir) = stack.pop() {
         let Ok(mut read_dir) = fs::read_dir(&dir).await else {
@@ -84,26 +89,30 @@ async fn collect_text_files(path: &Path, out: &mut BTreeSet<PathBuf>) {
         };
 
         while let Ok(Some(entry)) = read_dir.next_entry().await {
-            let entry_path = entry.path();
-
-            let Ok(entry_meta) = fs::symlink_metadata(&entry_path).await else {
-                continue;
-            };
-
-            let entry_type = entry_meta.file_type();
-            if entry_type.is_symlink() {
-                continue;
-            }
-
-            if entry_meta.is_dir() {
-                stack.push(entry_path);
-            } else if entry_meta.is_file()
-                && entry_meta.len() <= MAX_SEARCHABLE_FILE_SIZE
-                && is_text_file(&entry_path)
-            {
-                out.insert(entry_path);
-            }
+            classify_search_entry(entry, out, &mut stack).await;
         }
+    }
+}
+
+async fn classify_search_entry(
+    entry: tokio::fs::DirEntry,
+    out: &mut BTreeSet<PathBuf>,
+    stack: &mut Vec<PathBuf>,
+) {
+    let entry_path = entry.path();
+
+    let Ok(entry_meta) = fs::symlink_metadata(&entry_path).await else {
+        return;
+    };
+
+    if entry_meta.file_type().is_symlink() {
+        return;
+    }
+
+    if entry_meta.is_dir() {
+        stack.push(entry_path);
+    } else if entry_meta.is_file() && is_searchable_file(&entry_path, entry_meta.len()) {
+        out.insert(entry_path);
     }
 }
 
@@ -122,23 +131,21 @@ fn score_text(text: &str, terms: &[String]) -> usize {
 
 fn make_snippet(text: &str, query: &str, limit: usize) -> String {
     let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
-    let flat_lower = flat.to_lowercase();
     let needle = query.trim().to_lowercase();
 
-    if needle.is_empty() {
+    let Some(byte_idx) = flat.to_lowercase().find(&needle) else {
         return flat.chars().take(limit).collect();
-    }
+    };
 
-    if let Some(byte_idx) = flat_lower.find(&needle) {
-        let match_char_idx = flat_lower[..byte_idx].chars().count();
-        let needle_chars = needle.chars().count();
-        let total_chars = flat.chars().count();
+    let match_start = flat[..byte_idx].chars().count();
+    let match_len = needle.chars().count();
+    let total_chars = flat.chars().count();
 
-        let start = match_char_idx.saturating_sub(limit / 2);
-        let end = usize::min(total_chars, match_char_idx + needle_chars + (limit / 2));
+    let window_start = match_start.saturating_sub(limit / 2);
+    let window_end = usize::min(total_chars, match_start + match_len + (limit / 2));
 
-        return flat.chars().skip(start).take(end - start).collect();
-    }
-
-    flat.chars().take(limit).collect()
+    flat.chars()
+        .skip(window_start)
+        .take(window_end - window_start)
+        .collect()
 }

@@ -1,7 +1,7 @@
 use crate::repo;
 use serde::Serialize;
 use std::collections::BTreeSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 
 #[derive(Debug, Serialize)]
@@ -38,48 +38,18 @@ pub async fn collect_paths(
     let mut stack = vec![base_path.to_path_buf()];
 
     while let Some(dir) = stack.pop() {
-        let Ok(mut read_dir) = fs::read_dir(&dir).await else {
-            continue;
-        };
+        let children = read_dir_sorted(&dir).await;
 
-        let mut children = Vec::new();
-        while let Ok(Some(entry)) = read_dir.next_entry().await {
-            let entry_path = entry.path();
-
-            let Ok(entry_meta) = fs::symlink_metadata(&entry_path).await else {
+        for (entry_path, entry_meta) in children {
+            let Some((entry, is_dir)) = classify_entry(repo_root, &entry_path, &entry_meta, extensions)
+            else {
                 continue;
             };
 
-            if entry_meta.file_type().is_symlink() {
-                continue;
-            }
+            entries.push(entry);
 
-            children.push((entry_path, entry_meta));
-        }
-
-        children.sort_by(|left, right| left.0.cmp(&right.0));
-
-        for (entry_path, entry_meta) in children {
-            if entry_meta.is_dir() {
-                entries.push(PathEntry {
-                    path: repo::make_relative(repo_root, &entry_path),
-                    kind: "directory",
-                    size_bytes: None,
-                });
-
-                if recursive {
-                    stack.push(entry_path);
-                }
-            } else if entry_meta.is_file() {
-                if !path_matches_extensions(&entry_path, extensions) {
-                    continue;
-                }
-
-                entries.push(PathEntry {
-                    path: repo::make_relative(repo_root, &entry_path),
-                    kind: "file",
-                    size_bytes: Some(entry_meta.len()),
-                });
+            if is_dir && recursive {
+                stack.push(entry_path);
             }
 
             if entries.len() >= max_results {
@@ -93,6 +63,59 @@ pub async fn collect_paths(
     }
 
     entries
+}
+
+/// Classify a directory entry into a [`PathEntry`], returning `None` for
+/// files that don't match the extension filter.  The `bool` indicates whether
+/// the entry is a directory (and thus eligible for recursive descent).
+fn classify_entry(
+    repo_root: &Path,
+    path: &Path,
+    meta: &std::fs::Metadata,
+    extensions: Option<&BTreeSet<String>>,
+) -> Option<(PathEntry, bool)> {
+    if meta.is_dir() {
+        let entry = PathEntry {
+            path: repo::make_relative(repo_root, path),
+            kind: "directory",
+            size_bytes: None,
+        };
+        return Some((entry, true));
+    }
+
+    if meta.is_file() && path_matches_extensions(path, extensions) {
+        let entry = PathEntry {
+            path: repo::make_relative(repo_root, path),
+            kind: "file",
+            size_bytes: Some(meta.len()),
+        };
+        return Some((entry, false));
+    }
+
+    None
+}
+
+/// Read a single directory and return its non-symlink entries sorted by path.
+async fn read_dir_sorted(dir: &Path) -> Vec<(PathBuf, std::fs::Metadata)> {
+    let Ok(mut read_dir) = fs::read_dir(dir).await else {
+        return Vec::new();
+    };
+
+    let mut children = Vec::new();
+    while let Ok(Some(entry)) = read_dir.next_entry().await {
+        let entry_path = entry.path();
+
+        let Ok(entry_meta) = fs::symlink_metadata(&entry_path).await else {
+            continue;
+        };
+
+        if !entry_meta.file_type().is_symlink() {
+            children.push((entry_path, entry_meta));
+        }
+    }
+
+    children.sort_by(|left, right| left.0.cmp(&right.0));
+    children
 }
 
 pub fn is_text_file(path: &Path) -> bool {

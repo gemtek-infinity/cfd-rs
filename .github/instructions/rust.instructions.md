@@ -5,7 +5,6 @@ applyTo: "**/*.rs,**/Cargo.toml"
 # Rust and manifest instructions for cfd-rs
 
 When editing Rust code or Cargo manifests in this repository:
-
 - prefer the smallest source-grounded change
 - preserve externally visible behavior over stylistic rewrites
 - do not add dependencies unless the active owning slice justifies them
@@ -18,10 +17,11 @@ When editing Rust code or Cargo manifests in this repository:
 - if evidence is incomplete, say so explicitly
 
 ## Local code style
-
 - prefer explicit names, explicit intermediate variables, and straightforward control flow
 - avoid dense one-liners or clever chaining when a few named steps are easier to review
 - prefer early returns, `match`, `if let`, and `let else` over deep nesting
+- prefer flat independent `if` + `continue`/`return` guards over long `if..else if..else if` chains
+- add a blank line before a multi-line control flow block when it follows a different logical step
 - keep blank lines tight; use them to separate real steps, not to add visual padding
 - use one blank line before a multi-line final expression when setup and the final return or construction are both meaningful
 - prefer `self::` for sibling module items when that makes local ownership clearer
@@ -37,7 +37,6 @@ When editing Rust code or Cargo manifests in this repository:
 - keep test names behavior-oriented and specific
 
 ## Local engineering structure
-
 - keep one primary responsibility per crate or module
 - keep public surfaces narrower than their supporting internals
 - admit third-party APIs through owned seams rather than scattering them through unrelated crates
@@ -48,6 +47,33 @@ When editing Rust code or Cargo manifests in this repository:
 - split modules by reviewable reasoning units, not by arbitrary line count alone
 
 ## Review preference
+When multiple valid Rust shapes exist, prefer the one that is easier to understand in one pass, easier to review in small slices, and more consistent with surrounding repository-owned code.
 
-When multiple valid Rust shapes exist, prefer the one that is easier to understand in one pass,
-easier to review in small slices, and more consistent with surrounding repository-owned code.
+## Bounded cognitive-load pass
+For medium or large Rust or manifest changes, before running checks:
+- re-read only the touched files as a reviewer
+- keep one clear owner per touched boundary
+- split long sequential functions into named sub-steps when that clearly improves readability
+- preserve top-level flow visibility
+- avoid introducing vague abstraction layers such as `helper`, `manager`, `common`, or `util`
+- do not widen scope beyond touched files unless a tiny adjacent fix is strictly necessary
+- keep the pass local; do not turn it into a repo-wide cleanup
+- consult the MCP Debtmap surface first when the task is a refactor, hotspot cleanup, ownership split, or medium/large control-flow change
+- when using Debtmap, prefer touched-files review first, then narrow path-prefix review, then broader hotspot review only if still needed
+- use the file-level Debtmap score categories owned by `docs/ai-context-routing.md`
+- ignore file-level scores below `15.0` — they carry negligible cognitive load
+- treat file-level scores in `15.0-29.99` as `reviewable` — review when already in the file
+- treat file-level scores in `30.0-44.99` as `reduce_when_touched`, and aim to keep touched Rust files below `30.0` when feasible
+- treat file-level scores at `45.0+` as `refactor_now`
+- for per-function output, treat cognitive `25+`, cyclomatic `31+`, or total complexity `50+` as `refactor_now` on active-path code
+- marker-debt (TODO/FIXME/TestTodo) is excluded from the file score — these are expected during rewrite phases and do not represent real cognitive load
+- if the MCP Debtmap surface is unavailable, inaccessible, or insufficient, say so explicitly and continue with bounded direct review
+- for PR-readiness, run `debtmap_ci_gate` or `debtmap validate` — blocking violations must be fixed before merge (see CI gate rules in `docs/ai-context-routing.md`)
+
+Do not force this pass on trivial edits.
+
+## Final reporting
+For medium or large changes, separate the summary into:
+- correctness changes
+- cognitive-load changes
+- deferred hotspot or intentionally left follow-up
