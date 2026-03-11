@@ -31,6 +31,10 @@ What exists now:
   `crates/cloudflared-cli/` that emits live runtime reporting, owner-scoped
   transport/protocol/proxy state, narrow readiness truth, and minimal
   operability counters for the admitted alpha path
+- a Phase 4.2 performance validation surface in `crates/cloudflared-cli/`
+  that emits deterministic stage-transition timing evidence, cold vs resumed
+  path distinction, machine-readable performance evidence, and explicit
+  regression thresholds for the admitted alpha harness path
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
 
@@ -40,7 +44,8 @@ What does not exist yet:
 - registration RPC content (capnp) and incoming request stream handling
 - broader standard-format integration beyond the active origin-cert path and
   broader compliance proof work
-- broad admin APIs, performance proof, failure-mode proof, and deployment proof
+- broad admin APIs, broader performance proof beyond the admitted harness
+  path, failure-mode proof, and deployment proof
 - parity-complete broader subsystem coverage
 - broader platform scope beyond the frozen Linux lane
 

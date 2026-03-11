@@ -6,6 +6,7 @@ use crate::transport::TransportLifecycleStage;
 use tracing::{error, info, warn};
 
 use super::super::{READINESS_SCOPE, RuntimeConfig, RuntimePolicy, ShutdownReason};
+use super::timing::StageTiming;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::runtime) enum LifecycleState {
@@ -70,6 +71,7 @@ pub(in crate::runtime) struct RuntimeStatus {
     pub(in crate::runtime) transport_failures: u32,
     pub(in crate::runtime) failure_events: u32,
     pub(in crate::runtime) protocol_bridge_present: bool,
+    pub(in crate::runtime) timing: StageTiming,
 }
 
 impl RuntimeStatus {
@@ -87,6 +89,7 @@ impl RuntimeStatus {
             transport_failures: 0,
             failure_events: 0,
             protocol_bridge_present,
+            timing: StageTiming::new(),
         }
     }
 
