@@ -189,9 +189,23 @@ Sub-stage status:
 
 - Stage 2.1 (master repository truth): **complete**
 - Stage 2.2 (scope, compatibility, governance): **complete**
-- Stage 2.3 (historical phase and parity docs): not started
+- Stage 2.3 (historical phase and parity docs): **complete**
 - Stage 2.4 (operator and contributor guidance): not started
 - Stage 2.5 (AI instructions, skills, agent config): not started
+
+Stage 2.3 outputs:
+
+- `docs/first-slice-freeze.md` marked as historical record — first slice
+  complete and parity-backed, broader parity governed by domain ledgers
+- `docs/status/first-slice-parity.md` marked as historical record — first
+  slice only, broader parity tracked by domain ledgers
+- `docs/status/porting-rules.md` marked as partially superseded — first
+  implementation gate satisfied, first slice complete, broader porting governed
+  by final-phase program
+- `crates/cloudflared-config/tests/README.md` updated — broader parity
+  tracking pointer added
+- `tools/first_slice_parity.py` reviewed — already clearly scoped to
+  first-slice surface, no changes needed
 
 Stage 2.1 outputs:
 
