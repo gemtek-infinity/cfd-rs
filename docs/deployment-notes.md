@@ -5,6 +5,13 @@ Operator-facing deployment notes for the admitted Linux production-alpha lane.
 These notes describe the current deployment contract, build-to-run flow,
 operational caveats, and known gaps for the declared alpha surface.
 
+For the complete gap inventory across all three parity domains, see the live
+implementation checklists:
+
+- `docs/parity/cli/implementation-checklist.md` — CLI command surface (32 rows)
+- `docs/parity/cdc/implementation-checklist.md` — Cloudflare contracts (44 rows)
+- `docs/parity/his/implementation-checklist.md` — host interactions (74 rows)
+
 ## Deployment Contract
 
 The alpha deployment contract is narrow and explicit:
@@ -94,35 +101,42 @@ contract, and exits with an honest failure.
 
 ## Operational Caveats
 
+For the detailed gap inventory behind these caveats, see the parity ledgers
+linked above.
+
 - **Alpha only**: this is a production-alpha surface, not a hardened release
 - **Limited origin dispatch**: `http_status` and `hello_world` are admitted;
   HTTP-origin dispatch is wired but returns 502 until actual proxying exists;
   remaining origin service types return 502 honestly
 - **No Cap'n Proto registration RPC**: the bounded control-stream
   registration exchange is not parity-complete with the frozen Cap'n Proto
-  registration protocol
+  registration protocol (CDC-001, CDC-002)
 - **No origin-cert registration content**: only the credentials-file path
   currently emits bounded registration request content on the control stream
 - **No stream round-trip**: incoming QUIC streams are accepted and parsed,
-  but are not yet round-tripped through origin and back to edge
+  but are not yet round-tripped through origin and back to edge (CDC-011,
+  CDC-012, CDC-018)
 - **No config reload**: config is frozen at startup; no SIGHUP handler or
-  reload command exists
+  reload command exists (HIS-041, HIS-042)
 - **No broad proxy**: the proxy seam is confined to the first admitted path
 - **Signal handling**: SIGTERM and SIGINT trigger clean shutdown; no other
   signals are handled
 
 ## Known Deployment Gaps
 
-These gaps are intentional at the current alpha stage:
+These gaps are intentional at the current alpha stage. For the complete
+host-interaction gap inventory with priority, evidence status, and divergence
+records, see `docs/parity/his/implementation-checklist.md`.
 
 - **No systemd unit file**: the deployment contract expects systemd
-  supervision, but no unit file is shipped
+  supervision, but no unit file is shipped (HIS-012 through HIS-017)
 - **No installer**: no package (deb, rpm) or install script exists
+  (HIS-012, HIS-013)
 - **No container image**: container deployment is not part of the alpha
   contract
-- **No updater**: no automatic update mechanism exists
+- **No updater**: no automatic update mechanism exists (HIS-046, HIS-047)
 - **No log rotation**: log output goes to stderr; no rotation or journal
-  integration is implemented
+  integration is implemented (HIS-063 through HIS-065)
 - **No firewall rules**: no network policy or firewall configuration is
   shipped
 - **No user/group management**: the binary runs as the invoking user; no

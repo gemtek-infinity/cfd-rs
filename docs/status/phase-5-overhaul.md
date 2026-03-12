@@ -183,15 +183,32 @@ Stage 1 is complete.
 
 ### Stage 2: Reconcile Docs
 
-Status: **in progress** (Stage 2.2 complete)
+Status: **in progress** (Stage 2.4 complete)
 
 Sub-stage status:
 
 - Stage 2.1 (master repository truth): **complete**
 - Stage 2.2 (scope, compatibility, governance): **complete**
 - Stage 2.3 (historical phase and parity docs): **complete**
-- Stage 2.4 (operator and contributor guidance): not started
+- Stage 2.4 (operator and contributor guidance): **complete**
 - Stage 2.5 (AI instructions, skills, agent config): not started
+
+Stage 2.4 outputs:
+
+- `docs/deployment-notes.md` updated — added parity ledger cross-references,
+  linked known deployment gaps to HIS checklist rows (HIS-012 through HIS-017,
+  HIS-046, HIS-047, HIS-063 through HIS-065), linked operational caveats to
+  CDC checklist rows (CDC-001, CDC-002, CDC-011, CDC-012, CDC-018, HIS-041,
+  HIS-042)
+- `docs/parity/README.md` created — parity navigation index with domain
+  summaries, document links, cross-domain gap count table, and source-of-truth
+  note
+- `docs/README.md` updated — added parity index link and new Operator Guidance
+  section with deployment-notes link
+- crate READMEs reviewed — no crate-root READMEs exist in current workspace;
+  target crate READMEs are Stage 3 work
+- `crates/cloudflared-config/tests/README.md` reviewed — already updated in
+  Stage 2.3, no further changes needed
 
 Stage 2.3 outputs:
 
@@ -251,12 +268,8 @@ Stage 2.2 outputs:
 
 Required outputs remaining:
 
-- rewritten top-level repository truth
-- updated README and docs map
-- updated phase and status wording
-- updated crate-ownership wording
-- target crate README content
-- links from top-level docs to parity ledgers
+- reconciled AI instructions, skills, and agent config (Stage 2.5)
+- target crate README content (Stage 3, after crate skeletons exist)
 
 This stage is mandatory implementation work, not cleanup.
 

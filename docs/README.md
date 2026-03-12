@@ -32,6 +32,8 @@ Use this directory as an index. Load the smallest relevant file first.
 
 ## Parity Audit And Tracking
 
+Parity navigation index: `docs/parity/README.md`
+
 Implementation checklists (live parity ledgers):
 
 - `docs/parity/cli/implementation-checklist.md` — CLI (32 rows)
@@ -59,6 +61,10 @@ Baseline evidence captures: `docs/parity/cli/captures/`
 
 - `FINAL_PLAN.md` — staged execution plan with sub-stage gates
 - `FINAL_PHASE.md` — detailed execution reference
+
+## Operator Guidance
+
+- `docs/deployment-notes.md` — deployment contract, build-to-run flow, known gaps
 
 ## ADRs
 
