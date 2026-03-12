@@ -147,22 +147,26 @@ Outputs established now:
   - `tail-management-service-update.txt` — tail, management, service, update
   - `error-and-compat.txt` — unknown commands, bad flags, proxy-dns, db-connect
   - `rust-current-surface.txt` — current Rust binary outputs for comparison
-- CDC implementation checklist exists
+- CDC implementation checklist exists and is fully populated (44 rows)
+- CDC feature-group audit documents exist:
+  - `docs/parity/cdc/registration-rpc.md`
+  - `docs/parity/cdc/stream-contracts.md`
+  - `docs/parity/cdc/management-and-diagnostics.md`
+  - `docs/parity/cdc/metrics-readiness-and-api.md`
 - HIS implementation checklist exists
 
 Sub-stage status:
 
 - Stage 1.1 (CLI audit): **complete**
-- Stage 1.2 (CDC audit): not started
+- Stage 1.2 (CDC audit): **complete**
 - Stage 1.3 (HIS audit): not started
 
 Remaining audit work:
 
-- expand and normalize CDC checklist rows from frozen baseline truth
 - expand and normalize HIS checklist rows from frozen baseline truth
-- capture baseline evidence for highest-risk CDC and HIS feature groups
-- add feature-group audit documents for CDC and HIS where needed
-- rank major CDC and HIS parity gaps for documentation and refactor ordering
+- capture baseline evidence for highest-risk HIS feature groups
+- add feature-group audit documents for HIS where needed
+- rank major HIS parity gaps for documentation and refactor ordering
 
 ### Stage 2: Reconcile Docs
 
