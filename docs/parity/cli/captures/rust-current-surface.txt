@@ -1,0 +1,216 @@
+=== ROOT HELP ===
+--- command: cloudflared --help
+cloudflared 2026.2.0-alpha.202603
+Linux production-alpha QUIC tunnel core with wire/protocol boundary, Pingora proxy seam, and narrow operability reporting
+
+Usage:
+  cloudflared [--config FILEPATH] validate
+  cloudflared [--config FILEPATH] run
+  cloudflared help
+  cloudflared version
+
+Admitted commands:
+  validate  Resolve config, load YAML, normalize ingress, and report startup readiness.
+  run       Enter the runtime-owned QUIC transport core with wire/protocol boundary
+            and Pingora proxy seam.
+            Emits narrow lifecycle, readiness, and failure visibility for the
+            admitted alpha role. The admitted origin path is http_status only.
+            Broader origin support and general proxy completeness remain later
+            slices.
+  version   Print the workspace version.
+  help      Print this help text.
+
+Admitted flags and defaults:
+  --config FILEPATH  Use an explicit YAML config path.
+  default discovery  Search ~/.cloudflared, ~/.cloudflare-warp, ~/cloudflare-warp, /etc/cloudflared, /usr/local/etc/cloudflared.
+  default create     If no config exists, write /usr/local/etc/cloudflared/config.yml with logDirectory: /var/log/cloudflared.
+
+Admitted environment:
+  HOME  Expands the leading ~ in default config search directories.
+
+Admitted operability surface:
+  run output  Reports runtime lifecycle, owner-scoped transport/protocol/proxy state,
+            narrow readiness, and localized failure visibility for the admitted path.
+
+Deferred beyond current phase:
+  Broader origin support, registration RPC, incoming stream handling,
+  certificate/key container handling beyond the active path, packaging, and deployment tooling
+--- exit_code: 0
+
+=== ROOT EMPTY INVOCATION ===
+--- command: cloudflared (no args)
+cloudflared 2026.2.0-alpha.202603
+Linux production-alpha QUIC tunnel core with wire/protocol boundary, Pingora proxy seam, and narrow operability reporting
+
+Usage:
+  cloudflared [--config FILEPATH] validate
+  cloudflared [--config FILEPATH] run
+  cloudflared help
+  cloudflared version
+
+Admitted commands:
+  validate  Resolve config, load YAML, normalize ingress, and report startup readiness.
+  run       Enter the runtime-owned QUIC transport core with wire/protocol boundary
+            and Pingora proxy seam.
+            Emits narrow lifecycle, readiness, and failure visibility for the
+            admitted alpha role. The admitted origin path is http_status only.
+            Broader origin support and general proxy completeness remain later
+            slices.
+  version   Print the workspace version.
+  help      Print this help text.
+
+Admitted flags and defaults:
+  --config FILEPATH  Use an explicit YAML config path.
+  default discovery  Search ~/.cloudflared, ~/.cloudflare-warp, ~/cloudflare-warp, /etc/cloudflared, /usr/local/etc/cloudflared.
+  default create     If no config exists, write /usr/local/etc/cloudflared/config.yml with logDirectory: /var/log/cloudflared.
+
+Admitted environment:
+  HOME  Expands the leading ~ in default config search directories.
+
+Admitted operability surface:
+  run output  Reports runtime lifecycle, owner-scoped transport/protocol/proxy state,
+            narrow readiness, and localized failure visibility for the admitted path.
+
+Deferred beyond current phase:
+  Broader origin support, registration RPC, incoming stream handling,
+  certificate/key container handling beyond the active path, packaging, and deployment tooling
+--- exit_code: 0
+
+=== VERSION ===
+--- command: cloudflared version
+cloudflared 2026.2.0-alpha.202603
+--- exit_code: 0
+
+=== VERSION FLAG ===
+--- command: cloudflared --version
+cloudflared 2026.2.0-alpha.202603
+--- exit_code: 0
+
+=== HELP COMMAND ===
+--- command: cloudflared help
+cloudflared 2026.2.0-alpha.202603
+Linux production-alpha QUIC tunnel core with wire/protocol boundary, Pingora proxy seam, and narrow operability reporting
+
+Usage:
+  cloudflared [--config FILEPATH] validate
+  cloudflared [--config FILEPATH] run
+  cloudflared help
+  cloudflared version
+
+Admitted commands:
+  validate  Resolve config, load YAML, normalize ingress, and report startup readiness.
+  run       Enter the runtime-owned QUIC transport core with wire/protocol boundary
+            and Pingora proxy seam.
+            Emits narrow lifecycle, readiness, and failure visibility for the
+            admitted alpha role. The admitted origin path is http_status only.
+            Broader origin support and general proxy completeness remain later
+            slices.
+  version   Print the workspace version.
+  help      Print this help text.
+
+Admitted flags and defaults:
+  --config FILEPATH  Use an explicit YAML config path.
+  default discovery  Search ~/.cloudflared, ~/.cloudflare-warp, ~/cloudflare-warp, /etc/cloudflared, /usr/local/etc/cloudflared.
+  default create     If no config exists, write /usr/local/etc/cloudflared/config.yml with logDirectory: /var/log/cloudflared.
+
+Admitted environment:
+  HOME  Expands the leading ~ in default config search directories.
+
+Admitted operability surface:
+  run output  Reports runtime lifecycle, owner-scoped transport/protocol/proxy state,
+            narrow readiness, and localized failure visibility for the admitted path.
+
+Deferred beyond current phase:
+  Broader origin support, registration RPC, incoming stream handling,
+  certificate/key container handling beyond the active path, packaging, and deployment tooling
+--- exit_code: 0
+
+=== UNKNOWN COMMAND ===
+--- command: cloudflared notacommand
+error: unknown command or argument: notacommand
+Run `cloudflared help` for the admitted command surface.
+--- exit_code: 2
+
+=== BAD FLAG ===
+--- command: cloudflared --notaflag
+error: unknown flag: --notaflag
+Run `cloudflared help` for the admitted command surface.
+--- exit_code: 2
+
+=== VALIDATE ===
+--- command: cloudflared validate --help
+cloudflared 2026.2.0-alpha.202603
+Linux production-alpha QUIC tunnel core with wire/protocol boundary, Pingora proxy seam, and narrow operability reporting
+
+Usage:
+  cloudflared [--config FILEPATH] validate
+  cloudflared [--config FILEPATH] run
+  cloudflared help
+  cloudflared version
+
+Admitted commands:
+  validate  Resolve config, load YAML, normalize ingress, and report startup readiness.
+  run       Enter the runtime-owned QUIC transport core with wire/protocol boundary
+            and Pingora proxy seam.
+            Emits narrow lifecycle, readiness, and failure visibility for the
+            admitted alpha role. The admitted origin path is http_status only.
+            Broader origin support and general proxy completeness remain later
+            slices.
+  version   Print the workspace version.
+  help      Print this help text.
+
+Admitted flags and defaults:
+  --config FILEPATH  Use an explicit YAML config path.
+  default discovery  Search ~/.cloudflared, ~/.cloudflare-warp, ~/cloudflare-warp, /etc/cloudflared, /usr/local/etc/cloudflared.
+  default create     If no config exists, write /usr/local/etc/cloudflared/config.yml with logDirectory: /var/log/cloudflared.
+
+Admitted environment:
+  HOME  Expands the leading ~ in default config search directories.
+
+Admitted operability surface:
+  run output  Reports runtime lifecycle, owner-scoped transport/protocol/proxy state,
+            narrow readiness, and localized failure visibility for the admitted path.
+
+Deferred beyond current phase:
+  Broader origin support, registration RPC, incoming stream handling,
+  certificate/key container handling beyond the active path, packaging, and deployment tooling
+--- exit_code: 0
+
+=== RUN HELP ===
+--- command: cloudflared run --help
+cloudflared 2026.2.0-alpha.202603
+Linux production-alpha QUIC tunnel core with wire/protocol boundary, Pingora proxy seam, and narrow operability reporting
+
+Usage:
+  cloudflared [--config FILEPATH] validate
+  cloudflared [--config FILEPATH] run
+  cloudflared help
+  cloudflared version
+
+Admitted commands:
+  validate  Resolve config, load YAML, normalize ingress, and report startup readiness.
+  run       Enter the runtime-owned QUIC transport core with wire/protocol boundary
+            and Pingora proxy seam.
+            Emits narrow lifecycle, readiness, and failure visibility for the
+            admitted alpha role. The admitted origin path is http_status only.
+            Broader origin support and general proxy completeness remain later
+            slices.
+  version   Print the workspace version.
+  help      Print this help text.
+
+Admitted flags and defaults:
+  --config FILEPATH  Use an explicit YAML config path.
+  default discovery  Search ~/.cloudflared, ~/.cloudflare-warp, ~/cloudflare-warp, /etc/cloudflared, /usr/local/etc/cloudflared.
+  default create     If no config exists, write /usr/local/etc/cloudflared/config.yml with logDirectory: /var/log/cloudflared.
+
+Admitted environment:
+  HOME  Expands the leading ~ in default config search directories.
+
+Admitted operability surface:
+  run output  Reports runtime lifecycle, owner-scoped transport/protocol/proxy state,
+            narrow readiness, and localized failure visibility for the admitted path.
+
+Deferred beyond current phase:
+  Broader origin support, registration RPC, incoming stream handling,
+  certificate/key container handling beyond the active path, packaging, and deployment tooling
+--- exit_code: 0

@@ -1,0 +1,142 @@
+=== TAIL HELP ===
+--- command: cloudflared tail --help
+NAME:
+   cloudflared tail - Stream logs from a remote cloudflared
+
+USAGE:
+   cloudflared tail command [command options] [arguments...]
+
+COMMANDS:
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --connector-id value  Access a specific cloudflared instance by connector id (for when a tunnel has multiple cloudflared's) [$TUNNEL_MANAGEMENT_CONNECTOR]
+   --event value         Filter by specific Events (cloudflared, http, tcp, udp) otherwise, defaults to send all events  (accepts multiple inputs) [$TUNNEL_MANAGEMENT_FILTER_EVENTS]
+   --level value         Filter by specific log levels (debug, info, warn, error). Filters by debug log level by default. (default: "debug") [$TUNNEL_MANAGEMENT_FILTER_LEVEL]
+   --sample value        Sample log events by percentage (0.0 .. 1.0). No sampling by default. (default: 1) [$TUNNEL_MANAGEMENT_FILTER_SAMPLE]
+   --token value         Access token for a specific tunnel [$TUNNEL_MANAGEMENT_TOKEN]
+   --loglevel value      Application logging level {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_LOGLEVEL]
+   --origincert value    Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --output value        Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+   --help, -h            show help (default: false)
+   
+--- exit_code: 0
+
+=== MANAGEMENT HELP ===
+--- command: cloudflared management --help
+NAME:
+   cloudflared management - Monitor cloudflared tunnels via management API
+
+USAGE:
+   cloudflared management command [command options] [arguments...]
+
+COMMANDS:
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+--- exit_code: 0
+
+=== MANAGEMENT TOKEN HELP ===
+--- command: cloudflared management token --help
+NAME:
+   cloudflared management token - Get management access jwt for a specific resource
+
+USAGE:
+   cloudflared management token --resource <resource> TUNNEL_ID
+
+DESCRIPTION:
+   Get management access jwt for a tunnel with specified resource permissions (logs, admin, host_details)
+
+OPTIONS:
+   --resource value    Resource type for token permissions: logs, admin, or host_details
+   --origincert value  Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --loglevel value    Application logging level {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_LOGLEVEL]
+   --output value      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+   --help, -h          show help (default: false)
+   
+--- exit_code: 0
+
+=== SERVICE HELP ===
+--- command: cloudflared service --help
+NAME:
+   cloudflared service - Manages the cloudflared system service
+
+USAGE:
+   cloudflared service command [command options] [arguments...]
+
+COMMANDS:
+   install    Install cloudflared as a system service
+   uninstall  Uninstall the cloudflared service
+   help, h    Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+--- exit_code: 0
+
+=== SERVICE INSTALL HELP ===
+--- command: cloudflared service install --help
+NAME:
+   cloudflared service install - Install cloudflared as a system service
+
+USAGE:
+   cloudflared service install [command options] [arguments...]
+
+OPTIONS:
+   --no-update-service  Disable auto-update of the cloudflared linux service, which restarts the server to upgrade for new versions. (default: false)
+   --help, -h           show help (default: false)
+   
+--- exit_code: 0
+
+=== SERVICE UNINSTALL HELP ===
+--- command: cloudflared service uninstall --help
+NAME:
+   cloudflared service uninstall - Uninstall the cloudflared service
+
+USAGE:
+   cloudflared service uninstall [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+--- exit_code: 0
+
+=== UPDATE HELP ===
+--- command: cloudflared update --help
+NAME:
+   cloudflared update - Update the agent if a new version exists
+
+USAGE:
+   cloudflared update [command options] [arguments...]
+
+DESCRIPTION:
+   Looks for a new version on the official download server.
+   If a new version exists, updates the agent binary and quits.
+   Otherwise, does nothing.
+   
+   To determine if an update happened in a script, check for error code 11.
+
+OPTIONS:
+   --beta           specify if you wish to update to the latest beta version (default: false)
+   --version value  specify a version you wish to upgrade or downgrade to
+   --help, -h       show help (default: false)
+   
+--- exit_code: 0
+
+=== TOP-LEVEL LOGIN HELP ===
+--- command: cloudflared login --help
+NAME:
+   cloudflared login - Generate a configuration file with your login details
+
+USAGE:
+   cloudflared login [command options]  
+
+OPTIONS:
+   --loginURL value     The URL used to login (default is https://dash.cloudflare.com/argotunnel) (default: "https://dash.cloudflare.com/argotunnel")
+   --callbackURL value  The URL used for the callback (default is https://login.cloudflareaccess.org/) (default: "https://login.cloudflareaccess.org/")
+   --fedramp, -f        Login with FedRAMP High environment. (default: false)
+   --help, -h           show help (default: false)
+   
+--- exit_code: 0

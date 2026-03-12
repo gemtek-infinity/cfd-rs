@@ -1,0 +1,254 @@
+=== UNKNOWN COMMAND ===
+--- command: cloudflared notacommand
+You did not specify any valid additional argument to the cloudflared tunnel command.
+
+If you are trying to run a Quick Tunnel then you need to explicitly pass the --url flag.
+Eg. cloudflared tunnel --url localhost:8080/.
+
+Please note that Quick Tunnels are meant to be ephemeral and should only be used for testing purposes.
+For production usage, we recommend creating Named Tunnels. (https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/)
+
+--- exit_code: 1
+
+=== BAD FLAG ===
+--- command: cloudflared --notaflag
+Incorrect Usage. flag provided but not defined: -notaflag
+
+NAME:
+   cloudflared - Cloudflare's command-line tool and agent
+
+USAGE:
+   cloudflared [global options] [command] [command options]
+
+VERSION:
+   DEV (built unknown)
+
+DESCRIPTION:
+   cloudflared connects your machine or user identity to Cloudflare's global network.
+     You can use it to authenticate a session to reach an API behind Access, route web traffic to this machine,
+     and configure access control.
+   
+     See https://developers.cloudflare.com/cloudflare-one/connections/connect-apps for more in-depth documentation.
+
+COMMANDS:
+   update     Update the agent if a new version exists
+   version    Print the version
+   proxy-dns  dns-proxy feature is no longer supported
+   tail       Stream logs from a remote cloudflared
+   service    Manages the cloudflared system service
+   help, h    Shows a list of commands or help for one command
+   Access:
+     access, forward  access <subcommand>
+   Tunnel:
+     tunnel  Use Cloudflare Tunnel to expose private services to the Internet or to Cloudflare connected private users.
+
+GLOBAL OPTIONS:
+   --output value                               Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+   --proxy-dns                                  (default: false)
+   --proxy-dns-port value                       (default: 0)
+   --proxy-dns-address value                    
+   --proxy-dns-upstream value                   (accepts multiple inputs)
+   --proxy-dns-max-upstream-conns value         (default: 0)
+   --proxy-dns-bootstrap value                  (accepts multiple inputs)
+   --credentials-file value, --cred-file value  Filepath at which to read/write the tunnel credentials [$TUNNEL_CRED_FILE]
+   --region value                               Cloudflare Edge region to connect to. Omit or set to empty to connect to the global region. [$TUNNEL_REGION]
+   --edge-ip-version value                      Cloudflare Edge IP address version to connect with. {4, 6, auto} (default: "4") [$TUNNEL_EDGE_IP_VERSION]
+   --edge-bind-address value                    Bind to IP address for outgoing connections to Cloudflare Edge. [$TUNNEL_EDGE_BIND_ADDRESS]
+   --label value                                Use this option to give a meaningful label to a specific connector. When a tunnel starts up, a connector id unique to the tunnel is generated. This is a uuid. To make it easier to identify a connector, we will use the hostname of the machine the tunnel is running on along with the connector ID. This option exists if one wants to have more control over what their individual connectors are called.
+   --post-quantum, --pq                         When given creates an experimental post-quantum secure tunnel (default: false) [$TUNNEL_POST_QUANTUM]
+   --management-diagnostics                     Enables the in-depth diagnostic routes to be made available over the management service (/debug/pprof, /metrics, etc.) (default: true) [$TUNNEL_MANAGEMENT_DIAGNOSTICS]
+   --overwrite-dns, -f                          Overwrites existing DNS records with this hostname (default: false) [$TUNNEL_FORCE_PROVISIONING_DNS]
+   --help, -h                                   show help (default: false)
+   --version, -v, -V                            Print the version (default: false)
+
+COPYRIGHT:
+   (c) 2026 Cloudflare Inc.
+   Your installation of cloudflared software constitutes a symbol of your signature indicating that you accept
+   the terms of the Apache License Version 2.0 (https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/license),
+   Terms (https://www.cloudflare.com/terms/) and Privacy Policy (https://www.cloudflare.com/privacypolicy/).
+--- exit_code: 0
+
+=== PROXY-DNS (removed) ===
+--- command: cloudflared proxy-dns
+2026-03-12T18:38:31Z ERR DNS Proxy is no longer supported since version 2026.2.0 (https://developers.cloudflare.com/changelog/2025-11-11-cloudflared-proxy-dns/). As an alternative consider using https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/dns-over-https-client/
+dns-proxy feature is no longer supported
+--- exit_code: 1
+
+=== TUNNEL PROXY-DNS (removed) ===
+--- command: cloudflared tunnel proxy-dns
+2026-03-12T18:38:31Z ERR DNS Proxy is no longer supported since version 2026.2.0 (https://developers.cloudflare.com/changelog/2025-11-11-cloudflared-proxy-dns/). As an alternative consider using https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/dns-over-https-client/
+dns-proxy feature is no longer supported
+--- exit_code: 1
+
+=== TUNNEL DB-CONNECT (removed) ===
+--- command: cloudflared tunnel db-connect
+db-connect command is no longer supported by cloudflared. Consult Cloudflare Tunnel documentation for possible alternative solutions.
+--- exit_code: 255
+
+=== TUNNEL UNKNOWN SUBCOMMAND ===
+--- command: cloudflared tunnel notasub
+You did not specify any valid additional argument to the cloudflared tunnel command.
+
+If you are trying to run a Quick Tunnel then you need to explicitly pass the --url flag.
+Eg. cloudflared tunnel --url localhost:8080/.
+
+Please note that Quick Tunnels are meant to be ephemeral and should only be used for testing purposes.
+For production usage, we recommend creating Named Tunnels. (https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/)
+
+--- exit_code: 1
+
+=== HELP COMMAND ===
+--- command: cloudflared help
+NAME:
+   cloudflared - Cloudflare's command-line tool and agent
+
+USAGE:
+   cloudflared [global options] [command] [command options]
+
+VERSION:
+   DEV (built unknown)
+
+DESCRIPTION:
+   cloudflared connects your machine or user identity to Cloudflare's global network.
+     You can use it to authenticate a session to reach an API behind Access, route web traffic to this machine,
+     and configure access control.
+   
+     See https://developers.cloudflare.com/cloudflare-one/connections/connect-apps for more in-depth documentation.
+
+COMMANDS:
+   update     Update the agent if a new version exists
+   version    Print the version
+   proxy-dns  dns-proxy feature is no longer supported
+   tail       Stream logs from a remote cloudflared
+   service    Manages the cloudflared system service
+   help, h    Shows a list of commands or help for one command
+   Access:
+     access, forward  access <subcommand>
+   Tunnel:
+     tunnel  Use Cloudflare Tunnel to expose private services to the Internet or to Cloudflare connected private users.
+
+GLOBAL OPTIONS:
+   --output value                               Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+   --proxy-dns                                  (default: false)
+   --proxy-dns-port value                       (default: 0)
+   --proxy-dns-address value                    
+   --proxy-dns-upstream value                   (accepts multiple inputs)
+   --proxy-dns-max-upstream-conns value         (default: 0)
+   --proxy-dns-bootstrap value                  (accepts multiple inputs)
+   --credentials-file value, --cred-file value  Filepath at which to read/write the tunnel credentials [$TUNNEL_CRED_FILE]
+   --region value                               Cloudflare Edge region to connect to. Omit or set to empty to connect to the global region. [$TUNNEL_REGION]
+   --edge-ip-version value                      Cloudflare Edge IP address version to connect with. {4, 6, auto} (default: "4") [$TUNNEL_EDGE_IP_VERSION]
+   --edge-bind-address value                    Bind to IP address for outgoing connections to Cloudflare Edge. [$TUNNEL_EDGE_BIND_ADDRESS]
+   --label value                                Use this option to give a meaningful label to a specific connector. When a tunnel starts up, a connector id unique to the tunnel is generated. This is a uuid. To make it easier to identify a connector, we will use the hostname of the machine the tunnel is running on along with the connector ID. This option exists if one wants to have more control over what their individual connectors are called.
+   --post-quantum, --pq                         When given creates an experimental post-quantum secure tunnel (default: false) [$TUNNEL_POST_QUANTUM]
+   --management-diagnostics                     Enables the in-depth diagnostic routes to be made available over the management service (/debug/pprof, /metrics, etc.) (default: true) [$TUNNEL_MANAGEMENT_DIAGNOSTICS]
+   --overwrite-dns, -f                          Overwrites existing DNS records with this hostname (default: false) [$TUNNEL_FORCE_PROVISIONING_DNS]
+   --help, -h                                   show help (default: false)
+   --version, -v, -V                            Print the version (default: false)
+
+COPYRIGHT:
+   (c) 2026 Cloudflare Inc.
+   Your installation of cloudflared software constitutes a symbol of your signature indicating that you accept
+   the terms of the Apache License Version 2.0 (https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/license),
+   Terms (https://www.cloudflare.com/terms/) and Privacy Policy (https://www.cloudflare.com/privacypolicy/).
+--- exit_code: 0
+
+=== HELP TUNNEL ===
+--- command: cloudflared help tunnel
+NAME:
+   cloudflared tunnel - Use Cloudflare Tunnel to expose private services to the Internet or to Cloudflare connected private users.
+
+USAGE:
+   cloudflared tunnel [command options]  
+
+CATEGORY:
+   Tunnel
+
+DESCRIPTION:
+   Cloudflare Tunnel allows to expose private services without opening any ingress port on this machine. It can expose:
+     A) Locally reachable HTTP-based private services to the Internet on DNS with Cloudflare as authority (which you can
+   then protect with Cloudflare Access).
+     B) Locally reachable TCP/UDP-based private services to Cloudflare connected private users in the same account, e.g.,
+   those enrolled to a Zero Trust WARP Client.
+   
+   You can manage your Tunnels via one.dash.cloudflare.com. This approach will only require you to run a single command
+   later in each machine where you wish to run a Tunnel.
+   
+   Alternatively, you can manage your Tunnels via the command line. Begin by obtaining a certificate to be able to do so:
+   
+     $ cloudflared tunnel login
+   
+   With your certificate installed you can then get started with Tunnels:
+   
+     $ cloudflared tunnel create my-first-tunnel
+     $ cloudflared tunnel route dns my-first-tunnel my-first-tunnel.mydomain.com
+     $ cloudflared tunnel run --hello-world my-first-tunnel
+   
+   You can now access my-first-tunnel.mydomain.com and be served an example page by your local cloudflared process.
+   
+   For exposing local TCP/UDP services by IP to your privately connected users, check out:
+   
+     $ cloudflared tunnel route ip --help
+   
+   See https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/ for more info.
+
+OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --url URL                                           Connect to the local webserver at URL. (default: "http://localhost:8080") [$TUNNEL_URL]
+   --hello-world                                       Run Hello World Server (default: false) [$TUNNEL_HELLO_WORLD]
+   --socks5 --url                                      specify if this tunnel is running as a SOCK5 Server This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false) [$TUNNEL_SOCKS]
+   --proxy-connect-timeout --url                       HTTP proxy timeout for establishing a new connection This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 30s)
+   --proxy-tls-timeout --url                           HTTP proxy timeout for completing a TLS handshake This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 10s)
+   --proxy-tcp-keepalive --url                         HTTP proxy TCP keepalive duration This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 30s)
+   --proxy-no-happy-eyeballs --url                     HTTP proxy should disable "happy eyeballs" for IPv4/v6 fallback This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false)
+   --proxy-keepalive-connections --url                 HTTP proxy maximum keepalive connection pool size This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 100)
+   --proxy-keepalive-timeout --url                     HTTP proxy timeout for closing an idle connection This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 1m30s)
+   --proxy-connection-timeout value                    DEPRECATED. No longer has any effect. (default: 1m30s)
+   --proxy-expect-continue-timeout value               DEPRECATED. No longer has any effect. (default: 1m30s)
+   --http-host-header --url                            Sets the HTTP Host header for the local webserver. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress [$TUNNEL_HTTP_HOST_HEADER]
+   --origin-server-name --url                          Hostname on the origin server certificate. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress [$TUNNEL_ORIGIN_SERVER_NAME]
+   --unix-socket value                                 Path to unix socket to use instead of --url [$TUNNEL_UNIX_SOCKET]
+   --origin-ca-pool --url                              Path to the CA for the certificate of your origin. This option should be used only if your certificate is not signed by Cloudflare. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress [$TUNNEL_ORIGIN_CA_POOL]
+   --no-tls-verify --url                               Disables TLS verification of the certificate presented by your origin. Will allow any certificate from the origin to be accepted. Note: The connection from your machine to Cloudflare's Edge is still encrypted. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false) [$NO_TLS_VERIFY]
+   --no-chunked-encoding --url                         Disables chunked transfer encoding; useful if you are running a WSGI server. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false) [$TUNNEL_NO_CHUNKED_ENCODING]
+   --http2-origin                                      Enables HTTP/2 origin servers. (default: false) [$TUNNEL_ORIGIN_ENABLE_HTTP2]
+   --bastion                                           Runs as jump host (default: false) [$TUNNEL_BASTION]
+   --proxy-address value                               Listen address for the proxy. (default: "127.0.0.1") [$TUNNEL_PROXY_ADDRESS]
+   --proxy-port value                                  Listen port for the proxy. (default: 0) [$TUNNEL_PROXY_PORT]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+   --proxy-dns                                         (default: false)
+   --proxy-dns-port value                              (default: 0)
+   --proxy-dns-address value                           
+   --proxy-dns-upstream value                          (accepts multiple inputs)
+   --proxy-dns-max-upstream-conns value                (default: 0)
+   --proxy-dns-bootstrap value                         (accepts multiple inputs)
+   --credentials-file value, --cred-file value         Filepath at which to read/write the tunnel credentials [$TUNNEL_CRED_FILE]
+   --region value                                      Cloudflare Edge region to connect to. Omit or set to empty to connect to the global region. [$TUNNEL_REGION]
+   --edge-ip-version value                             Cloudflare Edge IP address version to connect with. {4, 6, auto} (default: "4") [$TUNNEL_EDGE_IP_VERSION]
+   --edge-bind-address value                           Bind to IP address for outgoing connections to Cloudflare Edge. [$TUNNEL_EDGE_BIND_ADDRESS]
+   --hostname value                                    Set a hostname on a Cloudflare zone to route traffic through this tunnel. [$TUNNEL_HOSTNAME]
+   --lb-pool value                                     The name of a (new/existing) load balancing pool to add this origin to. [$TUNNEL_LB_POOL]
+   --metrics-update-freq value                         Frequency to update tunnel metrics (default: 5s) [$TUNNEL_METRICS_UPDATE_FREQ]
+   --retries value                                     Maximum number of retries for connection/protocol errors. (default: 5) [$TUNNEL_RETRIES]
+   --label value                                       Use this option to give a meaningful label to a specific connector. When a tunnel starts up, a connector id unique to the tunnel is generated. This is a uuid. To make it easier to identify a connector, we will use the hostname of the machine the tunnel is running on along with the connector ID. This option exists if one wants to have more control over what their individual connectors are called.
+   --grace-period value                                When cloudflared receives SIGINT/SIGTERM it will stop accepting new requests, wait for in-progress requests to terminate, then shutdown. Waiting for in-progress requests will timeout after this grace period, or when a second SIGTERM/SIGINT is received. (default: 30s) [$TUNNEL_GRACE_PERIOD]
+   --compression-quality value                         (beta) Use cross-stream compression instead HTTP compression. 0-off, 1-low, 2-medium, >=3-high. (default: 0) [$TUNNEL_COMPRESSION_LEVEL]
+   --name value, -n value                              Stable name to identify the tunnel. Using this flag will create, route and run a tunnel. For production usage, execute each command separately [$TUNNEL_NAME]
+   --post-quantum, --pq                                When given creates an experimental post-quantum secure tunnel (default: false) [$TUNNEL_POST_QUANTUM]
+   --management-diagnostics                            Enables the in-depth diagnostic routes to be made available over the management service (/debug/pprof, /metrics, etc.) (default: true) [$TUNNEL_MANAGEMENT_DIAGNOSTICS]
+   --overwrite-dns, -f                                 Overwrites existing DNS records with this hostname (default: false) [$TUNNEL_FORCE_PROVISIONING_DNS]
+   
+--- exit_code: 0
