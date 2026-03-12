@@ -1,0 +1,164 @@
+=== ACCESS HELP ===
+--- command: cloudflared access --help
+NAME:
+   cloudflared access - access <subcommand>
+
+USAGE:
+   cloudflared access command [command options] [arguments...]
+
+DESCRIPTION:
+   Cloudflare Access protects internal resources by securing, authenticating and monitoring access
+         per-user and by application. With Cloudflare Access, only authenticated users with the required permissions are
+         able to reach sensitive resources. The commands provided here allow you to interact with Access protected
+         applications from the command line.
+
+COMMANDS:
+   login               login <url of access application>
+   curl                curl [--allow-request, -ar] <url> [<curl args>...]
+   token               token <url of access application>
+   tcp, rdp, ssh, smb  
+   ssh-config          
+   ssh-gen             
+   help, h             Shows a list of commands or help for one command
+
+OPTIONS:
+   --fedramp   use when performing operations in fedramp account (default: false)
+   --help, -h  show help (default: false)
+   
+--- exit_code: 0
+
+=== ACCESS LOGIN HELP ===
+--- command: cloudflared access login --help
+NAME:
+   cloudflared access login - login <url of access application>
+
+USAGE:
+   cloudflared access login [command options] url of Access application
+
+DESCRIPTION:
+   The login subcommand initiates an authentication flow with your identity provider.
+             The subcommand will launch a browser. For headless systems, a url is provided.
+             Once authenticated with your identity provider, the login command will generate a JSON Web Token (JWT)
+             scoped to your identity, the application you intend to reach, and valid for a session duration set by your
+             administrator. cloudflared stores the token in local storage.
+
+OPTIONS:
+   --quiet, -q   do not print the jwt to the command line (default: false)
+   --no-verbose  print only the jwt to stdout (default: false)
+   --auto-close  automatically close the auth interstitial after action (default: false)
+   --app value   
+   --help, -h    show help (default: false)
+   
+--- exit_code: 0
+
+=== ACCESS CURL HELP ===
+--- command: cloudflared access curl --help
+2026-03-12T18:38:04Z ERR Please provide a valid URL as the first argument to curl.
+parse "--help": invalid URI for request
+--- exit_code: 1
+
+=== ACCESS TOKEN HELP ===
+--- command: cloudflared access token --help
+NAME:
+   cloudflared access token - token <url of access application>
+
+USAGE:
+   cloudflared access token [command options] url of Access application
+
+DESCRIPTION:
+   The token subcommand produces a JWT which can be used to authenticate requests.
+
+OPTIONS:
+   --app value  
+   --help, -h   show help (default: false)
+   
+--- exit_code: 0
+
+=== ACCESS TCP HELP ===
+--- command: cloudflared access tcp --help
+NAME:
+   cloudflared access tcp - 
+
+USAGE:
+   cloudflared access tcp [command options] [arguments...]
+
+DESCRIPTION:
+   The tcp subcommand sends data over a proxy to the Cloudflare edge.
+
+OPTIONS:
+   --hostname value, --tunnel-host value, -T value  specify the hostname of your application. [$TUNNEL_SERVICE_HOSTNAME]
+   --destination value                              specify the destination address of your SSH server. [$TUNNEL_SERVICE_DESTINATION]
+   --url value, --listener value, -L value          specify the host:port to forward data to Cloudflare edge. [$TUNNEL_SERVICE_URL]
+   --header value, -H value                         specify additional headers you wish to send.  (accepts multiple inputs)
+   --service-token-id value, --id value             specify an Access service token ID you wish to use. [$TUNNEL_SERVICE_TOKEN_ID]
+   --service-token-secret value, --secret value     specify an Access service token secret you wish to use. [$TUNNEL_SERVICE_TOKEN_SECRET]
+   --logfile value                                  Save application log to this file for reporting issues.
+   --log-directory value                            Save application log to this directory for reporting issues.
+   --log-level value, --loglevel value              Application logging level {debug, info, warn, error, fatal}.
+   --help, -h                                       show help (default: false)
+   
+--- exit_code: 0
+
+=== ACCESS SSH-CONFIG HELP ===
+--- command: cloudflared access ssh-config --help
+NAME:
+   cloudflared access ssh-config - 
+
+USAGE:
+   cloudflared access ssh-config [command options] [arguments...]
+
+DESCRIPTION:
+   Prints an example configuration ~/.ssh/config
+
+OPTIONS:
+   --hostname value    specify the hostname of your application.
+   --short-lived-cert  specify if you wish to generate short lived certs. (default: false)
+   --help, -h          show help (default: false)
+   
+--- exit_code: 0
+
+=== ACCESS SSH-GEN HELP ===
+--- command: cloudflared access ssh-gen --help
+NAME:
+   cloudflared access ssh-gen - 
+
+USAGE:
+   cloudflared access ssh-gen [command options] [arguments...]
+
+DESCRIPTION:
+   Generates a short lived certificate for given hostname
+
+OPTIONS:
+   --hostname value  specify the hostname of your application.
+   --help, -h        show help (default: false)
+   
+--- exit_code: 0
+
+=== FORWARD ALIAS ===
+--- command: cloudflared forward --help
+NAME:
+   cloudflared access - access <subcommand>
+
+USAGE:
+   cloudflared access command [command options] [arguments...]
+
+DESCRIPTION:
+   Cloudflare Access protects internal resources by securing, authenticating and monitoring access
+         per-user and by application. With Cloudflare Access, only authenticated users with the required permissions are
+         able to reach sensitive resources. The commands provided here allow you to interact with Access protected
+         applications from the command line.
+
+COMMANDS:
+   login               login <url of access application>
+   curl                curl [--allow-request, -ar] <url> [<curl args>...]
+   token               token <url of access application>
+   tcp, rdp, ssh, smb  
+   ssh-config          
+   ssh-gen             
+   help, h             Shows a list of commands or help for one command
+
+OPTIONS:
+   --fedramp   use when performing operations in fedramp account (default: false)
+   --help, -h  show help (default: false)
+   
+--- exit_code: 0

@@ -1,0 +1,634 @@
+=== TUNNEL HELP ===
+--- command: cloudflared tunnel --help
+NAME:
+   cloudflared tunnel - Use Cloudflare Tunnel to expose private services to the Internet or to Cloudflare connected private users.
+
+USAGE:
+   cloudflared tunnel command [command options]  
+
+DESCRIPTION:
+   Cloudflare Tunnel allows to expose private services without opening any ingress port on this machine. It can expose:
+     A) Locally reachable HTTP-based private services to the Internet on DNS with Cloudflare as authority (which you can
+   then protect with Cloudflare Access).
+     B) Locally reachable TCP/UDP-based private services to Cloudflare connected private users in the same account, e.g.,
+   those enrolled to a Zero Trust WARP Client.
+   
+   You can manage your Tunnels via one.dash.cloudflare.com. This approach will only require you to run a single command
+   later in each machine where you wish to run a Tunnel.
+   
+   Alternatively, you can manage your Tunnels via the command line. Begin by obtaining a certificate to be able to do so:
+   
+     $ cloudflared tunnel login
+   
+   With your certificate installed you can then get started with Tunnels:
+   
+     $ cloudflared tunnel create my-first-tunnel
+     $ cloudflared tunnel route dns my-first-tunnel my-first-tunnel.mydomain.com
+     $ cloudflared tunnel run --hello-world my-first-tunnel
+   
+   You can now access my-first-tunnel.mydomain.com and be served an example page by your local cloudflared process.
+   
+   For exposing local TCP/UDP services by IP to your privately connected users, check out:
+   
+     $ cloudflared tunnel route ip --help
+   
+   See https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/ for more info.
+
+COMMANDS:
+   login      Generate a configuration file with your login details
+   create     Create a new tunnel with given name
+   route      Define which traffic routed from Cloudflare edge to this tunnel: requests to a DNS hostname, to a Cloudflare Load Balancer, or traffic originating from Cloudflare WARP clients
+   vnet       Configure and query virtual networks to manage private IP routes with overlapping IPs.
+   run        Proxy a local web server by running the given tunnel
+   list       List existing tunnels
+   ready      Call /ready endpoint and return proper exit code
+   info       List details about the active connectors for a tunnel
+   delete     Delete existing tunnel by UUID or name
+   cleanup    Cleanup tunnel connections
+   token      Fetch the credentials token for an existing tunnel (by name or UUID) that allows to run it
+   diag       Creates a diagnostic report from a local cloudflared instance
+   proxy-dns  dns-proxy feature is no longer supported
+   help, h    Shows a list of commands or help for one command
+
+OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --url URL                                           Connect to the local webserver at URL. (default: "http://localhost:8080") [$TUNNEL_URL]
+   --hello-world                                       Run Hello World Server (default: false) [$TUNNEL_HELLO_WORLD]
+   --socks5 --url                                      specify if this tunnel is running as a SOCK5 Server This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false) [$TUNNEL_SOCKS]
+   --proxy-connect-timeout --url                       HTTP proxy timeout for establishing a new connection This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 30s)
+   --proxy-tls-timeout --url                           HTTP proxy timeout for completing a TLS handshake This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 10s)
+   --proxy-tcp-keepalive --url                         HTTP proxy TCP keepalive duration This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 30s)
+   --proxy-no-happy-eyeballs --url                     HTTP proxy should disable "happy eyeballs" for IPv4/v6 fallback This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false)
+   --proxy-keepalive-connections --url                 HTTP proxy maximum keepalive connection pool size This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 100)
+   --proxy-keepalive-timeout --url                     HTTP proxy timeout for closing an idle connection This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 1m30s)
+   --proxy-connection-timeout value                    DEPRECATED. No longer has any effect. (default: 1m30s)
+   --proxy-expect-continue-timeout value               DEPRECATED. No longer has any effect. (default: 1m30s)
+   --http-host-header --url                            Sets the HTTP Host header for the local webserver. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress [$TUNNEL_HTTP_HOST_HEADER]
+   --origin-server-name --url                          Hostname on the origin server certificate. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress [$TUNNEL_ORIGIN_SERVER_NAME]
+   --unix-socket value                                 Path to unix socket to use instead of --url [$TUNNEL_UNIX_SOCKET]
+   --origin-ca-pool --url                              Path to the CA for the certificate of your origin. This option should be used only if your certificate is not signed by Cloudflare. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress [$TUNNEL_ORIGIN_CA_POOL]
+   --no-tls-verify --url                               Disables TLS verification of the certificate presented by your origin. Will allow any certificate from the origin to be accepted. Note: The connection from your machine to Cloudflare's Edge is still encrypted. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false) [$NO_TLS_VERIFY]
+   --no-chunked-encoding --url                         Disables chunked transfer encoding; useful if you are running a WSGI server. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false) [$TUNNEL_NO_CHUNKED_ENCODING]
+   --http2-origin                                      Enables HTTP/2 origin servers. (default: false) [$TUNNEL_ORIGIN_ENABLE_HTTP2]
+   --bastion                                           Runs as jump host (default: false) [$TUNNEL_BASTION]
+   --proxy-address value                               Listen address for the proxy. (default: "127.0.0.1") [$TUNNEL_PROXY_ADDRESS]
+   --proxy-port value                                  Listen port for the proxy. (default: 0) [$TUNNEL_PROXY_PORT]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+   --proxy-dns                                         (default: false)
+   --proxy-dns-port value                              (default: 0)
+   --proxy-dns-address value                           
+   --proxy-dns-upstream value                          (accepts multiple inputs)
+   --proxy-dns-max-upstream-conns value                (default: 0)
+   --proxy-dns-bootstrap value                         (accepts multiple inputs)
+   --credentials-file value, --cred-file value         Filepath at which to read/write the tunnel credentials [$TUNNEL_CRED_FILE]
+   --region value                                      Cloudflare Edge region to connect to. Omit or set to empty to connect to the global region. [$TUNNEL_REGION]
+   --edge-ip-version value                             Cloudflare Edge IP address version to connect with. {4, 6, auto} (default: "4") [$TUNNEL_EDGE_IP_VERSION]
+   --edge-bind-address value                           Bind to IP address for outgoing connections to Cloudflare Edge. [$TUNNEL_EDGE_BIND_ADDRESS]
+   --hostname value                                    Set a hostname on a Cloudflare zone to route traffic through this tunnel. [$TUNNEL_HOSTNAME]
+   --lb-pool value                                     The name of a (new/existing) load balancing pool to add this origin to. [$TUNNEL_LB_POOL]
+   --metrics-update-freq value                         Frequency to update tunnel metrics (default: 5s) [$TUNNEL_METRICS_UPDATE_FREQ]
+   --retries value                                     Maximum number of retries for connection/protocol errors. (default: 5) [$TUNNEL_RETRIES]
+   --label value                                       Use this option to give a meaningful label to a specific connector. When a tunnel starts up, a connector id unique to the tunnel is generated. This is a uuid. To make it easier to identify a connector, we will use the hostname of the machine the tunnel is running on along with the connector ID. This option exists if one wants to have more control over what their individual connectors are called.
+   --grace-period value                                When cloudflared receives SIGINT/SIGTERM it will stop accepting new requests, wait for in-progress requests to terminate, then shutdown. Waiting for in-progress requests will timeout after this grace period, or when a second SIGTERM/SIGINT is received. (default: 30s) [$TUNNEL_GRACE_PERIOD]
+   --compression-quality value                         (beta) Use cross-stream compression instead HTTP compression. 0-off, 1-low, 2-medium, >=3-high. (default: 0) [$TUNNEL_COMPRESSION_LEVEL]
+   --name value, -n value                              Stable name to identify the tunnel. Using this flag will create, route and run a tunnel. For production usage, execute each command separately [$TUNNEL_NAME]
+   --post-quantum, --pq                                When given creates an experimental post-quantum secure tunnel (default: false) [$TUNNEL_POST_QUANTUM]
+   --management-diagnostics                            Enables the in-depth diagnostic routes to be made available over the management service (/debug/pprof, /metrics, etc.) (default: true) [$TUNNEL_MANAGEMENT_DIAGNOSTICS]
+   --overwrite-dns, -f                                 Overwrites existing DNS records with this hostname (default: false) [$TUNNEL_FORCE_PROVISIONING_DNS]
+   --help, -h                                          show help (default: false)
+   
+--- exit_code: 0
+
+=== TUNNEL CREATE HELP ===
+--- command: cloudflared tunnel create --help
+NAME:
+  cloudflared tunnel create - Create a new tunnel with given name
+
+USAGE:
+  cloudflared tunnel [tunnel command options] create [subcommand options] NAME
+
+DESCRIPTION:
+  Creates a tunnel, registers it with Cloudflare edge and generates credential file used to run this tunnel.
+  Use "cloudflared tunnel route" subcommand to map a DNS name to this tunnel and "cloudflared tunnel run" to start the connection.
+
+  For example, to create a tunnel named 'my-tunnel' run:
+
+  $ cloudflared tunnel create my-tunnel
+
+TUNNEL COMMAND OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+  
+SUBCOMMAND OPTIONS:
+  --output FORMAT, -o FORMAT                   Render output using given FORMAT. Valid options are 'json' or 'yaml'
+  --credentials-file value, --cred-file value  Filepath at which to read/write the tunnel credentials [$TUNNEL_CRED_FILE]
+  --secret value, -s value                     Base64 encoded secret to set for the tunnel. The decoded secret must be at least 32 bytes long. If not specified, a random 32-byte secret will be generated. [$TUNNEL_CREATE_SECRET]
+  --help, -h                                   show help (default: false)
+  
+--- exit_code: 0
+
+=== TUNNEL LIST HELP ===
+--- command: cloudflared tunnel list --help
+NAME:
+  cloudflared tunnel list - List existing tunnels
+
+USAGE:
+  cloudflared tunnel [tunnel command options] list [subcommand options]
+
+DESCRIPTION:
+  cloudflared tunnel list will display all active tunnels, their created time and associated connections. Use -d flag to include deleted tunnels. See the list of options to filter the list
+
+TUNNEL COMMAND OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+  
+SUBCOMMAND OPTIONS:
+  --output FORMAT, -o FORMAT              Render output using given FORMAT. Valid options are 'json' or 'yaml'
+  --show-deleted, -d                      Include deleted tunnels in the list (default: false)
+  --name NAME, -n NAME                    List tunnels with the given NAME
+  --name-prefix NAME, --np NAME           List tunnels that start with the give NAME prefix
+  --exclude-name-prefix NAME, --enp NAME  List tunnels whose NAME does not start with the given prefix
+  --when TIME, -w TIME                    List tunnels that are active at the given TIME in RFC3339 format (default: current time, 2026-03-13T01:37:48+07:00)
+  --id ID, -i ID                          List tunnel by ID
+  --show-recently-disconnected, --rd      Include connections that have recently disconnected in the list (default: false)
+  --sort-by value                         Sorts the list of tunnels by the given field. Valid options are {name, id, createdAt, deletedAt, numConnections} (default: "name") [$TUNNEL_LIST_SORT_BY]
+  --invert-sort                           Inverts the sort order of the tunnel list. (default: false) [$TUNNEL_LIST_INVERT_SORT]
+  --help, -h                              show help (default: false)
+  
+--- exit_code: 0
+
+=== TUNNEL RUN HELP ===
+--- command: cloudflared tunnel run --help
+NAME:
+  cloudflared tunnel run - Proxy a local web server by running the given tunnel
+
+USAGE:
+  cloudflared tunnel [tunnel command options] run [subcommand options] [TUNNEL]
+
+DESCRIPTION:
+  Runs the tunnel identified by name or UUID, creating highly available connections
+  between your server and the Cloudflare edge. You can provide name or UUID of tunnel to run either as the
+  last command line argument or in the configuration file using "tunnel: TUNNEL".
+
+  This command requires the tunnel credentials file created when "cloudflared tunnel create" was run,
+  however it does not need access to cert.pem from "cloudflared login" if you identify the tunnel by UUID.
+  If you experience other problems running the tunnel, "cloudflared tunnel cleanup" may help by removing
+  any old connection records.
+
+
+TUNNEL COMMAND OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+  
+SUBCOMMAND OPTIONS:
+  --credentials-file value, --cred-file value  Filepath at which to read/write the tunnel credentials [$TUNNEL_CRED_FILE]
+  --credentials-contents value                 Contents of the tunnel credentials JSON file to use. When provided along with credentials-file, this will take precedence. [$TUNNEL_CRED_CONTENTS]
+  --post-quantum, --pq                         When given creates an experimental post-quantum secure tunnel (default: false) [$TUNNEL_POST_QUANTUM]
+  --features value, -F value                   Opt into various features that are still being developed or tested.  (accepts multiple inputs)
+  --token value                                The Tunnel token. When provided along with credentials, this will take precedence. Also takes precedence over token-file [$TUNNEL_TOKEN]
+  --token-file value                           Filepath at which to read the tunnel token. When provided along with credentials, this will take precedence. [$TUNNEL_TOKEN_FILE]
+  --icmpv4-src value                           Source address to send/receive ICMPv4 messages. If not provided cloudflared will dial a local address to determine the source IP or fallback to 0.0.0.0. [$TUNNEL_ICMPV4_SRC]
+  --icmpv6-src value                           Source address and the interface name to send/receive ICMPv6 messages. If not provided cloudflared will dial a local address to determine the source IP or fallback to ::. [$TUNNEL_ICMPV6_SRC]
+  --max-active-flows value                     Overrides the remote configuration for max active private network flows (TCP/UDP) that this cloudflared instance supports (default: 0) [$TUNNEL_MAX_ACTIVE_FLOWS]
+  --dns-resolver-addrs value                   Overrides the dynamic DNS resolver resolution to use these address:port's instead.  (accepts multiple inputs) [$TUNNEL_DNS_RESOLVER_ADDRS]
+  --url URL                                    Connect to the local webserver at URL. (default: "http://localhost:8080") [$TUNNEL_URL]
+  --hello-world                                Run Hello World Server (default: false) [$TUNNEL_HELLO_WORLD]
+  --socks5 --url                               specify if this tunnel is running as a SOCK5 Server This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false) [$TUNNEL_SOCKS]
+  --proxy-connect-timeout --url                HTTP proxy timeout for establishing a new connection This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 30s)
+  --proxy-tls-timeout --url                    HTTP proxy timeout for completing a TLS handshake This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 10s)
+  --proxy-tcp-keepalive --url                  HTTP proxy TCP keepalive duration This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 30s)
+  --proxy-no-happy-eyeballs --url              HTTP proxy should disable "happy eyeballs" for IPv4/v6 fallback This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false)
+  --proxy-keepalive-connections --url          HTTP proxy maximum keepalive connection pool size This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 100)
+  --proxy-keepalive-timeout --url              HTTP proxy timeout for closing an idle connection This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: 1m30s)
+  --proxy-connection-timeout value             DEPRECATED. No longer has any effect. (default: 1m30s)
+  --proxy-expect-continue-timeout value        DEPRECATED. No longer has any effect. (default: 1m30s)
+  --http-host-header --url                     Sets the HTTP Host header for the local webserver. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress [$TUNNEL_HTTP_HOST_HEADER]
+  --origin-server-name --url                   Hostname on the origin server certificate. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress [$TUNNEL_ORIGIN_SERVER_NAME]
+  --unix-socket value                          Path to unix socket to use instead of --url [$TUNNEL_UNIX_SOCKET]
+  --origin-ca-pool --url                       Path to the CA for the certificate of your origin. This option should be used only if your certificate is not signed by Cloudflare. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress [$TUNNEL_ORIGIN_CA_POOL]
+  --no-tls-verify --url                        Disables TLS verification of the certificate presented by your origin. Will allow any certificate from the origin to be accepted. Note: The connection from your machine to Cloudflare's Edge is still encrypted. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false) [$NO_TLS_VERIFY]
+  --no-chunked-encoding --url                  Disables chunked transfer encoding; useful if you are running a WSGI server. This flag only takes effect if you define your origin with --url and if you do not use ingress rules. The recommended way is to rely on ingress rules and define this property under `originRequest` as per https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/configuration-file/ingress (default: false) [$TUNNEL_NO_CHUNKED_ENCODING]
+  --http2-origin                               Enables HTTP/2 origin servers. (default: false) [$TUNNEL_ORIGIN_ENABLE_HTTP2]
+  --bastion                                    Runs as jump host (default: false) [$TUNNEL_BASTION]
+  --proxy-address value                        Listen address for the proxy. (default: "127.0.0.1") [$TUNNEL_PROXY_ADDRESS]
+  --proxy-port value                           Listen port for the proxy. (default: 0) [$TUNNEL_PROXY_PORT]
+  --help, -h                                   show help (default: false)
+  
+--- exit_code: 0
+
+=== TUNNEL DELETE HELP ===
+--- command: cloudflared tunnel delete --help
+NAME:
+  cloudflared tunnel delete - Delete existing tunnel by UUID or name
+
+USAGE:
+  cloudflared tunnel [tunnel command options] delete [subcommand options] TUNNEL
+
+DESCRIPTION:
+  cloudflared tunnel delete will delete tunnels with the given tunnel UUIDs or names. A tunnel cannot be deleted if it has active connections. To delete the tunnel unconditionally, use -f flag.
+
+TUNNEL COMMAND OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+  
+SUBCOMMAND OPTIONS:
+  --credentials-file value, --cred-file value  Filepath at which to read/write the tunnel credentials [$TUNNEL_CRED_FILE]
+  --force, -f                                  Deletes a tunnel even if tunnel is connected and it has dependencies associated to it. (eg. IP routes). It is not possible to delete tunnels that have connections or non-deleted dependencies, without this flag. (default: false) [$TUNNEL_RUN_FORCE_OVERWRITE]
+  --help, -h                                   show help (default: false)
+  
+--- exit_code: 0
+
+=== TUNNEL CLEANUP HELP ===
+--- command: cloudflared tunnel cleanup --help
+NAME:
+  cloudflared tunnel cleanup - Cleanup tunnel connections
+
+USAGE:
+  cloudflared tunnel [tunnel command options] cleanup [subcommand options] TUNNEL
+
+DESCRIPTION:
+  Delete connections for tunnels with the given UUIDs or names.
+
+TUNNEL COMMAND OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+  
+SUBCOMMAND OPTIONS:
+  --connector-id value, -c value  Constraints the cleanup to stop the connections of a single Connector (by its ID). You can find the various Connectors (and their IDs) currently connected to your tunnel via 'cloudflared tunnel info <name>'. [$TUNNEL_CLEANUP_CONNECTOR]
+  --help, -h                      show help (default: false)
+  
+--- exit_code: 0
+
+=== TUNNEL TOKEN HELP ===
+--- command: cloudflared tunnel token --help
+NAME:
+  cloudflared tunnel token - Fetch the credentials token for an existing tunnel (by name or UUID) that allows to run it
+
+USAGE:
+  cloudflared tunnel [tunnel command options] token [subcommand options] TUNNEL
+
+DESCRIPTION:
+  cloudflared tunnel token will fetch the credentials token for a given tunnel (by its name or UUID), which is then used to run the tunnel. This command fails if the tunnel does not exist or has been deleted. Use the flag `cloudflared tunnel token --cred-file /my/path/file.json TUNNEL` to output the token to the credentials JSON file. Note: this command only works for Tunnels created since cloudflared version 2022.3.0
+
+TUNNEL COMMAND OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+  
+SUBCOMMAND OPTIONS:
+  --credentials-file value, --cred-file value  Filepath at which to read/write the tunnel credentials [$TUNNEL_CRED_FILE]
+  --help, -h                                   show help (default: false)
+  
+--- exit_code: 0
+
+=== TUNNEL INFO HELP ===
+--- command: cloudflared tunnel info --help
+NAME:
+  cloudflared tunnel info - List details about the active connectors for a tunnel
+
+USAGE:
+  cloudflared tunnel [tunnel command options] info [subcommand options] [TUNNEL]
+
+DESCRIPTION:
+  cloudflared tunnel info displays details about the active connectors for a given tunnel (identified by name or uuid).
+
+TUNNEL COMMAND OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+  
+SUBCOMMAND OPTIONS:
+  --output FORMAT, -o FORMAT          Render output using given FORMAT. Valid options are 'json' or 'yaml'
+  --show-recently-disconnected, --rd  Include connections that have recently disconnected in the list (default: false)
+  --sort-by value                     Sorts the list of connections of a tunnel by the given field. Valid options are {id, startedAt, numConnections, version} (default: "createdAt") [$TUNNEL_INFO_SORT_BY]
+  --invert-sort                       Inverts the sort order of the tunnel info. (default: false) [$TUNNEL_INFO_INVERT_SORT]
+  --help, -h                          show help (default: false)
+  
+--- exit_code: 0
+
+=== TUNNEL READY HELP ===
+--- command: cloudflared tunnel ready --help
+NAME:
+  cloudflared tunnel ready - Call /ready endpoint and return proper exit code
+
+USAGE:
+  cloudflared tunnel [tunnel command options] ready [subcommand options]
+
+DESCRIPTION:
+  cloudflared tunnel ready will return proper exit code based on the /ready endpoint
+
+TUNNEL COMMAND OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+  
+SUBCOMMAND OPTIONS:
+  --help, -h  show help (default: false)
+  
+--- exit_code: 0
+
+=== TUNNEL ROUTE HELP ===
+--- command: cloudflared tunnel route --help
+NAME:
+   cloudflared tunnel route - Define which traffic routed from Cloudflare edge to this tunnel: requests to a DNS hostname, to a Cloudflare Load Balancer, or traffic originating from Cloudflare WARP clients
+
+USAGE:
+   cloudflared tunnel route command [command options] [arguments...]
+
+DESCRIPTION:
+   The route command defines how Cloudflare will proxy requests to this tunnel.
+   
+   To route a hostname by creating a DNS CNAME record to a tunnel:
+      cloudflared tunnel route dns <tunnel ID or name> <hostname>
+   You can read more at: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/routing-to-tunnel/dns
+   
+   To use this tunnel as a load balancer origin, creating pool and load balancer if necessary:
+      cloudflared tunnel route lb <tunnel ID or name> <hostname> <load balancer pool>
+   You can read more at: https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/routing-to-tunnel/lb
+   
+   For Cloudflare WARP traffic to be routed to your private network, reachable from this tunnel as origins, use:
+      cloudflared tunnel route ip <network CIDR> <tunnel ID or name>
+   Further information about managing Cloudflare WARP traffic to your tunnel is available at:
+      cloudflared tunnel route ip --help
+
+COMMANDS:
+   dns      HostnameRoute a hostname by creating a DNS CNAME record to a tunnel
+   lb       Use this tunnel as a load balancer origin, creating pool and load balancer if necessary
+   ip       Configure and query Cloudflare WARP routing to private IP networks made available through Cloudflare Tunnels.
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+--- exit_code: 0
+
+=== TUNNEL ROUTE IP HELP ===
+--- command: cloudflared tunnel route ip --help
+NAME:
+   cloudflared tunnel route ip - Configure and query Cloudflare WARP routing to private IP networks made available through Cloudflare Tunnels.
+
+USAGE:
+   cloudflared tunnel route ip command [command options] [arguments...]
+
+DESCRIPTION:
+   cloudflared can provision routes for any IP space in your corporate network. Users enrolled in
+   your Cloudflare for Teams organization can reach those IPs through the Cloudflare WARP
+   client. You can then configure L7/L4 filtering on https://one.dash.cloudflare.com to
+   determine who can reach certain routes.
+   By default IP routes all exist within a single virtual network. If you use the same IP
+   space(s) in different physical private networks, all meant to be reachable via IP routes,
+   then you have to manage the ambiguous IP routes by associating them to virtual networks.
+   See "cloudflared tunnel vnet --help" for more information.
+
+COMMANDS:
+   add         Add a new network to the routing table reachable via a Tunnel
+   show, list  Show the routing table
+   delete      Delete a row from your organization's private routing table
+   get         Check which row of the routing table matches a given IP.
+   help, h     Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+--- exit_code: 0
+
+=== TUNNEL VNET HELP ===
+--- command: cloudflared tunnel vnet --help
+NAME:
+   cloudflared tunnel vnet - Configure and query virtual networks to manage private IP routes with overlapping IPs.
+
+USAGE:
+   cloudflared tunnel vnet command [command options] [arguments...]
+
+DESCRIPTION:
+   cloudflared allows to manage IP routes that expose origins in your private network space via their IP directly
+   to clients outside (e.g. using WARP client) --- those are configurable via "cloudflared tunnel route ip" commands.
+   By default, all those IP routes live in the same virtual network. Managing virtual networks (e.g. by creating a
+   new one) becomes relevant when you have different private networks that have overlapping IPs. E.g.: if you have
+   a private network A running Tunnel 1, and private network B running Tunnel 2, it is possible that both Tunnels
+   expose the same IP space (say 10.0.0.0/8); to handle that, you have to add each IP Route (one that points to
+   Tunnel 1 and another that points to Tunnel 2) in different Virtual Networks. That way, if your clients are on
+   Virtual Network X, they will see Tunnel 1 (via Route A) and not see Tunnel 2 (since its Route B is associated
+   to another Virtual Network Y).
+
+COMMANDS:
+   add      Add a new virtual network to which IP routes can be attached
+   list     Lists the virtual networks
+   delete   Delete a virtual network
+   update   Update a virtual network
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+--- exit_code: 0
+
+=== TUNNEL INGRESS HELP ===
+--- command: cloudflared tunnel ingress --help
+NAME:
+   cloudflared tunnel ingress - Validate and test cloudflared tunnel's ingress configuration
+
+USAGE:
+   cloudflared tunnel ingress command [command options] [arguments...]
+
+DESCRIPTION:
+   Cloudflared lets you route traffic from the internet to multiple different addresses on your
+       origin. Multiple-origin routing is configured by a set of rules. Each rule matches traffic
+       by its hostname or path, and routes it to an address. These rules are configured under the
+       'ingress' key of your config.yaml, for example:
+   
+       ingress:
+         - hostname: www.example.com
+           service: https://localhost:8000
+         - hostname: *.example.xyz
+           path: /[a-zA-Z]+.html
+           service: https://localhost:8001
+         - hostname: *
+           service: https://localhost:8002
+   
+       To ensure cloudflared can route all incoming requests, the last rule must be a catch-all
+       rule that matches all traffic. You can validate these rules with the 'ingress validate'
+       command, and test which rule matches a particular URL with 'ingress rule <URL>'.
+   
+       Multiple-origin routing is incompatible with the --url flag.
+
+COMMANDS:
+   validate  Validate the ingress configuration 
+   rule      Check which ingress rule matches a given request URL
+   help, h   Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+--- exit_code: 0
+
+=== TUNNEL LOGIN HELP ===
+--- command: cloudflared tunnel login --help
+NAME:
+   cloudflared tunnel login - Generate a configuration file with your login details
+
+USAGE:
+   cloudflared tunnel login [command options]  
+
+OPTIONS:
+   --loginURL value     The URL used to login (default is https://dash.cloudflare.com/argotunnel) (default: "https://dash.cloudflare.com/argotunnel")
+   --callbackURL value  The URL used for the callback (default is https://login.cloudflareaccess.org/) (default: "https://login.cloudflareaccess.org/")
+   --fedramp, -f        Login with FedRAMP High environment. (default: false)
+   --help, -h           show help (default: false)
+   
+--- exit_code: 0
+
+=== TUNNEL DIAG HELP ===
+--- command: cloudflared tunnel diag --help
+NAME:
+  cloudflared tunnel diag - Creates a diagnostic report from a local cloudflared instance
+
+USAGE:
+  cloudflared tunnel [tunnel command options] diag [subcommand options]
+
+DESCRIPTION:
+  cloudflared tunnel diag will create a diagnostic report of a local cloudflared instance. The diagnostic procedure collects: logs, metrics, system information, traceroute to Cloudflare Edge, and runtime information. Since there may be multiple instances of cloudflared running the --metrics option may be provided to target a specific instance.
+
+TUNNEL COMMAND OPTIONS:
+   --config value           Specifies a config file in YAML format.
+   --origincert value       Path to the certificate generated for your origin when you run cloudflared login. [$TUNNEL_ORIGIN_CERT]
+   --autoupdate-freq value  Autoupdate frequency. Default is 24h0m0s. (default: 24h0m0s)
+   --no-autoupdate          Disable periodic check for updates, restarting the server with the new version. (default: false) [$NO_AUTOUPDATE]
+   --metrics value          Listen address for metrics reporting. If no address is passed cloudflared will try to bind to [localhost:20241 localhost:20242 localhost:20243 localhost:20244 localhost:20245].
+If all are unavailable, a random port will be used. Note that when running cloudflared from an virtual
+environment the default address binds to all interfaces, hence, it is important to isolate the host
+and virtualized host network stacks from each other (default: "localhost:0") [$TUNNEL_METRICS]
+   --pidfile value                                     Write the application's PID to this file after first successful connection. [$TUNNEL_PIDFILE]
+   --loglevel value                                    Application logging level {debug, info, warn, error, fatal}. At debug level cloudflared will log request URL, method, protocol, content length, as well as, all request and response headers. This can expose sensitive information in your logs. (default: "info") [$TUNNEL_LOGLEVEL]
+   --transport-loglevel value, --proto-loglevel value  Transport logging level(previously called protocol logging level) {debug, info, warn, error, fatal} (default: "info") [$TUNNEL_PROTO_LOGLEVEL, $TUNNEL_TRANSPORT_LOGLEVEL]
+   --logfile value                                     Save application log to this file for reporting issues. [$TUNNEL_LOGFILE]
+   --log-directory value                               Save application log to this directory for reporting issues. [$TUNNEL_LOGDIRECTORY]
+   --trace-output value                                Name of trace output file, generated when cloudflared stops. [$TUNNEL_TRACE_OUTPUT]
+   --output value                                      Output format for the logs (default, json) (default: "default") [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]
+  
+SUBCOMMAND OPTIONS:
+  --metrics value            The metrics server address i.e.: 127.0.0.1:12345. If your instance is running in a Docker/Kubernetes environment you need to setup port forwarding for your application.
+  --diag-container-id value  Container ID or Name to collect logs from
+  --diag-pod-id value        Kubernetes POD to collect logs from
+  --no-diag-logs             Log collection will not be performed (default: false)
+  --no-diag-metrics          Metric collection will not be performed (default: false)
+  --no-diag-system           System information collection will not be performed (default: false)
+  --no-diag-runtime          Runtime information collection will not be performed (default: false)
+  --no-diag-network          Network diagnostics won't be performed (default: false)
+  --help, -h                 show help (default: false)
+  
+--- exit_code: 0

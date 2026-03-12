@@ -134,24 +134,35 @@ Status: in progress
 
 Outputs established now:
 
-- CLI implementation checklist exists
+- CLI implementation checklist exists and is fully populated (32 rows)
+- CLI feature-group audit documents exist:
+  - `docs/parity/cli/root-and-global-flags.md`
+  - `docs/parity/cli/tunnel-subtree.md`
+  - `docs/parity/cli/access-subtree.md`
+  - `docs/parity/cli/tail-and-management.md`
+- CLI baseline evidence captures exist in `docs/parity/cli/captures/`:
+  - `root-surface.txt` — root help, empty invocation, version
+  - `tunnel-subtree.txt` — tunnel and all tunnel subcommand help
+  - `access-subtree.txt` — access subtree and forward alias
+  - `tail-management-service-update.txt` — tail, management, service, update
+  - `error-and-compat.txt` — unknown commands, bad flags, proxy-dns, db-connect
+  - `rust-current-surface.txt` — current Rust binary outputs for comparison
 - CDC implementation checklist exists
 - HIS implementation checklist exists
 
+Sub-stage status:
+
+- Stage 1.1 (CLI audit): **complete**
+- Stage 1.2 (CDC audit): not started
+- Stage 1.3 (HIS audit): not started
+
 Remaining audit work:
 
-- expand and normalize checklist rows across the three ledgers
-- capture baseline evidence for the highest-risk feature groups
-- add feature-group audit documents where needed
-- rank major parity gaps for documentation and refactor ordering
-- record intentional divergences explicitly when they are found
-
-Immediate focus:
-
-- seed and refine the three ledgers from frozen baseline truth and current Rust reality
-- capture CLI blackbox truth
-- inventory high-risk CDC contracts
-- inventory high-risk HIS contracts
+- expand and normalize CDC checklist rows from frozen baseline truth
+- expand and normalize HIS checklist rows from frozen baseline truth
+- capture baseline evidence for highest-risk CDC and HIS feature groups
+- add feature-group audit documents for CDC and HIS where needed
+- rank major CDC and HIS parity gaps for documentation and refactor ordering
 
 ### Stage 2: Reconcile Docs
 

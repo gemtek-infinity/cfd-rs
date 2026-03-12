@@ -929,7 +929,7 @@ If drift is discovered:
 | Stage | Description | Status |
 | ----- | ----------- | ------ |
 | 0 | Reconcile and persist FINAL\_PLAN.md | **complete** |
-| 1.1 | CLI audit | not started |
+| 1.1 | CLI audit | **complete** |
 | 1.2 | CDC audit | not started |
 | 1.3 | HIS audit | not started |
 | 2.1 | Master repository truth | not started |
