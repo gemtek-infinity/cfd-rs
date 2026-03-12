@@ -183,9 +183,31 @@ Stage 1 is complete.
 
 ### Stage 2: Reconcile Docs
 
-Status: not started
+Status: **in progress** (Stage 2.1 complete)
 
-Required outputs:
+Sub-stage status:
+
+- Stage 2.1 (master repository truth): **complete**
+- Stage 2.2 (scope, compatibility, governance): not started
+- Stage 2.3 (historical phase and parity docs): not started
+- Stage 2.4 (operator and contributor guidance): not started
+- Stage 2.5 (AI instructions, skills, agent config): not started
+
+Stage 2.1 outputs:
+
+- root `README.md` created — honest about current state, gaps, and parity
+  progress
+- `STATUS.md` reduced to a short index with ledger-grounded truth
+- `docs/README.md` updated with clear section groupings and parity links
+- `docs/status/rewrite-foundation.md` reduced — removed duplication of lane
+  and phase model owned by other governing docs
+- `docs/status/active-surface.md` rewritten — replaced 200+ lines of
+  phase-by-phase accretion with crate-grounded content that points to parity
+  ledgers
+- `docs/promotion-gates.md` reviewed — no changes needed (governing truth is
+  accurate)
+
+Required outputs remaining:
 
 - rewritten top-level repository truth
 - updated README and docs map
@@ -365,13 +387,16 @@ Avoid reporting progress only in terms of file count or code movement.
 
 ## Immediate Next Actions
 
-Stage 2 (Reconcile Docs) is the next mandatory stage. It has five sub-stages
-defined in `FINAL_PLAN.md`:
+Stage 2.1 (master repository truth) is complete. The next sub-stage is:
 
-1. Stage 2.1: Master repository truth (root README, STATUS.md, docs map)
+- Stage 2.2: Scope, compatibility, and governance review
+
+The remaining Stage 2 sub-stages are:
+
+1. ~~Stage 2.1: Master repository truth~~ (complete)
 2. Stage 2.2: Scope, compatibility, and governance review
 3. Stage 2.3: Historical phase and parity documents
 4. Stage 2.4: Operator and contributor guidance
 5. Stage 2.5: AI instructions, skills, and agent configuration
 
-No Stage 2 work has started yet. Stage 2 cannot be skipped or reordered.
+No Stage 2 sub-stage may be skipped or reordered.
