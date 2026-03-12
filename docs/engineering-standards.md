@@ -1,7 +1,21 @@
 # Engineering Standards
 
-This is a human-facing reference document.
+This is a reference document for both human contributors and AI agents.
 For default AI code-edit guidance, start with `.github/instructions/rust.instructions.md` and load this file only when deeper explanation is useful.
+
+## Quick reference
+
+This table summarizes all 7 standards. Each links to its detailed section below.
+
+| # | Standard | One-line summary |
+| --- | --- | --- |
+| 1 | [One owner per boundary](#1-standard-one-owner-per-responsibility-boundary) | Each crate and module has one primary responsibility |
+| 2 | [Narrow public surfaces](#2-standard-public-surfaces-stay-smaller-than-internals) | Public APIs are narrow, intentional, and hard to misuse |
+| 3 | [Dependencies through seams](#3-standard-dependencies-enter-through-owned-seams) | External crates enter through clear local boundaries |
+| 4 | [Abstraction after need](#4-standard-add-abstraction-only-after-a-real-need-exists) | Concrete code first, abstraction after a second real use |
+| 5 | [Types encode invariants](#5-standard-encode-important-invariants-in-types-not-every-invariant) | Newtypes and enums for real distinctions, not type-level cleverness |
+| 6 | [Explicit lifecycle ownership](#6-standard-runtime-and-lifecycle-ownership-must-be-explicit) | Startup, shutdown, reload, and supervision have obvious owners |
+| 7 | [Reviewable modules](#7-standard-module-decomposition-should-follow-reviewable-reasoning-units) | Modules sized for understanding, not just compilation |
 
 ## Purpose
 

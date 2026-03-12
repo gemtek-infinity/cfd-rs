@@ -14,6 +14,7 @@ Do not load all top-level governance files by default.
 - `SKILLS.md` — repeatable subsystem-porting workflow
 - `FINAL_PLAN.md` — staged execution plan for the final phase
 - `FINAL_PHASE.md` — detailed execution reference for the final phase
+- `CONTRIBUTING.md` — human contributor guide (build, test, workflow, parity evidence)
 
 ## Before proposing changes
 1. identify the task type

@@ -1,7 +1,42 @@
 # Code Style
 
-This is a human-facing reference document.
+This is a reference document for both human contributors and AI agents.
 For default AI code-edit guidance, start with `.github/instructions/rust.instructions.md` and load this file only when deeper explanation is useful.
+
+## Quick reference
+
+This table summarizes all 28 rules. Each links to its detailed section below.
+
+| # | Rule | One-line summary |
+| --- | --- | --- |
+| 1 | [Explicit and readable](#1-style-explicit-and-readable) | Prefer explicit names, intermediate variables, and straightforward flow |
+| 2 | [Clear naming](#2-style-clear-naming) | Names describe domain role, not vague labels |
+| 3 | [Idiomatic Rust](#3-style-prefer-idiomatic-rust-when-practical) | Use standard Rust patterns when they improve clarity |
+| 4 | [Trait names](#4-style-trait-names-describe-capability-or-role) | Trait names describe behavior or capability |
+| 5 | [Tight spacing](#5-style-tight-vertical-spacing) | Blank lines only between genuinely different steps |
+| 6 | [Boring control flow](#6-style-boring-control-flow) | Early returns, flat guards, no deep nesting |
+| 7 | [Chunking long functions](#7-style-long-sequential-functions-indicate-chunking) | Extract named helpers for multi-step sequential functions |
+| 8 | [Setup before final expression](#8-style-separate-setup-from-a-multi-line-final-expression) | One blank line before a meaningful multi-line final expression |
+| 9 | [Visible intermediate steps](#9-style-visible-intermediate-steps) | Named intermediate variables when they improve scanning |
+| 10 | [Prefer `self::`](#10-style-prefer-self-for-sibling-items) | Use `self::` for sibling module items |
+| 11 | [Prefer `Self`](#11-style-prefer-self-and-self-inside-impl) | Use `Self` and `Self::` inside `impl` blocks |
+| 12 | [Constants in `impl`](#12-style-put-related-constants-in-the-owning-impl) | Type-local constants as associated constants |
+| 13 | [No magic numbers](#13-style-avoid-magic-numbers-in-function-bodies) | Named constants for meaningful values |
+| 14 | [Explicit parse targets](#14-style-put-parse-and-conversion-types-at-the-operation-site) | `.parse::<Type>()` over `let x: Type = ...parse()` |
+| 15 | [Flat match](#15-style-avoid-nested-match-when-a-flatter-shape-is-possible) | Avoid nested `match` — use helpers or `if let` |
+| 16 | [Comments explain why](#16-style-comments-explain-why) | Do not comment obvious syntax |
+| 17 | [Explain quirks](#17-style-explain-quirks-explicitly) | Compatibility and protocol quirks get explicit comments |
+| 18 | [Practical doc comments](#18-style-practical-doc-comments) | Doc comments explain behavior, assumptions, and obligations |
+| 19 | [Quiet imports](#19-style-quiet-imports) | Specific imports, no globs, minimal aliasing |
+| 20 | [Meaningful errors](#20-style-meaningful-errors) | Error names describe what failed |
+| 21 | [No `unwrap`](#21-style-do-not-use-unwrap-in-production-code) | Use `?` or `expect` with an explanation |
+| 22 | [Behavior-oriented tests](#22-style-tests-read-like-behavior) | Test names describe behavior, not `test_1` |
+| 23 | [Readable booleans](#23-style-keep-boolean-names-readable) | `is_enabled`, `has_credentials`, not `flag` |
+| 24 | [Positive conditions](#24-style-prefer-positive-conditions-when-practical) | Avoid double negatives |
+| 25 | [Short chains](#25-style-keep-method-chains-short-when-they-carry-meaning) | Break multi-step chains into named variables |
+| 26 | [Stable field order](#26-style-keep-field-order-stable-in-struct-construction) | Match struct definition order in construction |
+| 27 | [One local pattern](#27-style-one-obvious-local-pattern-is-better-than-many-equivalent-ones) | Consistency over micro-optimization |
+| 28 | [Normalize AI code](#28-style-ai-generated-code-must-be-normalized) | AI output must read like repository-owned code |
 
 ## Purpose
 

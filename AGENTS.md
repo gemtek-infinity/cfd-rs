@@ -88,6 +88,18 @@ Use this file as the short operating guide, not as the full routing map.
 - `docs/deployment-notes.md`
   - operator deployment contract and known gaps
 
+- `CONTRIBUTING.md`
+  - human contributor guide
+  - build and test instructions
+  - code style and engineering standards pointers
+  - parity evidence workflow
+
+- `docs/code-style.md`
+  - code style reference (28 rules with quick-reference summary)
+
+- `docs/engineering-standards.md`
+  - engineering standards reference (7 standards with quick-reference summary)
+
 ## Working rules
 
 - do not treat this repository as a blank-slate Rust project

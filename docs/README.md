@@ -73,5 +73,6 @@ Baseline evidence captures: `docs/parity/cli/captures/`
 ## Rust Coding References
 
 - `.github/instructions/rust.instructions.md` — AI and human Rust editing rules
-- `docs/code-style.md` — human-facing code style reference
-- `docs/engineering-standards.md` — engineering standards reference
+- `docs/code-style.md` — code style reference (28 rules with quick-reference summary)
+- `docs/engineering-standards.md` — engineering standards reference (7 standards with quick-reference summary)
+- `CONTRIBUTING.md` — contributor guide (build, test, workflow, parity evidence)

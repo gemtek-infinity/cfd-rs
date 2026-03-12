@@ -203,7 +203,8 @@ Stage 2.5 outputs:
   `FINAL_PHASE.md`, and `docs/deployment-notes.md` to "Use the right file"
   routing; replaced stale first-slice async constraint with general
   synchronous-first preference; added parity ledger update rule to working
-  rules
+  rules; added `CONTRIBUTING.md`, `docs/code-style.md`, and
+  `docs/engineering-standards.md` to routing table
 - `SKILLS.md` updated — replaced stale "first-slice bias" section with
   general "default code preferences"; added parity ledger identification
   and update steps to porting workflow; added ledger links
@@ -215,6 +216,26 @@ Stage 2.5 outputs:
 - `docs/ai-context-routing.md` updated — added "Parity audit, implementation,
   and gap review" task routing section with domain ledger, feature-group doc,
   and execution doc pointers
+
+Stage 2 wrap-up outputs:
+
+- `CONTRIBUTING.md` created — human contributor guide with build instructions,
+  code style and engineering standards pointers, parity evidence requirements,
+  implementation workflow, frozen-input rules, document hierarchy, and
+  AI-assisted contribution guidance
+- `docs/code-style.md` updated — added quick-reference summary table linking
+  all 28 rules; changed header from "human-facing reference document" to
+  "reference document for both human contributors and AI agents"
+- `docs/engineering-standards.md` updated — added quick-reference summary
+  table linking all 7 standards; changed header from "human-facing reference
+  document" to "reference document for both human contributors and AI agents"
+- `README.md` updated — Contributing section now links to `CONTRIBUTING.md`
+  with quick-start pointers to code-style, engineering-standards, parity
+  index, and AI routing docs
+- `docs/README.md` updated — Rust Coding References section now includes
+  `CONTRIBUTING.md` and updated descriptions with rule counts
+- `AGENTS.md` updated — added `CONTRIBUTING.md`, `docs/code-style.md`, and
+  `docs/engineering-standards.md` to "Use the right file" routing
 
 Stage 2.4 outputs:
 

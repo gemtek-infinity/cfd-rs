@@ -101,8 +101,17 @@ For execution details, see `FINAL_PLAN.md`.
 
 This repository supports both human and GitHub Copilot-assisted contributions.
 
-Start with `docs/ai-context-routing.md` for routing to the right file.
-Parity claims must be evidence-based against the frozen Go baseline.
+See `CONTRIBUTING.md` for the full contributor guide, including build
+instructions, code style expectations, parity evidence requirements, and
+how to find work.
 
+Quick start:
+
+- `docs/code-style.md` — how code should look and read
+- `docs/engineering-standards.md` — how code should be structured and owned
+- `docs/parity/README.md` — parity navigation index
+- `docs/ai-context-routing.md` — AI-assisted contribution routing
+
+Parity claims must be evidence-based against the frozen Go baseline.
 All three parity ledgers are live documents — they track what exists, what is
 partial, and what is missing.
