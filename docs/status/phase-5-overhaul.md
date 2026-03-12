@@ -116,7 +116,9 @@ including:
 
 Primary execution and tracking documents:
 
-- `FINAL_PHASE.md`
+- `FINAL_PLAN.md` — staged execution plan with sub-stage gates
+- `FINAL_PHASE.md` — detailed execution reference (audit domains, evidence
+  rules, refactor rules, risk register, contributor workflow)
 - `docs/parity/cli/implementation-checklist.md`
 - `docs/parity/cdc/implementation-checklist.md`
 - `docs/parity/his/implementation-checklist.md`
