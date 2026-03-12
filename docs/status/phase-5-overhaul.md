@@ -166,7 +166,20 @@ Sub-stage status:
 - Stage 1.2 (CDC audit): **complete**
 - Stage 1.3 (HIS audit): **complete**
 
-All three audit sub-stages are complete. Stage 1 exit condition is satisfied.
+Aggregate exit conditions:
+
+- all three domains have complete implementation checklists: **yes** (150 rows total)
+- major feature groups enumerated in dedicated documents: **yes** (12 feature-group docs)
+- high-risk parity gaps identified and ranked across all three domains: **yes** — see
+  "Cross-Domain Gap Ranking" below (32 critical, 62 high, 50 medium, 6 low)
+- refactor target crate map justified from audited evidence: **yes** — see
+  "Target Crate Map Justification" below
+- document reconciliation list complete enough to execute: **yes** — see
+  `FINAL_PLAN.md` § Complete Document Reconciliation Inventory
+- intentional divergences recorded explicitly: **yes** (3 CLI + 2 CDC + 7 HIS)
+
+All three audit sub-stages and the aggregate exit condition are satisfied.
+Stage 1 is complete.
 
 ### Stage 2: Reconcile Docs
 
@@ -207,23 +220,123 @@ Refactor constraint:
 - do not create target crates or begin ownership moves before the Stage 1 audit gate
   and the minimum Stage 2 documentation gate described in `FINAL_PHASE.md` are satisfied
 
+## Cross-Domain Gap Ranking
+
+This section consolidates the per-domain gap rankings from the three parity
+ledgers into a single ranked inventory for implementation and refactor ordering.
+It satisfies the Stage 1 aggregate exit condition requiring cross-domain
+identification and ranking.
+
+Priority counts across all three domains (150 total rows):
+
+| Priority | CLI | CDC | HIS | Total |
+| --- | --- | --- | --- | --- |
+| Critical | 9 | 10 | 13 | 32 |
+| High | 13 | 18 | 31 | 62 |
+| Medium | 10 | 15 | 25 | 50 |
+| Low | 0 | 1 | 5 | 6 |
+
+### Tier 1 — Lane-blocking critical gaps (implementation-order priority)
+
+These gaps block production-alpha on the declared Linux lane. Recommended
+implementation order follows dependency chains, not alphabetical order.
+
+1. **Registration wire encoding** — CDC-001, CDC-002: Cap'n Proto schema and
+   binary encoding vs current JSON. All edge communication depends on this.
+   Must be resolved before any CDC parity can be claimed.
+
+2. **Stream framing and codec** — CDC-011, CDC-012, CDC-018: ConnectRequest
+   and ConnectResponse wire framing, incoming stream round-trip. Depends on
+   registration encoding resolution.
+
+3. **Management and log-streaming** — CDC-023, CDC-024, CDC-026: management
+   service routes, auth middleware, log streaming WebSocket. Entirely absent
+   in Rust. Required for operator observability.
+
+4. **Cloudflare REST API client** — CDC-033, CDC-034: tunnel CRUD and API
+   response envelope. Entirely absent. Required for `tunnel create`, `tunnel
+   list`, `tunnel delete`, and related commands.
+
+5. **CLI command surface** — CLI-001, CLI-002, CLI-003: root invocation, help
+   text, global flags. Current Rust exposes 4 commands vs 9 families and 1
+   flag vs 50+. Blocks all user-facing parity.
+
+6. **Tunnel command tree** — CLI-008, CLI-010, CLI-012: tunnel root behavior,
+   create, run. Core tunnel lifecycle commands.
+
+7. **Service install and uninstall** — HIS-012 through HIS-017, HIS-022:
+   Linux service management and systemd template. Entirely absent. Required
+   for the declared Linux lane.
+
+8. **Local HTTP endpoints** — HIS-024, HIS-025, HIS-027: metrics server,
+   ready endpoint, Prometheus metrics. Absent. Required for operator
+   monitoring.
+
+9. **Config reload and file watcher** — HIS-041, HIS-042, HIS-044: file
+   watcher, reload action loop, remote config update. Absent. Required for
+   long-running tunnel operation.
+
+10. **Grace period shutdown** — HIS-059: `--grace-period` flag with 30s
+    default. Not exposed in Rust CLI.
+
+### Tier 2 — High gaps (next-priority implementation)
+
+High gaps are individually documented in each domain's ledger. The
+highest-impact high gaps across domains are:
+
+- credential and token handling: HIS-008 through HIS-010, CDC-042, CDC-043
+- edge discovery and protocol negotiation: CDC-021, CDC-022
+- control stream lifecycle: CDC-019
+- diagnostics command and collectors: HIS-032 through HIS-034, HIS-039,
+  HIS-040
+- access subtree: CLI-022 (6 subcommands and aliases)
+- update command: CLI-006, HIS-046, HIS-047
+- logging file artifacts: HIS-063 through HIS-065, HIS-068
+
+### Per-domain gap details
+
+For the complete per-domain ranked gap inventory, see:
+
+- `docs/parity/cli/implementation-checklist.md` § Gap ranking by priority
+- `docs/parity/cdc/implementation-checklist.md` § Gap ranking by priority
+- `docs/parity/his/implementation-checklist.md` § Gap ranking by priority
+
+## Target Crate Map Justification
+
+The target crate map in `FINAL_PLAN.md` is justified by the audited parity
+domains. Each target crate corresponds to a distinct ownership boundary
+derived from the three audit domains, not from Go package structure or Rust
+crate convenience.
+
+| Target crate | Justification from audit evidence |
+| --- | --- |
+| `cfdrs-bin` | Process entrypoint, runtime composition, lifecycle orchestration. Owns the seam between CLI dispatch, CDC connections, and HIS host interactions. Not a parity domain itself — it composes the three domains. |
+| `cfdrs-cli` | Owns the 32-row CLI parity surface: command tree, help text, flags, env bindings, exit codes, formatting. All 9 critical CLI gaps and 13 high CLI gaps land here. Current Rust CLI surface lives in `crates/cloudflared-cli/src/surface/`. |
+| `cfdrs-cdc` | Owns the 44-row CDC parity surface: registration RPC, stream contracts, management service, log streaming, metrics and readiness contracts, Cloudflare API client. All 10 critical CDC gaps and 18 high CDC gaps land here. Wire encoding (Cap'n Proto binary vs JSON) is the single highest-risk gap in the entire rewrite. |
+| `cfdrs-his` | Owns the 74-row HIS parity surface: service install and uninstall, filesystem layout, diagnostics collection, config reload and watcher, local endpoint exposure, privilege and environment assumptions. All 13 critical HIS gaps and 31 high HIS gaps land here. |
+| `cfdrs-shared` | Narrowly admitted cross-domain types only. The audit evidence shows limited overlap between domains. Shared types are restricted to: error plumbing, config types used by both CDC and HIS, and credential types referenced by both CLI dispatch and CDC registration. Must not become a dump crate. |
+
+The three parity domains (CLI, CDC, HIS) map cleanly to three ownership
+crates because the frozen Go baseline organizes its behavior along these same
+boundaries. The audit confirms that cross-domain coupling is limited to
+credential and config types, which justifies a narrow shared crate rather
+than a wide one.
+
 ## Known High-Risk Areas
 
-The highest-risk areas currently visible are:
+This section is a quick-reference summary. For the ranked and cross-referenced
+version, see "Cross-Domain Gap Ranking" above.
 
-- exact CLI surface mismatch (hidden and compatibility command paths)
 - registration RPC wire encoding (JSON vs Cap'n Proto)
 - stream framing and codec parity (custom binary vs Cap'n Proto)
 - management and log-streaming contracts (entirely absent in Rust)
 - Cloudflare REST API client (entirely absent in Rust)
+- exact CLI surface mismatch (hidden and compatibility command paths)
 - Linux service install and uninstall (entirely absent in Rust)
 - local HTTP metrics server and readiness endpoint (absent)
 - config reload and file watcher (absent, explicitly declared)
 - auto-update mechanism (absent)
 - diagnostics collection and CLI command (absent)
-- service installation behavior
-- watcher and reload behavior
-- filesystem side effects and host layout assumptions
 
 ## Anti-Drift Rules
 
@@ -252,10 +365,13 @@ Avoid reporting progress only in terms of file count or code movement.
 
 ## Immediate Next Actions
 
-1. expand the seeded rows in the three implementation checklists from known baseline and current Rust reality
-2. capture CLI blackbox truth and attach it to the relevant CLI ledger rows
-3. add feature-group audit documents where the ledgers would otherwise become unreadable
-4. inventory high-risk CDC contracts with special focus on registration and stream wire semantics
-5. inventory high-risk HIS contracts with special focus on service, diagnostics, filesystem, and reload behavior
-6. draft the top-level documentation reconciliation map from the first audit findings
-7. define refactor migration slices in documents only
+Stage 2 (Reconcile Docs) is the next mandatory stage. It has five sub-stages
+defined in `FINAL_PLAN.md`:
+
+1. Stage 2.1: Master repository truth (root README, STATUS.md, docs map)
+2. Stage 2.2: Scope, compatibility, and governance review
+3. Stage 2.3: Historical phase and parity documents
+4. Stage 2.4: Operator and contributor guidance
+5. Stage 2.5: AI instructions, skills, and agent configuration
+
+No Stage 2 work has started yet. Stage 2 cannot be skipped or reordered.

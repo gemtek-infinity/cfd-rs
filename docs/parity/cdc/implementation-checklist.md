@@ -126,10 +126,10 @@ big-endian binary format for stream framing.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-029 | readiness endpoint contract | `metrics/readiness.go` | `GET /ready` returns JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}` with HTTP 200 if active conns > 0, else 503 | none | audited, absent | not present | open gap | HTTP contract tests, ready/not-ready semantics tests | high | needed for k8s probes. See `docs/parity/cdc/metrics-readiness-and-api.md` |
-| CDC-030 | healthcheck endpoint | `metrics/metrics.go` | `GET /healthcheck` returns text `OK\n` with HTTP 200 | none | audited, absent | not present | open gap | liveness tests | medium | simple liveness probe |
-| CDC-031 | Prometheus metrics endpoint | `metrics/metrics.go` | `GET /metrics` served by `promhttp.Handler()` | none | audited, absent | not present | open gap | endpoint tests, metric-name tests | medium | exports `cloudflared_build_info`, `capnp_*_operations_total` and others |
-| CDC-032 | quicktunnel endpoint | `metrics/metrics.go` | `GET /quicktunnel` returns `{"hostname":"<hostname>"}` | none | audited, absent | not present | open gap | quicktunnel response tests | low | only relevant for quick tunnel mode |
+| CDC-029 | readiness endpoint contract | `metrics/readiness.go` | `GET /ready` returns JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}` with HTTP 200 if active conns > 0, else 503 | none | audited, absent | not present | open gap | HTTP contract tests, ready/not-ready semantics tests | high | CDC owns response contract; HIS-025 owns local HTTP exposure. See `docs/parity/cdc/metrics-readiness-and-api.md` |
+| CDC-030 | healthcheck endpoint | `metrics/metrics.go` | `GET /healthcheck` returns text `OK\n` with HTTP 200 | none | audited, absent | not present | open gap | liveness tests | medium | CDC owns response contract; HIS-026 owns local HTTP exposure |
+| CDC-031 | Prometheus metrics endpoint | `metrics/metrics.go` | `GET /metrics` served by `promhttp.Handler()` | none | audited, absent | not present | open gap | endpoint tests, metric-name tests | medium | CDC owns metric names and labels; HIS-027 owns local HTTP exposure |
+| CDC-032 | quicktunnel endpoint | `metrics/metrics.go` | `GET /quicktunnel` returns `{"hostname":"<hostname>"}` | none | audited, absent | not present | open gap | quicktunnel response tests | low | CDC owns response contract; HIS-028 owns local HTTP exposure |
 
 ### Cloudflare REST API
 

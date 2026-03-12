@@ -56,6 +56,13 @@ What exists now:
   forwarding through the protocol bridge
 - frozen Go baseline and design-audit references
 - governance and policy docs that freeze the Linux production-alpha lane
+- complete Stage 1 parity audit across three domains:
+  - CLI: 32 rows in `docs/parity/cli/implementation-checklist.md`
+  - CDC: 44 rows in `docs/parity/cdc/implementation-checklist.md`
+  - HIS: 74 rows in `docs/parity/his/implementation-checklist.md`
+- feature-group audit documents under `docs/parity/cli/`, `docs/parity/cdc/`,
+  and `docs/parity/his/`
+- baseline evidence captures in `docs/parity/cli/captures/`
 
 What does not exist yet:
 
@@ -86,10 +93,16 @@ What does not exist yet:
 - `docs/status/porting-rules.md`
   - first implementation gate, recommended first slice, and done definition
 
+- `docs/status/phase-5-overhaul.md`
+  - Big Phase 5 execution status and stage tracking
+
 ## Routing
 
 - for current repository state: start here, then load the smallest focused
   status file above
+- for parity progress: use the three implementation checklists under
+  `docs/parity/`
+- for overhaul execution status: use `docs/status/phase-5-overhaul.md`
 - for phase model or promotion boundaries: use `docs/promotion-gates.md`
 - for scope and non-negotiables: use `REWRITE_CHARTER.md`
 - for behavior and parity truth: use the frozen Go baseline first

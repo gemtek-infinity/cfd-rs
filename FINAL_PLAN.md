@@ -1011,6 +1011,34 @@ understanding of the rewrite is listed here.
 Feature-group documents will be added under `docs/parity/cli/`,
 `docs/parity/cdc/`, and `docs/parity/his/` as the audit progresses.
 
+### Feature-Group Documents (Created During Stage 1)
+
+| Document | Domain |
+| -------- | ------ |
+| `docs/parity/cli/root-and-global-flags.md` | CLI |
+| `docs/parity/cli/tunnel-subtree.md` | CLI |
+| `docs/parity/cli/access-subtree.md` | CLI |
+| `docs/parity/cli/tail-and-management.md` | CLI |
+| `docs/parity/cdc/registration-rpc.md` | CDC |
+| `docs/parity/cdc/stream-contracts.md` | CDC |
+| `docs/parity/cdc/management-and-diagnostics.md` | CDC |
+| `docs/parity/cdc/metrics-readiness-and-api.md` | CDC |
+| `docs/parity/his/service-installation.md` | HIS |
+| `docs/parity/his/filesystem-and-layout.md` | HIS |
+| `docs/parity/his/diagnostics-and-collection.md` | HIS |
+| `docs/parity/his/reload-and-watcher.md` | HIS |
+
+### Evidence Captures (Created During Stage 1)
+
+| Document | Domain |
+| -------- | ------ |
+| `docs/parity/cli/captures/root-surface.txt` | CLI |
+| `docs/parity/cli/captures/tunnel-subtree.txt` | CLI |
+| `docs/parity/cli/captures/access-subtree.txt` | CLI |
+| `docs/parity/cli/captures/tail-management-service-update.txt` | CLI |
+| `docs/parity/cli/captures/error-and-compat.txt` | CLI |
+| `docs/parity/cli/captures/rust-current-surface.txt` | CLI |
+
 ### Tools And Configuration
 
 | Item | Stage | Disposition |
