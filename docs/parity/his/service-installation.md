@@ -21,7 +21,7 @@ Supporting files:
 
 ## CLI Entry Points
 
-```
+```text
 cloudflared service install                       # config-based
 cloudflared service install --token <TOKEN>        # token-based
 cloudflared service install --no-update-service    # skip update timer

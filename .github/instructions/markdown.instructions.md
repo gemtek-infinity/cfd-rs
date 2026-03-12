@@ -49,3 +49,28 @@ When editing Markdown in this repository:
 - prefer bullets for factual inventories and gates
 - avoid decorative wording, speculative claims, and unsupported completion language
 - write so both humans and retrieval-based tools can stop reading early once they have the needed answer
+
+## Formatting rules
+
+These rules prevent recurring markdownlint violations.
+
+### Fenced code blocks (MD040)
+
+Always specify a language on fenced code blocks:
+
+- use `go`, `rust`, `json`, `ini`, `bash`, `yaml`, `toml` for real code
+- use `text` for command examples, wire formats, PEM blocks, or other non-code literals
+- never leave a bare triple-backtick opening without a language tag
+
+### Headings, not bold emphasis (MD036)
+
+Use proper heading levels (`##`, `###`) for section labels.
+Do not use `**bold text**` on its own line as a substitute heading.
+
+### Tables (MD056, MD060)
+
+- every row must have the same number of pipe-delimited columns as the header
+- use `and` or prose instead of literal `|` inside cell content — unescaped pipes split columns and silently corrupt the table
+- keep a space on both sides of every pipe: `| cell |`, not `|cell|` or `| cell|`
+- when a table row is long, verify the column count matches the header before committing
+- backtick-wrapped code inside cells is fine, but watch for pipes inside backticks — some renderers still split on them

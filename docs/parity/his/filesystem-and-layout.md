@@ -80,7 +80,7 @@ expands `~` via `homedir.Expand()`.
 
 PEM-encoded JSON block:
 
-```
+```text
 -----BEGIN ARGO TUNNEL TOKEN-----
 <base64-encoded JSON>
 -----END ARGO TUNNEL TOKEN-----

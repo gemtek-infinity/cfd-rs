@@ -167,7 +167,7 @@ Traceroute to Cloudflare regions:
 
 ## Diagnostic CLI Command
 
-```
+```text
 cloudflared tunnel diag [options]
 ```
 

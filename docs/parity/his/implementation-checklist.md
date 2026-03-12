@@ -88,7 +88,7 @@ Preferred values:
 | HIS-008 | credential search-by-ID | `cmd/cloudflared/tunnel/credential_finder.go` `searchByID` | search for `{TunnelID}.json` in origincert dir first, then each discovery directory | none | audited, absent | not present | open gap | credential search tests, directory traversal tests | high | blocks `tunnel run` without explicit `--credentials-file` |
 | HIS-009 | origin cert search across dirs | `credentials/origin_cert.go` `FindDefaultOriginCertPath()` | search discovery directories for `cert.pem`, return first match | none | audited, absent | not present | open gap | cert search tests | high | needed for cert-based flows |
 | HIS-010 | tunnel token compact format | `connection/connection.go` `TunnelToken` | JSON struct with short keys `a`, `s`, `t`, `e`, base64-encoded for `--token` flag | none | audited, absent | not present | open gap | token parse and roundtrip tests | high | needed for token-based service install |
-| HIS-011 | credential file write with mode 0400 | `cmd/cloudflared/tunnel/subcommands.go` | write JSON with `os.O_CREATE|os.O_EXCL`, mode`0400`, fail if file exists | none | audited, absent | not present | open gap | file creation tests, permission tests | medium | needed for `tunnel create` |
+| HIS-011 | credential file write with mode 0400 | `cmd/cloudflared/tunnel/subcommands.go` | write JSON with `os.O_CREATE` and `os.O_EXCL`, mode 0400, fail if file exists | none | audited, absent | not present | open gap | file creation tests, permission tests | medium | needed for `tunnel create` |
 
 ### Service Installation and Uninstall
 
@@ -108,7 +108,7 @@ Preferred values:
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-021 | systemd detection | `cmd/cloudflared/linux_service.go` `isSystemd()` | check `/run/systemd/system` existence | cloudflared-cli `runtime/deployment.rs` | audited, partial | weak | open gap | Rust uses env vars (`INVOCATION_ID`, etc.) not `/run/systemd/system` stat; different detection method | host-detection tests | high | Rust detects for evidence reporting only, not for service management; detection method diverges |
+| HIS-021 | systemd detection | `cmd/cloudflared/linux_service.go` `isSystemd()` | check `/run/systemd/system` existence | cloudflared-cli `runtime/deployment.rs` | audited, partial | weak | open gap | host-detection tests | high | Rust uses env vars not /run/systemd/system stat; detects for evidence only, not service management |
 | HIS-022 | systemd service template exact content | `cmd/cloudflared/linux_service.go` templates | `Type=notify`, `TimeoutStartSec=15`, `Restart=on-failure`, `RestartSec=5s`, `--no-autoupdate` in ExecStart, `After=network-online.target` | none | audited, absent | not present | open gap | template content assertion tests | critical | exact template content is part of the operator contract |
 | HIS-023 | SysV init script exact content | `cmd/cloudflared/linux_service.go` template | pidfile at `/var/run/$name.pid`, stdout to `/var/log/$name.log`, stderr to `/var/log/$name.err`, sources `/etc/sysconfig/$name` | none | audited, absent | not present | open gap | script content tests | high | fallback service path |
 
