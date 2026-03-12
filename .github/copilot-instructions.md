@@ -8,9 +8,12 @@ Do not load all top-level governance files by default.
 - `REWRITE_CHARTER.md` — non-negotiables, lane decisions, and scope boundaries
 - `docs/ai-context-routing.md` — minimum-file routing for cold starts and staged retrieval order
 - `STATUS.md` — current implemented state
+- `docs/promotion-gates.md` — phase model and promotion boundaries
 - `docs/*.md` — compatibility, dependency, allocator, runtime, and concurrency policy
 - `AGENTS.md` — short operating guide
 - `SKILLS.md` — repeatable subsystem-porting workflow
+- `FINAL_PLAN.md` — staged execution plan for the final phase
+- `FINAL_PHASE.md` — detailed execution reference for the final phase
 
 ## Before proposing changes
 1. identify the task type
@@ -47,6 +50,19 @@ Do not start with a broad manual workspace scan when MCP or `docs/ai-context-rou
 3. use `baseline-2026.2.0/design-audit/` second
 
 Do not claim parity from Rust code shape alone.
+
+## Parity work routing
+For parity audit, implementation, or gap-review tasks:
+1. identify the domain: CLI, CDC, or HIS
+2. load the relevant parity ledger under `docs/parity/`
+3. load `docs/parity/README.md` for the full domain and document index
+4. use frozen baseline code and tests for behavior truth
+5. use the cross-domain gap ranking in `docs/status/phase-5-overhaul.md` for priority
+
+Parity ledgers:
+- `docs/parity/cli/implementation-checklist.md` — CLI command surface
+- `docs/parity/cdc/implementation-checklist.md` — Cloudflare contracts
+- `docs/parity/his/implementation-checklist.md` — host interactions
 
 ## Refactor and cognitive-load routing
 For refactor, hotspot, architecture-shaping, or medium/large code-change tasks:

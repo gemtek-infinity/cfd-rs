@@ -15,7 +15,7 @@ When editing Rust code or Cargo manifests in this repository:
 	semantic type already exists or a small owned newtype would remove ambiguity
 - prefer mature, production-ready crates for parsing, encoding, validation, and
 	typed boundary handling over handwritten edge-case logic
-- for first-slice work, prefer synchronous and deterministic code
+- prefer synchronous and deterministic code unless the accepted slice requires async
 - do not introduce async/runtime structure early unless the accepted slice requires it
 - avoid repo-wide refactors unless explicitly requested
 - if evidence is incomplete, say so explicitly

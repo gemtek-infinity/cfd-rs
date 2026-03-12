@@ -67,6 +67,27 @@ Use this file as the short operating guide, not as the full routing map.
 - `SKILLS.md`
   - repeatable porting workflow
 
+- `FINAL_PLAN.md`
+  - staged execution plan for the final phase
+
+- `FINAL_PHASE.md`
+  - detailed execution reference
+
+- `docs/parity/README.md`
+  - parity domain index and document map
+
+- `docs/parity/cli/implementation-checklist.md`
+  - CLI parity ledger
+
+- `docs/parity/cdc/implementation-checklist.md`
+  - CDC parity ledger
+
+- `docs/parity/his/implementation-checklist.md`
+  - HIS parity ledger
+
+- `docs/deployment-notes.md`
+  - operator deployment contract and known gaps
+
 ## Working rules
 
 - do not treat this repository as a blank-slate Rust project
@@ -74,9 +95,10 @@ Use this file as the short operating guide, not as the full routing map.
 - do not claim parity from Rust code alone
 - do not silently widen scope
 - do not preload speculative dependencies
-- do not introduce async/runtime machinery into first-slice work unless the accepted slice requires it
+- prefer synchronous and deterministic code unless the accepted slice requires async
 - keep patches narrow and source-grounded
 - when finishing Rust work, follow the completion workflow in `.github/instructions/rust.instructions.md` (test+clippy → debtmap gate → fmt → summary+docs)
+- for parity work, identify the domain (CLI, CDC, or HIS) and update the relevant ledger
 
 ## Question routing
 

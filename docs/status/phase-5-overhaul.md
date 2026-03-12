@@ -183,7 +183,7 @@ Stage 1 is complete.
 
 ### Stage 2: Reconcile Docs
 
-Status: **in progress** (Stage 2.4 complete)
+Status: **complete**
 
 Sub-stage status:
 
@@ -191,7 +191,30 @@ Sub-stage status:
 - Stage 2.2 (scope, compatibility, governance): **complete**
 - Stage 2.3 (historical phase and parity docs): **complete**
 - Stage 2.4 (operator and contributor guidance): **complete**
-- Stage 2.5 (AI instructions, skills, agent config): not started
+- Stage 2.5 (AI instructions, skills, agent config): **complete**
+
+Stage 2.5 outputs:
+
+- `.github/copilot-instructions.md` updated — added `FINAL_PLAN.md` and
+  `FINAL_PHASE.md` to governing files list; added parity work routing section
+  with domain identification, ledger links, and cross-domain gap ranking
+  pointer
+- `AGENTS.md` updated — added parity ledgers, `FINAL_PLAN.md`,
+  `FINAL_PHASE.md`, and `docs/deployment-notes.md` to "Use the right file"
+  routing; replaced stale first-slice async constraint with general
+  synchronous-first preference; added parity ledger update rule to working
+  rules
+- `SKILLS.md` updated — replaced stale "first-slice bias" section with
+  general "default code preferences"; added parity ledger identification
+  and update steps to porting workflow; added ledger links
+- `.github/instructions/rust.instructions.md` updated — replaced "for
+  first-slice work" scoping with general synchronous-first preference
+  (Tokio runtime is now active)
+- `.github/instructions/markdown.instructions.md` reviewed — no changes
+  needed (already accurate and consistent)
+- `docs/ai-context-routing.md` updated — added "Parity audit, implementation,
+  and gap review" task routing section with domain ledger, feature-group doc,
+  and execution doc pointers
 
 Stage 2.4 outputs:
 
@@ -268,10 +291,16 @@ Stage 2.2 outputs:
 
 Required outputs remaining:
 
-- reconciled AI instructions, skills, and agent config (Stage 2.5)
 - target crate README content (Stage 3, after crate skeletons exist)
 
-This stage is mandatory implementation work, not cleanup.
+All five Stage 2 sub-stages are complete. Stage 2 documentation reconciliation
+exit conditions are satisfied:
+
+- repository-wide wording is aligned with the final-phase program
+- stale ownership language has been removed or replaced
+- parity documents are linked from top-level docs
+- the repository can be read by a human contributor without relying on tribal knowledge
+- the document set is accurate enough to support the refactor without ambiguity
 
 ### Stage 3: Refactor
 

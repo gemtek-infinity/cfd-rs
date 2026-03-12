@@ -114,6 +114,22 @@ Load first:
 These files are workflow notes.
 They do not override charter, status, or policy docs.
 
+### Parity audit, implementation, and gap review
+
+Load first:
+
+- `docs/parity/README.md`
+- the relevant domain ledger under `docs/parity/`
+
+Load next only if needed:
+
+- feature-group docs under `docs/parity/cli/`, `docs/parity/cdc/`, or `docs/parity/his/`
+- `docs/status/phase-5-overhaul.md` for cross-domain gap ranking
+- `FINAL_PLAN.md` for stage gates and execution rules
+
+Use frozen baseline code and tests for behavior truth.
+Do not claim parity from Rust code shape alone.
+
 ### Refactor, hotspot, and cognitive-load work
 
 Load first:
