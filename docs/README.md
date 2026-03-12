@@ -60,6 +60,35 @@ Do not start with full-repo document loading or broad repo-wide Debtmap output w
 - `docs/go-rust-semantic-mapping.md`
 - `docs/dependency-policy.md`
 
+### parity audit and tracking
+
+- `docs/parity/cli/implementation-checklist.md` — CLI parity ledger (32 rows)
+- `docs/parity/cdc/implementation-checklist.md` — CDC parity ledger (44 rows)
+- `docs/parity/his/implementation-checklist.md` — HIS parity ledger (74 rows)
+
+Feature-group audit documents:
+
+- `docs/parity/cli/root-and-global-flags.md`
+- `docs/parity/cli/tunnel-subtree.md`
+- `docs/parity/cli/access-subtree.md`
+- `docs/parity/cli/tail-and-management.md`
+- `docs/parity/cdc/registration-rpc.md`
+- `docs/parity/cdc/stream-contracts.md`
+- `docs/parity/cdc/management-and-diagnostics.md`
+- `docs/parity/cdc/metrics-readiness-and-api.md`
+- `docs/parity/his/service-installation.md`
+- `docs/parity/his/filesystem-and-layout.md`
+- `docs/parity/his/diagnostics-and-collection.md`
+- `docs/parity/his/reload-and-watcher.md`
+
+Baseline evidence captures: `docs/parity/cli/captures/`
+
+### overhaul execution
+
+- `FINAL_PLAN.md` — staged execution plan with sub-stage gates
+- `FINAL_PHASE.md` — detailed execution reference
+- `docs/status/phase-5-overhaul.md` — overhaul status tracker
+
 ### human-facing Rust coding references
 
 - `.github/instructions/rust.instructions.md`

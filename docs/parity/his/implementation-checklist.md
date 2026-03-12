@@ -67,7 +67,18 @@ Preferred values:
 - unknown
 - blocked
 
-## Checklist
+## Audited Checklist
+
+This checklist was produced by source-level audit of the frozen Go baseline
+in `baseline-2026.2.0/old-impl/` and comparison against the current Rust HIS
+surface in `crates/cloudflared-cli/` and `crates/cloudflared-config/`.
+
+The frozen Go HIS surface uses direct syscalls, `os/exec` for systemd/SysV,
+`fsnotify` for file watching, `net/http` for local metrics, and `lumberjack`
+for log rotation. The current Rust HIS surface has config discovery and
+credential loading (parity-backed), signal handling (functional parity),
+and deployment evidence (intentional alpha divergence). All other host
+interactions are absent.
 
 ### Config Discovery and Loading
 
@@ -117,10 +128,10 @@ Preferred values:
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-024 | local HTTP metrics server | `metrics/metrics.go` | bind `localhost:0` (host) or `0.0.0.0:0` (container), try ports 20241-20245, ReadTimeout=10s, WriteTimeout=10s | none | audited, absent | not present | open gap | bind tests, port fallback tests | critical | no observability surface in Rust |
-| HIS-025 | `/ready` JSON endpoint | `metrics/readiness.go` `ReadyServer` | JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}`, HTTP 200 if connections > 0, HTTP 503 otherwise | runtime readiness state machine only | audited, absent | not present | open gap | readiness HTTP tests, response shape tests | critical | Rust has internal readiness tracking but no HTTP endpoint |
-| HIS-026 | `/healthcheck` endpoint | `metrics/metrics.go` | return `OK\n` as text/plain | none | audited, absent | not present | open gap | liveness probe tests | high | simple liveness check |
-| HIS-027 | `/metrics` Prometheus endpoint | `metrics/metrics.go` `promhttp.Handler()` | Prometheus text format, `build_info` gauge with goversion/type/revision/version labels | none | audited, absent | not present | open gap | metrics format tests, build_info label tests | critical | monitoring integration |
-| HIS-028 | `/quicktunnel` endpoint | `metrics/metrics.go` | JSON `{"hostname":"..."}` with quick tunnel URL | none | audited, absent | not present | open gap | quicktunnel response tests | medium | quick tunnel flow |
+| HIS-025 | `/ready` JSON endpoint | `metrics/readiness.go` `ReadyServer` | JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}`, HTTP 200 if connections > 0, HTTP 503 otherwise | runtime readiness state machine only | audited, absent | not present | open gap | readiness HTTP tests, response shape tests | critical | HIS owns local HTTP exposure; CDC-029 owns response contract. Rust has internal readiness tracking but no HTTP endpoint |
+| HIS-026 | `/healthcheck` endpoint | `metrics/metrics.go` | return `OK\n` as text/plain | none | audited, absent | not present | open gap | liveness probe tests | high | HIS owns local HTTP exposure; CDC-030 owns response contract |
+| HIS-027 | `/metrics` Prometheus endpoint | `metrics/metrics.go` `promhttp.Handler()` | Prometheus text format, `build_info` gauge with goversion/type/revision/version labels | none | audited, absent | not present | open gap | metrics format tests, build_info label tests | critical | HIS owns local HTTP exposure; CDC-031 owns metric names and labels |
+| HIS-028 | `/quicktunnel` endpoint | `metrics/metrics.go` | JSON `{"hostname":"..."}` with quick tunnel URL | none | audited, absent | not present | open gap | quicktunnel response tests | medium | HIS owns local HTTP exposure; CDC-032 owns response contract |
 | HIS-029 | `/config` endpoint | orchestrator serving versioned config | JSON `{"version":N,"config":{ingress, warp-routing, originRequest}}` | none | audited, absent | not present | open gap | config endpoint tests | medium | remote config visibility |
 | HIS-030 | `/debug/pprof/*` endpoints | `http.DefaultServeMux` pprof | binary pprof format, auth disabled (`trace.AuthRequest` returns true) | none | audited, absent | not present | open gap | pprof endpoint tests | low | debugging aid |
 | HIS-031 | metrics bind address config | `metrics/metrics.go`, `--metrics` flag | `--metrics ADDRESS` flag overrides default | none | audited, absent | not present | open gap | flag tests | high | operator configuration |
@@ -223,9 +234,88 @@ Preferred values:
 | HIS-073 | gracenet socket inheritance | `metrics/metrics.go`, `vendor/github.com/facebookgo/grace/gracenet/net.go` | metrics listeners registered via `gracenet.Net`; on auto-update restart, passes listener FDs to new process via `os.StartProcess()` with inherited environment | none | audited, absent | not present | open gap | socket inheritance tests | medium | Rust uses async runtime; may intentionally diverge |
 | HIS-074 | process self-restart on update | `cmd/cloudflared/updater/update.go` | on exit code 11 with SysV: `gracenet.Net.StartProcess()` forks new process inheriting listener sockets; on systemd: service restart handled by unit config | none | audited, absent | not present | open gap | restart tests | medium | depends on updater implementation |
 
-## Gap Ranking
+## Audit Summary
 
-### Critical (lane-blocking)
+### Baseline HIS inventory (frozen Go)
+
+Config and credentials: 5 search directories, auto-create at
+`/usr/local/etc/cloudflared/config.yml`, credential JSON and PEM parsing,
+search-by-ID discovery, origin cert path discovery.
+
+Service management: `service install` (config-based and token-based), `service
+uninstall`, systemd unit templates (service, update service, update timer),
+SysV init script fallback, init system detection, config validation and
+conflict detection.
+
+Local HTTP endpoints: metrics server on localhost (port 20241-20245), `/ready`,
+`/healthcheck`, `/metrics`, `/quicktunnel`, `/config`, `/debug/pprof/*`.
+
+Diagnostics: `tunnel diag` command, 11 diagnostic collectors (system, tunnel
+state, CLI config, host logs, network traceroute), metrics port scanning,
+HTTP diagnostic endpoints (`/diag/system`, `/diag/tunnel`).
+
+Watcher and reload: inotify file watcher, config reload action loop,
+`AppManager` service lifecycle, remote config update with version ordering,
+error recovery.
+
+Updater: `update` CLI command, auto-update timer, exit code protocol (11
+success, 10 failure, 0 no update), package manager detection.
+
+Signal handling: SIGTERM/SIGINT graceful shutdown, `--grace-period` (30s
+default), double-signal immediate exit, `--pidfile` write, token lock file.
+
+Logging: `--logfile`, `--log-directory`, rolling rotation (lumberjack
+1MB/5-backup), `--log-format-output`, `--loglevel`, `--transport-loglevel`.
+
+ICMP: raw socket proxy, ping group range check, `--icmpv4-src`/`--icmpv6-src`
+flags.
+
+Other: `hello_world` local test server, gracenet socket inheritance,
+process self-restart on update.
+
+### Current Rust HIS surface
+
+Implemented and parity-backed: config search directory order (HIS-001), config
+auto-create behavior (HIS-002), default path constants (HIS-004), HOME
+expansion (HIS-005), tunnel credentials JSON parsing (HIS-006), origin cert PEM
+parsing (HIS-007), SIGTERM/SIGINT shutdown (HIS-058), binary path detection
+(HIS-054), glibc marker detection (HIS-055).
+
+Partial: config YAML loading (HIS-003, strict mode unconfirmed), systemd
+detection (HIS-021, different method), deployment evidence (HIS-053,
+intentional divergence), log directory creation (HIS-064, no file writer),
+`hello_world` config parsing (HIS-072, no listener), OS build tags (HIS-052,
+detection only), grace period (HIS-059, 100ms default vs 30s).
+
+Missing: full service install/uninstall, systemd/SysV templates, local HTTP
+metrics server, all HTTP endpoints, diagnostics collection, watcher/reload,
+updater, ICMP proxy, log file creation, log rotation, token lock file,
+credential search, double-signal handling, pidfile.
+
+### Divergence records
+
+Two HIS items are classified as intentional divergences:
+
+- **HIS-053 (deployment evidence):** Rust deployment evidence is
+  contract-level and honesty-oriented. It explicitly declares known gaps
+  (`no-installer`, `no-systemd-unit`). This is intentional during alpha.
+
+- **HIS-059 (grace period default):** Rust internal default is 100ms; Go
+  default is 30s. This is documented as an `open gap` requiring a CLI flag,
+  not as an intentional divergence — the `--grace-period` flag is absent.
+
+Note: HIS-053 is the only true `intentional divergence` status. HIS-059 is
+`open gap` despite having a partial Rust implementation (different default,
+no flag).
+
+No HIS evidence harnesses with machine-comparable artifacts exist yet. All
+evidence is recorded in feature-group audit documents. Host-behavior capture
+artifacts (filesystem effects, systemd template content, diagnostics output
+shapes) are deferred to implementation stages.
+
+### Gap ranking by priority
+
+Critical gaps (lane-blocking):
 
 - HIS-012 through HIS-017: service install and uninstall commands and systemd/SysV integration
 - HIS-022: systemd service template exact content
@@ -237,7 +327,7 @@ Preferred values:
 - HIS-044: remote config update handling
 - HIS-059: `--grace-period` flag (30s default, not exposed in Rust)
 
-### High
+High gaps:
 
 - HIS-008, HIS-009, HIS-010: credential search and lookup
 - HIS-019, HIS-020: service config directory and conflict detection
@@ -258,7 +348,7 @@ Preferred values:
 - HIS-068: `--loglevel` and `--transport-loglevel`
 - HIS-069, HIS-070: ICMP raw socket and ping group check
 
-### Medium
+Medium gaps:
 
 - HIS-003: config strict-mode warnings
 - HIS-010: tunnel token compact format
@@ -274,13 +364,13 @@ Preferred values:
 - HIS-072: `hello_world` ingress listener
 - HIS-073, HIS-074: gracenet socket inheritance and process restart
 
-### Low
+Low gaps:
 
 - HIS-030: pprof endpoints
 - HIS-054, HIS-055: deployment evidence details
 - HIS-056, HIS-057: package manager scripts
 
-## Work Queue Status
+## Immediate Work Queue
 
 1. ~~inventory Linux service install and uninstall behavior~~ — done, see `service-installation.md`
 2. ~~inventory local metrics, readiness, diagnostics endpoints~~ — done, see `diagnostics-and-collection.md`
