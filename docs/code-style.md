@@ -5,7 +5,7 @@ For default AI code-edit guidance, start with `.github/instructions/rust.instruc
 
 ## Quick reference
 
-This table summarizes all 28 rules. Each links to its detailed section below.
+This table summarizes all 30 rules. Each links to its detailed section below.
 
 | # | Rule | One-line summary |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ This table summarizes all 28 rules. Each links to its detailed section below.
 | 2 | [Clear naming](#2-style-clear-naming) | Names describe domain role, not vague labels |
 | 3 | [Idiomatic Rust](#3-style-prefer-idiomatic-rust-when-practical) | Use standard Rust patterns when they improve clarity |
 | 4 | [Trait names](#4-style-trait-names-describe-capability-or-role) | Trait names describe behavior or capability |
-| 5 | [Tight spacing](#5-style-tight-vertical-spacing) | Blank lines only between genuinely different steps |
+| 5 | [Tight spacing with scoped separation](#5-style-tight-vertical-spacing-with-scoped-block-separation) | Blank lines between steps, wrap scoped blocks with blank lines |
 | 6 | [Boring control flow](#6-style-boring-control-flow) | Early returns, flat guards, no deep nesting |
 | 7 | [Chunking long functions](#7-style-long-sequential-functions-indicate-chunking) | Extract named helpers for multi-step sequential functions |
 | 8 | [Setup before final expression](#8-style-separate-setup-from-a-multi-line-final-expression) | One blank line before a meaningful multi-line final expression |
@@ -37,6 +37,8 @@ This table summarizes all 28 rules. Each links to its detailed section below.
 | 26 | [Stable field order](#26-style-keep-field-order-stable-in-struct-construction) | Match struct definition order in construction |
 | 27 | [One local pattern](#27-style-one-obvious-local-pattern-is-better-than-many-equivalent-ones) | Consistency over micro-optimization |
 | 28 | [Normalize AI code](#28-style-ai-generated-code-must-be-normalized) | AI output must read like repository-owned code |
+| 29 | [Group derives by source](#29-style-group-derive-attributes-by-source-crate) | Separate `#[derive]` lines per source crate |
+| 30 | [Alias ambiguous imports](#30-style-alias-ambiguous-imports-explicitly) | Rename conflicting trait and type imports at the `use` site |
 
 ## Purpose
 
@@ -228,22 +230,25 @@ pub trait OriginManager {
 
 ---
 
-## 5. Style: Tight vertical spacing
+## 5. Style: Tight vertical spacing with scoped block separation
 
-Do not add blank lines just to visually group things.
+Do not add blank lines just to visually group things. But do wrap multi-line
+scoped blocks with blank lines so that scope boundaries are immediately visible.
 
 Prefer:
 
 - one logical block per contiguous chunk
 - blank lines only when separating genuinely different steps
 - compact functions that do not look artificially stretched
+- a blank line before **and** after every multi-line scoped block (`if`, `match`, `for`, `while`, `loop`) — scoped blocks are semantically distinct steps and deserve visual separation
 
 Avoid:
 
-- empty lines between closely related statements
+- empty lines between closely related flat statements
 - “air padding” that makes short functions look longer than they are
+- omitting blank lines around scoped blocks, which makes it hard to see where a scope starts and ends
 
-Example:
+Example — flat statement grouping:
 
 Good:
 
@@ -268,6 +273,37 @@ let rule = self::IngressRule::new(hostname, service);
 validate_rule(&rule)?;
 
 register_rule(rule);
+```
+
+Example — scoped block wrapping:
+
+Good:
+
+```rust
+fn try_load(path: &Path) -> Option<Config> {
+    let raw = std::fs::read_to_string(path).ok()?;
+
+    if raw.is_empty() {
+        return None;
+    }
+
+    let config = raw.parse::<Config>().ok()?;
+
+    Some(config)
+}
+```
+
+Less preferred:
+
+```rust
+fn try_load(path: &Path) -> Option<Config> {
+    let raw = std::fs::read_to_string(path).ok()?;
+    if raw.is_empty() {
+        return None;
+    }
+    let config = raw.parse::<Config>().ok()?;
+    Some(config)
+}
 ```
 
 ---
@@ -805,7 +841,8 @@ Prefer:
 
 - specific imports when they improve readability
 - stable grouping
-- minimal aliasing
+- minimal aliasing unless disambiguation is needed (see Rule 30)
+- when disambiguation is needed, alias at the `use` site with descriptive names
 
 Avoid:
 
@@ -1052,6 +1089,78 @@ Rule:
 
 - valid Rust is not enough
 - merged Rust must read like intentional repository code
+
+---
+
+## 29. Style: Group `#[derive]` attributes by source crate
+
+When a type derives traits from multiple crates, group them by source crate on
+separate `#[derive]` lines.
+
+This makes it immediately visible which derives come from `std`/`core`, which
+come from `serde`, and which come from other external crates.
+
+Prefer:
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct TunnelConfig {
+    // ...
+}
+```
+
+Less preferred:
+
+```rust
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+pub struct TunnelConfig {
+    // ...
+}
+```
+
+When all derives come from a single source, one `#[derive]` line is fine:
+
+```rust
+#[derive(Debug, Clone)]
+pub struct Hostname(String);
+```
+
+---
+
+## 30. Style: Alias ambiguous imports explicitly
+
+When two imports would have the same name — whether traits, types, or
+functions — prefer aliasing them at the `use` site with clear, descriptive
+names.
+
+This prevents confusion at call sites and makes the intended item immediately
+obvious.
+
+Prefer:
+
+```rust
+use serde::Serialize;
+use rpc::Serialize as RpcSerialize;
+
+let serialized = <SomeType as Serialize>::serialize(&value);
+let rpc_bytes = <SomeType as RpcSerialize>::serialize(&value);
+```
+
+Also prefer domain-qualified aliases for same-named types across modules:
+
+```rust
+use crate::config::Error as ConfigError;
+use crate::tunnel::Error as TunnelError;
+```
+
+Avoid:
+
+- leaving two same-named imports unaliased and relying on fully qualified
+  syntax throughout the file
+- generic aliases like `Error1` / `Error2` that carry no domain meaning
+
+Using `self::` also reduces ambiguity for sibling module items (see Rule 10).
 
 ---
 

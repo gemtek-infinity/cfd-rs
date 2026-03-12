@@ -224,10 +224,10 @@ Stage 2 wrap-up outputs:
   implementation workflow, frozen-input rules, document hierarchy, and
   AI-assisted contribution guidance
 - `docs/code-style.md` updated — added quick-reference summary table linking
-  all 28 rules; changed header from "human-facing reference document" to
+  all 30 rules; changed header from "human-facing reference document" to
   "reference document for both human contributors and AI agents"
 - `docs/engineering-standards.md` updated — added quick-reference summary
-  table linking all 7 standards; changed header from "human-facing reference
+  table linking all 13 standards; changed header from "human-facing reference
   document" to "reference document for both human contributors and AI agents"
 - `README.md` updated — Contributing section now links to `CONTRIBUTING.md`
   with quick-start pointers to code-style, engineering-standards, parity

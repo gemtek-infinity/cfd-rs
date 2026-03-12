@@ -95,10 +95,10 @@ Use this file as the short operating guide, not as the full routing map.
   - parity evidence workflow
 
 - `docs/code-style.md`
-  - code style reference (28 rules with quick-reference summary)
+  - code style reference (30 rules with quick-reference summary)
 
 - `docs/engineering-standards.md`
-  - engineering standards reference (7 standards with quick-reference summary)
+  - engineering standards reference (13 standards with quick-reference summary)
 
 ## Working rules
 

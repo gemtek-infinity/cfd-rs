@@ -78,6 +78,9 @@ important rules.
 - Prefer explicit names, intermediate variables, and straightforward control flow
 - Prefer early returns, `match`, `if let`, and `let else` over deep nesting
 - Prefer flat `if` + `continue`/`return` guards over long `if..else if..else` chains
+- Wrap multi-line scoped blocks (`if`, `match`, `for`, `while`, `loop`) with a blank line before and after
+- Group `#[derive]` attributes by source crate on separate lines
+- Alias ambiguous imports at the `use` site with clear, descriptive names
 - Use `self::` for sibling module items and `Self` inside `impl` blocks
 - Comments explain **why**, not what
 - No `unwrap` in production code — use `?` or `expect` with an explanation
@@ -88,10 +91,15 @@ important rules.
 ### Key structure points
 
 - One primary responsibility per crate or module
+- Prefer smaller files with clear intent and ownership — test modules do not enlarge
 - Public surfaces smaller than internals
 - Dependencies enter through owned seams, not scattered across crates
+- Wrap external crate behavior with local types and test the wrappers
+- Prefer mature, production-ready crates.io dependencies over reinvention
 - Concrete code first, abstraction only after a second real need
+- Prefer stack-allocated types for bounded sizes; prefer zero-copy types when borrowing suffices
 - Runtime and lifecycle ownership must be explicit
+- Every long-lived `tokio::spawn` must have an explicit owner, resource budget, and recovery plan
 
 ## Parity evidence requirements
 

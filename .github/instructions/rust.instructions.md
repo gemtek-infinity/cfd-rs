@@ -25,10 +25,12 @@ When editing Rust code or Cargo manifests in this repository:
 - avoid dense one-liners or clever chaining when a few named steps are easier to review
 - prefer early returns, `match`, `if let`, and `let else` over deep nesting
 - prefer flat independent `if` + `continue`/`return` guards over long `if..else if..else if` chains
-- add a blank line before a multi-line control flow block when it follows a different logical step
+- add a blank line before **and** after every multi-line scoped block (`if`, `match`, `for`, `while`, `loop`) — scoped blocks are semantically distinct steps
 - keep blank lines tight; use them to separate real steps, not to add visual padding
 - use one blank line before a multi-line final expression when setup and the final return or construction are both meaningful
-- prefer `self::` for sibling module items when that makes local ownership clearer
+- group `#[derive]` attributes by source crate on separate lines — `std`/`core` derives on one line, `serde` derives on another, etc.
+- when imports have ambiguous names (same trait, type, or function name from different crates), alias them at the `use` site with clear, descriptive names
+- prefer `self::` for sibling module items when that makes local ownership clearer or reduces ambiguity
 - prefer `Self` and `Self::` inside `impl` blocks rather than repeating the type name
 - prefer associated constants in the owning `impl` for type-local values, and avoid non-trivial magic numbers in function bodies
 - make parse and conversion targets explicit at the operation site when that improves scanability
@@ -42,12 +44,18 @@ When editing Rust code or Cargo manifests in this repository:
 
 ## Local engineering structure
 - keep one primary responsibility per crate or module
+- prefer smaller files with clear intent, ownership, and responsibility — test modules do not count as enlarging
 - keep public surfaces narrower than their supporting internals
 - admit third-party APIs through owned seams rather than scattering them through unrelated crates
+- wrap external crate behavior with local types when it limits API surface or controls behavior, and test those wrappers
+- prefer mature, production-ready crates.io dependencies over reinventing parsing, encoding, or validation logic
 - prefer direct upstream loaders or mature standard-format crates over bespoke parsing when the active slice really needs that format today
 - keep parsing, encoding, and security-relevant third-party types behind local boundaries when that keeps ownership clearer
 - prefer concrete code first; add abstraction only when a second real need or clear boundary justifies it
+- prefer stack-allocated types for bounded, predictable sizes; inspect calling stacks to avoid overflow
+- prefer zero-copy types (`&str`, `Cow`, `bytes::Bytes`) when the data lifetime allows borrowing
 - keep runtime and lifecycle ownership explicit rather than hidden in background work
+- every long-lived `tokio::spawn` must have an explicit owner, bounded resource budget, recovery strategy, and cancellation propagation
 - split modules by reviewable reasoning units, not by arbitrary line count alone
 
 ## Review preference
