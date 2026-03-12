@@ -183,12 +183,12 @@ Stage 1 is complete.
 
 ### Stage 2: Reconcile Docs
 
-Status: **in progress** (Stage 2.1 complete)
+Status: **in progress** (Stage 2.2 complete)
 
 Sub-stage status:
 
 - Stage 2.1 (master repository truth): **complete**
-- Stage 2.2 (scope, compatibility, governance): not started
+- Stage 2.2 (scope, compatibility, governance): **complete**
 - Stage 2.3 (historical phase and parity docs): not started
 - Stage 2.4 (operator and contributor guidance): not started
 - Stage 2.5 (AI instructions, skills, agent config): not started
@@ -206,6 +206,34 @@ Stage 2.1 outputs:
   ledgers
 - `docs/promotion-gates.md` reviewed — no changes needed (governing truth is
   accurate)
+
+Stage 2.2 outputs:
+
+- `REWRITE_CHARTER.md` reviewed — no changes needed (governing truth is
+  accurate)
+- `docs/compatibility-scope.md` reviewed — no changes needed
+- `docs/build-artifact-policy.md` reviewed — no changes needed
+- `docs/dependency-policy.md` updated — deferred dependency buckets reconciled
+  against current workspace manifests; three admitted slices (config,
+  async, observability) marked as admitted with ongoing rules preserved;
+  Protocol/Wire remains genuinely deferred
+- `docs/allocator-runtime-baseline.md` updated — removed embedded phase
+  number from scaffold honesty rule; language is now phase-agnostic
+- `docs/go-rust-semantic-mapping.md` updated — "Current Scaffold Application"
+  renamed and updated to reflect operational state; "First Slice Constraint"
+  generalized to "Synchronous And Deterministic Work"; garbled end-of-file
+  paragraph ordering fixed
+- `docs/adr/0001-hybrid-concurrency-model.md` updated — "Current Scaffold
+  Implication" replaced with "Current Operational State" reflecting that
+  Tokio and hybrid concurrency primitives are now active
+- `docs/adr/0002-transport-tls-crypto-lane.md` reviewed — no changes needed
+- `docs/adr/0003-pingora-critical-path.md` updated — acknowledged that
+  `pingora-http` is admitted in workspace dependencies; removed stale
+  deferred follow-ups for ADRs that already exist
+- `docs/adr/0004-fips-in-alpha-definition.md` reviewed — no changes needed
+- `docs/adr/0005-deployment-contract.md` reviewed — no changes needed
+- `docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md`
+  reviewed — no changes needed
 
 Required outputs remaining:
 

@@ -58,14 +58,16 @@ Pingora does not own yet:
 
 ## First Admitted Pingora Crates
 
-The first admitted Pingora crates for the production-alpha path are defined as:
+The first admitted Pingora crates for the production-alpha path are:
 
 - `pingora-core`
 - `pingora-http`
 - `pingora-proxy`
 
-This ADR does not add those crates yet.
-It only freezes the first admitted Pingora crate set at the governance level.
+`pingora-http` is now admitted in workspace dependencies and used by the
+admitted Pingora proxy seam. The remaining crates in this set are admitted at
+the governance level and may enter manifests when their owning implementation
+slice starts.
 
 ## Rejected Alternatives
 

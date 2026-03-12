@@ -145,13 +145,16 @@ Reason:
 - standard-format/container crates remain distinct from crypto-implementation
   crates and must not be treated as blanket permission for new crypto behavior
 
-## Deferred Dependency Buckets
+## Dependency Admission By Slice
 
-These libraries are approved only when their owning slice begins.
+This section records the admission gates and ongoing rules for dependencies
+organized by owning slice. Dependencies whose slices are active are now in
+workspace manifests. Dependencies whose slices have not yet started remain
+deferred.
 
-### Config, Credentials, And Ingress Normalization Slice
+### Config, Credentials, And Ingress Normalization (admitted)
 
-Admit only when implementation starts in `cloudflared-config`:
+Slice is active. These dependencies are in `[workspace.dependencies]`:
 
 - `serde`
 - `serde_json`
@@ -160,7 +163,7 @@ Admit only when implementation starts in `cloudflared-config`:
 - `uuid`
 - `thiserror`
 
-Notes:
+Ongoing rules:
 
 - `serde_yaml` is tolerated for parity work even though the upstream crate line
   carries a deprecation marker; it must remain a deliberate compatibility
@@ -168,21 +171,21 @@ Notes:
 - if a more precise YAML strategy is later required, that change needs explicit
   compatibility review rather than silent substitution
 
-### Async Control-Plane And Data-Plane Slices
+### Async Control-Plane And Data-Plane (admitted)
 
-Admit only when async implementation starts in the owning crates:
+Slice is active. These dependencies are in `[workspace.dependencies]`:
 
 - `tokio`
 - `tokio-util`
 
-Rules:
+Ongoing rules:
 
-- their admission must follow `docs/go-rust-semantic-mapping.md`
+- their use must follow `docs/go-rust-semantic-mapping.md`
 - do not add alternative channel/runtime frameworks by default
 - do not use convenience crates to bypass the explicit crypto and transport
   governance already frozen elsewhere
 
-### Protocol And Wire Slices
+### Protocol And Wire Slices (deferred)
 
 Admit only when protocol implementation starts:
 
@@ -194,9 +197,9 @@ Rules:
 - admission must be tied to exact wire and schema preservation work
 - do not add protocol libraries speculatively because the crate name exists
 
-### Logging And Observability Slices
+### Logging And Observability (admitted)
 
-Admit only when runtime logging or observability code starts:
+Slice is active. These dependencies are in `[workspace.dependencies]`:
 
 - `tracing`
 - `tracing-subscriber`
