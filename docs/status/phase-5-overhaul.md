@@ -130,7 +130,7 @@ when the master ledgers would otherwise become too dense to review effectively.
 
 ### Stage 1: Audit
 
-Status: in progress
+Status: **complete**
 
 Outputs established now:
 
@@ -153,20 +153,20 @@ Outputs established now:
   - `docs/parity/cdc/stream-contracts.md`
   - `docs/parity/cdc/management-and-diagnostics.md`
   - `docs/parity/cdc/metrics-readiness-and-api.md`
-- HIS implementation checklist exists
+- HIS implementation checklist exists and is fully populated (74 rows)
+- HIS feature-group audit documents exist:
+  - `docs/parity/his/service-installation.md`
+  - `docs/parity/his/filesystem-and-layout.md`
+  - `docs/parity/his/diagnostics-and-collection.md`
+  - `docs/parity/his/reload-and-watcher.md`
 
 Sub-stage status:
 
 - Stage 1.1 (CLI audit): **complete**
 - Stage 1.2 (CDC audit): **complete**
-- Stage 1.3 (HIS audit): not started
+- Stage 1.3 (HIS audit): **complete**
 
-Remaining audit work:
-
-- expand and normalize HIS checklist rows from frozen baseline truth
-- capture baseline evidence for highest-risk HIS feature groups
-- add feature-group audit documents for HIS where needed
-- rank major HIS parity gaps for documentation and refactor ordering
+All three audit sub-stages are complete. Stage 1 exit condition is satisfied.
 
 ### Stage 2: Reconcile Docs
 
@@ -211,13 +211,16 @@ Refactor constraint:
 
 The highest-risk areas currently visible are:
 
-- exact CLI surface mismatch
-- hidden and compatibility command paths
-- registration RPC parity
-- actual wire framing and codec parity
-- incoming stream round-trip behavior
-- management and diagnostics contracts
-- readiness semantics
+- exact CLI surface mismatch (hidden and compatibility command paths)
+- registration RPC wire encoding (JSON vs Cap'n Proto)
+- stream framing and codec parity (custom binary vs Cap'n Proto)
+- management and log-streaming contracts (entirely absent in Rust)
+- Cloudflare REST API client (entirely absent in Rust)
+- Linux service install and uninstall (entirely absent in Rust)
+- local HTTP metrics server and readiness endpoint (absent)
+- config reload and file watcher (absent, explicitly declared)
+- auto-update mechanism (absent)
+- diagnostics collection and CLI command (absent)
 - service installation behavior
 - watcher and reload behavior
 - filesystem side effects and host layout assumptions

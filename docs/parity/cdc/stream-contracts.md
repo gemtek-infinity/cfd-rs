@@ -187,7 +187,7 @@ Source: `crates/cloudflared-cli/src/transport/quic/lifecycle.rs`
 
 The Rust binary format for `ConnectRequest` on data streams:
 
-```
+```text
 [2 bytes: connection_type as u16 big-endian]
 [2 bytes: dest length as u16 big-endian]
 [N bytes: dest UTF-8]

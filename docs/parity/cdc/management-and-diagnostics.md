@@ -196,7 +196,7 @@ Other Go pprof endpoints are not registered.
 
 ## Current Rust Management Surface
 
-**Status: entirely absent**
+Status: entirely absent.
 
 No management service, management routes, WebSocket log streaming, or
 management authentication exist in the current Rust implementation.
