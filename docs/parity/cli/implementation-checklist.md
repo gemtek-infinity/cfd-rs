@@ -156,6 +156,35 @@ Implemented flags: `--config`, `--help`/`-h`, `--version`/`-V`
 
 Missing from baseline: 36+ command paths, 50+ global flags, all subcommand trees
 
+### Divergence records
+
+**Root invocation (CLI-001):** Go empty invocation enters service mode
+(`unable to find config file`, exit 1). Rust empty invocation prints help
+text, exit 0. This is the highest-priority behavioral divergence.
+Confirmed from blackbox captures.
+
+**Version format (CLI-005):** Go outputs `cloudflared version DEV (built unknown)`;
+`--short`/`-s` outputs `DEV` only. Rust outputs `cloudflared 2026.2.0-alpha.202603`
+with no `--short` or `-s` support. Confirmed from blackbox captures.
+
+**db-connect removal (CLI-026):** Go exits 255, not 1. Confirmed from blackbox.
+
+**proxy-dns removal (CLI-025):** Error message includes full deprecation URL
+(`https://developers.cloudflare.com/1.1.1.1/dns-over-https/cloudflared-proxy/`).
+Confirmed from blackbox.
+
+**forward alias (CLI-022):** `forward` produces identical output to `access --help`.
+Confirmed from blackbox.
+
+No CLI divergences are currently classified as intentional. All divergences
+show `open gap` status except CLI-031 (`validate` command, `intentional
+divergence` — transitional alpha command not in baseline).
+
+Evidence harness: blackbox captures exist in `docs/parity/cli/captures/`
+with 6 capture files covering root, tunnel, access, tail, management,
+service, update, error, and compatibility surfaces plus current Rust
+output for comparison.
+
 ### Gap ranking by priority
 
 Critical gaps:
@@ -200,24 +229,6 @@ High gaps:
    - `tail-management-service-update.txt` — tail, management, service, update
    - `error-and-compat.txt` — unknown commands, bad flags, proxy-dns, db-connect
    - `rust-current-surface.txt` — current Rust binary outputs for comparison
-
-### Confirmed Divergences From Captures
-
-**Root invocation (CLI-001):** Go empty invocation enters service mode
-(`unable to find config file`, exit 1). Rust empty invocation prints help
-text, exit 0. This is the highest-priority behavioral divergence.
-
-**Version format (CLI-005):** Go outputs `cloudflared version DEV (built unknown)`;
-`--short`/`-s` outputs `DEV` only. Rust outputs `cloudflared 2026.2.0-alpha.202603`
-with no `--short` or `-s` support.
-
-**db-connect removal (CLI-026):** Go exits 255, not 1. Confirmed from blackbox.
-
-**proxy-dns removal (CLI-025):** Error message includes full deprecation URL
-(`https://developers.cloudflare.com/1.1.1.1/dns-over-https/cloudflared-proxy/`).
-
-**forward alias (CLI-022):** `forward` produces identical output to `access --help`.
-Confirmed from blackbox.
 
 ### Remaining Work (Post-Audit Stages)
 
