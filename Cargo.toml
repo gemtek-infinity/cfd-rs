@@ -1,9 +1,10 @@
 [workspace]
 members = [
-  "crates/cloudflared-cli",
-  "crates/cloudflared-config",
-  "crates/cloudflared-core",
-  "crates/cloudflared-proto",
+  "crates/cfdrs-bin",
+  "crates/cfdrs-cdc",
+  "crates/cfdrs-cli",
+  "crates/cfdrs-his",
+  "crates/cfdrs-shared",
   "tools/mcp-cfd-rs",
 ]
 resolver = "3"
@@ -17,8 +18,10 @@ version = "2026.2.0-alpha.202603"
 
 [workspace.dependencies]
 # monorepo dependencies
-cloudflared-config = { path = "crates/cloudflared-config" }
-cloudflared-proto = { path = "crates/cloudflared-proto" }
+cfdrs-cdc = { path = "crates/cfdrs-cdc" }
+cfdrs-cli = { path = "crates/cfdrs-cli" }
+cfdrs-his = { path = "crates/cfdrs-his" }
+cfdrs-shared = { path = "crates/cfdrs-shared" }
 # crates.io dependencies
 base64 = "0.22.1"
 mimalloc = { version = "0.1.48", default-features = false, features = [

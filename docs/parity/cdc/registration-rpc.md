@@ -206,7 +206,7 @@ sequence:
 
 ### Current Rust Control Stream
 
-Source: `crates/cloudflared-cli/src/transport/quic/lifecycle.rs`
+Source: `crates/cfdrs-bin/src/transport/quic/lifecycle.rs`
 
 The Rust control stream follows a simplified version of this lifecycle:
 
@@ -224,7 +224,7 @@ Missing lifecycle stages in Rust:
 
 ## Current Rust Registration Surface
 
-Source: `crates/cloudflared-proto/src/registration.rs`
+Source: `crates/cfdrs-cdc/src/registration.rs`
 
 ### TunnelAuth
 

@@ -1,0 +1,32 @@
+[package]
+edition.workspace = true
+license.workspace = true
+name = "cfdrs-bin"
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+cfdrs-cdc.workspace = true
+cfdrs-cli.workspace = true
+cfdrs-his.workspace = true
+cfdrs-shared.workspace = true
+mimalloc.workspace = true
+pingora-http.workspace = true
+quiche.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+
+[[bin]]
+name = "cloudflared"
+path = "src/main.rs"
+
+[dev-dependencies]
+url.workspace = true
+
+[lints]
+workspace = true

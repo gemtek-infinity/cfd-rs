@@ -1,0 +1,13 @@
+[package]
+edition.workspace = true
+license.workspace = true
+name = "cfdrs-his"
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+cfdrs-shared = { path = "../cfdrs-shared" }
+
+[lints]
+workspace = true

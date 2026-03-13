@@ -125,7 +125,7 @@ Checked in priority order:
 
 ## Current Rust Stream Surface
 
-Source: `crates/cloudflared-proto/src/stream.rs`
+Source: `crates/cfdrs-cdc/src/stream.rs`
 
 ### ConnectRequest
 
@@ -183,7 +183,7 @@ pub const CONTENT_LENGTH_KEY: &str = "HttpHeader:Content-Length";
 
 ### Rust Wire Framing (ConnectRequest Parse)
 
-Source: `crates/cloudflared-cli/src/transport/quic/lifecycle.rs`
+Source: `crates/cfdrs-bin/src/transport/quic/lifecycle.rs`
 
 The Rust binary format for `ConnectRequest` on data streams:
 
@@ -243,8 +243,8 @@ Source: `baseline-2026.2.0/old-impl/connection/quic_connection.go` and
 
 ### Current Rust Dispatch Flow
 
-Source: `crates/cloudflared-cli/src/proxy/origin.rs` and
-`crates/cloudflared-cli/src/transport/quic/lifecycle.rs`
+Source: `crates/cfdrs-bin/src/proxy/origin.rs` and
+`crates/cfdrs-bin/src/transport/quic/lifecycle.rs`
 
 1. stream accepted from QUIC connection
 2. `parse_connect_request(data)` reads from custom big-endian binary format
@@ -308,7 +308,7 @@ Fallback order: QUIC → HTTP/2 (on QUIC failure)
 
 ### Current Rust Equivalents
 
-**ProtocolBridgeState** (`crates/cloudflared-cli/src/protocol.rs`):
+**ProtocolBridgeState** (`crates/cfdrs-bin/src/protocol.rs`):
 
 | Variant | Approximate Go equivalent |
 | --- | --- |
@@ -318,7 +318,7 @@ Fallback order: QUIC → HTTP/2 (on QUIC failure)
 | `RegistrationObserved` | `Connected` |
 | `BridgeClosed` | `Disconnected` |
 
-**ProtocolEvent** (`crates/cloudflared-cli/src/protocol.rs`):
+**ProtocolEvent** (`crates/cfdrs-bin/src/protocol.rs`):
 
 | Variant | Fields | Go equivalent |
 | --- | --- | --- |
