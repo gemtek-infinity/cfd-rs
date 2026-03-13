@@ -1,0 +1,13 @@
+[package]
+edition.workspace = true
+license.workspace = true
+name = "cfdrs-cli"
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+cfdrs-shared.workspace = true
+
+[lints]
+workspace = true

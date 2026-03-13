@@ -266,7 +266,7 @@ call `deleteLockFile()` before exit, preventing stale lock files.
 
 ### Rust State
 
-Signal handling is implemented in `crates/cloudflared-cli/src/runtime/tasks/bridges.rs`
+Signal handling is implemented in `crates/cfdrs-bin/src/runtime/tasks/bridges.rs`
 using `tokio::signal::unix::signal(SignalKind::terminate())` and `signal(SignalKind::interrupt())`.
 
 Received signals send `RuntimeCommand::ShutdownRequested` with the signal name.

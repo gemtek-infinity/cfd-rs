@@ -240,10 +240,10 @@ during install if it does not exist.
 
 Service install and uninstall are entirely absent in the current Rust
 codebase. The runtime deployment evidence in
-`crates/cloudflared-cli/src/runtime/state/deployment_evidence.rs` honestly
+`crates/cfdrs-bin/src/runtime/state/deployment_evidence.rs` honestly
 declares `no-installer` and `no-systemd-unit` as known gaps.
 
-Systemd detection exists in `crates/cloudflared-cli/src/runtime/deployment.rs`
+Systemd detection exists in `crates/cfdrs-bin/src/runtime/deployment.rs`
 but only for evidence reporting, not for service management.
 
 ## Gap Summary

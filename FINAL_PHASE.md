@@ -794,7 +794,7 @@ These documents may remain partly historical, but they must no longer confuse th
 - docs/first-slice-freeze.md
 - docs/status/first-slice-parity.md
 - docs/status/porting-rules.md
-- crates/cloudflared-config/tests/README.md
+- crates/cfdrs-shared/tests/README.md
 - tools/first_slice_parity.py documentation and related notes
 
 Expected outcomes:

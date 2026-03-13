@@ -86,25 +86,28 @@ jobs:
             - name: Check (stable)
               run: |
                   cargo check --locked \
-                    -p cloudflared-cli \
-                    -p cloudflared-config \
-                    -p cloudflared-core \
-                    -p cloudflared-proto
+                    -p cfdrs-bin \
+                    -p cfdrs-cdc \
+                    -p cfdrs-cli \
+                    -p cfdrs-his \
+                    -p cfdrs-shared
             - name: Clippy (stable)
               run: |
                   cargo clippy --all-targets --locked \
-                    -p cloudflared-cli \
-                    -p cloudflared-config \
-                    -p cloudflared-core \
-                    -p cloudflared-proto \
+                    -p cfdrs-bin \
+                    -p cfdrs-cdc \
+                    -p cfdrs-cli \
+                    -p cfdrs-his \
+                    -p cfdrs-shared \
                     -- -D warnings
             - name: Test (stable)
               run: |
                   cargo test --locked \
-                    -p cloudflared-cli \
-                    -p cloudflared-config \
-                    -p cloudflared-core \
-                    -p cloudflared-proto
+                    -p cfdrs-bin \
+                    -p cfdrs-cdc \
+                    -p cfdrs-cli \
+                    -p cfdrs-his \
+                    -p cfdrs-shared
 
     # Validate MCP tool crate — runs only when tool or workspace files change.
     validate-tools:

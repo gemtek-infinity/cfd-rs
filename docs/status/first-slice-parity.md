@@ -23,11 +23,11 @@ Phase 1A groundwork now exists for the accepted first slice.
 
 What exists now:
 
-- explicit first-slice fixture taxonomy under `crates/cloudflared-config/tests/fixtures/first-slice/`
+- explicit first-slice fixture taxonomy under `crates/cfdrs-shared/tests/fixtures/first-slice/`
 - executable harness entrypoint at `tools/first_slice_parity.py`
 - checked-in JSON golden artifact contract for Go truth and Rust actual reports
 - Rust-side helper scaffolding and ignored parity tests in
-  `crates/cloudflared-config/tests/`
+  `crates/cfdrs-shared/tests/`
 
 What does not exist yet:
 
@@ -41,11 +41,11 @@ Implication:
 
 ## Phase 1B.1 Domain Skeleton
 
-Phase 1B.1 groundwork now exists in `crates/cloudflared-config/`.
+Phase 1B.1 groundwork now exists in `crates/cfdrs-shared/`.
 
 What exists now:
 
-- admitted first-slice crate dependencies only in `crates/cloudflared-config/Cargo.toml`
+- admitted first-slice crate dependencies only in `crates/cfdrs-shared/Cargo.toml`
 - explicit module layout for discovery, raw config, normalized config,
   credentials, ingress, and error taxonomy
 - honest public APIs for raw YAML loading, credential JSON loading, and raw to
@@ -61,7 +61,7 @@ What does not exist yet:
 
 Implication:
 
-- `cloudflared-config` is now a real owning crate for the accepted first slice
+- `cfdrs-shared` is now a real owning crate for the accepted first slice
 - the crate still must not be described as a completed first-slice port
 
 ## Phase 1B.2 Config Loading Path
@@ -153,7 +153,7 @@ surface.
 What exists now:
 
 - checked-in Go truth artifacts under
-  `crates/cloudflared-config/tests/fixtures/first-slice/golden/go-truth/` for
+  `crates/cfdrs-shared/tests/fixtures/first-slice/golden/go-truth/` for
   all 21 accepted first-slice fixtures
 - a source-backed `capture-go-truth` workflow that stages a small Go helper in
   a temporary module and imports the frozen Go baseline via `replace`

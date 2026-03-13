@@ -16,7 +16,7 @@ import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_ROOT = (
-    REPO_ROOT / "crates" / "cloudflared-config" / "tests" / "fixtures" / "first-slice"
+    REPO_ROOT / "crates" / "cfdrs-shared" / "tests" / "fixtures" / "first-slice"
 )
 INDEX_PATH = FIXTURE_ROOT / "fixture-index.toml"
 GO_TRUTH_DIR = FIXTURE_ROOT / "golden" / "go-truth"
@@ -464,7 +464,7 @@ def run_rust_emitter(
             "run",
             "-q",
             "-p",
-            "cloudflared-config",
+            "cfdrs-shared",
             "--example",
             "first_slice_emit",
         ],

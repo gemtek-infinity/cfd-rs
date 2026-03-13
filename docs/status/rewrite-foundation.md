@@ -49,27 +49,20 @@ workspace instead.
 
 ## Current Workspace Shape
 
-### Crate layout
+### Crate layout (Stage 3.2 complete)
 
 | Crate | Current content |
 | ----- | --------------- |
-| `crates/cloudflared-cli` | admitted alpha entry surface: help, version, config-backed startup, runtime and lifecycle, QUIC transport core, Pingora proxy seam, protocol bridge, observability, performance and failure-mode evidence, deployment proof |
-| `crates/cloudflared-config` | first-slice config discovery and loading, credentials and origin-cert decoding, ingress normalization and matching, parity harness and fixtures |
-| `crates/cloudflared-core` | future shared types (currently minimal) |
-| `crates/cloudflared-proto` | wire-format types (ConnectRequest, ConnectResponse, ConnectionType, Metadata), registration RPC type boundaries |
+| `crates/cfdrs-bin` | binary entrypoint, process startup, runtime composition, lifecycle orchestration, QUIC transport core, Pingora proxy seam, protocol bridge, observability, performance and failure-mode evidence, deployment proof |
+| `crates/cfdrs-cli` | command tree, help text, parsing, dispatch, CLI-facing surface parity |
+| `crates/cfdrs-cdc` | Cloudflare-facing RPC contracts, wire and stream contracts (registration, stream types) |
+| `crates/cfdrs-his` | host-facing service behavior, filesystem config discovery IO |
+| `crates/cfdrs-shared` | config types, credentials, ingress normalization, error taxonomy, discovery types, parity harness and fixtures |
 
-### Target crate map (Stage 3)
-
-| Crate | Ownership |
-| ----- | --------- |
-| `cfdrs-bin` | binary entrypoint, process startup, runtime composition, lifecycle orchestration |
-| `cfdrs-cli` | command tree, help text, parsing, dispatch, CLI-facing surface parity |
-| `cfdrs-cdc` | Cloudflare-facing RPC contracts, wire and stream contracts, management, metrics, API |
-| `cfdrs-his` | host-facing service behavior, filesystem, service install, diagnostics, watcher, local endpoints |
-| `cfdrs-shared` | narrowly admitted shared types only; must not become a dump crate |
-
-The target crate map is derived from the three audited parity domains
-(CLI, CDC, HIS) and is justified in `docs/status/phase-5-overhaul.md`.
+Retired crates: `cloudflared-cli`, `cloudflared-proto`, `cloudflared-core`,
+`cloudflared-config`. The crate layout is derived from the three audited
+parity domains (CLI, CDC, HIS) and is justified in
+`docs/status/phase-5-overhaul.md`.
 
 ### Dependency and runtime baseline
 

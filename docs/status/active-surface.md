@@ -14,9 +14,9 @@ For the cross-domain gap ranking and implementation order, see
 
 ## Current Crate Content
 
-### cloudflared-cli
+### cfdrs-bin
 
-The runtime and transport owner. Contains:
+The binary entrypoint and runtime composition owner. Contains:
 
 - process entrypoint with config-backed startup validation
 - runtime lifecycle shell with supervision, shutdown, and restart boundaries
@@ -30,27 +30,46 @@ The runtime and transport owner. Contains:
 - security/compliance operational boundary (crypto surface reporting,
   deployment-contract validation)
 
-### cloudflared-config
+### cfdrs-cli
 
-Config and credentials owner. Contains:
+CLI command surface owner. Contains:
 
-- config discovery search order and file loading
-- credentials file and origin-cert decoding (with PEM handling via owned
-  credential adapters)
-- ingress rule normalization, ordering, and matching
-- first-slice parity harness and Go-truth compare fixtures
+- argument parsing and dispatch (parse_args, Cli, Command)
+- help text rendering (render_help)
+- CLI output formatting (CliOutput)
+- CLI error taxonomy (CliError)
 
-### cloudflared-proto
+### cfdrs-cdc
 
-Wire-format types. Contains:
+Cloudflare-facing RPC contracts owner. Contains:
 
 - ConnectRequest, ConnectResponse, ConnectionType, Metadata
 - registration RPC type boundaries (TunnelAuth, ConnectionOptions,
   ConnectionDetails)
 
-### cloudflared-core
+### cfdrs-his
 
-Minimal. Reserved for future shared types.
+Host interaction services owner. Skeleton crate — ownership declared,
+no implemented code yet. New HIS code lands directly here.
+
+### cfdrs-shared
+
+Config types, credentials, ingress, and error taxonomy owner. Contains:
+
+- config types, raw and normalized config loading
+- credentials file and origin-cert decoding (with PEM handling via owned
+  credential adapters)
+- ingress rule normalization, ordering, and matching
+- discovery types and constants
+- error types (ConfigError, ErrorCategory)
+- first-slice parity harness and Go-truth compare fixtures
+
+### Retired crates
+
+- **cloudflared-cli** — removed from workspace; code moved to cfdrs-bin and
+  cfdrs-cli
+- **cloudflared-proto** — removed from workspace; code moved to cfdrs-cdc
+- **cloudflared-core** — removed from workspace; was empty skeleton
 
 ## Major Absent Surfaces
 

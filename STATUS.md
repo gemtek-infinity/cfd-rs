@@ -14,10 +14,15 @@ This repository is a real but partial Rust rewrite of cloudflared.
 
 ### What exists now
 
-- first-slice config, credentials, and ingress behavior (`crates/cloudflared-config/`)
+- config types, credentials, ingress, and error taxonomy (`crates/cfdrs-shared/`)
+- filesystem config discovery IO (`crates/cfdrs-his/`)
+- binary entrypoint, runtime composition, lifecycle orchestration (`crates/cfdrs-bin/`)
+- CLI command surface: argument parsing, help text, dispatch (`crates/cfdrs-cli/`)
+- Cloudflare-facing RPC contracts: registration and stream types (`crates/cfdrs-cdc/`)
 - narrow QUIC tunnel core with Pingora proxy seam, wire/protocol boundary,
-  and origin dispatch (`crates/cloudflared-cli/`)
-- wire-format and registration types (`crates/cloudflared-proto/`)
+  and origin dispatch (in `crates/cfdrs-bin/`)
+- host interaction services skeleton (`crates/cfdrs-his/`)
+- cross-domain shared types skeleton (`crates/cfdrs-shared/`)
 - observability, performance validation, failure-mode proof, and deployment
   proof surfaces for the admitted alpha path
 - complete Stage 1 parity audit across three domains (150 rows total):
@@ -27,6 +32,8 @@ This repository is a real but partial Rust rewrite of cloudflared.
 - 12 feature-group audit documents under `docs/parity/`
 - baseline evidence captures in `docs/parity/cli/captures/`
 - governance, policy, and frozen Go baseline and design-audit references
+- target 5-crate workspace structure: `cfdrs-bin`, `cfdrs-cli`, `cfdrs-cdc`,
+  `cfdrs-his`, `cfdrs-shared` (Stage 3.2 complete)
 
 ### What does not exist yet
 
@@ -37,8 +44,6 @@ This repository is a real but partial Rust rewrite of cloudflared.
 - local HTTP endpoints (metrics, readiness, diagnostics)
 - config reload and file watcher
 - broad CLI parity (4 commands vs 9 families, 1 flag vs 50+)
-- the target 5-crate workspace structure (`cfdrs-bin`, `cfdrs-cli`,
-  `cfdrs-cdc`, `cfdrs-his`, `cfdrs-shared`)
 
 For the full ranked gap inventory, see `docs/status/phase-5-overhaul.md`.
 

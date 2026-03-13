@@ -57,14 +57,11 @@ Each domain also has feature-group audit documents under `docs/parity/`.
 
 | Crate | Purpose |
 | ----- | ------- |
-| `crates/cloudflared-cli` | runtime, transport, proxy, and entry surface |
-| `crates/cloudflared-config` | config, credentials, ingress |
-| `crates/cloudflared-proto` | wire-format and registration types |
-| `crates/cloudflared-core` | shared types (minimal) |
-
-The workspace will be restructured into 5 target crates (`cfdrs-bin`,
-`cfdrs-cli`, `cfdrs-cdc`, `cfdrs-his`, `cfdrs-shared`) once the audit and
-documentation stages are complete.
+| `crates/cfdrs-bin` | binary entrypoint, runtime composition, transport, proxy |
+| `crates/cfdrs-cli` | CLI command surface: parsing, help, dispatch |
+| `crates/cfdrs-cdc` | Cloudflare-facing RPC contracts (registration, stream) |
+| `crates/cfdrs-his` | host interaction services, filesystem config discovery |
+| `crates/cfdrs-shared` | config types, credentials, ingress, error taxonomy |
 
 ## Building
 

@@ -298,15 +298,15 @@ and route handlers are not implemented (deferred to Phase 5.1).
 ### What exists
 
 - readiness state machine tracking lifecycle and subsystem gates
-  (`crates/cloudflared-cli/src/runtime/state/readiness.rs`)
+  (`crates/cfdrs-bin/src/runtime/state/readiness.rs`)
 - operability reporting with status and metrics to stdout
-  (`crates/cloudflared-cli/src/runtime/state/operability.rs`)
+  (`crates/cfdrs-bin/src/runtime/state/operability.rs`)
 - deployment evidence including systemd detection and known gaps
-  (`crates/cloudflared-cli/src/runtime/state/deployment_evidence.rs`)
+  (`crates/cfdrs-bin/src/runtime/state/deployment_evidence.rs`)
 - failure evidence with restart budget tracking
-  (`crates/cloudflared-cli/src/runtime/state/failure.rs`)
+  (`crates/cfdrs-bin/src/runtime/state/failure.rs`)
 - performance timing milestones
-  (`crates/cloudflared-cli/src/runtime/state/timing.rs`)
+  (`crates/cfdrs-bin/src/runtime/state/timing.rs`)
 
 ### What is missing
 

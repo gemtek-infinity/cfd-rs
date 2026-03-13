@@ -255,6 +255,63 @@ dependencies = [
 ]
 
 [[package]]
+name = "cfdrs-bin"
+version = "2026.2.0-alpha.202603"
+dependencies = [
+ "cfdrs-cdc",
+ "cfdrs-cli",
+ "cfdrs-his",
+ "cfdrs-shared",
+ "mimalloc",
+ "pingora-http",
+ "quiche",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "cfdrs-cdc"
+version = "2026.2.0-alpha.202603"
+dependencies = [
+ "serde",
+ "uuid",
+]
+
+[[package]]
+name = "cfdrs-cli"
+version = "2026.2.0-alpha.202603"
+dependencies = [
+ "cfdrs-shared",
+]
+
+[[package]]
+name = "cfdrs-his"
+version = "2026.2.0-alpha.202603"
+dependencies = [
+ "cfdrs-shared",
+]
+
+[[package]]
+name = "cfdrs-shared"
+version = "2026.2.0-alpha.202603"
+dependencies = [
+ "base64",
+ "cfdrs-his",
+ "pem",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.18",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -327,50 +384,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bde03770d3df201d4fb868f2c9c59e66a3e4e2bd06692a0fe701e7103c7e84d4"
 dependencies = [
  "error-code",
-]
-
-[[package]]
-name = "cloudflared-cli"
-version = "2026.2.0-alpha.202603"
-dependencies = [
- "cloudflared-config",
- "cloudflared-proto",
- "mimalloc",
- "pingora-http",
- "quiche",
- "serde_json",
- "tokio",
- "tokio-util",
- "tracing",
- "tracing-subscriber",
- "url",
- "uuid",
-]
-
-[[package]]
-name = "cloudflared-config"
-version = "2026.2.0-alpha.202603"
-dependencies = [
- "base64",
- "pem",
- "serde",
- "serde_json",
- "serde_yaml",
- "thiserror 2.0.18",
- "url",
- "uuid",
-]
-
-[[package]]
-name = "cloudflared-core"
-version = "2026.2.0-alpha.202603"
-
-[[package]]
-name = "cloudflared-proto"
-version = "2026.2.0-alpha.202603"
-dependencies = [
- "serde",
- "uuid",
 ]
 
 [[package]]

@@ -251,7 +251,7 @@ Stage 2.4 outputs:
   section with deployment-notes link
 - crate READMEs reviewed — no crate-root READMEs exist in current workspace;
   target crate READMEs are Stage 3 work
-- `crates/cloudflared-config/tests/README.md` reviewed — already updated in
+- `crates/cfdrs-shared/tests/README.md` reviewed — already updated in
   Stage 2.3, no further changes needed
 
 Stage 2.3 outputs:
@@ -263,7 +263,7 @@ Stage 2.3 outputs:
 - `docs/status/porting-rules.md` marked as partially superseded — first
   implementation gate satisfied, first slice complete, broader porting governed
   by final-phase program
-- `crates/cloudflared-config/tests/README.md` updated — broader parity
+- `crates/cfdrs-shared/tests/README.md` updated — broader parity
   tracking pointer added
 - `tools/first_slice_parity.py` reviewed — already clearly scoped to
   first-slice surface, no changes needed
@@ -330,8 +330,36 @@ Status: **in progress**
 Sub-stage status:
 
 - Stage 3.1 (scope pruning and divergence triage): **complete**
-- Stage 3.2 (atomic refactor into five crates): not started
+- Stage 3.2 (atomic refactor into five crates): **complete**
 - Stage 3.3 (tooling and automation hardening): not started
+
+Stage 3.2 progress:
+
+- Wave 0 (preparation): **complete** — target crate map confirmed in 4
+  documents, migration slice boundaries confirmed from audit evidence,
+  code-level migration boundary mapping verified
+- Wave 1 (workspace skeleton creation): **complete** — 5 target crates
+  created with Cargo.toml, README.md, src/lib.rs; old crates intact;
+  workspace Cargo.toml updated; tests, clippy, and debtmap_ci_gate pass
+- Wave 2 (CLI ownership move): **complete** — surface/ module (types.rs,
+  output.rs, error.rs, parse.rs, help.rs) moved from cloudflared-cli to
+  cfdrs-cli; visibility changed from pub(crate) to pub for cross-crate access;
+  execute logic inlined into cfdrs-bin main.rs
+- Wave 3 (binary and runtime composition move): **complete** — combined with
+  Wave 4 scope; all remaining cloudflared-cli code (main.rs, runtime/,
+  startup/, protocol.rs, transport/, proxy/, tests/) moved to cfdrs-bin;
+  cloudflared-cli retired from workspace
+- Wave 4 (CDC ownership move): **complete** — registration.rs and stream.rs
+  moved from cloudflared-proto to cfdrs-cdc; all cloudflared_proto:: imports
+  updated to cfdrs_cdc::; cloudflared-proto retired from workspace
+- Wave 5 (HIS ownership move): **complete** — ownership declared in cfdrs-his
+  README; discovery.rs moved to cfdrs-his; shared types (config, credentials,
+  ingress, error taxonomy) moved to cfdrs-shared; cloudflared-config dissolved
+- Wave 6 (shared extraction): **complete** — ownership declared in cfdrs-shared
+  README; shared types moved to cfdrs-shared; cloudflared-config dissolved
+- Wave 7 (retirement): **complete** — cloudflared-core removed from workspace
+  (empty, no dependents); cloudflared-proto removed from workspace (code moved
+  to cfdrs-cdc); CI workflow updated to reference new crate names
 
 Stage 3.1 outputs:
 
@@ -461,7 +489,7 @@ crate convenience.
 | Target crate | Justification from audit evidence |
 | --- | --- |
 | `cfdrs-bin` | Process entrypoint, runtime composition, lifecycle orchestration. Owns the seam between CLI dispatch, CDC connections, and HIS host interactions. Not a parity domain itself — it composes the three domains. |
-| `cfdrs-cli` | Owns the 32-row CLI parity surface: command tree, help text, flags, env bindings, exit codes, formatting. All 9 critical CLI gaps and 13 high CLI gaps land here. Current Rust CLI surface lives in `crates/cloudflared-cli/src/surface/`. |
+| `cfdrs-cli` | Owns the 32-row CLI parity surface: command tree, help text, flags, env bindings, exit codes, formatting. All 9 critical CLI gaps and 13 high CLI gaps land here. Current Rust CLI surface lives in `crates/cfdrs-cli/src/`. |
 | `cfdrs-cdc` | Owns the 44-row CDC parity surface: registration RPC, stream contracts, management service, log streaming, metrics and readiness contracts, Cloudflare API client. All 10 critical CDC gaps and 18 high CDC gaps land here. Wire encoding (Cap'n Proto binary vs JSON) is the single highest-risk gap in the entire rewrite. |
 | `cfdrs-his` | Owns the 74-row HIS parity surface: service install and uninstall, filesystem layout, diagnostics collection, config reload and watcher, local endpoint exposure, privilege and environment assumptions. All 13 critical HIS gaps and 31 high HIS gaps land here. |
 | `cfdrs-shared` | Narrowly admitted cross-domain types only. The audit evidence shows limited overlap between domains. Shared types are restricted to: error plumbing, config types used by both CDC and HIS, and credential types referenced by both CLI dispatch and CDC registration. Must not become a dump crate. |
@@ -515,15 +543,43 @@ Avoid reporting progress only in terms of file count or code movement.
 
 ## Immediate Next Actions
 
-Stage 3.1 (scope pruning and divergence triage) is complete. The next
-sub-stage is:
+Stage 3.2 (atomic refactor into five crates) is complete. All 8 waves
+finished: workspace restructured from 4-crate layout to 5-crate target
+layout (cfdrs-bin, cfdrs-cdc, cfdrs-cli, cfdrs-his, cfdrs-shared).
+Retired crates: cloudflared-cli, cloudflared-proto, cloudflared-core,
+cloudflared-config. CI workflow updated. Config modules reorganized
+under `cfdrs-shared/src/config/` subdirectory. All documentation
+reconciled to reference new crate names.
 
-- Stage 3.2: Atomic refactor into five crates
+The next bounded action is:
+
+- Stage 3.3: Tooling and automation hardening
+
+Stage 3.3 work inventory:
+
+1. review `.debtmap.toml` — verify analysis covers new crate paths (current
+   pattern-based config appears sufficient)
+2. review `tools/first_slice_parity.py` and `tools/first_slice_go_capture/` —
+   mark as first-slice-scoped historical tooling if no longer applicable
+3. verify MCP server (`tools/mcp-cfd-rs/`) routes and context bundles reflect
+   the actual crate map (workspace-member snapshot, ownership routing)
+4. verify parity capture harnesses are buildable and runnable in the new
+   workspace structure
+5. verify `rustfmt.toml` applies correctly across all crates
+6. confirm build, test, clippy, and fmt commands work correctly across
+   the full workspace
+
+Preconditions already satisfied by Stage 3.2:
+
+- CI workflows (on-pr-push.yml, on-pr-merge.yml) already reference correct
+  crate names
+- Copilot instructions and AI routing docs already reflect actual crate paths
+- no active docs reference obsolete crate names
 
 The remaining Stage 3 sub-stages are:
 
 1. ~~Stage 3.1: Scope pruning and divergence triage~~ (complete)
-2. Stage 3.2: Atomic refactor into five crates
+2. ~~Stage 3.2: Atomic refactor into five crates~~ (complete)
 3. Stage 3.3: Tooling and automation hardening
 
 No Stage 3 sub-stage may be skipped or reordered.

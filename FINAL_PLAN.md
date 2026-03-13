@@ -525,7 +525,7 @@ program.
 | `docs/first-slice-freeze.md` | first-slice closure record | **review; mark clearly as historical** | none |
 | `docs/status/first-slice-parity.md` | first-slice parity status | **review; mark as insufficient for broader parity** | none |
 | `docs/status/porting-rules.md` | porting rules | **review; update or mark as superseded** | none |
-| `crates/cloudflared-config/tests/README.md` | test readme for config crate | **review** | none |
+| `crates/cfdrs-shared/tests/README.md` | test readme for config crate | **review** | none |
 | `tools/first_slice_parity.py` | first-slice parity tool | **review; mark as first-slice-scoped** | none |
 
 #### Required Outcomes
@@ -696,7 +696,8 @@ Stage 3.1 is complete when:
 Execute the workspace restructuring from the current 4-crate layout
 (`cloudflared-cli`, `cloudflared-config`, `cloudflared-core`,
 `cloudflared-proto`) into the target 5-crate layout (`cfdrs-bin`, `cfdrs-cli`,
-`cfdrs-cdc`, `cfdrs-his`, `cfdrs-shared`).
+`cfdrs-cdc`, `cfdrs-his`, `cfdrs-shared`). `cloudflared-config` has since been
+dissolved into `cfdrs-shared` (types) and `cfdrs-his` (filesystem discovery).
 
 #### Migration Waves
 
@@ -937,8 +938,8 @@ If drift is discovered:
 | 2.3 | Historical phase and parity docs | not started |
 | 2.4 | Operator and contributor guidance | not started |
 | 2.5 | AI instructions, skills, agent config | not started |
-| 3.1 | Scope pruning and divergence triage | not started |
-| 3.2 | Atomic refactor into five crates | not started |
+| 3.1 | Scope pruning and divergence triage | **complete** |
+| 3.2 | Atomic refactor into five crates | **complete** |
 | 3.3 | Tooling and automation hardening | not started |
 
 ## Complete Document Reconciliation Inventory
@@ -994,7 +995,7 @@ understanding of the rewrite is listed here.
 | `docs/first-slice-freeze.md` | 2.3 | review; mark as historical |
 | `docs/status/first-slice-parity.md` | 2.3 | review; mark as first-slice-scoped |
 | `docs/status/porting-rules.md` | 2.3 | review; update or mark as superseded |
-| `crates/cloudflared-config/tests/README.md` | 2.3 | review |
+| `crates/cfdrs-shared/tests/README.md` | 2.3 | review |
 | `.github/instructions/rust.instructions.md` | 2.5 | review |
 | `.github/instructions/markdown.instructions.md` | 2.5 | review |
 | `docs/code-style.md` | 2.5 | review |

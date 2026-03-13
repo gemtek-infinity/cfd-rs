@@ -40,11 +40,11 @@ It is the smallest slice that meaningfully locks:
 
 Primary owner:
 
-- `crates/cloudflared-config/`
+- `crates/cfdrs-shared/`
 
 Parity harness and fixtures:
 
-- `crates/cloudflared-config/tests/`
+- `crates/cfdrs-shared/tests/`
 
 This slice must not spread into a new top-level crate split unless repo
 governance changes first.
@@ -170,8 +170,8 @@ not future inevitability.
 The first slice must produce all of the following:
 
 - executable Rust-side parsing and normalization code in
-  `crates/cloudflared-config/`
-- executable parity harness code in `crates/cloudflared-config/tests/`
+  `crates/cfdrs-shared/`
+- executable parity harness code in `crates/cfdrs-shared/tests/`
 - checked-in fixtures and/or golden cases for accepted behavior
 - captured Go truth outputs for the first-slice behavior set
 - passing parity-backed tests for accepted cases

@@ -96,7 +96,7 @@ core, the admitted Pingora and observability seams, and the existing workspace
 tool surface:
 
 - `mimalloc`, `tokio`, `tokio-util`, `quiche`, `pingora-http`, `tracing`, and
-  `tracing-subscriber` in `cloudflared-cli`
+  `tracing-subscriber` in `cfdrs-bin`
 - shared workspace truth for `pem`, `serde`, `serde_json`, `serde_yaml`,
   `thiserror`, `url`, `uuid`, and `base64`
 - `rmcp`, `schemars`, and `tokio` in `tools/mcp-cfd-rs`
@@ -105,22 +105,22 @@ Reason:
 
 - allocator policy is still a process-wide runtime baseline owned by the binary
 - Phase 3.2 runtime/lifecycle shell is admitted, so the admitted runtime/lifecycle shell in
-  `cloudflared-cli` may use `tokio` and `tokio-util` for owned task tracking,
+  `cfdrs-bin` may use `tokio` and `tokio-util` for owned task tracking,
   bounded command flow, and cancellation at the binary boundary
 - Phase 3.3 QUIC tunnel core is admitted, so the admitted QUIC tunnel core in
-  `cloudflared-cli` may use `quiche` on the locked quiche + BoringSSL lane for
+  `cfdrs-bin` may use `quiche` on the locked quiche + BoringSSL lane for
   real transport ownership and handshake/session state under the runtime
   boundary
 - Phase 3.4 Pingora seam is admitted, so the admitted Pingora seam in
-  `cloudflared-cli` may use `pingora-http` inside its owned proxy boundary for
+  `cfdrs-bin` may use `pingora-http` inside its owned proxy boundary for
   the first narrow origin path
 - Phase 3.7 standard-format boundary is admitted, so the active origin-cert path may use the mature
-  `pem` crate through owned credential adapters in `cloudflared-config`
+  `pem` crate through owned credential adapters in `cfdrs-shared`
 - Phase 4.1 observability and operability is admitted, so the admitted runtime observability surface in
-  `cloudflared-cli` may use `tracing` and `tracing-subscriber` for live,
+  `cfdrs-bin` may use `tracing` and `tracing-subscriber` for live,
   owner-scoped reporting at the binary boundary
 - config, credential, and ingress normalization work is active in
-  `cloudflared-config`, so its admitted slice dependencies now exist honestly in
+  `cfdrs-shared`, so its admitted slice dependencies now exist honestly in
   manifests
 - credentials-file handling now depends on the mature `base64` crate so the
   tunnel secret is decoded into owned bytes at the config boundary rather than
@@ -220,11 +220,11 @@ or first-slice implementation tests actually need them.
 Rules:
 
 - harness dev-dependencies for the accepted first slice belong in
-  `crates/cloudflared-config/Cargo.toml`, not the workspace root
+  `crates/cfdrs-shared/Cargo.toml`, not the workspace root
 - do not add snapshot tooling merely to make approval easier; first prefer
   stable JSON or text goldens checked into the repo
 - first-slice checked-in goldens belong under
-  `crates/cloudflared-config/tests/fixtures/first-slice/golden/`
+  `crates/cfdrs-shared/tests/fixtures/first-slice/golden/`
 - CLI-process test helpers are premature until the Rust CLI actually emits the
   relevant first-slice surface
 
@@ -245,15 +245,15 @@ These require an explicit decision record before admission:
 
 Current crate intent is:
 
-- `cloudflared-cli` owns process-level concerns such as allocator setup and,
+- `cfdrs-bin` owns process-level concerns such as allocator setup and,
   later, runtime initialization
-- `cloudflared-config` owns config, credentials, and ingress normalization once
-  that slice starts
-- `cloudflared-core` should stay lean and hold shared types only when more than
-  one crate needs them
-- `cloudflared-proto` should remain empty until protocol work starts
+- `cfdrs-shared` owns config types, credentials, ingress normalization, and
+  error taxonomy
+- `cfdrs-his` owns filesystem config discovery and host interaction services
+- `cfdrs-cli` owns CLI command surface, parsing, and dispatch
+- `cfdrs-cdc` owns Cloudflare-facing RPC and wire contracts
 
-Do not accumulate dependencies in `cloudflared-core` just because it looks like
+Do not accumulate dependencies in `cfdrs-shared` just because it looks like
 shared infrastructure.
 
 Do not centralize a dependency into `[workspace.dependencies]` merely because it
