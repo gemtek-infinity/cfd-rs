@@ -370,6 +370,70 @@ Low gaps:
 - HIS-054, HIS-055: deployment evidence details
 - HIS-056, HIS-057: package manager scripts
 
+## Scope Classification (Stage 3.1)
+
+Classification performed during Stage 3.1 scope triage. For the full
+classification rationale and lane definition, see
+`docs/status/stage-3.1-scope-triage.md`.
+
+All items not listed below are **lane-required** for the declared Linux
+production-alpha lane.
+
+### Non-lane (excluded from refactor)
+
+- HIS-056: `postinst.sh` behavior — packaging script, not Rust binary behavior
+- HIS-057: `postrm.sh` behavior — packaging script, not Rust binary behavior
+
+### Deferred (lane-relevant, post-alpha)
+
+SysV init:
+
+- HIS-016: SysV init script generation — ADR-0005 states systemd governs alpha
+- HIS-023: SysV init script exact content — same rationale
+
+Diagnostics subsystem:
+
+- HIS-032: `tunnel diag` CLI command
+- HIS-033: system information collector
+- HIS-034: tunnel state collector
+- HIS-035: CLI configuration collector
+- HIS-036: host log collector
+- HIS-037: network traceroute collector
+- HIS-038: diagnostic instance discovery
+- HIS-039: `/diag/system` HTTP endpoint
+- HIS-040: `/diag/tunnel` HTTP endpoint
+
+Updater subsystem:
+
+- HIS-046: `update` CLI command — requires external infrastructure
+- HIS-047: auto-update timer — depends on updater
+- HIS-048: update exit codes — depends on updater
+- HIS-049: package manager detection — depends on updater
+
+Local HTTP convenience endpoints:
+
+- HIS-028: `/quicktunnel` endpoint — convenience feature
+- HIS-029: `/config` endpoint — debugging aid
+- HIS-030: `/debug/pprof/*` endpoints — runtime profiling
+
+Environment and privilege:
+
+- HIS-050: UID detection — gates deferred diagnostic log path
+- HIS-051: terminal detection — gates deferred updater behavior
+
+ICMP proxy:
+
+- HIS-069: ICMP proxy raw socket — specialized feature, CAP_NET_RAW
+- HIS-070: ping group range check — Linux privilege gate
+- HIS-071: ICMP source IP flags — ICMP configuration
+
+Miscellaneous:
+
+- HIS-061: `--pidfile` flag — optional systemd integration
+- HIS-072: `hello_world` ingress listener — test/demo server
+- HIS-073: gracenet socket inheritance — zero-downtime restart optimization
+- HIS-074: process self-restart on update — depends on updater
+
 ## Immediate Work Queue
 
 1. ~~inventory Linux service install and uninstall behavior~~ — done, see `service-installation.md`

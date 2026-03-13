@@ -276,6 +276,24 @@ High gaps:
 - CDC-043: origin cert encoding
 - CDC-044: QUIC ALPN protocol (parity-backed)
 
+## Scope Classification (Stage 3.1)
+
+Classification performed during Stage 3.1 scope triage. For the full
+classification rationale and lane definition, see
+`docs/status/stage-3.1-scope-triage.md`.
+
+All items not listed below are **lane-required** for the declared Linux
+production-alpha lane.
+
+### Deferred (lane-relevant, post-alpha)
+
+- CDC-027: management CORS — enables dash browser access, not required for
+  CLI-based `tail` and management workflows
+- CDC-028: diagnostics conditional exposure — `/metrics` and `/debug/pprof`
+  conditional registration on management service, debug tooling
+- CDC-032: `/quicktunnel` endpoint response — convenience feature
+- CDC-039: hostname routing API — legacy DNS routing via zones
+
 ## Immediate Work Queue
 
 1. ~~extract the field-level registration schema and method set from the
