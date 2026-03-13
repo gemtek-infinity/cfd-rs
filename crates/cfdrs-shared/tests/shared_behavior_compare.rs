@@ -18,7 +18,7 @@ fn go_truth_capture_gate_is_real() {
         .arg(support::tool_path())
         .arg("check-go-truth")
         .output()
-        .expect("python3 should be available to run the first-slice parity harness");
+        .expect("python3 should be available to run the shared-behavior parity harness");
 
     assert!(
         output.status.success(),
@@ -41,7 +41,7 @@ fn rust_parity_compare_entrypoint_is_real_for_matching_subset() {
         .arg("--fixture-id")
         .arg("flag-origin-no-origin")
         .output()
-        .expect("python3 should be available to run the first-slice parity harness");
+        .expect("python3 should be available to run the shared-behavior parity harness");
 
     assert!(
         output.status.success(),
@@ -51,18 +51,18 @@ fn rust_parity_compare_entrypoint_is_real_for_matching_subset() {
 }
 
 #[test]
-fn full_first_slice_compare_is_green() {
+fn full_shared_behavior_compare_is_green() {
     let output = Command::new("python3")
         .arg(support::tool_path())
         .arg("compare")
         .arg("--require-go-truth")
         .arg("--require-rust-actual")
         .output()
-        .expect("python3 should be available to run the first-slice parity harness");
+        .expect("python3 should be available to run the shared-behavior parity harness");
 
     assert!(
         output.status.success(),
-        "expected full accepted first-slice compare to pass; stderr:\n{}",
+        "expected full shared-behavior compare to pass; stderr:\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
 }

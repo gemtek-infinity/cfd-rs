@@ -37,7 +37,7 @@ fn emit_fixture_for_category(
         "ordering-defaulting" => emit_ordering_fixture(&plan.fixture_root, fixture),
         "credentials-origin-cert" => emit_origin_cert_fixture(plan, fixture),
         "ingress-normalization" => emit_flag_ingress_fixture(fixture),
-        other => Err(format!("unsupported fixture category for current first slice: {other}").into()),
+        other => Err(format!("unsupported fixture category for current shared-behavior set: {other}").into()),
     }
 }
 

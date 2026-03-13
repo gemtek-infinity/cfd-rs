@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-# Historical — first-slice parity harness.
-# The first slice is complete and parity-backed (Phase 1B.6 closure).
-# This script is retained for reference and regression verification.
-# Broader parity is now tracked by the three domain ledgers under docs/parity/.
+# Shared-behavior parity harness for config, credentials, and ingress evidence.
 
 from __future__ import annotations
 
@@ -20,12 +17,12 @@ import tomllib
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_ROOT = (
-    REPO_ROOT / "crates" / "cfdrs-shared" / "tests" / "fixtures" / "first-slice"
+    REPO_ROOT / "crates" / "cfdrs-shared" / "tests" / "fixtures" / "shared-behavior"
 )
 INDEX_PATH = FIXTURE_ROOT / "fixture-index.toml"
 GO_TRUTH_DIR = FIXTURE_ROOT / "golden" / "go-truth"
 RUST_ACTUAL_DIR = FIXTURE_ROOT / "golden" / "rust-actual"
-GO_CAPTURE_RUNNER = REPO_ROOT / "tools" / "first_slice_go_capture" / "main.go"
+GO_CAPTURE_RUNNER = REPO_ROOT / "tools" / "shared_behavior_go_capture" / "main.go"
 LOCAL_GO_BINARY = (
     Path.home() / ".local" / "go-toolchain" / "usr" / "lib" / "go-1.22" / "bin" / "go"
 )
@@ -66,12 +63,12 @@ def main() -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Parity harness entrypoint for the accepted first-slice surface."
+        description="Parity harness entrypoint for the shared-behavior surface."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     inventory = subparsers.add_parser(
-        "inventory", help="List first-slice fixtures and paths."
+        "inventory", help="List shared-behavior fixtures and paths."
     )
     inventory.add_argument(
         "--format",
@@ -89,7 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     capture_go_truth = subparsers.add_parser(
         "capture-go-truth",
-        help="Generate checked-in Go truth artifacts for the supported first-slice fixtures.",
+        help="Generate checked-in Go truth artifacts for the supported shared-behavior fixtures.",
     )
     capture_go_truth.add_argument(
         "--fixture-id",
@@ -106,7 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     compare = subparsers.add_parser(
         "compare",
-        help="Run real Go-versus-Rust comparison for the selected first-slice fixtures.",
+        help="Run real Go-versus-Rust comparison for the selected shared-behavior fixtures.",
     )
     compare.add_argument(
         "--require-go-truth",
@@ -128,7 +125,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     emit_rust_actual = subparsers.add_parser(
         "emit-rust-actual",
-        help="Generate Rust-side actual artifacts for the targeted first-slice fixtures.",
+        help="Generate Rust-side actual artifacts for the targeted shared-behavior fixtures.",
     )
     emit_rust_actual.add_argument(
         "--fixture-id",
@@ -186,7 +183,7 @@ def cmd_inventory(args: argparse.Namespace, fixtures: list[Fixture]) -> int:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
 
-    print("First-slice fixture inventory")
+    print("Shared-behavior fixture inventory")
     print(f"fixture root: {FIXTURE_ROOT.relative_to(REPO_ROOT).as_posix()}")
     print(f"fixtures: {len(fixtures)}")
     for fixture in fixtures:
@@ -208,7 +205,7 @@ def cmd_check_go_truth(_args: argparse.Namespace, fixtures: list[Fixture]) -> in
         return 0
 
     print(
-        "missing Go truth artifacts for accepted first-slice fixtures:", file=sys.stderr
+        "missing Go truth artifacts for shared-behavior fixtures:", file=sys.stderr
     )
     for fixture in missing:
         print(
@@ -216,7 +213,7 @@ def cmd_check_go_truth(_args: argparse.Namespace, fixtures: list[Fixture]) -> in
             file=sys.stderr,
         )
     print(
-        "capture Go outputs before claiming executable first-slice parity.",
+        "capture Go outputs before claiming executable shared-behavior parity.",
         file=sys.stderr,
     )
     return 1
@@ -237,7 +234,7 @@ def cmd_capture_go_truth(args: argparse.Namespace, fixtures: list[Fixture]) -> i
 
     if not targeted:
         print(
-            "no supported first-slice fixtures were selected for Go truth capture",
+            "no supported shared-behavior fixtures were selected for Go truth capture",
             file=sys.stderr,
         )
         return 1
@@ -275,7 +272,7 @@ def cmd_compare(args: argparse.Namespace, fixtures: list[Fixture]) -> int:
         fixture for fixture in selected if not fixture.go_truth_path.exists()
     ]
 
-    print("First-slice Rust-vs-Go comparison")
+    print("Shared-behavior Rust-vs-Go comparison")
     print(f"selected fixtures: {len(selected)}")
     print(f"missing Go truth: {len(missing_go_truth)}")
 
@@ -371,7 +368,7 @@ def cmd_emit_rust_actual(args: argparse.Namespace, fixtures: list[Fixture]) -> i
     ]
 
     if not targeted:
-        print("no targeted first-slice fixtures were selected", file=sys.stderr)
+        print("no targeted shared-behavior fixtures were selected", file=sys.stderr)
         return 1
 
     output_dir = Path(args.output_dir)
@@ -389,7 +386,7 @@ def cmd_emit_rust_actual(args: argparse.Namespace, fixtures: list[Fixture]) -> i
     if skipped:
         for fixture in skipped:
             print(
-                f"skipping unsupported first-slice category for {fixture.fixture_id}: {fixture.category}",
+                f"skipping unsupported shared-behavior category for {fixture.fixture_id}: {fixture.category}",
                 file=sys.stderr,
             )
 
@@ -470,7 +467,7 @@ def run_rust_emitter(
             "-p",
             "cfdrs-shared",
             "--example",
-            "first_slice_emit",
+            "shared_behavior_emit",
         ],
         cwd=REPO_ROOT,
         input=json.dumps(plan),
@@ -517,7 +514,7 @@ def run_go_capture(
 
 def write_go_capture_module(temp_root: Path) -> None:
     shutil.copy2(GO_CAPTURE_RUNNER, temp_root / "main.go")
-    go_mod = f"""module firstslicecapture
+    go_mod = f"""module sharedbehaviorcapture
 
 go 1.24.0
 

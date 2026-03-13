@@ -107,7 +107,7 @@ fn harness_can_emit_targeted_rust_actual_artifact() {
         .arg("--fixture-id")
         .arg("config-basic-named-tunnel")
         .output()
-        .expect("python3 should be available to run the first-slice parity harness");
+        .expect("python3 should be available to run the shared-behavior parity harness");
 
     assert!(
         output.status.success(),

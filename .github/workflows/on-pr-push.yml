@@ -22,9 +22,6 @@ env:
     CARGO_TERM_COLOR: always
 
 jobs:
-    # Detect which workspace surfaces changed so downstream jobs can skip
-    # unnecessary work (e.g. compiling the MCP tool crate and its debtmap
-    # dependency tree when only application crates changed).
     changes:
         if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
         runs-on: ubuntu-24.04
@@ -49,8 +46,28 @@ jobs:
                         - 'Cargo.toml'
                         - 'Cargo.lock'
                         - '.debtmap.toml'
+                        - 'STATUS.md'
+                        - 'REWRITE_CHARTER.md'
+                        - 'docs/ai-context-routing.md'
+                        - 'docs/phase-5/**'
+                        - 'docs/parity/**'
+                        - 'docs/promotion-gates.md'
+                        - 'docs/compatibility-scope.md'
+                        - 'docs/dependency-policy.md'
+                        - 'docs/allocator-runtime-baseline.md'
+                        - 'docs/go-rust-semantic-mapping.md'
+                        - 'docs/adr/**'
+                        - 'crates/**/README.md'
 
-    # Validate application crates — runs on every non-draft PR.
+    validate-governance:
+        if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+        runs-on: ubuntu-24.04
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v6
+            - name: Validate Phase 5 docs and architecture contract
+              run: python3 tools/validate_phase5_docs.py
+
     validate-app:
         needs: changes
         if: ${{ needs.changes.outputs.app == 'true' || github.event_name == 'workflow_dispatch' }}
@@ -109,7 +126,6 @@ jobs:
                     -p cfdrs-his \
                     -p cfdrs-shared
 
-    # Validate MCP tool crate — runs only when tool or workspace files change.
     validate-tools:
         needs: changes
         if: ${{ needs.changes.outputs.tools == 'true' || github.event_name == 'workflow_dispatch' }}
@@ -135,28 +151,51 @@ jobs:
                   key: ${{ runner.os }}-cargo-tools-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
                       ${{ runner.os }}-cargo-tools-
-            - name: Check (stable)
-              run: cargo check --locked -p cfd-rs-memory
-            - name: Clippy (stable)
-              run: cargo clippy --all-targets --locked -p cfd-rs-memory -- -D warnings
-            - name: Test (stable)
-              run: cargo test --locked -p cfd-rs-memory
+            - name: Check MCP required surface (stable)
+              run: cargo check --locked -p cfd-rs-memory --features debtmap
+            - name: Clippy MCP required surface (stable)
+              run: cargo clippy --all-targets --locked -p cfd-rs-memory --features debtmap -- -D warnings
+            - name: Test MCP required surface (stable)
+              run: cargo test --locked -p cfd-rs-memory --features debtmap
+            - name: Smoke-start MCP required surface
+              run: |
+                  set +e
+                  timeout 5s cargo run --quiet --locked -p cfd-rs-memory --features debtmap < /dev/null > /tmp/mcp-required.log 2>&1
+                  status=$?
+                  set -e
+                  if [ "$status" -ne 0 ] && [ "$status" -ne 124 ] && ! grep -q "mcp:ready" /tmp/mcp-required.log; then
+                    cat /tmp/mcp-required.log
+                    exit "$status"
+                  fi
+            - name: Check MCP maintenance surface (stable)
+              run: cargo check --locked -p cfd-rs-memory --no-default-features
+            - name: Clippy MCP maintenance surface (stable)
+              run: cargo clippy --all-targets --locked -p cfd-rs-memory --no-default-features -- -D warnings
+            - name: Test MCP maintenance surface (stable)
+              run: cargo test --locked -p cfd-rs-memory --no-default-features
+            - name: Smoke-start MCP maintenance surface
+              run: |
+                  set +e
+                  timeout 5s cargo run --quiet --locked -p cfd-rs-memory --no-default-features < /dev/null > /tmp/mcp-maintenance.log 2>&1
+                  status=$?
+                  set -e
+                  if [ "$status" -ne 0 ] && [ "$status" -ne 124 ] && ! grep -q "mcp:ready" /tmp/mcp-maintenance.log; then
+                    cat /tmp/mcp-maintenance.log
+                    exit "$status"
+                  fi
 
-    # Single required status check for branch protection.  Succeeds only when
-    # every non-skipped upstream job succeeded; fails if any actually failed.
-    # Mark only this job as "required" in GitHub branch protection settings.
     ci-gate:
         if: ${{ always() }}
-        needs: [changes, validate-app, validate-tools]
+        needs: [changes, validate-governance, validate-app, validate-tools]
         runs-on: ubuntu-24.04
         steps:
             - name: Check upstream results
               run: |
+                  echo "validate-governance: ${{ needs.validate-governance.result }}"
                   echo "validate-app: ${{ needs.validate-app.result }}"
                   echo "validate-tools: ${{ needs.validate-tools.result }}"
 
-                  # A job is acceptable if it succeeded or was legitimately skipped.
-                  for result in "${{ needs.validate-app.result }}" "${{ needs.validate-tools.result }}"; do
+                  for result in "${{ needs.validate-governance.result }}" "${{ needs.validate-app.result }}" "${{ needs.validate-tools.result }}"; do
                     if [[ "$result" != "success" && "$result" != "skipped" ]]; then
                       echo "::error::Upstream job failed or was cancelled (result: $result)"
                       exit 1

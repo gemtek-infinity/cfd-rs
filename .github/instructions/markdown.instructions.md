@@ -16,24 +16,24 @@ When editing Markdown in this repository:
 
 - start cold reads with [docs/ai-context-routing.md](../../docs/ai-context-routing.md)
 - use [REWRITE_CHARTER.md](../../REWRITE_CHARTER.md) for non-negotiables, active lane, and scope boundaries
-- use [STATUS.md](../../STATUS.md) only as the short current-state index
-- use [docs/status/](../../docs/status/) for focused current-state details
-- use [docs/promotion-gates.md](../../docs/promotion-gates.md) for phase truth and promotion boundaries
+- use [STATUS.md](../../STATUS.md) as the only tracked status source
+- use [docs/phase-5/roadmap.md](../../docs/phase-5/roadmap.md) for implementation order and milestone truth
+- use [docs/promotion-gates.md](../../docs/promotion-gates.md) for promotion boundaries
 - use [docs/](../../docs/) policy files for dependency, runtime, compatibility, and delivery policy
 - treat [docs/code-style.md](../../docs/code-style.md) and [docs/engineering-standards.md](../../docs/engineering-standards.md) as human-facing deep references, not default AI cold-start files
 - use [AGENTS.md](../../AGENTS.md) and [SKILLS.md](../../SKILLS.md) as workflow notes, not as higher-priority governance
 
-## Current-state docs
+## Status docs
 
-- keep [STATUS.md](../../STATUS.md) short and index-like
-- put detailed current-state material in the focused files under [docs/status/](../../docs/status/)
-- prefer adding or updating the smallest focused status file rather than re-growing [STATUS.md](../../STATUS.md)
+- keep [STATUS.md](../../STATUS.md) as the only tracked status file
+- keep the opening `Active Snapshot` section compact enough for startup retrieval
+- move implementation detail into the roadmap, parity ledgers, or policy files rather than creating parallel status files
 
 ## Anti-drift rules
 
 - branch names and draft planning notes do not change current phase truth by themselves
 - do not import roadmap text into current-state docs unless current repository evidence supports it
-- do not duplicate phase truth across multiple files when [docs/promotion-gates.md](../../docs/promotion-gates.md) already owns it
+- do not duplicate tracked status across multiple files when [STATUS.md](../../STATUS.md) already owns it
 - do not duplicate stable scope or lane truth when [REWRITE_CHARTER.md](../../REWRITE_CHARTER.md) already owns it
 
 ## Frozen inputs

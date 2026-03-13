@@ -1,7 +1,5 @@
-// Historical — first-slice Go truth capture tool.
-// The first slice is complete and parity-backed (Phase 1B.6 closure).
-// This tool is retained for reference and regression verification.
-// Broader parity is now tracked by the three domain ledgers under docs/parity/.
+// Shared-behavior Go truth capture tool for config, credentials, and ingress
+// evidence. Broader parity is tracked separately in docs/parity/.
 package main
 
 import (
@@ -640,7 +638,7 @@ func classifyCredentialError(err error) string {
 }
 
 func newFlagContext(flags []string) *cli.Context {
-	flagSet := flag.NewFlagSet("first-slice-capture", flag.ContinueOnError)
+	flagSet := flag.NewFlagSet("shared-behavior-capture", flag.ContinueOnError)
 	flagSet.Bool(ingress.HelloWorldFlag, false, "")
 	flagSet.Bool(config.BastionFlag, false, "")
 	flagSet.String("url", "", "")

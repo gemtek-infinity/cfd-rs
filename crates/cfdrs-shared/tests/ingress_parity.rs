@@ -110,7 +110,7 @@ fn harness_can_emit_ingress_related_rust_actual_artifacts() {
         .arg("--fixture-id")
         .arg("ordering-catch-all-last")
         .output()
-        .expect("python3 should be available to run the first-slice parity harness");
+        .expect("python3 should be available to run the shared-behavior parity harness");
 
     assert!(
         output.status.success(),

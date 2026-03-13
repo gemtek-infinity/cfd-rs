@@ -8,9 +8,13 @@
       "command": "cargo",
       "args": [
         "run",
+        "--locked",
+        "--quiet",
         "--manifest-path",
         "${workspaceFolder}/tools/mcp-cfd-rs/Cargo.toml",
-        "--release"
+        "--release",
+        "--features",
+        "debtmap"
       ],
       "cwd": "${workspaceFolder}"
     },

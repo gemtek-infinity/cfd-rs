@@ -1,4 +1,6 @@
-use crate::{cogload, context, fs, log, profile, repo, search};
+#[cfg(feature = "debtmap")]
+use crate::cogload;
+use crate::{fs, log, phase5, profile, repo, search, workspace};
 use rmcp::{
     ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -10,9 +12,38 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tokio::fs as tokio_fs;
 
-// ---------------------------------------------------------------------------
-// Request types
-// ---------------------------------------------------------------------------
+#[allow(dead_code)]
+pub const CORE_TOOL_NAMES: &[&str] = &[
+    "find_governance",
+    "find_behavior_truth",
+    "search_paths",
+    "grep_paths",
+    "list_paths",
+    "get_context_bundle",
+    "get_context_brief",
+    "get_context_snapshot",
+    "read_file",
+    "read_file_lines",
+    "file_metadata",
+    "status_summary",
+    "phase5_priority",
+    "parity_row_details",
+    "domain_gaps_ranked",
+    "baseline_source_mapping",
+    "crate_surface_summary",
+    "crate_dependency_graph",
+];
+
+#[allow(dead_code)]
+pub const DEBTMAP_TOOL_NAMES: &[&str] = &[
+    "debtmap_top_hotspots",
+    "debtmap_file_summary",
+    "debtmap_touched_files_review",
+    "debtmap_code_smells",
+    "debtmap_function_complexity",
+    "debtmap_unified_analysis",
+    "debtmap_ci_gate",
+];
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct SearchRequest {
@@ -37,12 +68,8 @@ struct SearchPathsRequest {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct GrepPathsRequest {
-    /// Regex pattern (case-insensitive). Supports alternation (e.g. `foo|bar`),
-    /// character classes, and standard regex syntax.
     pattern: String,
-    /// Repo-relative files or directories to search within.
     paths: Vec<String>,
-    /// Maximum number of matched lines to return (default: 50, max: 200).
     max_results: Option<u32>,
 }
 
@@ -57,9 +84,7 @@ struct ContextSnapshotRequest {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-struct ActiveContextRequest {
-    max_chars: Option<u32>,
-}
+struct EmptyRequest {}
 
 #[derive(Debug, Deserialize, JsonSchema)]
 struct ReadFileRequest {
@@ -81,52 +106,70 @@ struct FileMetadataRequest {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+struct ParityRowDetailsRequest {
+    row_id: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct DomainGapsRankedRequest {
+    domain: String,
+    limit: Option<u32>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct BaselineSourceMappingRequest {
+    row_id: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct CrateSurfaceSummaryRequest {
+    crate_name: String,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapHotspotsRequest {
     limit: Option<u32>,
     path_prefix: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapFileSummaryRequest {
     path: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapTouchedFilesRequest {
     paths: Vec<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapCodeSmellsRequest {
     path: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapFunctionComplexityRequest {
     path: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapUnifiedAnalysisRequest {
-    /// Maximum number of items to return (default: 20).
     limit: Option<u32>,
-    /// Optional sub-path to scope the analysis.
     path_prefix: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapCiGateRequest {
-    /// Optional sub-path to scope the analysis.
     path_prefix: Option<String>,
-    /// Optional list of repo-relative file paths to restrict violations to.
-    /// When provided, only violations in these files are reported; the
-    /// debt_density gate is skipped (it is a whole-scope metric).
     paths: Option<Vec<String>>,
 }
-
-// ---------------------------------------------------------------------------
-// Server handler
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone)]
 pub struct CfdRsMemory {
@@ -145,8 +188,6 @@ impl CfdRsMemory {
         }
     }
 
-    // -- search tools -------------------------------------------------------
-
     #[tool(description = "Search governance and policy files, returning small grounded hits.")]
     async fn find_governance(
         &self,
@@ -158,7 +199,7 @@ impl CfdRsMemory {
         self.search_and_respond(&span, &roots, &query, max).await
     }
 
-    #[tool(description = "Search frozen behavior/parity sources, returning small grounded hits.")]
+    #[tool(description = "Search frozen behavior and parity sources, returning small grounded hits.")]
     async fn find_behavior_truth(
         &self,
         Parameters(SearchRequest { query, max_results }): Parameters<SearchRequest>,
@@ -189,7 +230,7 @@ impl CfdRsMemory {
         }
 
         let roots = match resolve_paths(&self.repo_root, &self.repo_root_canon, &paths) {
-            Ok(r) => r,
+            Ok(resolved) => resolved,
             Err((error, path)) => {
                 span.error(error);
                 return path_error(error, &path);
@@ -202,8 +243,7 @@ impl CfdRsMemory {
 
     #[tool(
         description = "Regex search across repo-relative files or directories, returning matched lines with \
-                       file paths and 1-based line numbers. Case-insensitive. Use for pattern-based queries \
-                       like `Big Phase|production.alpha|widen` or exact phrase searches."
+                       file paths and line numbers."
     )]
     async fn grep_paths(
         &self,
@@ -226,7 +266,7 @@ impl CfdRsMemory {
         }
 
         let roots = match resolve_paths(&self.repo_root, &self.repo_root_canon, &paths) {
-            Ok(r) => r,
+            Ok(resolved) => resolved,
             Err((error, path)) => {
                 span.error(error);
                 return path_error(error, &path);
@@ -234,7 +274,6 @@ impl CfdRsMemory {
         };
 
         let max = max_results.unwrap_or(50).clamp(1, 200) as usize;
-
         span.detail(&format!("pattern={} roots={} max={}", pattern, roots.len(), max));
 
         match search::grep_roots(&self.repo_root, &roots, &pattern, max).await {
@@ -249,11 +288,8 @@ impl CfdRsMemory {
         }
     }
 
-    // -- listing tools ------------------------------------------------------
-
     #[tool(
-        description = "List repo paths under a repo-relative directory. Use `base_path` (not `paths`) to \
-                       specify the directory, e.g. base_path='docs/status'. Supports optional recursion and \
+        description = "List repo paths under a repo-relative directory with optional recursion and \
                        extension filtering."
     )]
     async fn list_paths(
@@ -272,8 +308,7 @@ impl CfdRsMemory {
 
         span.detail(&format!("base_path={} recursive={}", base_path, recursive));
 
-        let base_path_canon = match repo::resolve(&self.repo_root, &self.repo_root_canon, base_path.as_str())
-        {
+        let base_path_canon = match repo::resolve(&self.repo_root, &self.repo_root_canon, &base_path) {
             Ok(path) => path,
             Err(error) => {
                 span.error(error);
@@ -282,7 +317,6 @@ impl CfdRsMemory {
         };
 
         let filter_extensions = fs::normalize_extensions(extensions.as_deref());
-
         let entries = fs::collect_paths(
             &self.repo_root,
             &base_path_canon,
@@ -296,8 +330,6 @@ impl CfdRsMemory {
         to_json(entries)
     }
 
-    // -- context tools ------------------------------------------------------
-
     #[tool(description = "Return a curated narrow context bundle for a common repository question type.")]
     async fn get_context_bundle(
         &self,
@@ -305,9 +337,13 @@ impl CfdRsMemory {
     ) -> String {
         let span = log::ToolSpan::start("get_context_bundle");
         match profile::bundle(bundle.trim()) {
-            Some(b) => {
-                span.done(&format!("bundle={} entries={}", b.bundle, b.entries.len()));
-                to_json(b)
+            Some(bundle) => {
+                span.done(&format!(
+                    "bundle={} entries={}",
+                    bundle.bundle,
+                    bundle.entries.len()
+                ));
+                to_json(bundle)
             }
             None => {
                 span.error("unknown bundle");
@@ -326,9 +362,9 @@ impl CfdRsMemory {
     ) -> String {
         let span = log::ToolSpan::start("get_context_brief");
         match profile::brief(bundle.trim()) {
-            Some(b) => {
-                span.done(&format!("bundle={}", b.bundle));
-                to_json(b)
+            Some(brief) => {
+                span.done(&format!("bundle={}", brief.bundle));
+                to_json(brief)
             }
             None => {
                 span.error("unknown bundle");
@@ -340,19 +376,20 @@ impl CfdRsMemory {
         }
     }
 
-    #[tool(
-        description = "Return a compact source-backed snapshot for common repo-state or phase-state \
-                       questions."
-    )]
+    #[tool(description = "Return a compact source-backed snapshot for a core rewrite routing question.")]
     async fn get_context_snapshot(
         &self,
         Parameters(ContextSnapshotRequest { snapshot }): Parameters<ContextSnapshotRequest>,
     ) -> String {
         let span = log::ToolSpan::start("get_context_snapshot");
         match profile::snapshot(snapshot.trim()) {
-            Some(s) => {
-                span.done(&format!("snapshot={} facts={}", s.snapshot, s.facts.len()));
-                to_json(s)
+            Some(snapshot) => {
+                span.done(&format!(
+                    "snapshot={} facts={}",
+                    snapshot.snapshot,
+                    snapshot.facts.len()
+                ));
+                to_json(snapshot)
             }
             None => {
                 span.error("unknown snapshot");
@@ -364,28 +401,152 @@ impl CfdRsMemory {
         }
     }
 
-    #[tool(
-        description = "Return active context from docs/ACTIVE_CONTEXT.md when present, with explicit \
-                       missing-file fallback."
-    )]
-    async fn get_active_context(
-        &self,
-        Parameters(ActiveContextRequest { max_chars }): Parameters<ActiveContextRequest>,
-    ) -> String {
-        let span = log::ToolSpan::start("get_active_context");
-        let max_chars = max_chars.unwrap_or(4000).clamp(200, 12000) as usize;
+    #[tool(description = "Return the current tracked status summary from STATUS.md.")]
+    async fn status_summary(&self, Parameters(EmptyRequest {}): Parameters<EmptyRequest>) -> String {
+        let span = log::ToolSpan::start("status_summary");
 
-        let active_context = context::load_active_context(&self.repo_root, max_chars).await;
-
-        span.done(&format!(
-            "found={} source={} truncated={}",
-            active_context.found, active_context.source, active_context.truncated,
-        ));
-
-        to_json(active_context)
+        match phase5::status_summary(&self.repo_root) {
+            Ok(summary) => {
+                span.done(&format!("milestone={}", summary.active_milestone));
+                to_json(summary)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error }))
+            }
+        }
     }
 
-    // -- read tools ---------------------------------------------------------
+    #[tool(description = "Return the current Phase 5 priority queue and active milestone detail.")]
+    async fn phase5_priority(&self, Parameters(EmptyRequest {}): Parameters<EmptyRequest>) -> String {
+        let span = log::ToolSpan::start("phase5_priority");
+
+        match phase5::phase5_priority(&self.repo_root) {
+            Ok(priority) => {
+                span.done(&format!("milestone={}", priority.active_milestone.name));
+                to_json(priority)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error }))
+            }
+        }
+    }
+
+    #[tool(description = "Return combined ledger and roadmap detail for one exact parity row ID.")]
+    async fn parity_row_details(
+        &self,
+        Parameters(ParityRowDetailsRequest { row_id }): Parameters<ParityRowDetailsRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("parity_row_details");
+
+        match phase5::parity_row_details(&self.repo_root, &row_id) {
+            Ok(details) => {
+                span.done(&format!(
+                    "row_id={} milestone={}",
+                    details.row_id, details.roadmap.milestone
+                ));
+                to_json(details)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error, "row_id": row_id }))
+            }
+        }
+    }
+
+    #[tool(
+        description = "Return ranked open gaps for one parity domain without loading all ledgers together."
+    )]
+    async fn domain_gaps_ranked(
+        &self,
+        Parameters(DomainGapsRankedRequest { domain, limit }): Parameters<DomainGapsRankedRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("domain_gaps_ranked");
+        let limit = limit.unwrap_or(10).clamp(1, 50) as usize;
+
+        match phase5::domain_gaps_ranked(&self.repo_root, &domain, limit) {
+            Ok(ranked) => {
+                span.done(&format!("domain={} rows={}", ranked.domain, ranked.rows.len()));
+                to_json(ranked)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error, "domain": domain }))
+            }
+        }
+    }
+
+    #[tool(
+        description = "Map one parity row ID back to frozen baseline source files and design-audit hints."
+    )]
+    async fn baseline_source_mapping(
+        &self,
+        Parameters(BaselineSourceMappingRequest { row_id }): Parameters<BaselineSourceMappingRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("baseline_source_mapping");
+
+        match phase5::baseline_source_mapping(&self.repo_root, &row_id) {
+            Ok(mapping) => {
+                span.done(&format!(
+                    "row_id={} paths={}",
+                    mapping.row_id,
+                    mapping.baseline_paths.len()
+                ));
+                to_json(mapping)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error, "row_id": row_id }))
+            }
+        }
+    }
+
+    #[tool(
+        description = "Summarize one workspace crate surface, ownership, and allowed direct dependencies."
+    )]
+    async fn crate_surface_summary(
+        &self,
+        Parameters(CrateSurfaceSummaryRequest { crate_name }): Parameters<CrateSurfaceSummaryRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("crate_surface_summary");
+
+        match workspace::crate_surface_summary(&self.repo_root, &crate_name) {
+            Ok(summary) => {
+                span.done(&format!(
+                    "crate={} deps={}",
+                    summary.crate_name,
+                    summary.direct_dependencies.len()
+                ));
+                to_json(summary)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error, "crate_name": crate_name }))
+            }
+        }
+    }
+
+    #[tool(description = "Return the workspace crate dependency graph and architecture-policy verdict.")]
+    async fn crate_dependency_graph(&self, Parameters(EmptyRequest {}): Parameters<EmptyRequest>) -> String {
+        let span = log::ToolSpan::start("crate_dependency_graph");
+
+        match workspace::crate_dependency_graph(&self.repo_root) {
+            Ok(graph) => {
+                span.done(&format!(
+                    "nodes={} edges={} violations={}",
+                    graph.nodes.len(),
+                    graph.edges.len(),
+                    graph.violations.len()
+                ));
+                to_json(graph)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({ "error": error }))
+            }
+        }
+    }
 
     #[tool(description = "Read a repo file with truncation and repo-boundary enforcement.")]
     async fn read_file(
@@ -396,7 +557,7 @@ impl CfdRsMemory {
         let max_chars = max_chars.unwrap_or(8000).clamp(200, 32000) as usize;
 
         let resolved = match self.resolve_repo_file(&path) {
-            Ok(p) => p,
+            Ok(path) => path,
             Err(error) => {
                 span.error(error);
                 return path_error(error, &path);
@@ -404,7 +565,7 @@ impl CfdRsMemory {
         };
 
         let text = match tokio_fs::read_to_string(&resolved).await {
-            Ok(t) => t,
+            Ok(text) => text,
             Err(_) => {
                 span.error("file not readable as UTF-8 text");
                 return path_error("file not readable as UTF-8 text", &path);
@@ -418,7 +579,7 @@ impl CfdRsMemory {
         to_json(serde_json::json!({
             "path": path,
             "truncated": truncated,
-            "content": content
+            "content": content,
         }))
     }
 
@@ -447,7 +608,7 @@ impl CfdRsMemory {
         }
 
         let resolved = match self.resolve_repo_file(&path) {
-            Ok(p) => p,
+            Ok(path) => path,
             Err(error) => {
                 span.error(error);
                 return path_error(error, &path);
@@ -455,7 +616,7 @@ impl CfdRsMemory {
         };
 
         let text = match tokio_fs::read_to_string(&resolved).await {
-            Ok(t) => t,
+            Ok(text) => text,
             Err(_) => {
                 span.error("file not readable as UTF-8 text");
                 return path_error("file not readable as UTF-8 text", &path);
@@ -474,7 +635,7 @@ impl CfdRsMemory {
         let actual_end = usize::min(end_line as usize, total_line_count);
         span.done(&format!(
             "path={} lines={}..{} truncated={}",
-            path, start_line, actual_end, truncated,
+            path, start_line, actual_end, truncated
         ));
         to_json(serde_json::json!({
             "path": path,
@@ -482,11 +643,9 @@ impl CfdRsMemory {
             "end_line": actual_end,
             "total_line_count": total_line_count,
             "truncated": truncated,
-            "content": content
+            "content": content,
         }))
     }
-
-    // -- metadata tools -----------------------------------------------------
 
     #[tool(description = "Return metadata for a repo path, including line count for readable text files.")]
     async fn file_metadata(
@@ -496,7 +655,7 @@ impl CfdRsMemory {
         let span = log::ToolSpan::start("file_metadata");
 
         let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
-            Ok(p) => p,
+            Ok(path) => path,
             Err(error) => {
                 span.error(error);
                 return path_error(error, &path);
@@ -504,7 +663,7 @@ impl CfdRsMemory {
         };
 
         let metadata = match tokio_fs::metadata(&resolved).await {
-            Ok(m) => m,
+            Ok(metadata) => metadata,
             Err(_) => {
                 span.error("path not readable");
                 return path_error("path not readable", &path);
@@ -512,279 +671,332 @@ impl CfdRsMemory {
         };
 
         let result = build_file_metadata(&resolved, &path, &metadata).await;
-
         span.done(&format!("path={} kind={}", result.path, result.kind));
         to_json(result)
     }
 
-    // -- debtmap tools ------------------------------------------------------
-
-    #[tool(
-        description = "Return top cognitive-load hotspot files for the repo or a bounded path prefix. \
-                       Includes additive file-level score categories and recommended-action labels; use for \
-                       refactor triage, not as always-on context."
+    #[cfg_attr(
+        feature = "debtmap",
+        tool(
+            description = "Return top cognitive-load hotspot files for the repo or a bounded path prefix. \
+                           Use for refactor triage, not as always-on context."
+        )
     )]
+    #[allow(dead_code)]
     async fn debtmap_top_hotspots(
         &self,
         Parameters(DebtmapHotspotsRequest { limit, path_prefix }): Parameters<DebtmapHotspotsRequest>,
     ) -> String {
-        let span = log::ToolSpan::start("debtmap_top_hotspots");
-        let limit = limit.unwrap_or(10).clamp(1, 50) as usize;
+        #[cfg(not(feature = "debtmap"))]
+        {
+            let _ = (&limit, &path_prefix);
+            debtmap_unavailable("debtmap_top_hotspots")
+        }
 
-        let scope = match &path_prefix {
-            Some(prefix) => match repo::resolve(&self.repo_root, &self.repo_root_canon, prefix) {
-                Ok(p) => Some(p),
-                Err(error) => {
-                    span.error(error);
-                    return path_error(error, prefix);
-                }
-            },
-            None => None,
-        };
+        #[cfg(feature = "debtmap")]
+        {
+            let span = log::ToolSpan::start("debtmap_top_hotspots");
+            let limit = limit.unwrap_or(10).clamp(1, 50) as usize;
 
-        span.detail(&format!("limit={} prefix={:?}", limit, path_prefix));
+            let scope = match &path_prefix {
+                Some(prefix) => match repo::resolve(&self.repo_root, &self.repo_root_canon, prefix) {
+                    Ok(path) => Some(path),
+                    Err(error) => {
+                        span.error(error);
+                        return path_error(error, prefix);
+                    }
+                },
+                None => None,
+            };
 
-        let hotspots = cogload::top_hotspots(&self.repo_root, scope.as_deref(), limit).await;
+            span.detail(&format!("limit={} prefix={:?}", limit, path_prefix));
+            let hotspots = cogload::top_hotspots(&self.repo_root, scope.as_deref(), limit).await;
 
-        span.done(&format!("hotspots={}", hotspots.len()));
-        to_json(hotspots)
+            span.done(&format!("hotspots={}", hotspots.len()));
+            to_json(hotspots)
+        }
     }
 
-    #[tool(
-        description = "Return a focused Debtmap summary for one file, including TODO locations and \
-                       long-function line numbers. Includes file-level score category and \
-                       recommended-action labels."
+    #[cfg_attr(
+        feature = "debtmap",
+        tool(description = "Return a focused debtmap summary for one file.")
     )]
+    #[allow(dead_code)]
     async fn debtmap_file_summary(
         &self,
         Parameters(DebtmapFileSummaryRequest { path }): Parameters<DebtmapFileSummaryRequest>,
     ) -> String {
-        let span = log::ToolSpan::start("debtmap_file_summary");
+        #[cfg(not(feature = "debtmap"))]
+        {
+            let _ = &path;
+            debtmap_unavailable("debtmap_file_summary")
+        }
 
-        let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
-            Ok(p) => p,
-            Err(error) => {
-                span.error(error);
-                return path_error(error, &path);
-            }
-        };
+        #[cfg(feature = "debtmap")]
+        {
+            let span = log::ToolSpan::start("debtmap_file_summary");
 
-        match cogload::file_summary(&self.repo_root, &resolved).await {
-            Ok(summary) => {
-                span.done(&format!("path={} score={}", summary.path, summary.score));
-                to_json(summary)
-            }
-            Err(error) => {
-                span.error(error);
-                path_error(error, &path)
+            let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
+                Ok(path) => path,
+                Err(error) => {
+                    span.error(error);
+                    return path_error(error, &path);
+                }
+            };
+
+            match cogload::file_summary(&self.repo_root, &resolved).await {
+                Ok(summary) => {
+                    span.done(&format!("path={} score={}", summary.path, summary.score));
+                    to_json(summary)
+                }
+                Err(error) => {
+                    span.error(error);
+                    path_error(error, &path)
+                }
             }
         }
     }
 
-    #[tool(
-        description = "Score a provided list of touched files for bounded cognitive-load review. Use after \
-                       edits, not as always-on analysis. Includes file-level score categories and \
-                       recommended-action labels."
+    #[cfg_attr(
+        feature = "debtmap",
+        tool(description = "Score a provided list of touched files for bounded cognitive-load review.")
     )]
+    #[allow(dead_code)]
     async fn debtmap_touched_files_review(
         &self,
         Parameters(DebtmapTouchedFilesRequest { paths }): Parameters<DebtmapTouchedFilesRequest>,
     ) -> String {
-        let span = log::ToolSpan::start("debtmap_touched_files_review");
-
-        if paths.is_empty() {
-            span.error("paths must not be empty");
-            return path_error("paths must not be empty", "");
+        #[cfg(not(feature = "debtmap"))]
+        {
+            let _ = &paths;
+            debtmap_unavailable("debtmap_touched_files_review")
         }
 
-        let resolved = match resolve_paths(&self.repo_root, &self.repo_root_canon, &paths) {
-            Ok(r) => r,
-            Err((error, path)) => {
-                span.error(error);
-                return path_error(error, &path);
+        #[cfg(feature = "debtmap")]
+        {
+            let span = log::ToolSpan::start("debtmap_touched_files_review");
+
+            if paths.is_empty() {
+                span.error("paths must not be empty");
+                return path_error("paths must not be empty", "");
             }
-        };
 
-        let review = cogload::touched_files_review(&self.repo_root, &resolved).await;
+            let resolved = match resolve_paths(&self.repo_root, &self.repo_root_canon, &paths) {
+                Ok(resolved) => resolved,
+                Err((error, path)) => {
+                    span.error(error);
+                    return path_error(error, &path);
+                }
+            };
 
-        span.done(&format!(
-            "files={} total_score={} skipped={}",
-            review.files.len(),
-            review.total_score,
-            review.skipped.len(),
-        ));
-        to_json(review)
+            let review = cogload::touched_files_review(&self.repo_root, &resolved).await;
+
+            span.done(&format!(
+                "files={} total_score={} skipped={}",
+                review.files.len(),
+                review.total_score,
+                review.skipped.len()
+            ));
+            to_json(review)
+        }
     }
 
-    #[tool(
-        description = "Detect code smells in a single file using the debtmap crate's AST analysis. Works \
-                       best for Rust, TypeScript, and JavaScript files."
+    #[cfg_attr(
+        feature = "debtmap",
+        tool(description = "Detect code smells in a single file using debtmap AST analysis.")
     )]
+    #[allow(dead_code)]
     async fn debtmap_code_smells(
         &self,
         Parameters(DebtmapCodeSmellsRequest { path }): Parameters<DebtmapCodeSmellsRequest>,
     ) -> String {
-        let span = log::ToolSpan::start("debtmap_code_smells");
+        #[cfg(not(feature = "debtmap"))]
+        {
+            let _ = &path;
+            debtmap_unavailable("debtmap_code_smells")
+        }
 
-        let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
-            Ok(p) => p,
-            Err(error) => {
-                span.error(error);
-                return path_error(error, &path);
-            }
-        };
+        #[cfg(feature = "debtmap")]
+        {
+            let span = log::ToolSpan::start("debtmap_code_smells");
 
-        match cogload::code_smells(&self.repo_root, &resolved).await {
-            Ok(report) => {
-                span.done(&format!("path={} smells={}", report.path, report.total));
-                to_json(report)
-            }
-            Err(error) => {
-                span.error(error);
-                path_error(error, &path)
+            let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
+                Ok(path) => path,
+                Err(error) => {
+                    span.error(error);
+                    return path_error(error, &path);
+                }
+            };
+
+            match cogload::code_smells(&self.repo_root, &resolved).await {
+                Ok(report) => {
+                    span.done(&format!("path={} smells={}", report.path, report.total));
+                    to_json(report)
+                }
+                Err(error) => {
+                    span.error(error);
+                    path_error(error, &path)
+                }
             }
         }
     }
 
-    #[tool(
-        description = "Return per-function complexity breakdown for a single file. Uses AST analysis for \
-                       Rust, TypeScript, and JavaScript; heuristic fallback for other languages. Includes \
-                       separate cyclomatic, cognitive, and total-complexity categories plus \
-                       recommended-action labels."
+    #[cfg_attr(
+        feature = "debtmap",
+        tool(description = "Return per-function complexity breakdown for a single file.")
     )]
+    #[allow(dead_code)]
     async fn debtmap_function_complexity(
         &self,
         Parameters(DebtmapFunctionComplexityRequest { path }): Parameters<DebtmapFunctionComplexityRequest>,
     ) -> String {
-        let span = log::ToolSpan::start("debtmap_function_complexity");
+        #[cfg(not(feature = "debtmap"))]
+        {
+            let _ = &path;
+            debtmap_unavailable("debtmap_function_complexity")
+        }
 
-        let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
-            Ok(p) => p,
-            Err(error) => {
-                span.error(error);
-                return path_error(error, &path);
-            }
-        };
+        #[cfg(feature = "debtmap")]
+        {
+            let span = log::ToolSpan::start("debtmap_function_complexity");
 
-        match cogload::function_complexity(&self.repo_root, &resolved).await {
-            Ok(report) => {
-                span.done(&format!(
-                    "path={} fn_count={} method={}",
-                    report.path, report.fn_count, report.analysis_method,
-                ));
-                to_json(report)
-            }
-            Err(error) => {
-                span.error(error);
-                path_error(error, &path)
+            let resolved = match repo::resolve(&self.repo_root, &self.repo_root_canon, &path) {
+                Ok(path) => path,
+                Err(error) => {
+                    span.error(error);
+                    return path_error(error, &path);
+                }
+            };
+
+            match cogload::function_complexity(&self.repo_root, &resolved).await {
+                Ok(report) => {
+                    span.done(&format!(
+                        "path={} fn_count={} method={}",
+                        report.path, report.fn_count, report.analysis_method
+                    ));
+                    to_json(report)
+                }
+                Err(error) => {
+                    span.error(error);
+                    path_error(error, &path)
+                }
             }
         }
     }
 
-    #[tool(
-        description = "Run full unified analysis (identical to debtmap CLI `analyze`) detecting God \
-                       Objects, coupling, cohesion, and call-graph issues. Returns structured items sorted \
-                       by score. Use for deep structural analysis, not routine edits."
+    #[cfg_attr(
+        feature = "debtmap",
+        tool(description = "Run full unified debtmap analysis for deep structural review.")
     )]
+    #[allow(dead_code)]
     async fn debtmap_unified_analysis(
         &self,
         Parameters(DebtmapUnifiedAnalysisRequest { limit, path_prefix }): Parameters<
             DebtmapUnifiedAnalysisRequest,
         >,
     ) -> String {
-        let span = log::ToolSpan::start("debtmap_unified_analysis");
-        let limit = limit.unwrap_or(20).clamp(1, 100) as usize;
+        #[cfg(not(feature = "debtmap"))]
+        {
+            let _ = (&limit, &path_prefix);
+            debtmap_unavailable("debtmap_unified_analysis")
+        }
 
-        let scope = match &path_prefix {
-            Some(prefix) => match repo::resolve(&self.repo_root, &self.repo_root_canon, prefix) {
-                Ok(p) => Some(p),
-                Err(error) => {
-                    span.error(error);
-                    return path_error(error, prefix);
+        #[cfg(feature = "debtmap")]
+        {
+            let span = log::ToolSpan::start("debtmap_unified_analysis");
+            let limit = limit.unwrap_or(20).clamp(1, 100) as usize;
+
+            let scope = match &path_prefix {
+                Some(prefix) => match repo::resolve(&self.repo_root, &self.repo_root_canon, prefix) {
+                    Ok(path) => Some(path),
+                    Err(error) => {
+                        span.error(error);
+                        return path_error(error, prefix);
+                    }
+                },
+                None => None,
+            };
+
+            span.detail(&format!("limit={} prefix={:?}", limit, path_prefix));
+
+            match cogload::run_unified_analysis(&self.repo_root, scope.as_deref(), limit).await {
+                Ok(report) => {
+                    span.done(&format!(
+                        "items={} density={:.1} loc={}",
+                        report.total_items, report.debt_density, report.total_loc
+                    ));
+                    to_json(report)
                 }
-            },
-            None => None,
-        };
-
-        span.detail(&format!("limit={} prefix={:?}", limit, path_prefix));
-
-        match cogload::run_unified_analysis(&self.repo_root, scope.as_deref(), limit).await {
-            Ok(report) => {
-                span.done(&format!(
-                    "items={} density={:.1} loc={}",
-                    report.total_items, report.debt_density, report.total_loc,
-                ));
-                to_json(report)
-            }
-            Err(error) => {
-                span.error(&error);
-                to_json(serde_json::json!({ "error": error }))
+                Err(error) => {
+                    span.error(&error);
+                    to_json(serde_json::json!({ "error": error }))
+                }
             }
         }
     }
 
-    #[tool(
-        description = "Evaluate CI gate rules against the repo. Returns pass/fail with blocking violations \
-                       and warnings. When `paths` is provided, only violations in those files are reported \
-                       and the debt_density gate is skipped. Blocking rules: priority critical/high, \
-                       god_object_score >= 45, cyclomatic >= 31, cognitive >= 25. Warning rules: priority \
-                       medium, god_object_score < 45, coupling Hub/highly_coupled, cyclomatic 21-30, \
-                       cognitive 15-24."
+    #[cfg_attr(
+        feature = "debtmap",
+        tool(description = "Evaluate debtmap CI gate rules against the repo or a bounded file set.")
     )]
+    #[allow(dead_code)]
     async fn debtmap_ci_gate(
         &self,
         Parameters(DebtmapCiGateRequest { path_prefix, paths }): Parameters<DebtmapCiGateRequest>,
     ) -> String {
-        let span = log::ToolSpan::start("debtmap_ci_gate");
+        #[cfg(not(feature = "debtmap"))]
+        {
+            let _ = (&path_prefix, &paths);
+            debtmap_unavailable("debtmap_ci_gate")
+        }
 
-        let scope = match &path_prefix {
-            Some(prefix) => match repo::resolve(&self.repo_root, &self.repo_root_canon, prefix) {
-                Ok(p) => Some(p),
-                Err(error) => {
-                    span.error(error);
-                    return path_error(error, prefix);
+        #[cfg(feature = "debtmap")]
+        {
+            let span = log::ToolSpan::start("debtmap_ci_gate");
+
+            let scope = match &path_prefix {
+                Some(prefix) => match repo::resolve(&self.repo_root, &self.repo_root_canon, prefix) {
+                    Ok(path) => Some(path),
+                    Err(error) => {
+                        span.error(error);
+                        return path_error(error, prefix);
+                    }
+                },
+                None => None,
+            };
+
+            let touched_filter: Option<std::collections::HashSet<String>> =
+                paths.map(|items| items.into_iter().collect());
+
+            span.detail(&format!(
+                "prefix={:?} touched_filter={}",
+                path_prefix,
+                touched_filter
+                    .as_ref()
+                    .map_or("none".to_string(), |items| format!("{} files", items.len()))
+            ));
+
+            match cogload::run_unified_analysis(&self.repo_root, scope.as_deref(), 500).await {
+                Ok(report) => {
+                    let gate = cogload::evaluate_ci_gate_filtered(&report, touched_filter.as_ref());
+                    span.done(&format!(
+                        "pass={} blocking={} warnings={}",
+                        gate.pass,
+                        gate.blocking.len(),
+                        gate.warnings.len()
+                    ));
+                    to_json(gate)
                 }
-            },
-            None => None,
-        };
-
-        let touched_filter: Option<std::collections::HashSet<String>> =
-            paths.map(|p| p.into_iter().collect());
-
-        span.detail(&format!(
-            "prefix={:?} touched_filter={}",
-            path_prefix,
-            touched_filter
-                .as_ref()
-                .map_or("none".to_string(), |s| format!("{} files", s.len())),
-        ));
-
-        // Run full analysis with a high limit so CI gate sees everything.
-        match cogload::run_unified_analysis(&self.repo_root, scope.as_deref(), 500).await {
-            Ok(report) => {
-                let gate = cogload::evaluate_ci_gate_filtered(&report, touched_filter.as_ref());
-                span.done(&format!(
-                    "pass={} blocking={} warnings={}",
-                    gate.pass,
-                    gate.blocking.len(),
-                    gate.warnings.len(),
-                ));
-                to_json(gate)
-            }
-            Err(error) => {
-                span.error(&error);
-                to_json(serde_json::json!({ "error": error }))
+                Err(error) => {
+                    span.error(&error);
+                    to_json(serde_json::json!({ "error": error }))
+                }
             }
         }
     }
 }
 
-// ---------------------------------------------------------------------------
-// Private helpers
-// ---------------------------------------------------------------------------
-
 impl CfdRsMemory {
-    /// Shared search-and-format for scoped search tools.
     async fn search_and_respond(
         &self,
         span: &log::ToolSpan,
@@ -806,8 +1018,6 @@ impl CfdRsMemory {
         }
     }
 
-    /// Resolve a repo-relative path to a canonical file path, rejecting
-    /// non-files and paths outside the repo boundary.
     fn resolve_repo_file(&self, path: &str) -> Result<PathBuf, &'static str> {
         let resolved = repo::resolve(&self.repo_root, &self.repo_root_canon, path)?;
         if !resolved.is_file() {
@@ -822,9 +1032,13 @@ impl ServerHandler for CfdRsMemory {
     fn get_info(&self) -> ServerInfo {
         let mut info = ServerInfo::default();
         info.instructions = Some(
-            "Read-only repository memory server. Prefer staged retrieval: route first, list or search the \
-             smallest path set, inspect metadata or snippets, then read only the needed lines or chunk \
-             before making claims."
+            "Read-only repository memory server. Start with `status_summary` for repo truth and \
+             `phase5_priority` for the active queue. Use `parity_row_details` or `domain_gaps_ranked` for \
+             parity work, `baseline_source_mapping` for frozen-source routing, and `crate_surface_summary` \
+             or `crate_dependency_graph` before broad code scans. Use `get_context_snapshot`, \
+             `get_context_bundle`, or `get_context_brief` for compact routing, and widen to direct file \
+             reads only when the first MCP answer is insufficient. The required operational server surface \
+             includes debtmap; use `debtmap_*` once the task narrows to hotspot, review, or refactor work."
                 .into(),
         );
         info.capabilities = ServerCapabilities::builder().enable_tools().build();
@@ -832,7 +1046,6 @@ impl ServerHandler for CfdRsMemory {
     }
 }
 
-/// Resolve a list of repo-relative paths, returning all or the first error.
 fn resolve_paths(
     repo_root: &Path,
     repo_root_canon: &Path,
@@ -841,14 +1054,13 @@ fn resolve_paths(
     let mut resolved = Vec::with_capacity(paths.len());
     for path in paths {
         match repo::resolve(repo_root, repo_root_canon, path.as_str()) {
-            Ok(p) => resolved.push(p),
+            Ok(resolved_path) => resolved.push(resolved_path),
             Err(error) => return Err((error, path.clone())),
         }
     }
     Ok(resolved)
 }
 
-/// Build file metadata, determining kind and optional line count.
 async fn build_file_metadata(
     resolved: &PathBuf,
     path: &str,
@@ -886,4 +1098,80 @@ fn to_json<T: Serialize>(value: T) -> String {
 
 fn path_error(error: &str, path: &str) -> String {
     to_json(serde_json::json!({ "error": error, "path": path }))
+}
+
+#[allow(dead_code)]
+fn debtmap_unavailable(tool_name: &str) -> String {
+    to_json(serde_json::json!({
+        "error": "debtmap feature not enabled",
+        "tool": tool_name,
+        "hint": "this is the maintenance-only MCP surface; restart the server with debtmap enabled because the operational agent surface requires it"
+    }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CORE_TOOL_NAMES, DEBTMAP_TOOL_NAMES};
+    use std::fs;
+    use std::path::PathBuf;
+
+    fn repo_root() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .and_then(|path| path.parent())
+            .map(|path| path.to_path_buf())
+            .expect("repo root")
+    }
+
+    fn bullet_list_from_doc(section_heading: &str) -> Vec<String> {
+        let path = repo_root().join("docs/ai-context-routing.md");
+        let text = fs::read_to_string(path).expect("routing doc");
+        let mut capture = false;
+        let mut items = Vec::new();
+
+        for line in text.lines() {
+            let trimmed = line.trim();
+
+            if !capture {
+                if trimmed == section_heading {
+                    capture = true;
+                }
+                continue;
+            }
+
+            if trimmed.starts_with("#") && trimmed != section_heading {
+                break;
+            }
+
+            if let Some(item) = trimmed.strip_prefix("- `")
+                && let Some(value) = item.strip_suffix('`')
+            {
+                items.push(value.to_string());
+            }
+        }
+
+        items
+    }
+
+    #[test]
+    fn core_tool_names_match_routing_doc() {
+        let from_doc = bullet_list_from_doc("### Core tools");
+        let from_code = CORE_TOOL_NAMES
+            .iter()
+            .map(|value| (*value).to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(from_code, from_doc);
+    }
+
+    #[test]
+    fn debtmap_tool_names_match_routing_doc() {
+        let from_doc = bullet_list_from_doc("### Debtmap extension tools");
+        let from_code = DEBTMAP_TOOL_NAMES
+            .iter()
+            .map(|value| (*value).to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(from_code, from_doc);
+    }
 }

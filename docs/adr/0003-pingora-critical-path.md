@@ -106,8 +106,6 @@ work.
 
 ## Deferred Follow-Ups
 
-- Phase 2.4: define what FIPS-in-alpha means at the runtime, build, and
-  validation boundary
-- Phase 2.5: define the Linux deployment contract
-- later implementation phases: realize the Pingora critical path above the
-  frozen quiche lane without widening platform or artifact scope
+- keep FIPS and deployment governance aligned with the Pingora-to-quiche critical-path split
+- realize the Pingora critical path above the frozen quiche lane without widening platform or
+  artifact scope

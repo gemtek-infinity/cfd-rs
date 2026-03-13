@@ -6,8 +6,12 @@ publish = false
 rust-version.workspace = true
 version = "0.1.0"
 
+[features]
+default = ["debtmap"]
+debtmap = ["dep:debtmap"]
+
 [dependencies]
-debtmap = { version = "0.15.1", default-features = false }
+debtmap = { version = "0.15.1", default-features = false, optional = true }
 mimalloc.workspace = true
 regex = "1.11"
 rmcp = { version = "1.2.0", features = ["schemars", "server", "transport-io"] }

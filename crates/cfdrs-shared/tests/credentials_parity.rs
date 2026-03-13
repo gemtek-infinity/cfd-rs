@@ -83,7 +83,7 @@ fn harness_can_emit_origin_cert_reports() {
         .arg("--fixture-id")
         .arg("origin-cert-missing-token")
         .output()
-        .expect("python3 should be available to run the first-slice parity harness");
+        .expect("python3 should be available to run the shared-behavior parity harness");
 
     assert!(
         output.status.success(),

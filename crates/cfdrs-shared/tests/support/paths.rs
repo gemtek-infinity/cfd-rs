@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 pub(super) fn fixtures_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/first-slice")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/shared-behavior")
 }
 
 pub(super) fn repo_root() -> PathBuf {
@@ -20,14 +20,14 @@ pub(super) fn tool_path() -> PathBuf {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
     for ancestor in manifest_dir.ancestors() {
-        let candidate = ancestor.join("tools/first_slice_parity.py");
+        let candidate = ancestor.join("tools/shared_behavior_parity.py");
         if candidate.exists() {
             return candidate;
         }
     }
 
     panic!(
-        "failed to locate tools/first_slice_parity.py from {}",
+        "failed to locate tools/shared_behavior_parity.py from {}",
         manifest_dir.display()
     );
 }

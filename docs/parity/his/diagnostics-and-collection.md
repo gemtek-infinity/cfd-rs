@@ -291,7 +291,7 @@ connectivity verification:
 
 Config parsing recognizes `hello_world` as `IngressService::HelloWorld` and
 `--hello-world` flag is parsed. The actual listener, TLS cert generation,
-and route handlers are not implemented (deferred to Phase 5.1).
+and route handlers are not implemented yet (deferred to the later HIS runtime closure work).
 
 ## Current Rust State
 

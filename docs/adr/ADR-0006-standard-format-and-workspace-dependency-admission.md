@@ -8,9 +8,8 @@
 The rewrite workspace is still intentionally partial, but it is no longer a
 blank scaffold.
 
-The repository already has real code in the accepted first slice, real tool
-code under [tools/](../../tools/), and multiple manifests that can drift apart if dependency
-truth is left implicit.
+The repository already has real rewrite code, real tool code under [tools/](../../tools/),
+and multiple manifests that can drift apart if dependency truth is left implicit.
 
 That creates two policy risks that need to be frozen before later
 implementation work expands:
@@ -136,9 +135,8 @@ This ADR does not:
 
 ## Deferred Follow-Ups
 
-- later Big Phase 2 and Big Phase 3 work: apply this policy as new active
-  slices admit dependencies
-- later cleanup work: centralize additional shared third-party dependencies only
-  when they are truly shared and the ownership remains clear
-- any new crypto-behavior admission: through explicit governance rather than by
-  implication from convenience dependencies
+- apply this policy as new Phase 5 milestone work admits dependencies
+- centralize additional shared third-party dependencies only when they are truly shared and the
+  ownership remains clear
+- route any new crypto-behavior admission through explicit governance rather than by implication
+  from convenience dependencies

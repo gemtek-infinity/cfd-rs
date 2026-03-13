@@ -42,8 +42,8 @@ Rules:
 ## Runtime Baseline
 
 The current scaffold now initializes Tokio only at the binary boundary for the
-admitted runtime/lifecycle shell that carries the Phase 3.3 QUIC tunnel core
-and the admitted Phase 3.4–3.7 and 4.1 layers above it.
+admitted runtime and lifecycle shell that carries the current QUIC tunnel core,
+proxy seam, protocol boundary, and observability surface.
 
 Rules:
 

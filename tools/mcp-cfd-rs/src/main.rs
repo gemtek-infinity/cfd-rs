@@ -5,14 +5,18 @@ static GLOBAL_ALLOCATOR: MiMalloc = MiMalloc;
 
 use rmcp::{ServiceExt, transport::stdio};
 
+#[cfg(feature = "debtmap")]
+#[allow(dead_code)]
 mod cogload;
 mod context;
 mod fs;
 mod log;
+mod phase5;
 mod profile;
 mod repo;
 mod search;
 mod server;
+mod workspace;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

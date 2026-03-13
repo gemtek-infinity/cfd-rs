@@ -1,6 +1,6 @@
-# First-Slice Golden Schema
+# Shared-Behavior Golden Schema
 
-All first-slice parity artifacts use a checked-in canonical JSON envelope.
+All shared-behavior parity artifacts use a checked-in canonical JSON envelope.
 
 Filename convention:
 
@@ -25,20 +25,18 @@ Envelope shape:
 
 Field rules:
 
-- `schema_version`: integer contract version for the artifact envelope
-- `fixture_id`: must match a [fixture-index.toml](../../fixture-index.toml) entry exactly
+- `schema_version`: envelope version
+- `fixture_id`: must match `fixture-index.toml`
 - `producer`: `go-truth` or `rust-actual`
-- `report_kind`: one of the accepted first-slice report kinds
-- `comparison`: copied from [fixture-index.toml](../../fixture-index.toml) for auditability
-- `source_refs`: frozen Go test or spec references backing the artifact
+- `report_kind`: accepted shared-behavior report kind
+- `comparison`: copied from `fixture-index.toml`
+- `source_refs`: frozen Go source or test references
 - `payload`: canonical JSON object or array emitted by the relevant runner
 
-Accepted report kinds for Phase 1A planning:
+Accepted report kinds:
 
 - `discovery-report.v1`
 - `normalized-config.v1`
 - `credential-report.v1`
 - `ingress-report.v1`
 - `error-report.v1`
-
-Phase 1A does not populate these files yet. It only freezes their shape.

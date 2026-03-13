@@ -7,7 +7,7 @@ use cfdrs_shared as _;
 mod support;
 
 #[test]
-fn first_slice_fixture_inventory_exists() {
+fn shared_behavior_fixture_inventory_exists() {
     let root = support::fixtures_root();
 
     for relative in [
@@ -30,7 +30,7 @@ fn first_slice_fixture_inventory_exists() {
     ] {
         assert!(
             root.join(relative).exists(),
-            "missing first-slice parity fixture: {relative}"
+            "missing shared-behavior parity fixture: {relative}"
         );
     }
 }

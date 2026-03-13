@@ -44,8 +44,9 @@ Current PR CI policy:
 - validate the generic Linux workspace using path-sensitive job selection
 - application crates ([crates/](../crates/)) are validated with formatting, `cargo check`,
   `cargo clippy`, and `cargo test` when application or workspace files change
-- tool crates ([tools/](../tools/)) are validated separately only when tool or workspace
-  files change, so the debtmap dependency tree is not compiled for app-only PRs
+- tool crates ([tools/](../tools/)) are validated separately only when MCP code, MCP-facing
+  routing docs, or their governing files change; the required debtmap-enabled MCP surface is
+  validated first and the `--no-default-features` maintenance surface is checked separately
 - do not treat PR validation as proof that both shipped CPU lanes are fully
   operational unless lane-specific artifact builds also run
 

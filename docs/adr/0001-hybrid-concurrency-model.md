@@ -18,14 +18,14 @@ Two failure modes need to be prevented early:
 2. translating Go goroutines into detached Tokio tasks without clear ownership,
    cancellation, or shutdown order
 
-The runtime model must also respect the selected first slice:
+The runtime model must also respect the currently admitted deterministic surfaces:
 
 - config
 - credentials
 - ingress normalization
 
-That first slice is largely deterministic and should not force premature async
-architecture into the workspace.
+Those surfaces are largely deterministic and should not force premature async architecture into the
+workspace.
 
 ## Decision
 
