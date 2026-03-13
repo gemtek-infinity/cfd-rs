@@ -28,11 +28,11 @@ This crate does not own:
 
 ## Governing parity docs
 
-- `docs/parity/cdc/implementation-checklist.md` — 44-row CDC parity ledger
-- `docs/parity/cdc/registration-rpc.md`
-- `docs/parity/cdc/stream-contracts.md`
-- `docs/parity/cdc/management-and-diagnostics.md`
-- `docs/parity/cdc/metrics-readiness-and-api.md`
+- [docs/parity/cdc/implementation-checklist.md](../../docs/parity/cdc/implementation-checklist.md) — 44-row CDC parity ledger
+- [docs/parity/cdc/registration-rpc.md](../../docs/parity/cdc/registration-rpc.md)
+- [docs/parity/cdc/stream-contracts.md](../../docs/parity/cdc/stream-contracts.md)
+- [docs/parity/cdc/management-and-diagnostics.md](../../docs/parity/cdc/management-and-diagnostics.md)
+- [docs/parity/cdc/metrics-readiness-and-api.md](../../docs/parity/cdc/metrics-readiness-and-api.md)
 
 ## Baseline surfaces
 
@@ -53,21 +53,21 @@ Key baseline sources:
 
 Partially populated. Contains:
 
-- `src/lib.rs` — module declarations and public re-exports
-- `src/registration.rs` — TunnelAuth, ConnectionOptions, ConnectionDetails,
+- [src/lib.rs](src/lib.rs) — module declarations and public re-exports
+- [src/registration.rs](src/registration.rs) — TunnelAuth, ConnectionOptions, ConnectionDetails,
   RegisterConnectionRequest, RegisterConnectionResponse
-- `src/stream.rs` — ConnectRequest, ConnectResponse, ConnectionType, Metadata
+- [src/stream.rs](src/stream.rs) — ConnectRequest, ConnectResponse, ConnectionType, Metadata
 
 Protocol bridge, transport, and proxy code is temporarily housed in
-`crates/cfdrs-bin/` due to tight coupling with runtime types. These modules
+[crates/cfdrs-bin/](../cfdrs-bin/) due to tight coupling with runtime types. These modules
 compose CDC type boundaries and will be extracted here when runtime interface
 types are formalized.
 
 ## Known gaps and next work
 
-- Extract protocol bridge from `cfdrs-bin/src/protocol.rs` to cfdrs-cdc
-- Extract transport from `cfdrs-bin/src/transport/` to cfdrs-cdc
-- Extract proxy seam from `cfdrs-bin/src/proxy/` to cfdrs-cdc
+- Extract protocol bridge from [cfdrs-bin/src/protocol.rs](../cfdrs-bin/src/protocol.rs) to cfdrs-cdc
+- Extract transport from [cfdrs-bin/src/transport/](../cfdrs-bin/src/transport/) to cfdrs-cdc
+- Extract proxy seam from [cfdrs-bin/src/proxy/](../cfdrs-bin/src/proxy/) to cfdrs-cdc
 - Implement registration wire encoding (Cap'n Proto binary — highest-risk gap)
 - Implement stream framing and codec
 - Implement management service and log streaming (entirely absent)

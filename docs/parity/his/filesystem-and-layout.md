@@ -4,7 +4,7 @@
 
 This document audits filesystem path expectations, config discovery, credential
 lookup, and host-path assumptions against the frozen Go baseline in
-`baseline-2026.2.0/old-impl/`.
+[baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/).
 
 These paths define the interface between cloudflared and the host filesystem.
 Operators and deployment tooling depend on these paths being predictable.
@@ -13,11 +13,11 @@ Operators and deployment tooling depend on these paths being predictable.
 
 Primary files:
 
-- `config/configuration.go` — config discovery, default paths, search order
-- `credentials/origin_cert.go` — origin cert lookup
-- `credentials/credentials.go` — tunnel credential types
-- `cmd/cloudflared/tunnel/credential_finder.go` — credential search logic
-- `cmd/cloudflared/linux_service.go` — service directory constants
+- [config/configuration.go](../../../baseline-2026.2.0/old-impl/config/configuration.go) — config discovery, default paths, search order
+- [credentials/origin_cert.go](../../../baseline-2026.2.0/old-impl/credentials/origin_cert.go) — origin cert lookup
+- [credentials/credentials.go](../../../baseline-2026.2.0/old-impl/credentials/credentials.go) — tunnel credential types
+- [cmd/cloudflared/tunnel/credential_finder.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/credential_finder.go) — credential search logic
+- [cmd/cloudflared/linux_service.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/linux_service.go) — service directory constants
 
 ## Config Discovery Search Order
 
@@ -137,7 +137,7 @@ Base64-encoded for transport.
 
 ### Baseline Behavior
 
-**Source:** `logger/create.go`, `logger/configuration.go`
+**Source:** [logger/create.go](../../../baseline-2026.2.0/old-impl/logger/create.go), [logger/configuration.go](../../../baseline-2026.2.0/old-impl/logger/configuration.go)
 
 The frozen Go baseline supports three log output modes:
 
@@ -153,12 +153,12 @@ The frozen Go baseline supports three log output modes:
 - MaxBackups: 5 retained files
 - MaxAge: 0 (no age limit, backups kept forever)
 
-**File permissions:**
+#### File permissions
 
 - log files: mode 0644 (rw-r--r--)
 - log directories: mode 0744 (rwxr--r--)
 
-**Log format flags:**
+#### Log format flags
 
 - `--loglevel LEVEL` — default `info`, controls global level
 - `--transport-loglevel LEVEL` — separate transport layer level
@@ -179,7 +179,7 @@ CLI flags are exposed.
 
 ### Baseline Behavior
 
-**Source:** `token/token.go`
+**Source:** [token/token.go](../../../baseline-2026.2.0/old-impl/token/token.go)
 
 During token acquisition, the Go baseline creates a lock file at
 `<token-path>.lock` with mode 0600. The lock prevents concurrent token

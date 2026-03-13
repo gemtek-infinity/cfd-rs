@@ -8,9 +8,9 @@ operational caveats, and known gaps for the declared alpha surface.
 For the complete gap inventory across all three parity domains, see the live
 implementation checklists:
 
-- `docs/parity/cli/implementation-checklist.md` — CLI command surface (32 rows)
-- `docs/parity/cdc/implementation-checklist.md` — Cloudflare contracts (44 rows)
-- `docs/parity/his/implementation-checklist.md` — host interactions (74 rows)
+- [docs/parity/cli/implementation-checklist.md](parity/cli/implementation-checklist.md) — CLI command surface (32 rows)
+- [docs/parity/cdc/implementation-checklist.md](parity/cdc/implementation-checklist.md) — Cloudflare contracts (44 rows)
+- [docs/parity/his/implementation-checklist.md](parity/his/implementation-checklist.md) — host interactions (74 rows)
 
 ## Deployment Contract
 
@@ -23,7 +23,7 @@ The alpha deployment contract is narrow and explicit:
 - **Filesystem**: operator-managed host paths for executable, config,
   credentials, and logs
 
-The governing ADR is `docs/adr/0005-deployment-contract.md`.
+The governing ADR is [docs/adr/0005-deployment-contract.md](adr/0005-deployment-contract.md).
 
 ## Build-To-Run Flow
 
@@ -126,7 +126,7 @@ linked above.
 
 These gaps are intentional at the current alpha stage. For the complete
 host-interaction gap inventory with priority, evidence status, and divergence
-records, see `docs/parity/his/implementation-checklist.md`.
+records, see [docs/parity/his/implementation-checklist.md](parity/his/implementation-checklist.md).
 
 - **No systemd unit file**: the deployment contract expects systemd
   supervision, but no unit file is shipped (HIS-012 through HIS-017)
@@ -162,7 +162,7 @@ and `operability-*` (operability) evidence.
 
 ## CI Artifact Build
 
-The merge workflow (`.github/workflows/on-pr-merge.yml`) produces preview
+The merge workflow ([.github/workflows/on-pr-merge.yml](../.github/workflows/on-pr-merge.yml)) produces preview
 artifacts for both shipped lanes:
 
 - `cloudflared-{sha}-linux-x86_64-gnu-x86-64-v2.tar.gz`
@@ -171,4 +171,4 @@ artifacts for both shipped lanes:
 Each artifact includes the binary, README, LICENSE, and a SHA-256 checksum.
 Artifacts are retained for 30 days.
 
-The artifact filename schema is defined in `docs/build-artifact-policy.md`.
+The artifact filename schema is defined in [docs/build-artifact-policy.md](build-artifact-policy.md).

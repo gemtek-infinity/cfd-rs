@@ -7,17 +7,17 @@ This file is the execution plan for Big Phase 5.
 It does not own phase truth, lane truth, compatibility truth, or current-state
 truth. Those remain owned by the governing repository documents, especially:
 
-- `REWRITE_CHARTER.md`
-- `STATUS.md`
-- `docs/compatibility-scope.md`
-- `docs/promotion-gates.md`
+- [REWRITE_CHARTER.md](REWRITE_CHARTER.md)
+- [STATUS.md](STATUS.md)
+- [docs/compatibility-scope.md](docs/compatibility-scope.md)
+- [docs/promotion-gates.md](docs/promotion-gates.md)
 
 This file exists to turn the governing Big Phase 5 direction into an executable,
 auditable work program for the repository.
 
 Big Phase 5 is the final production-alpha completion phase for the Rust rewrite.
 
-For phase purpose, scope, and promotion truth, `docs/promotion-gates.md` wins.
+For phase purpose, scope, and promotion truth, [docs/promotion-gates.md](docs/promotion-gates.md) wins.
 This file narrows that governing phase into an operational sequence for this
 repository:
 
@@ -713,7 +713,7 @@ This execution plan has reached its intended outcome only when all of the follow
 - the workspace has been refactored to the target ownership model
 - implemented surfaces are parity-backed
 - divergences are few, named, justified, and documented
-- the repository can honestly support the governing production-alpha claim defined in `docs/promotion-gates.md`
+- the repository can honestly support the governing production-alpha claim defined in [docs/promotion-gates.md](docs/promotion-gates.md)
 
 ## What This Plan Is Not
 
@@ -756,7 +756,7 @@ They must be reconciled early in Stage 2.
 Expected outcomes:
 
 - current narrow-surface wording is preserved only as historical or current-state truth, not as the lasting target model
-- Big Phase 5 is described consistently with `docs/promotion-gates.md`, without duplicating this file's full execution detail
+- Big Phase 5 is described consistently with [docs/promotion-gates.md](docs/promotion-gates.md), without duplicating this file's full execution detail
 - top-level docs link clearly to the live parity and overhaul-tracking documents
 - current-state docs describe what exists now
 - plan and overhaul docs describe how the remaining work is being executed
@@ -1171,4 +1171,4 @@ This plan is complete only when all of the following are true:
 - Stage 3 refactor exit conditions are satisfied
 - parity claims are backed by evidence, not structure
 - remaining divergences are few, narrow, justified, and documented
-- repository execution reality is aligned with the governing Big Phase 5 definition in `docs/promotion-gates.md`
+- repository execution reality is aligned with the governing Big Phase 5 definition in [docs/promotion-gates.md](docs/promotion-gates.md)

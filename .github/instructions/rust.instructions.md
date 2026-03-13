@@ -8,7 +8,7 @@ When editing Rust code or Cargo manifests in this repository:
 - prefer the smallest source-grounded change
 - preserve externally visible behavior over stylistic rewrites
 - do not add dependencies unless the active owning slice justifies them
-- follow `docs/dependency-policy.md` before changing manifests
+- follow [docs/dependency-policy.md](../../docs/dependency-policy.md) before changing manifests
 - use `[workspace.dependencies]` as the default review surface for normal workspace-managed third-party dependencies
 - keep crate-local dependency truth only when the dependency is intentionally private, tool-specific, experimental, or slice-isolated
 - prefer strong domain types over generic `String` and `Vec<u8>` storage when a
@@ -72,7 +72,7 @@ For medium or large Rust or manifest changes, before running checks:
 - keep the pass local; do not turn it into a repo-wide cleanup
 - consult the MCP Debtmap surface first when the task is a refactor, hotspot cleanup, ownership split, or medium/large control-flow change
 - when using Debtmap, prefer touched-files review first, then narrow path-prefix review, then broader hotspot review only if still needed
-- use the file-level Debtmap score categories owned by `docs/ai-context-routing.md`
+- use the file-level Debtmap score categories owned by [docs/ai-context-routing.md](../../docs/ai-context-routing.md)
 - ignore file-level scores below `15.0` — they carry negligible cognitive load
 - treat file-level scores in `15.0-29.99` as `reviewable` — review when already in the file
 - treat file-level scores in `30.0-44.99` as `reduce_when_touched`, and aim to keep touched Rust files below `30.0` when feasible
@@ -80,7 +80,7 @@ For medium or large Rust or manifest changes, before running checks:
 - for per-function output, treat cognitive `25+`, cyclomatic `31+`, or total complexity `50+` as `refactor_now` on active-path code
 - marker-debt (TODO/FIXME/TestTodo) is excluded from the file score — these are expected during rewrite phases and do not represent real cognitive load
 - if the MCP Debtmap surface is unavailable, inaccessible, or insufficient, say so explicitly and continue with bounded direct review
-- for PR-readiness, run `debtmap_ci_gate` or `debtmap validate` — blocking violations must be fixed before merge (see CI gate rules in `docs/ai-context-routing.md`)
+- for PR-readiness, run `debtmap_ci_gate` or `debtmap validate` — blocking violations must be fixed before merge (see CI gate rules in [docs/ai-context-routing.md](../../docs/ai-context-routing.md))
 
 Do not force this pass on trivial edits.
 

@@ -1,3 +1,7 @@
+// Historical — first-slice Go truth capture tool.
+// The first slice is complete and parity-backed (Phase 1B.6 closure).
+// This tool is retained for reference and regression verification.
+// Broader parity is now tracked by the three domain ledgers under docs/parity/.
 package main
 
 import (

@@ -16,5 +16,5 @@ Current state after Phase 1B.6:
 The directory should remain reviewable and stable:
 
 - one JSON file per emitted fixture id
-- envelope shape must follow `golden/schema/README.md`
+- envelope shape must follow [golden/schema/README.md](../schema/README.md)
 - no file here should imply Go parity unless the corresponding Go truth exists

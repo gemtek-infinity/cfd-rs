@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# Historical — first-slice parity harness.
+# The first slice is complete and parity-backed (Phase 1B.6 closure).
+# This script is retained for reference and regression verification.
+# Broader parity is now tracked by the three domain ledgers under docs/parity/.
 
 from __future__ import annotations
 

@@ -3,21 +3,21 @@
 ## Purpose
 
 This document audits Linux service installation and uninstall behavior
-against the frozen Go baseline in `baseline-2026.2.0/old-impl/`.
+against the frozen Go baseline in [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/).
 
 This is a host-interaction surface (HIS) — it creates, modifies, and removes
 files on the local filesystem and interacts with the init system.
 
 ## Frozen Baseline Source
 
-Primary file: `cmd/cloudflared/linux_service.go`
+Primary file: [cmd/cloudflared/linux_service.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/linux_service.go)
 
 Supporting files:
 
-- `cmd/cloudflared/common_service.go` — token-based install args
-- `postinst.sh` — package manager post-install script
-- `postrm.sh` — package manager post-remove script
-- `cmd/cloudflared/tunnel/subcommands.go` — token parsing
+- [cmd/cloudflared/common_service.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/common_service.go) — token-based install args
+- [postinst.sh](../../../baseline-2026.2.0/old-impl/postinst.sh) — package manager post-install script
+- [postrm.sh](../../../baseline-2026.2.0/old-impl/postrm.sh) — package manager post-remove script
+- [cmd/cloudflared/tunnel/subcommands.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/subcommands.go) — token parsing
 
 ## CLI Entry Points
 
@@ -80,7 +80,7 @@ Commands run in order:
 
 ### Systemd Unit Templates
 
-**cloudflared.service:**
+#### cloudflared.service
 
 ```ini
 [Unit]
@@ -99,7 +99,7 @@ RestartSec=5s
 WantedBy=multi-user.target
 ```
 
-**cloudflared-update.service:**
+#### cloudflared-update.service
 
 ```ini
 [Unit]
@@ -111,7 +111,7 @@ Wants=network-online.target
 ExecStart=/bin/bash -c '{{ .Path }} update; code=$?; if [ $code -eq 11 ]; then systemctl restart cloudflared; exit 0; fi; exit $code'
 ```
 
-**cloudflared-update.timer:**
+#### cloudflared-update.timer
 
 ```ini
 [Unit]
@@ -240,10 +240,10 @@ during install if it does not exist.
 
 Service install and uninstall are entirely absent in the current Rust
 codebase. The runtime deployment evidence in
-`crates/cfdrs-bin/src/runtime/state/deployment_evidence.rs` honestly
+[crates/cfdrs-bin/src/runtime/state/deployment_evidence.rs](../../../crates/cfdrs-bin/src/runtime/state/deployment_evidence.rs) honestly
 declares `no-installer` and `no-systemd-unit` as known gaps.
 
-Systemd detection exists in `crates/cfdrs-bin/src/runtime/deployment.rs`
+Systemd detection exists in [crates/cfdrs-bin/src/runtime/deployment.rs](../../../crates/cfdrs-bin/src/runtime/deployment.rs)
 but only for evidence reporting, not for service management.
 
 ## Gap Summary

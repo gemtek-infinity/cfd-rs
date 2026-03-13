@@ -29,27 +29,27 @@ domains and owns the seam between them.
 
 Relevant execution docs:
 
-- `FINAL_PLAN.md` § Target Crate Map
-- `FINAL_PHASE.md` § Ownership Definitions → cfdrs-bin
-- `docs/status/stage-3.1-scope-triage.md` § Crate Ownership Map
+- [FINAL_PLAN.md](../../FINAL_PLAN.md) § Target Crate Map
+- [FINAL_PHASE.md](../../FINAL_PHASE.md) § Ownership Definitions → cfdrs-bin
+- [docs/status/stage-3.1-scope-triage.md](../../docs/status/stage-3.1-scope-triage.md) § Crate Ownership Map
 
 ## Baseline surfaces
 
 Process startup, allocator setup, exit code handling, and runtime bootstrap
-from the frozen Go baseline's `cmd/cloudflared/main.go` and
-`cmd/cloudflared/run.go`.
+from the frozen Go baseline's [cmd/cloudflared/main.go](../../baseline-2026.2.0/old-impl/cmd/cloudflared/main.go) and
+[cmd/cloudflared/run.go](../../baseline-2026.2.0/old-impl/cmd/cloudflared/run.go).
 
 ## Current status
 
 Fully populated. Contains:
 
-- `src/main.rs` — binary entrypoint and execute logic
-- `src/runtime/` — lifecycle state machine, supervision, shutdown
-- `src/startup/` — config orchestration and startup resolution
-- `src/protocol.rs` — wire protocol bridge types (CDC-owned, temporarily here)
-- `src/transport/` — QUIC transport lifecycle (CDC-owned, temporarily here)
-- `src/proxy/` — Pingora proxy seam (CDC-owned, temporarily here)
-- `tests/cli_surface.rs` — CLI integration tests
+- [src/main.rs](src/main.rs) — binary entrypoint and execute logic
+- [src/runtime/](src/runtime/) — lifecycle state machine, supervision, shutdown
+- [src/startup/](src/startup/) — config orchestration and startup resolution
+- [src/protocol.rs](src/protocol.rs) — wire protocol bridge types (CDC-owned, temporarily here)
+- [src/transport/](src/transport/) — QUIC transport lifecycle (CDC-owned, temporarily here)
+- [src/proxy/](src/proxy/) — Pingora proxy seam (CDC-owned, temporarily here)
+- [tests/cli_surface.rs](tests/cli_surface.rs) — CLI integration tests
 
 ## Known gaps and next work
 

@@ -26,7 +26,8 @@ pub fn supported_bundle_names() -> Vec<&'static str> {
         "scope-lane",
         "repo-state",
         "active-surface",
-        "first-slice-parity",
+        "parity",
+        "execution-plan",
         "runtime-deps",
         "behavior-baseline",
     ]
@@ -36,6 +37,7 @@ pub fn supported_snapshot_names() -> Vec<&'static str> {
     vec![
         "active-context",
         "governing-files",
+        "crate-ownership",
         "scope-lane",
         "repo-state",
         "active-phase",
@@ -50,7 +52,8 @@ pub fn bundle(name: &str) -> Option<ContextBundle> {
         "scope-lane" => Some(scope_lane_bundle()),
         "repo-state" => Some(repo_state_bundle()),
         "active-surface" => Some(active_surface_bundle()),
-        "first-slice-parity" => Some(first_slice_parity_bundle()),
+        "parity" => Some(parity_bundle()),
+        "execution-plan" => Some(execution_plan_bundle()),
         "runtime-deps" => Some(runtime_deps_bundle()),
         "behavior-baseline" => Some(behavior_baseline_bundle()),
         _ => None,
@@ -109,6 +112,10 @@ fn active_surface_bundle() -> ContextBundle {
                 reason: "Preferred source for current active context when present.",
             },
             BundleEntry {
+                path: "docs/status/phase-5-overhaul.md".to_string(),
+                reason: "Active execution tracker with stage progress and gap ranking.",
+            },
+            BundleEntry {
                 path: "docs/promotion-gates.md".to_string(),
                 reason: "Authoritative phase file when active context needs broader grounding.",
             },
@@ -120,22 +127,51 @@ fn active_surface_bundle() -> ContextBundle {
     }
 }
 
-fn first_slice_parity_bundle() -> ContextBundle {
+fn parity_bundle() -> ContextBundle {
     ContextBundle {
-        bundle: "first-slice-parity",
-        summary: "Use this bundle for parity workflow sources.",
+        bundle: "parity",
+        summary: "Use this bundle for parity tracking across all three domains (CLI, CDC, HIS).",
         entries: vec![
             BundleEntry {
-                path: ACTIVE_CONTEXT_PATH.to_string(),
-                reason: "Preferred active-slice source when present.",
+                path: "docs/parity/cli/implementation-checklist.md".to_string(),
+                reason: "CLI domain parity ledger (32 rows).",
             },
             BundleEntry {
-                path: "docs/status/first-slice-parity.md".to_string(),
-                reason: "Parity status details.",
+                path: "docs/parity/cdc/implementation-checklist.md".to_string(),
+                reason: "CDC domain parity ledger (44 rows).",
             },
             BundleEntry {
-                path: "tools/first_slice_parity.py".to_string(),
-                reason: "Parity harness entry point.",
+                path: "docs/parity/his/implementation-checklist.md".to_string(),
+                reason: "HIS domain parity ledger (74 rows).",
+            },
+            BundleEntry {
+                path: "docs/parity/README.md".to_string(),
+                reason: "Parity domain index and document map.",
+            },
+            BundleEntry {
+                path: "docs/status/phase-5-overhaul.md".to_string(),
+                reason: "Cross-domain gap ranking and execution status.",
+            },
+        ],
+    }
+}
+
+fn execution_plan_bundle() -> ContextBundle {
+    ContextBundle {
+        bundle: "execution-plan",
+        summary: "Use this bundle for staged execution plan and detailed phase reference.",
+        entries: vec![
+            BundleEntry {
+                path: "FINAL_PLAN.md".to_string(),
+                reason: "Staged execution plan with stage completion tracker.",
+            },
+            BundleEntry {
+                path: "FINAL_PHASE.md".to_string(),
+                reason: "Detailed execution reference for the final phase.",
+            },
+            BundleEntry {
+                path: "docs/status/phase-5-overhaul.md".to_string(),
+                reason: "Live execution status with stage progress.",
             },
         ],
     }
@@ -201,6 +237,7 @@ pub fn snapshot(name: &str) -> Option<ContextSnapshot> {
     match name {
         "active-context" => Some(active_context_snapshot()),
         "governing-files" => Some(governing_files_snapshot()),
+        "crate-ownership" => Some(crate_ownership_snapshot()),
         "scope-lane" => Some(scope_lane_snapshot()),
         "repo-state" => Some(repo_state_snapshot()),
         "active-phase" => Some(active_phase_snapshot()),
@@ -248,6 +285,11 @@ fn governing_files_snapshot() -> ContextSnapshot {
                 value: "Use STATUS.md and docs/promotion-gates.md for current state and phase governance.",
             },
             SnapshotFact {
+                label: "execution_plan",
+                value: "Use FINAL_PLAN.md for staged execution plan and FINAL_PHASE.md for detailed \
+                        reference.",
+            },
+            SnapshotFact {
                 label: "dependencies_and_runtime",
                 value: "Use docs/dependency-policy.md and docs/allocator-runtime-baseline.md.",
             },
@@ -255,13 +297,65 @@ fn governing_files_snapshot() -> ContextSnapshot {
                 label: "behavior_and_parity",
                 value: "Use baseline-2026.2.0/old-impl and baseline-2026.2.0/design-audit.",
             },
+            SnapshotFact {
+                label: "contributor_guidance",
+                value: "Use CONTRIBUTING.md for build, test, and workflow; AGENTS.md for AI agent routing.",
+            },
         ],
         source_paths: vec![
             "REWRITE_CHARTER.md".to_string(),
             "STATUS.md".to_string(),
+            "FINAL_PLAN.md".to_string(),
             "docs/promotion-gates.md".to_string(),
             "docs/dependency-policy.md".to_string(),
+            "CONTRIBUTING.md".to_string(),
             "baseline-2026.2.0/old-impl".to_string(),
+        ],
+    }
+}
+
+fn crate_ownership_snapshot() -> ContextSnapshot {
+    ContextSnapshot {
+        snapshot: "crate-ownership",
+        summary: "Compact map of the 5-crate workspace structure and ownership.",
+        facts: vec![
+            SnapshotFact {
+                label: "cfdrs_bin",
+                value: "Process entry, runtime composition, lifecycle orchestration. See \
+                        crates/cfdrs-bin/README.md.",
+            },
+            SnapshotFact {
+                label: "cfdrs_cli",
+                value: "CLI command surface: parsing, help text, dispatch. See crates/cfdrs-cli/README.md.",
+            },
+            SnapshotFact {
+                label: "cfdrs_cdc",
+                value: "Cloudflare-facing contracts: registration RPC, stream types. See \
+                        crates/cfdrs-cdc/README.md.",
+            },
+            SnapshotFact {
+                label: "cfdrs_his",
+                value: "Host interactions: filesystem discovery, service management. See \
+                        crates/cfdrs-his/README.md.",
+            },
+            SnapshotFact {
+                label: "cfdrs_shared",
+                value: "Cross-domain shared types: config, credentials, ingress, error. See \
+                        crates/cfdrs-shared/README.md.",
+            },
+            SnapshotFact {
+                label: "dependency_direction",
+                value: "bin -> cli, cdc, his, shared; cli -> shared; cdc -> shared; his -> shared; shared \
+                        -> nothing domain-specific.",
+            },
+        ],
+        source_paths: vec![
+            "crates/cfdrs-bin/README.md".to_string(),
+            "crates/cfdrs-cli/README.md".to_string(),
+            "crates/cfdrs-cdc/README.md".to_string(),
+            "crates/cfdrs-his/README.md".to_string(),
+            "crates/cfdrs-shared/README.md".to_string(),
+            "docs/status/rewrite-foundation.md".to_string(),
         ],
     }
 }
@@ -502,8 +596,28 @@ mod tests {
         let snapshot = snapshot("governing-files").expect("snapshot should exist");
 
         assert_eq!(snapshot.snapshot, "governing-files");
-        assert_eq!(snapshot.facts.len(), 4);
+        assert_eq!(snapshot.facts.len(), 6);
         assert!(snapshot.source_paths.contains(&"REWRITE_CHARTER.md".to_string()));
+        assert!(snapshot.source_paths.contains(&"FINAL_PLAN.md".to_string()));
+        assert!(snapshot.source_paths.contains(&"CONTRIBUTING.md".to_string()));
+    }
+
+    #[test]
+    fn exposes_crate_ownership_snapshot() {
+        let snapshot = snapshot("crate-ownership").expect("snapshot should exist");
+
+        assert_eq!(snapshot.snapshot, "crate-ownership");
+        assert_eq!(snapshot.facts.len(), 6);
+        assert!(
+            snapshot
+                .source_paths
+                .contains(&"crates/cfdrs-bin/README.md".to_string())
+        );
+        assert!(
+            snapshot
+                .source_paths
+                .contains(&"crates/cfdrs-shared/README.md".to_string())
+        );
     }
 
     #[test]
@@ -518,6 +632,7 @@ mod tests {
         assert!(supported.contains(&"behavior-baseline"));
         assert!(supported.contains(&"lane-decisions"));
         assert!(supported.contains(&"governing-files"));
+        assert!(supported.contains(&"crate-ownership"));
     }
 
     #[test]
@@ -526,5 +641,43 @@ mod tests {
 
         assert!(supported.contains(&"scope-lane"));
         assert!(supported.contains(&"behavior-baseline"));
+        assert!(supported.contains(&"parity"));
+        assert!(supported.contains(&"execution-plan"));
+    }
+
+    #[test]
+    fn exposes_parity_bundle() {
+        let bundle = bundle("parity").expect("bundle should exist");
+
+        assert_eq!(bundle.bundle, "parity");
+        assert_eq!(bundle.entries.len(), 5);
+        assert!(
+            bundle
+                .entries
+                .iter()
+                .any(|e| e.path == "docs/parity/cli/implementation-checklist.md")
+        );
+        assert!(
+            bundle
+                .entries
+                .iter()
+                .any(|e| e.path == "docs/parity/cdc/implementation-checklist.md")
+        );
+        assert!(
+            bundle
+                .entries
+                .iter()
+                .any(|e| e.path == "docs/parity/his/implementation-checklist.md")
+        );
+    }
+
+    #[test]
+    fn exposes_execution_plan_bundle() {
+        let bundle = bundle("execution-plan").expect("bundle should exist");
+
+        assert_eq!(bundle.bundle, "execution-plan");
+        assert_eq!(bundle.entries.len(), 3);
+        assert!(bundle.entries.iter().any(|e| e.path == "FINAL_PLAN.md"));
+        assert!(bundle.entries.iter().any(|e| e.path == "FINAL_PHASE.md"));
     }
 }

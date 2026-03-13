@@ -6,7 +6,7 @@
 ## Context
 
 The Rust rewrite must preserve the externally visible behavior of the frozen Go
-reference in `baseline-2026.2.0/old-impl/` while avoiding a naive one-goroutine-to-one-task
+reference in [baseline-2026.2.0/old-impl/](../../baseline-2026.2.0/old-impl/) while avoiding a naive one-goroutine-to-one-task
 translation.
 
 The repository already has a scaffold, not a blank-slate rewrite.
@@ -87,6 +87,6 @@ Tokio structured-async data plane — governs all new runtime subsystem work.
 
 ## Relationship To Other Documents
 
-- `docs/go-rust-semantic-mapping.md` is the detailed normative doctrine
-- `docs/allocator-runtime-baseline.md` defines process-level runtime admission
-- `docs/dependency-policy.md` controls when runtime dependencies enter manifests
+- [docs/go-rust-semantic-mapping.md](../go-rust-semantic-mapping.md) is the detailed normative doctrine
+- [docs/allocator-runtime-baseline.md](../allocator-runtime-baseline.md) defines process-level runtime admission
+- [docs/dependency-policy.md](../dependency-policy.md) controls when runtime dependencies enter manifests

@@ -35,10 +35,10 @@ the first-slice Rust-versus-Go compare loop.
 
 ### Evidence
 
-- `STATUS.md`
-- `docs/compatibility-scope.md`
-- `REWRITE_CHARTER.md`
-- `docs/first-slice-freeze.md`
+- [STATUS.md](../STATUS.md)
+- [docs/compatibility-scope.md](compatibility-scope.md)
+- [REWRITE_CHARTER.md](../REWRITE_CHARTER.md)
+- [docs/first-slice-freeze.md](first-slice-freeze.md)
 
 ### Exit condition
 

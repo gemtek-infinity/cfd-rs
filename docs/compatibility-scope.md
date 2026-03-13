@@ -8,7 +8,7 @@ It exists to keep behavioral compatibility, current implemented scope, and later
 
 The rewrite target is the behavior of the frozen Go snapshot in:
 
-- `baseline-2026.2.0/old-impl/`
+- [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/)
 
 The target release baseline is:
 
@@ -16,34 +16,34 @@ The target release baseline is:
 
 The derived navigation/spec layer is:
 
-- `baseline-2026.2.0/design-audit/`
+- [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/)
 
 ## Compatibility routing
 
 Use the right source for the right question:
 
 - behavior and parity:
-  1. `baseline-2026.2.0/old-impl/` code and tests
-  2. `baseline-2026.2.0/design-audit/`
+  1. [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) code and tests
+  2. [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/)
 
 - current repository state:
-  - `STATUS.md`
+  - [STATUS.md](../STATUS.md)
 
 - non-negotiables and scope:
-  - `REWRITE_CHARTER.md`
+  - [REWRITE_CHARTER.md](../REWRITE_CHARTER.md)
 
 - dependency and runtime policy:
-  - `docs/*.md`
+  - [docs/](../docs/)
 
 - workflow notes:
-  - `AGENTS.md`
-  - `SKILLS.md`
+  - [AGENTS.md](../AGENTS.md)
+  - [SKILLS.md](../SKILLS.md)
 
 Do not claim compatibility from Rust code shape alone.
 
 ## Frozen inputs
 
-`baseline-2026.2.0/old-impl/` and `baseline-2026.2.0/design-audit/` are frozen inputs.
+[baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) and [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/) are frozen inputs.
 
 Do not modify either directory during normal rewrite work.
 

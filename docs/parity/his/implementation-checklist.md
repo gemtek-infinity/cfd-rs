@@ -70,8 +70,8 @@ Preferred values:
 ## Audited Checklist
 
 This checklist was produced by source-level audit of the frozen Go baseline
-in `baseline-2026.2.0/old-impl/` and comparison against the current Rust HIS
-surface in `crates/cfdrs-cli/`, `crates/cfdrs-shared/`, and `crates/cfdrs-his/`.
+in [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/) and comparison against the current Rust HIS
+surface in [crates/cfdrs-cli/](../../../crates/cfdrs-cli/), [crates/cfdrs-shared/](../../../crates/cfdrs-shared/), and [crates/cfdrs-his/](../../../crates/cfdrs-his/).
 
 The frozen Go HIS surface uses direct syscalls, `os/exec` for systemd/SysV,
 `fsnotify` for file watching, `net/http` for local metrics, and `lumberjack`
@@ -374,7 +374,7 @@ Low gaps:
 
 Classification performed during Stage 3.1 scope triage. For the full
 classification rationale and lane definition, see
-`docs/status/stage-3.1-scope-triage.md`.
+[docs/status/stage-3.1-scope-triage.md](../../status/stage-3.1-scope-triage.md).
 
 All items not listed below are **lane-required** for the declared Linux
 production-alpha lane.
@@ -436,14 +436,14 @@ Miscellaneous:
 
 ## Immediate Work Queue
 
-1. ~~inventory Linux service install and uninstall behavior~~ — done, see `service-installation.md`
-2. ~~inventory local metrics, readiness, diagnostics endpoints~~ — done, see `diagnostics-and-collection.md`
-3. ~~inventory diagnostics collector surfaces and output shapes~~ — done, see `diagnostics-and-collection.md`
-4. ~~inventory watcher and reload behavior~~ — done, see `reload-and-watcher.md`
-5. ~~inventory filesystem paths and side effects~~ — done, see `filesystem-and-layout.md`
+1. ~~inventory Linux service install and uninstall behavior~~ — done, see [service-installation.md](service-installation.md)
+2. ~~inventory local metrics, readiness, diagnostics endpoints~~ — done, see [diagnostics-and-collection.md](diagnostics-and-collection.md)
+3. ~~inventory diagnostics collector surfaces and output shapes~~ — done, see [diagnostics-and-collection.md](diagnostics-and-collection.md)
+4. ~~inventory watcher and reload behavior~~ — done, see [reload-and-watcher.md](reload-and-watcher.md)
+5. ~~inventory filesystem paths and side effects~~ — done, see [filesystem-and-layout.md](filesystem-and-layout.md)
 6. ~~classify lane-relevant vs compatibility-only behaviors~~ — done, lane column in each feature-group doc
 7. ~~create feature-group audit documents~~ — done, four documents created
-8. ~~inventory signal handling and graceful shutdown~~ — done, see `reload-and-watcher.md`
-9. ~~inventory logging file artifacts and rotation~~ — done, see `filesystem-and-layout.md`
-10. ~~inventory ICMP proxy privilege surface~~ — done, see `diagnostics-and-collection.md`
-11. ~~inventory process restart and socket inheritance~~ — done, see `reload-and-watcher.md`
+8. ~~inventory signal handling and graceful shutdown~~ — done, see [reload-and-watcher.md](reload-and-watcher.md)
+9. ~~inventory logging file artifacts and rotation~~ — done, see [filesystem-and-layout.md](filesystem-and-layout.md)
+10. ~~inventory ICMP proxy privilege surface~~ — done, see [diagnostics-and-collection.md](diagnostics-and-collection.md)
+11. ~~inventory process restart and socket inheritance~~ — done, see [reload-and-watcher.md](reload-and-watcher.md)

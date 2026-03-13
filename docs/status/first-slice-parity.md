@@ -8,11 +8,11 @@
 >
 > Broader parity is now tracked by the three final-phase domain ledgers:
 >
-> - `docs/parity/cli/implementation-checklist.md`
-> - `docs/parity/cdc/implementation-checklist.md`
-> - `docs/parity/his/implementation-checklist.md`
+> - [docs/parity/cli/implementation-checklist.md](../parity/cli/implementation-checklist.md)
+> - [docs/parity/cdc/implementation-checklist.md](../parity/cdc/implementation-checklist.md)
+> - [docs/parity/his/implementation-checklist.md](../parity/his/implementation-checklist.md)
 >
-> For the current execution plan, see `FINAL_PHASE.md` and `FINAL_PLAN.md`.
+> For the current execution plan, see [FINAL_PHASE.md](../../FINAL_PHASE.md) and [FINAL_PLAN.md](../../FINAL_PLAN.md).
 
 This file captures the accepted first-slice implementation history and the
 current parity-backed state for that slice.
@@ -23,11 +23,11 @@ Phase 1A groundwork now exists for the accepted first slice.
 
 What exists now:
 
-- explicit first-slice fixture taxonomy under `crates/cfdrs-shared/tests/fixtures/first-slice/`
-- executable harness entrypoint at `tools/first_slice_parity.py`
+- explicit first-slice fixture taxonomy under [crates/cfdrs-shared/tests/fixtures/first-slice/](../../crates/cfdrs-shared/tests/fixtures/first-slice/)
+- executable harness entrypoint at [tools/first_slice_parity.py](../../tools/first_slice_parity.py)
 - checked-in JSON golden artifact contract for Go truth and Rust actual reports
 - Rust-side helper scaffolding and ignored parity tests in
-  `crates/cfdrs-shared/tests/`
+  [crates/cfdrs-shared/tests/](../../crates/cfdrs-shared/tests/)
 
 What does not exist yet:
 
@@ -41,11 +41,11 @@ Implication:
 
 ## Phase 1B.1 Domain Skeleton
 
-Phase 1B.1 groundwork now exists in `crates/cfdrs-shared/`.
+Phase 1B.1 groundwork now exists in [crates/cfdrs-shared/](../../crates/cfdrs-shared/).
 
 What exists now:
 
-- admitted first-slice crate dependencies only in `crates/cfdrs-shared/Cargo.toml`
+- admitted first-slice crate dependencies only in [crates/cfdrs-shared/Cargo.toml](../../crates/cfdrs-shared/Cargo.toml)
 - explicit module layout for discovery, raw config, normalized config,
   credentials, ingress, and error taxonomy
 - honest public APIs for raw YAML loading, credential JSON loading, and raw to
@@ -153,7 +153,7 @@ surface.
 What exists now:
 
 - checked-in Go truth artifacts under
-  `crates/cfdrs-shared/tests/fixtures/first-slice/golden/go-truth/` for
+  [crates/cfdrs-shared/tests/fixtures/first-slice/golden/go-truth/](../../crates/cfdrs-shared/tests/fixtures/first-slice/golden/go-truth/) for
   all 21 accepted first-slice fixtures
 - a source-backed `capture-go-truth` workflow that stages a small Go helper in
   a temporary module and imports the frozen Go baseline via `replace`

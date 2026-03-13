@@ -10,8 +10,8 @@ binary honest without implying that runtime subsystems are already ported.
 
 Do not modify either frozen input as part of allocator or runtime work:
 
-- `baseline-2026.2.0/old-impl/`
-- `baseline-2026.2.0/design-audit/`
+- [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/)
+- [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/)
 
 ## Target Platform
 
@@ -64,9 +64,9 @@ Constraints:
 - runtime ownership belongs at the binary boundary
 - libraries should remain runtime-aware only to the extent required by their
   public async interfaces
-- runtime structure must follow `docs/go-rust-semantic-mapping.md`
+- runtime structure must follow [docs/go-rust-semantic-mapping.md](go-rust-semantic-mapping.md)
 - concurrency architecture is formally recorded in
-  `docs/adr/0001-hybrid-concurrency-model.md`
+  [docs/adr/0001-hybrid-concurrency-model.md](adr/0001-hybrid-concurrency-model.md)
 
 ## Control-Plane And Data-Plane Consequences
 

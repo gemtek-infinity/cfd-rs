@@ -3,7 +3,7 @@
 ## Purpose
 
 This document audits config reload, file watching, and updater behavior
-against the frozen Go baseline in `baseline-2026.2.0/old-impl/`.
+against the frozen Go baseline in [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/).
 
 These surfaces interact with the host filesystem (watching files, restarting
 processes) and with external services (update check endpoint).
@@ -12,12 +12,12 @@ processes) and with external services (update check endpoint).
 
 Primary files:
 
-- `watcher/file.go` — fsnotify file watcher
-- `overwatch/app_manager.go` — service lifecycle manager
-- `orchestration/orchestrator.go` — remote config update handling
-- `cmd/cloudflared/app_service.go` — config update action loop
-- `cmd/cloudflared/updater/update.go` — auto-update logic
-- `cmd/cloudflared/updater/workers_service.go` — update check HTTP client
+- [watcher/file.go](../../../baseline-2026.2.0/old-impl/watcher/file.go) — fsnotify file watcher
+- [overwatch/app_manager.go](../../../baseline-2026.2.0/old-impl/overwatch/app_manager.go) — service lifecycle manager
+- [orchestration/orchestrator.go](../../../baseline-2026.2.0/old-impl/orchestration/orchestrator.go) — remote config update handling
+- [cmd/cloudflared/app_service.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/app_service.go) — config update action loop
+- [cmd/cloudflared/updater/update.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/updater/update.go) — auto-update logic
+- [cmd/cloudflared/updater/workers_service.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/updater/workers_service.go) — update check HTTP client
 
 ## File Watcher
 
@@ -221,9 +221,9 @@ Platform-specific files:
 - SIGHUP detection exists but handler returns "not supported" error
 - restart budget tracking in failure evidence
 - SIGTERM/SIGINT signal handling via `tokio::signal::unix` in
-  `runtime/tasks/bridges.rs`: sends `RuntimeCommand::ShutdownRequested`
+    [crates/cfdrs-bin/src/runtime/tasks/bridges.rs](../../../crates/cfdrs-bin/src/runtime/tasks/bridges.rs): sends `RuntimeCommand::ShutdownRequested`
   with signal name, conditionally enabled (disabled in tests)
-- graceful shutdown with child task draining in `runtime/tasks/drain.rs`:
+- graceful shutdown with child task draining in [crates/cfdrs-bin/src/runtime/tasks/drain.rs](../../../crates/cfdrs-bin/src/runtime/tasks/drain.rs):
   waits for children with grace period, aborts timed-out tasks
 - internal shutdown grace period defaulting to 100ms (vs Go's 30s)
 - no `--grace-period` CLI flag exposed
@@ -251,7 +251,7 @@ Platform-specific files:
 
 ### Baseline Behavior
 
-**Source:** `signal/safe_signal.go`, `cmd/cloudflared/tunnel/signal.go`
+**Source:** [signal/safe_signal.go](../../../baseline-2026.2.0/old-impl/signal/safe_signal.go), [cmd/cloudflared/tunnel/signal.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/signal.go)
 
 The frozen Go baseline listens for SIGTERM and SIGINT:
 
@@ -261,12 +261,12 @@ The frozen Go baseline listens for SIGTERM and SIGINT:
 4. `GracefulShutdown()` is called on HTTP/2 RPC client connections
 5. second signal during grace period forces immediate exit
 
-Token lock acquisition in `token/token.go` also intercepts SIGINT/SIGTERM to
+Token lock acquisition in [token/token.go](../../../baseline-2026.2.0/old-impl/token/token.go) also intercepts SIGINT/SIGTERM to
 call `deleteLockFile()` before exit, preventing stale lock files.
 
 ### Rust State
 
-Signal handling is implemented in `crates/cfdrs-bin/src/runtime/tasks/bridges.rs`
+Signal handling is implemented in [crates/cfdrs-bin/src/runtime/tasks/bridges.rs](../../../crates/cfdrs-bin/src/runtime/tasks/bridges.rs)
 using `tokio::signal::unix::signal(SignalKind::terminate())` and `signal(SignalKind::interrupt())`.
 
 Received signals send `RuntimeCommand::ShutdownRequested` with the signal name.
@@ -281,7 +281,7 @@ there is no `--grace-period` CLI flag to configure it.
 
 ### Baseline Behavior
 
-**Source:** `cmd/cloudflared/tunnel/cmd.go`
+**Source:** [cmd/cloudflared/tunnel/cmd.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/cmd.go)
 
 Optional `--pidfile <path>` flag writes the process PID to the specified file
 **after** the tunnel connects (not on startup). Triggered by `connectedSignal`
@@ -295,7 +295,7 @@ Not implemented. No `--pidfile` flag or PID file creation.
 
 ### Baseline Behavior
 
-**Source:** `token/token.go`
+**Source:** [token/token.go](../../../baseline-2026.2.0/old-impl/token/token.go)
 
 During token fetch, creates a lock file at `<token-path>.lock` with mode 0600.
 If lock exists, polls with exponential backoff (up to 7 iterations). Signal
@@ -312,8 +312,8 @@ Not implemented. No file-based locking for token operations.
 
 ### Baseline Behavior
 
-**Source:** `vendor/github.com/facebookgo/grace/gracenet/net.go`, `metrics/metrics.go`,
-`cmd/cloudflared/updater/update.go`
+**Source:** [vendor/github.com/facebookgo/grace/gracenet/net.go](../../../baseline-2026.2.0/old-impl/vendor/github.com/facebookgo/grace/gracenet/net.go), [metrics/metrics.go](../../../baseline-2026.2.0/old-impl/metrics/metrics.go),
+[cmd/cloudflared/updater/update.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/updater/update.go)
 
 The Go baseline uses Facebook's gracenet library for socket inheritance:
 

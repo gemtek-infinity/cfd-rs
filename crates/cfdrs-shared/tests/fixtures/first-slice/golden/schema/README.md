@@ -26,10 +26,10 @@ Envelope shape:
 Field rules:
 
 - `schema_version`: integer contract version for the artifact envelope
-- `fixture_id`: must match a `fixture-index.toml` entry exactly
+- `fixture_id`: must match a [fixture-index.toml](../../fixture-index.toml) entry exactly
 - `producer`: `go-truth` or `rust-actual`
 - `report_kind`: one of the accepted first-slice report kinds
-- `comparison`: copied from `fixture-index.toml` for auditability
+- `comparison`: copied from [fixture-index.toml](../../fixture-index.toml) for auditability
 - `source_refs`: frozen Go test or spec references backing the artifact
 - `payload`: canonical JSON object or array emitted by the relevant runner
 

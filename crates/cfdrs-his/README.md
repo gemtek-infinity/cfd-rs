@@ -30,11 +30,11 @@ This crate does not own:
 
 ## Governing parity docs
 
-- `docs/parity/his/implementation-checklist.md` — 74-row HIS parity ledger
-- `docs/parity/his/service-installation.md`
-- `docs/parity/his/filesystem-and-layout.md`
-- `docs/parity/his/diagnostics-and-collection.md`
-- `docs/parity/his/reload-and-watcher.md`
+- [docs/parity/his/implementation-checklist.md](../../docs/parity/his/implementation-checklist.md) — 74-row HIS parity ledger
+- [docs/parity/his/service-installation.md](../../docs/parity/his/service-installation.md)
+- [docs/parity/his/filesystem-and-layout.md](../../docs/parity/his/filesystem-and-layout.md)
+- [docs/parity/his/diagnostics-and-collection.md](../../docs/parity/his/diagnostics-and-collection.md)
+- [docs/parity/his/reload-and-watcher.md](../../docs/parity/his/reload-and-watcher.md)
 
 ## Baseline surfaces
 
@@ -43,11 +43,11 @@ HIS-001 through HIS-074 from the HIS parity ledger. 45 lane-required items,
 
 Key baseline sources:
 
-- `config/` — config discovery and loading
-- `credentials/` — credential file lookup
-- `cmd/cloudflared/linux_service.go` — service install/uninstall
-- `supervisor/` — supervision and reconnection
-- `watcher/` — file watcher
+- [config/](../../baseline-2026.2.0/old-impl/config/) — config discovery and loading
+- [credentials/](../../baseline-2026.2.0/old-impl/credentials/) — credential file lookup
+- [cmd/cloudflared/linux_service.go](../../baseline-2026.2.0/old-impl/cmd/cloudflared/linux_service.go) — service install/uninstall
+- [supervisor/](../../baseline-2026.2.0/old-impl/supervisor/) — supervision and reconnection
+- [watcher/](../../baseline-2026.2.0/old-impl/watcher/) — file watcher
 - `diagnostic/` — diagnostics collection
 - `metrics/` — metrics and readiness endpoints
 - `signal/` — signal handling

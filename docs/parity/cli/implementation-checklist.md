@@ -67,8 +67,8 @@ Preferred values:
 ## Audited Checklist
 
 This checklist was produced by source-level audit of the frozen Go baseline
-in `baseline-2026.2.0/old-impl/cmd/cloudflared/` and comparison against
-the current Rust CLI surface in `crates/cfdrs-cli/src/`.
+in [baseline-2026.2.0/old-impl/cmd/cloudflared/](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/) and comparison against
+the current Rust CLI surface in [crates/cfdrs-cli/src/](../../../crates/cfdrs-cli/src/).
 
 The frozen Go CLI uses `urfave/cli` v2. The current Rust CLI uses a custom
 hand-written parser (no clap or structopt).
@@ -79,7 +79,7 @@ hand-written parser (no clap or structopt).
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CLI-001 | root invocation | `cmd/cloudflared/main.go` `action()` | empty invocation enters service mode via `handleServiceMode()`: creates config file watcher, initializes `FileManager`, creates `AppManager` and `AppService`, runs daemonically. Not help. | current CLI surface | audited, absent | not present | open gap | blackbox empty invocation capture, stdout and stderr capture, exit-code compare, service-mode behavior test | critical | current Rust defaults to `help` on empty invocation; Go enters service mode |
 | CLI-002 | root help text | root app `--help` output | root help exposes 9 top-level command families: `update`, `version`, `tunnel`, `login` (compat), `proxy-dns` (removed), `access` (alias `forward`), `tail`, `management` (hidden), `service` (Linux). Frozen wording, ordering, spacing from urfave/cli | current CLI surface | audited, absent | not present | open gap | exact help snapshot compare, top-level command inventory capture | critical | current Rust help only exposes `validate`, `run`, `help`, `version` |
-| CLI-003 | root global flags | `cmd/cloudflared/tunnel/cmd.go` `Flags()` | 50+ global flags including: `--config`, `--credentials-file`/`-cred-file` (env `TUNNEL_CRED_FILE`), `--credentials-contents` (env `TUNNEL_CRED_CONTENTS`), `--token` (env `TUNNEL_TOKEN`), `--token-file` (env `TUNNEL_TOKEN_FILE`), `--origincert` (env `TUNNEL_ORIGIN_CERT`), `--loglevel` (env `TUNNEL_LOGLEVEL`, default `info`), `--logfile`, `--log-directory`, `--output` (json/default), `--edge` (hidden, env `TUNNEL_EDGE`), `--region` (env `TUNNEL_REGION`), `--edge-ip-version` (env `TUNNEL_EDGE_IP_VERSION`, default `4`), `--edge-bind-address`, `--metrics`, `--metrics-update-freq` (default 5s), `--protocol`/`-p` (hidden, env `TUNNEL_TRANSPORT_PROTOCOL`), `--post-quantum`/`-pq` (hidden, env `TUNNEL_POST_QUANTUM`), `--features`/`-F` (env `TUNNEL_FEATURES`), `--no-autoupdate`, `--autoupdate-freq`, `--tunnel`/`--name` (env `TUNNEL_NAME`), `--hostname` (hidden), `--lb-pool`, `--url`, `--hello-world`, `--pidfile`, `--tag` (hidden), `--ha-connections` (hidden, default 4), `--retries` (default 5), `--max-edge-addr-retries` (hidden, default 8), `--rpc-timeout` (hidden, default 5s), `--grace-period` (default 30s), `--label`, `--max-active-flows`, `--quiet`/`-q`, `--version`/`-v`/`-V`, `--api-url` (hidden, default `https://api.cloudflare.com/client/v4`), `--is-autoupdated` (hidden), `--api-key`/`--api-email`/`--api-ca-key` (all hidden, deprecated), `--profile` (hidden), `--workers` (hidden), plus proxy-origin flags (`--unix-socket`, `--http-host-header`, `--origin-server-name`, `--origin-ca-pool`, `--no-tls-verify`, `--no-chunked-encoding`, `--http2-origin`), plus ICMP flags (`--icmpv4-src`, `--icmpv6-src`), plus proxy-dns flags (removed feature) | current CLI surface | audited, absent | not present | open gap | flag inventory capture, env-binding tests, default-value tests, hidden-flag tests, alias tests | critical | current Rust only supports `--config`; all other 50+ flags are absent. See `docs/parity/cli/root-and-global-flags.md` |
+| CLI-003 | root global flags | `cmd/cloudflared/tunnel/cmd.go` `Flags()` | 50+ global flags including: `--config`, `--credentials-file`/`-cred-file` (env `TUNNEL_CRED_FILE`), `--credentials-contents` (env `TUNNEL_CRED_CONTENTS`), `--token` (env `TUNNEL_TOKEN`), `--token-file` (env `TUNNEL_TOKEN_FILE`), `--origincert` (env `TUNNEL_ORIGIN_CERT`), `--loglevel` (env `TUNNEL_LOGLEVEL`, default `info`), `--logfile`, `--log-directory`, `--output` (json/default), `--edge` (hidden, env `TUNNEL_EDGE`), `--region` (env `TUNNEL_REGION`), `--edge-ip-version` (env `TUNNEL_EDGE_IP_VERSION`, default `4`), `--edge-bind-address`, `--metrics`, `--metrics-update-freq` (default 5s), `--protocol`/`-p` (hidden, env `TUNNEL_TRANSPORT_PROTOCOL`), `--post-quantum`/`-pq` (hidden, env `TUNNEL_POST_QUANTUM`), `--features`/`-F` (env `TUNNEL_FEATURES`), `--no-autoupdate`, `--autoupdate-freq`, `--tunnel`/`--name` (env `TUNNEL_NAME`), `--hostname` (hidden), `--lb-pool`, `--url`, `--hello-world`, `--pidfile`, `--tag` (hidden), `--ha-connections` (hidden, default 4), `--retries` (default 5), `--max-edge-addr-retries` (hidden, default 8), `--rpc-timeout` (hidden, default 5s), `--grace-period` (default 30s), `--label`, `--max-active-flows`, `--quiet`/`-q`, `--version`/`-v`/`-V`, `--api-url` (hidden, default `https://api.cloudflare.com/client/v4`), `--is-autoupdated` (hidden), `--api-key`/`--api-email`/`--api-ca-key` (all hidden, deprecated), `--profile` (hidden), `--workers` (hidden), plus proxy-origin flags (`--unix-socket`, `--http-host-header`, `--origin-server-name`, `--origin-ca-pool`, `--no-tls-verify`, `--no-chunked-encoding`, `--http2-origin`), plus ICMP flags (`--icmpv4-src`, `--icmpv6-src`), plus proxy-dns flags (removed feature) | current CLI surface | audited, absent | not present | open gap | flag inventory capture, env-binding tests, default-value tests, hidden-flag tests, alias tests | critical | current Rust only supports `--config`; all other 50+ flags are absent. See [docs/parity/cli/root-and-global-flags.md](root-and-global-flags.md) |
 | CLI-004 | help command behavior | root help command | explicit `help` command and `--help`/`-h` flag routing for root and subcommands; urfave/cli generates command-local help automatically | current CLI surface | audited, partial | minimal | open gap | help-command snapshot tests, subcommand help-routing tests, exit-code tests | high | current Rust has `help` and `--help`/`-h`, exit code 0; but output is alpha-only, not upstream-parity-backed |
 | CLI-005 | version command | `cmd/cloudflared/main.go` app version config | format: `{Version} (built {BuildTime}{BuildTypeMsg})`; `--short`/`-s` flag outputs version number only; `--version`/`-v`/`-V` flags also trigger version output | current CLI surface | audited, partial | minimal | open gap | exact stdout snapshot compare, `--short`/`-s` flag tests, exit-code tests | high | current Rust outputs `cloudflared 2026.2.0-alpha.202603` (no build time, no short mode, no `-s` flag) |
 | CLI-006 | update command | `cmd/cloudflared/updater/update.go` | `update` command with flags: `--beta`, `--force` (hidden), `--staging` (hidden), `--version`; returns exit code 11 if update occurred; otherwise 0 | none | audited, absent | not present | open gap | help capture, update-behavior tests, exit-code tests (exit 11 on success) | high | includes behavior when update is attempted, not just command presence |
@@ -108,8 +108,8 @@ hand-written parser (no clap or structopt).
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CLI-022 | access subtree | `cmd/cloudflared/access/cmd.go` | `access` command (alias `forward`) with subcommands: `login` (browser auth), `curl` (JWT injection), `token` (JWT production), `tcp` (aliases `rdp`, `ssh`, `smb` for TCP/RDP/SSH/SMB proxy), `ssh-config` (print SSH config), `ssh-gen` (generate short-lived cert); `--fedramp` flag | none | audited, absent | not present | open gap | subtree help crawl, alias tests (`forward`), tcp-alias tests (`rdp`, `ssh`, `smb`), per-subcommand behavior tests | high | see `docs/parity/cli/access-subtree.md` |
-| CLI-023 | tail subtree | `cmd/cloudflared/tail/cmd.go` | `tail [TUNNEL-ID]` streams remote logs; flags: `--connector-id`, `--event` (filter: cloudflared/http/tcp/udp), `--level` (default `debug`), `--sample` (default 1.0), `--token` (env `TUNNEL_MANAGEMENT_TOKEN`), `--management-hostname` (hidden, default `management.argotunnel.com`), `--trace` (hidden); hidden subcommand `token` gets management JWT | none | audited, absent | not present | open gap | help crawl, filter tests, hidden `token` subcommand tests, output-format tests | high | CDC owns the log-streaming contract; CLI owns entry semantics. See `docs/parity/cli/tail-and-management.md` |
+| CLI-022 | access subtree | `cmd/cloudflared/access/cmd.go` | `access` command (alias `forward`) with subcommands: `login` (browser auth), `curl` (JWT injection), `token` (JWT production), `tcp` (aliases `rdp`, `ssh`, `smb` for TCP/RDP/SSH/SMB proxy), `ssh-config` (print SSH config), `ssh-gen` (generate short-lived cert); `--fedramp` flag | none | audited, absent | not present | open gap | subtree help crawl, alias tests (`forward`), tcp-alias tests (`rdp`, `ssh`, `smb`), per-subcommand behavior tests | high | see [docs/parity/cli/access-subtree.md](access-subtree.md) |
+| CLI-023 | tail subtree | `cmd/cloudflared/tail/cmd.go` | `tail [TUNNEL-ID]` streams remote logs; flags: `--connector-id`, `--event` (filter: cloudflared/http/tcp/udp), `--level` (default `debug`), `--sample` (default 1.0), `--token` (env `TUNNEL_MANAGEMENT_TOKEN`), `--management-hostname` (hidden, default `management.argotunnel.com`), `--trace` (hidden); hidden subcommand `token` gets management JWT | none | audited, absent | not present | open gap | help crawl, filter tests, hidden `token` subcommand tests, output-format tests | high | CDC owns the log-streaming contract; CLI owns entry semantics. See [docs/parity/cli/tail-and-management.md](tail-and-management.md) |
 | CLI-024 | management subtree | `cmd/cloudflared/management/cmd.go` | `management` (hidden, category `Management`) with hidden subcommand `token`; token subcommand requires `--resource` (values: `logs`, `admin`, `host_details`), `--origincert`, `--loglevel` | none | audited, absent | not present | open gap | hidden-command help capture, token invocation tests, resource-flag tests | medium | entirely hidden from normal help output |
 
 ### Compatibility, Formatting, And Error Behavior
@@ -180,7 +180,7 @@ No CLI divergences are currently classified as intentional. All divergences
 show `open gap` status except CLI-031 (`validate` command, `intentional
 divergence` — transitional alpha command not in baseline).
 
-Evidence harness: blackbox captures exist in `docs/parity/cli/captures/`
+Evidence harness: blackbox captures exist in [docs/parity/cli/captures/](captures/)
 with 6 capture files covering root, tunnel, access, tail, management,
 service, update, error, and compatibility surfaces plus current Rust
 output for comparison.
@@ -219,7 +219,7 @@ High gaps:
 
 Classification performed during Stage 3.1 scope triage. For the full
 classification rationale and lane definition, see
-`docs/status/stage-3.1-scope-triage.md`.
+[docs/status/stage-3.1-scope-triage.md](../../status/stage-3.1-scope-triage.md).
 
 All items not listed below are **lane-required** for the declared Linux
 production-alpha lane.
@@ -244,18 +244,18 @@ They do not require working implementations of the removed features.
 
 ## Immediate Work Queue
 
-1. ~~create `docs/parity/cli/root-and-global-flags.md`~~ — done
-2. ~~create `docs/parity/cli/tunnel-subtree.md`~~ — done
-3. ~~create `docs/parity/cli/access-subtree.md`~~ — done
-4. ~~create `docs/parity/cli/tail-and-management.md`~~ — done
+1. ~~create [docs/parity/cli/root-and-global-flags.md](root-and-global-flags.md)~~ — done
+2. ~~create [docs/parity/cli/tunnel-subtree.md](tunnel-subtree.md)~~ — done
+3. ~~create [docs/parity/cli/access-subtree.md](access-subtree.md)~~ — done
+4. ~~create [docs/parity/cli/tail-and-management.md](tail-and-management.md)~~ — done
 5. ~~capture frozen Go help output for all callable paths~~ — done;
-   captures in `docs/parity/cli/captures/`:
-   - `root-surface.txt` — root help, empty invocation, version
-   - `tunnel-subtree.txt` — tunnel and all tunnel subcommand help
-   - `access-subtree.txt` — access subtree and forward alias
-   - `tail-management-service-update.txt` — tail, management, service, update
-   - `error-and-compat.txt` — unknown commands, bad flags, proxy-dns, db-connect
-   - `rust-current-surface.txt` — current Rust binary outputs for comparison
+   captures in [docs/parity/cli/captures/](captures/):
+   - [root-surface.txt](captures/root-surface.txt) — root help, empty invocation, version
+   - [tunnel-subtree.txt](captures/tunnel-subtree.txt) — tunnel and all tunnel subcommand help
+   - [access-subtree.txt](captures/access-subtree.txt) — access subtree and forward alias
+   - [tail-management-service-update.txt](captures/tail-management-service-update.txt) — tail, management, service, update
+   - [error-and-compat.txt](captures/error-and-compat.txt) — unknown commands, bad flags, proxy-dns, db-connect
+   - [rust-current-surface.txt](captures/rust-current-surface.txt) — current Rust binary outputs for comparison
 
 ### Remaining Work (Post-Audit Stages)
 
