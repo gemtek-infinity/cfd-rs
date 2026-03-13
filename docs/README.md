@@ -23,6 +23,7 @@ Use this directory as an index. Load the smallest relevant file first.
 - `docs/status/rewrite-foundation.md` — baseline, workspace shape, source precedence
 - `docs/status/active-surface.md` — current crate content and absent surfaces
 - `docs/status/phase-5-overhaul.md` — Big Phase 5 execution tracker
+- `docs/status/stage-3.1-scope-triage.md` — scope pruning and divergence triage
 
 ### Historical (first-slice era)
 

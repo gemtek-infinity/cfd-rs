@@ -325,7 +325,30 @@ exit conditions are satisfied:
 
 ### Stage 3: Refactor
 
-Status: not started
+Status: **in progress**
+
+Sub-stage status:
+
+- Stage 3.1 (scope pruning and divergence triage): **complete**
+- Stage 3.2 (atomic refactor into five crates): not started
+- Stage 3.3 (tooling and automation hardening): not started
+
+Stage 3.1 outputs:
+
+- `docs/status/stage-3.1-scope-triage.md` created — scope boundary document
+  with lane definition, classification scheme, and confirmed refactor scope
+- all 150 parity ledger rows classified: 108 lane-required, 37 deferred,
+  3 compatibility-only, 2 non-lane
+- non-lane items named: HIS-056 and HIS-057 (packaging scripts, not binary
+  behavior)
+- compatibility-only items named: CLI-025 (proxy-dns), CLI-026 (db-connect),
+  CLI-027 (classic tunnels) — require error stubs, not working implementations
+- deferred items named with rationale: 6 CLI, 4 CDC, 27 HIS — including
+  SysV init (ADR-0005 — systemd governs alpha), diagnostics subsystem,
+  updater subsystem, ICMP proxy, and convenience endpoints
+- scope classification sections added to all three parity ledgers
+- confirmed refactor scope: 111 surfaces (108 lane-required + 3 error stubs)
+  mapped to five target crates
 
 Target crate map:
 
@@ -492,16 +515,15 @@ Avoid reporting progress only in terms of file count or code movement.
 
 ## Immediate Next Actions
 
-Stage 2.1 (master repository truth) is complete. The next sub-stage is:
+Stage 3.1 (scope pruning and divergence triage) is complete. The next
+sub-stage is:
 
-- Stage 2.2: Scope, compatibility, and governance review
+- Stage 3.2: Atomic refactor into five crates
 
-The remaining Stage 2 sub-stages are:
+The remaining Stage 3 sub-stages are:
 
-1. ~~Stage 2.1: Master repository truth~~ (complete)
-2. Stage 2.2: Scope, compatibility, and governance review
-3. Stage 2.3: Historical phase and parity documents
-4. Stage 2.4: Operator and contributor guidance
-5. Stage 2.5: AI instructions, skills, and agent configuration
+1. ~~Stage 3.1: Scope pruning and divergence triage~~ (complete)
+2. Stage 3.2: Atomic refactor into five crates
+3. Stage 3.3: Tooling and automation hardening
 
-No Stage 2 sub-stage may be skipped or reordered.
+No Stage 3 sub-stage may be skipped or reordered.

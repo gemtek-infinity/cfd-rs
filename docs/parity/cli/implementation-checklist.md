@@ -215,6 +215,33 @@ High gaps:
 - CLI-028: login at root compatibility
 - CLI-030: usage failure behavior
 
+## Scope Classification (Stage 3.1)
+
+Classification performed during Stage 3.1 scope triage. For the full
+classification rationale and lane definition, see
+`docs/status/stage-3.1-scope-triage.md`.
+
+All items not listed below are **lane-required** for the declared Linux
+production-alpha lane.
+
+### Deferred (lane-relevant, post-alpha)
+
+- CLI-006: `update` command — requires external update infrastructure
+- CLI-016: `tunnel info` — lower priority than core tunnel lifecycle commands
+- CLI-017: `tunnel ready` — depends on local metrics endpoint (HIS-024/025)
+- CLI-018: `tunnel diag` — diagnostics subsystem deferred as a unit
+- CLI-021: `tunnel ingress` (hidden) — debug subcommand, low priority
+- CLI-024: `management` subtree (hidden) — hidden admin tooling
+
+### Compatibility-only (deprecated error stubs)
+
+- CLI-025: `proxy-dns` removal — baseline prints deprecation error with URL
+- CLI-026: `db-connect` removal — baseline shows removed-command error, exit 255
+- CLI-027: classic tunnel deprecation — baseline shows deprecation error
+
+These require exact error text, stderr placement, and exit code parity.
+They do not require working implementations of the removed features.
+
 ## Immediate Work Queue
 
 1. ~~create `docs/parity/cli/root-and-global-flags.md`~~ — done
