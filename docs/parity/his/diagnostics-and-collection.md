@@ -4,7 +4,7 @@
 
 This document audits the local diagnostics collection surface, local HTTP
 endpoint exposure, and metrics/readiness behavior against the frozen Go
-baseline in `baseline-2026.2.0/old-impl/`.
+baseline in [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/).
 
 These are host-facing because they expose data on local network interfaces,
 collect host system information, and interact with local filesystem and
@@ -14,11 +14,11 @@ process state.
 
 Primary files:
 
-- `diagnostic/` package — collectors, handlers, CLI command
-- `metrics/readiness.go` — readiness endpoint
-- `metrics/metrics.go` — metrics server lifecycle and route registration
-- `cmd/cloudflared/tunnel/cmd.go` — metrics server setup
-- `tunnelstate/conntracker.go` — connection state tracking
+- [diagnostic/](../../../baseline-2026.2.0/old-impl/diagnostic/) package — collectors, handlers, CLI command
+- [metrics/readiness.go](../../../baseline-2026.2.0/old-impl/metrics/readiness.go) — readiness endpoint
+- [metrics/metrics.go](../../../baseline-2026.2.0/old-impl/metrics/metrics.go) — metrics server lifecycle and route registration
+- [cmd/cloudflared/tunnel/cmd.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/cmd.go) — metrics server setup
+- [tunnelstate/conntracker.go](../../../baseline-2026.2.0/old-impl/tunnelstate/conntracker.go) — connection state tracking
 
 ## Local HTTP Server
 
@@ -298,15 +298,15 @@ and route handlers are not implemented (deferred to Phase 5.1).
 ### What exists
 
 - readiness state machine tracking lifecycle and subsystem gates
-  (`crates/cfdrs-bin/src/runtime/state/readiness.rs`)
+  ([crates/cfdrs-bin/src/runtime/state/readiness.rs](../../../crates/cfdrs-bin/src/runtime/state/readiness.rs))
 - operability reporting with status and metrics to stdout
-  (`crates/cfdrs-bin/src/runtime/state/operability.rs`)
+  ([crates/cfdrs-bin/src/runtime/state/operability.rs](../../../crates/cfdrs-bin/src/runtime/state/operability.rs))
 - deployment evidence including systemd detection and known gaps
-  (`crates/cfdrs-bin/src/runtime/state/deployment_evidence.rs`)
+  ([crates/cfdrs-bin/src/runtime/state/deployment_evidence.rs](../../../crates/cfdrs-bin/src/runtime/state/deployment_evidence.rs))
 - failure evidence with restart budget tracking
-  (`crates/cfdrs-bin/src/runtime/state/failure.rs`)
+  ([crates/cfdrs-bin/src/runtime/state/failure.rs](../../../crates/cfdrs-bin/src/runtime/state/failure.rs))
 - performance timing milestones
-  (`crates/cfdrs-bin/src/runtime/state/timing.rs`)
+  ([crates/cfdrs-bin/src/runtime/state/timing.rs](../../../crates/cfdrs-bin/src/runtime/state/timing.rs))
 
 ### What is missing
 

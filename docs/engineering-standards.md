@@ -1,7 +1,7 @@
 # Engineering Standards
 
 This is a reference document for both human contributors and AI agents.
-For default AI code-edit guidance, start with `.github/instructions/rust.instructions.md` and load this file only when deeper explanation is useful.
+For default AI code-edit guidance, start with [.github/instructions/rust.instructions.md](../.github/instructions/rust.instructions.md) and load this file only when deeper explanation is useful.
 
 ## Quick reference
 
@@ -38,7 +38,7 @@ It is the authority for:
 - public API discipline
 
 This is an **engineering structure** document, not a local code appearance document.
-For naming, spacing, comments, control flow, tests, and other local readability rules, see `docs/code-style.md`.
+For naming, spacing, comments, control flow, tests, and other local readability rules, see [docs/code-style.md](code-style.md).
 
 ---
 
@@ -252,7 +252,7 @@ Avoid:
 - using crates that are experimental, pre-1.0 without strong production
   evidence, or poorly documented
 
-This standard complements `docs/dependency-policy.md`, which governs admission
+This standard complements [docs/dependency-policy.md](dependency-policy.md), which governs admission
 mechanics. This standard governs the design decision of build-vs-reuse.
 
 Review signal:
@@ -376,7 +376,7 @@ Avoid:
 - spawn-and-hope patterns where failure detection is accidental
 
 This standard adopts the supervisor ownership model from
-`docs/go-rust-semantic-mapping.md`. See that document for the recommended
+[docs/go-rust-semantic-mapping.md](go-rust-semantic-mapping.md). See that document for the recommended
 shapes (bounded mpsc, oneshot replies, CancellationToken trees, JoinSet
 ownership).
 

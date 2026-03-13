@@ -4,26 +4,26 @@
 
 This file is the master execution plan for Big Phase 5 of the Rust rewrite.
 
-It turns the governing direction from `FINAL_PHASE.md` and `docs/promotion-gates.md`
+It turns the governing direction from [FINAL_PHASE.md](FINAL_PHASE.md) and [docs/promotion-gates.md](docs/promotion-gates.md)
 into a staged, gated, anti-drift execution program with explicit sub-stage
 stop points.
 
 This file does not own phase truth, lane truth, compatibility truth, or
 current-state truth. Those remain owned by the governing repository documents:
 
-- `REWRITE_CHARTER.md`
-- `STATUS.md`
-- `docs/compatibility-scope.md`
-- `docs/promotion-gates.md`
+- [REWRITE_CHARTER.md](REWRITE_CHARTER.md)
+- [STATUS.md](STATUS.md)
+- [docs/compatibility-scope.md](docs/compatibility-scope.md)
+- [docs/promotion-gates.md](docs/promotion-gates.md)
 
-This file does not replace `FINAL_PHASE.md`.
-`FINAL_PHASE.md` remains the detailed reference for audit domains, checklist
+This file does not replace [FINAL_PHASE.md](FINAL_PHASE.md).
+[FINAL_PHASE.md](FINAL_PHASE.md) remains the detailed reference for audit domains, checklist
 contracts, refactor rules, evidence standards, risk register, and contributor
 workflow. This file layers an executable staged sequence on top of it.
 
-When this file conflicts with `FINAL_PHASE.md`, resolve by checking
-`docs/promotion-gates.md` first, then `REWRITE_CHARTER.md`, then
-`FINAL_PHASE.md`, then this file.
+When this file conflicts with [FINAL_PHASE.md](FINAL_PHASE.md), resolve by checking
+[docs/promotion-gates.md](docs/promotion-gates.md) first, then [REWRITE_CHARTER.md](REWRITE_CHARTER.md), then
+[FINAL_PHASE.md](FINAL_PHASE.md), then this file.
 
 ## What This File Is
 
@@ -52,7 +52,7 @@ domains:
    wire formats, and contracts
 
 Parity means parity against the frozen Go baseline in
-`baseline-2026.2.0/old-impl/`, not structural similarity to the Go codebase.
+[baseline-2026.2.0/old-impl/](baseline-2026.2.0/old-impl/), not structural similarity to the Go codebase.
 
 ## Target Crate Map
 
@@ -60,27 +60,27 @@ The final workspace structure after Stage 3 completion:
 
 | Crate | Ownership |
 | ----- | --------- |
-| `crates/cfdrs-bin` | binary entrypoint, process startup, top-level runtime composition, lifecycle orchestration, state-machine and supervision composition |
-| `crates/cfdrs-cli` | command tree, help text, parsing, user-visible dispatch, shell-visible errors, CLI-facing surface types, exact command-surface parity |
-| `crates/cfdrs-cdc` | Cloudflare-facing RPC contracts, wire and stream contracts, management protocol, metrics and readiness contracts, Cloudflare API boundaries, log-streaming, CDC-owned codec logic |
-| `crates/cfdrs-his` | host-facing service behavior, filesystem and path contracts, service installation, supervision integration, watcher and reload, diagnostics collection, environment and privilege assumptions, local endpoint exposure |
-| `crates/cfdrs-shared` | narrowly admitted shared types, shared error and plumbing types, cross-domain primitives used by more than one top-level crate; must not become a dump crate |
+| [crates/cfdrs-bin](crates/cfdrs-bin) | binary entrypoint, process startup, top-level runtime composition, lifecycle orchestration, state-machine and supervision composition |
+| [crates/cfdrs-cli](crates/cfdrs-cli) | command tree, help text, parsing, user-visible dispatch, shell-visible errors, CLI-facing surface types, exact command-surface parity |
+| [crates/cfdrs-cdc](crates/cfdrs-cdc) | Cloudflare-facing RPC contracts, wire and stream contracts, management protocol, metrics and readiness contracts, Cloudflare API boundaries, log-streaming, CDC-owned codec logic |
+| [crates/cfdrs-his](crates/cfdrs-his) | host-facing service behavior, filesystem and path contracts, service installation, supervision integration, watcher and reload, diagnostics collection, environment and privilege assumptions, local endpoint exposure |
+| [crates/cfdrs-shared](crates/cfdrs-shared) | narrowly admitted shared types, shared error and plumbing types, cross-domain primitives used by more than one top-level crate; must not become a dump crate |
 
-For detailed ownership boundaries and exclusions, see `FINAL_PHASE.md` §
+For detailed ownership boundaries and exclusions, see [FINAL_PHASE.md](FINAL_PHASE.md) §
 "Ownership Definitions".
 
 ## Source-Of-Truth Order
 
 When evidence conflicts, resolve in this order:
 
-1. frozen Go baseline code and tests (`baseline-2026.2.0/old-impl/`)
-2. frozen design-audit documents (`baseline-2026.2.0/design-audit/`)
-3. charter and scope governance (`REWRITE_CHARTER.md`,
-   `docs/compatibility-scope.md`)
-4. phase and promotion truth (`docs/promotion-gates.md`)
-5. current repository status documents (`STATUS.md`, `docs/status/*.md`)
-6. execution plan documents (`FINAL_PHASE.md`, this file)
-7. workflow notes and local planning aids (`AGENTS.md`, `SKILLS.md`)
+1. frozen Go baseline code and tests ([baseline-2026.2.0/old-impl/](baseline-2026.2.0/old-impl/))
+2. frozen design-audit documents ([baseline-2026.2.0/design-audit/](baseline-2026.2.0/design-audit/))
+3. charter and scope governance ([REWRITE_CHARTER.md](REWRITE_CHARTER.md),
+   [docs/compatibility-scope.md](docs/compatibility-scope.md))
+4. phase and promotion truth ([docs/promotion-gates.md](docs/promotion-gates.md))
+5. current repository status documents ([STATUS.md](STATUS.md), [docs/status/](docs/status/))
+6. execution plan documents ([FINAL_PHASE.md](FINAL_PHASE.md), this file)
+7. workflow notes and local planning aids ([AGENTS.md](AGENTS.md), [SKILLS.md](SKILLS.md))
 
 If evidence is missing, say so explicitly.
 
@@ -104,7 +104,7 @@ No sub-stage may be skipped or reordered without an explicit written waiver.
 
 ### Objective
 
-Create this file (`FINAL_PLAN.md`) and establish it as the gated execution
+Create this file ([FINAL_PLAN.md](FINAL_PLAN.md)) and establish it as the gated execution
 plan for Big Phase 5.
 
 ### Required Outputs
@@ -114,7 +114,7 @@ plan for Big Phase 5.
 - the document reconciliation inventory is complete
 - the anti-drift rules are stated
 - the stage gates are defined
-- the relationship to `FINAL_PHASE.md` is explicit
+- the relationship to [FINAL_PHASE.md](FINAL_PHASE.md) is explicit
 
 ### Exit Condition
 
@@ -137,13 +137,13 @@ Build a complete parity inventory before any major restructuring or document
 reconciliation.
 
 For detailed audit domain definitions, evidence rules, harness specifications,
-and checklist field vocabulary, see `FINAL_PHASE.md` § "Stage 1: Audit".
+and checklist field vocabulary, see [FINAL_PHASE.md](FINAL_PHASE.md) § "Stage 1: Audit".
 
 ### Live Parity Ledgers
 
-- `docs/parity/cli/implementation-checklist.md`
-- `docs/parity/cdc/implementation-checklist.md`
-- `docs/parity/his/implementation-checklist.md`
+- [docs/parity/cli/implementation-checklist.md](docs/parity/cli/implementation-checklist.md)
+- [docs/parity/cdc/implementation-checklist.md](docs/parity/cdc/implementation-checklist.md)
+- [docs/parity/his/implementation-checklist.md](docs/parity/his/implementation-checklist.md)
 
 ### Stage 1.1: CLI Audit
 
@@ -272,7 +272,7 @@ services:
 #### Method
 
 1. extract the Cap'n Proto schema from the frozen baseline
-   (`tunnelrpc/proto/tunnelrpc.capnp` and related files)
+  ([tunnelrpc/proto/tunnelrpc.capnp](baseline-2026.2.0/old-impl/tunnelrpc/proto/tunnelrpc.capnp) and related files)
 2. inventory the registration method set and field semantics
 3. record wire encoding and framing behavior from frozen Go transport code
 4. inventory ConnectRequest/ConnectResponse schemas and wire framing from
@@ -357,7 +357,7 @@ Everything that crosses the boundary between cloudflared and the local host:
 #### Method
 
 1. inventory Linux service install/uninstall behavior from frozen baseline
-   (`cmd/cloudflared/linux_service.go` and related files)
+  ([cmd/cloudflared/linux_service.go](baseline-2026.2.0/old-impl/cmd/cloudflared/linux_service.go) and related files)
 2. inventory local metrics, readiness, config, quicktunnel, debug, and
    diagnostics endpoints from frozen management/metrics/diagnostic code
 3. inventory diagnostics collector surfaces and output shapes
@@ -404,7 +404,7 @@ program. Documentation reconciliation is not cleanup after implementation — it
 is part of implementation.
 
 For detailed documentation families, outcomes, and acceptance gates, see
-`FINAL_PHASE.md` § "Stage 2: Reconcile Docs".
+[FINAL_PHASE.md](FINAL_PHASE.md) § "Stage 2: Reconcile Docs".
 
 ### General Principle
 
@@ -432,16 +432,16 @@ right now and where it is going.
 
 | Document | Role | Disposition | Dependencies |
 | -------- | ---- | ----------- | ------------ |
-| `README.md` (root, does not exist yet) | primary repository landing page | **create** | Stage 1 exit for content accuracy |
-| `STATUS.md` | short current-state index | **update** | Stage 1 exit for current-state accuracy |
-| `docs/README.md` | documentation map and navigation | **update** | Stage 1 exit for link accuracy |
-| `docs/status/rewrite-foundation.md` | baseline, lane, workspace shape | **review and update** | Stage 1 exit |
-| `docs/status/active-surface.md` | current admitted surface | **review and update** | Stage 1 exit |
-| `docs/promotion-gates.md` | phase model and promotion truth | **review; update only if phase wording conflicts** | none (this file is governing) |
+| [README.md](README.md) (root, does not exist yet) | primary repository landing page | **create** | Stage 1 exit for content accuracy |
+| [STATUS.md](STATUS.md) | short current-state index | **update** | Stage 1 exit for current-state accuracy |
+| [docs/README.md](docs/README.md) | documentation map and navigation | **update** | Stage 1 exit for link accuracy |
+| [docs/status/rewrite-foundation.md](docs/status/rewrite-foundation.md) | baseline, lane, workspace shape | **review and update** | Stage 1 exit |
+| [docs/status/active-surface.md](docs/status/active-surface.md) | current admitted surface | **review and update** | Stage 1 exit |
+| [docs/promotion-gates.md](docs/promotion-gates.md) | phase model and promotion truth | **review; update only if phase wording conflicts** | none (this file is governing) |
 
 #### Required Outcomes
 
-- `README.md` exists at the workspace root and explains:
+- [README.md](README.md) exists at the workspace root and explains:
   - what this repository is
   - what the Rust rewrite currently is (honest about what exists and what does
     not)
@@ -454,16 +454,16 @@ right now and where it is going.
     repository
   - that parity claims are evidence-based
   - tone: humane, direct, non-marketing
-- `STATUS.md` describes the actual current state without overstating
+- [STATUS.md](STATUS.md) describes the actual current state without overstating
   completion
-- `docs/README.md` links to parity documents, baseline navigation, and crate
+- [docs/README.md](docs/README.md) links to parity documents, baseline navigation, and crate
   READMEs
-- `docs/status/rewrite-foundation.md` and `docs/status/active-surface.md`
+- [docs/status/rewrite-foundation.md](docs/status/rewrite-foundation.md) and [docs/status/active-surface.md](docs/status/active-surface.md)
   describe current reality accurately
 - no document implies that the current narrow admitted surface is the final
   target
 - no document implies that partial CDC contracts already have full parity
-- Big Phase 5 is described consistently with `docs/promotion-gates.md`
+- Big Phase 5 is described consistently with [docs/promotion-gates.md](docs/promotion-gates.md)
 
 #### Exit Condition
 
@@ -482,18 +482,18 @@ absorbing execution detail.
 
 | Document | Role | Disposition | Dependencies |
 | -------- | ---- | ----------- | ------------ |
-| `REWRITE_CHARTER.md` | non-negotiables and scope | **review; update only if charter-level truth changed** | none (governing) |
-| `docs/compatibility-scope.md` | what "compatible" means | **review; update only if scope changed** | none (governing) |
-| `docs/build-artifact-policy.md` | build and artifact policy | **review** | none |
-| `docs/dependency-policy.md` | dependency admission | **review** | none |
-| `docs/allocator-runtime-baseline.md` | allocator and runtime rules | **review** | none |
-| `docs/go-rust-semantic-mapping.md` | concurrency and lifecycle doctrine | **review** | none |
-| `docs/adr/0001-hybrid-concurrency-model.md` | ADR: runtime decision | **review** | none |
-| `docs/adr/0002-transport-tls-crypto-lane.md` | ADR: transport/TLS/crypto | **review** | none |
-| `docs/adr/0003-pingora-critical-path.md` | ADR: Pingora scope | **review** | none |
-| `docs/adr/0004-fips-in-alpha-definition.md` | ADR: FIPS boundary | **review** | none |
-| `docs/adr/0005-deployment-contract.md` | ADR: deployment contract | **review** | none |
-| `docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md` | ADR: format and deps | **review** | none |
+| [REWRITE_CHARTER.md](REWRITE_CHARTER.md) | non-negotiables and scope | **review; update only if charter-level truth changed** | none (governing) |
+| [docs/compatibility-scope.md](docs/compatibility-scope.md) | what "compatible" means | **review; update only if scope changed** | none (governing) |
+| [docs/build-artifact-policy.md](docs/build-artifact-policy.md) | build and artifact policy | **review** | none |
+| [docs/dependency-policy.md](docs/dependency-policy.md) | dependency admission | **review** | none |
+| [docs/allocator-runtime-baseline.md](docs/allocator-runtime-baseline.md) | allocator and runtime rules | **review** | none |
+| [docs/go-rust-semantic-mapping.md](docs/go-rust-semantic-mapping.md) | concurrency and lifecycle doctrine | **review** | none |
+| [docs/adr/0001-hybrid-concurrency-model.md](docs/adr/0001-hybrid-concurrency-model.md) | ADR: runtime decision | **review** | none |
+| [docs/adr/0002-transport-tls-crypto-lane.md](docs/adr/0002-transport-tls-crypto-lane.md) | ADR: transport/TLS/crypto | **review** | none |
+| [docs/adr/0003-pingora-critical-path.md](docs/adr/0003-pingora-critical-path.md) | ADR: Pingora scope | **review** | none |
+| [docs/adr/0004-fips-in-alpha-definition.md](docs/adr/0004-fips-in-alpha-definition.md) | ADR: FIPS boundary | **review** | none |
+| [docs/adr/0005-deployment-contract.md](docs/adr/0005-deployment-contract.md) | ADR: deployment contract | **review** | none |
+| [docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md](docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md) | ADR: format and deps | **review** | none |
 
 #### Required Outcomes
 
@@ -522,11 +522,11 @@ program.
 
 | Document | Role | Disposition | Dependencies |
 | -------- | ---- | ----------- | ------------ |
-| `docs/first-slice-freeze.md` | first-slice closure record | **review; mark clearly as historical** | none |
-| `docs/status/first-slice-parity.md` | first-slice parity status | **review; mark as insufficient for broader parity** | none |
-| `docs/status/porting-rules.md` | porting rules | **review; update or mark as superseded** | none |
-| `crates/cfdrs-shared/tests/README.md` | test readme for config crate | **review** | none |
-| `tools/first_slice_parity.py` | first-slice parity tool | **review; mark as first-slice-scoped** | none |
+| [docs/first-slice-freeze.md](docs/first-slice-freeze.md) | first-slice closure record | **review; mark clearly as historical** | none |
+| [docs/status/first-slice-parity.md](docs/status/first-slice-parity.md) | first-slice parity status | **review; mark as insufficient for broader parity** | none |
+| [docs/status/porting-rules.md](docs/status/porting-rules.md) | porting rules | **review; update or mark as superseded** | none |
+| [crates/cfdrs-shared/tests/README.md](crates/cfdrs-shared/tests/README.md) | test readme for config crate | **review** | none |
+| [tools/first_slice_parity.py](tools/first_slice_parity.py) | first-slice parity tool | **review; mark as first-slice-scoped** | none |
 
 #### Required Outcomes
 
@@ -552,11 +552,11 @@ Create practical navigation documents for operators and contributors.
 
 | Document | Role | Disposition | Dependencies |
 | -------- | ---- | ----------- | ------------ |
-| `docs/deployment-notes.md` | deployment guidance | **review and update** | Stage 1 HIS audit |
-| `docs/status/phase-5-overhaul.md` | overhaul status tracker | **update** | Stage 1 exit |
-| `FINAL_PHASE.md` | detailed execution reference | **review; update if structure changed** | Stage 1 exit |
-| `FINAL_PLAN.md` (this file) | staged execution plan | **review; update stage statuses** | Stage 1 exit |
-| future crate `README.md` files | per-crate ownership and status | **create during Stage 3** | Stage 3.2 |
+| [docs/deployment-notes.md](docs/deployment-notes.md) | deployment guidance | **review and update** | Stage 1 HIS audit |
+| [docs/status/phase-5-overhaul.md](docs/status/phase-5-overhaul.md) | overhaul status tracker | **update** | Stage 1 exit |
+| [FINAL_PHASE.md](FINAL_PHASE.md) | detailed execution reference | **review; update if structure changed** | Stage 1 exit |
+| [FINAL_PLAN.md](FINAL_PLAN.md) (this file) | staged execution plan | **review; update stage statuses** | Stage 1 exit |
+| future crate [README.md files](crates/) | per-crate ownership and status | **create during Stage 3** | Stage 3.2 |
 | future parity landing pages | domain-level parity overviews | **create if needed** | Stage 1 exit |
 
 #### Required Outcomes
@@ -566,7 +566,7 @@ Create practical navigation documents for operators and contributors.
 - each major domain has a document map from top-level docs to parity ledgers
 - the repository explains how human contributors and GitHub Copilot-assisted
   work fit together
-- `docs/status/phase-5-overhaul.md` reflects actual stage completion status
+- [docs/status/phase-5-overhaul.md](docs/status/phase-5-overhaul.md) reflects actual stage completion status
 - deployment notes match actual deployment contract evidence
 
 #### Exit Condition
@@ -585,27 +585,27 @@ program, target crate map, and current repository truth.
 
 | Document | Role | Disposition | Dependencies |
 | -------- | ---- | ----------- | ------------ |
-| `.github/copilot-instructions.md` | repository-wide Copilot instructions | **review and update** | Stage 2.1 for repository truth alignment |
-| `.github/instructions/rust.instructions.md` | Rust editing instructions | **review** | none |
-| `.github/instructions/markdown.instructions.md` | Markdown editing instructions | **review** | none |
-| `docs/ai-context-routing.md` | AI context routing map | **review and update** | Stage 2.1, 2.4 for link correctness |
-| `AGENTS.md` | agent operating guide | **review and update** | Stage 2.1 for routing alignment |
-| `SKILLS.md` | porting workflow note | **review and update** | Stage 2.1, 2.4 |
-| `docs/code-style.md` | human-facing code style reference | **review** | none |
-| `docs/engineering-standards.md` | engineering standards reference | **review** | none |
+| [.github/copilot-instructions.md](.github/copilot-instructions.md) | repository-wide Copilot instructions | **review and update** | Stage 2.1 for repository truth alignment |
+| [.github/instructions/rust.instructions.md](.github/instructions/rust.instructions.md) | Rust editing instructions | **review** | none |
+| [.github/instructions/markdown.instructions.md](.github/instructions/markdown.instructions.md) | Markdown editing instructions | **review** | none |
+| [docs/ai-context-routing.md](docs/ai-context-routing.md) | AI context routing map | **review and update** | Stage 2.1, 2.4 for link correctness |
+| [AGENTS.md](AGENTS.md) | agent operating guide | **review and update** | Stage 2.1 for routing alignment |
+| [SKILLS.md](SKILLS.md) | porting workflow note | **review and update** | Stage 2.1, 2.4 |
+| [docs/code-style.md](docs/code-style.md) | human-facing code style reference | **review** | none |
+| [docs/engineering-standards.md](docs/engineering-standards.md) | engineering standards reference | **review** | none |
 
 #### Required Outcomes
 
-- `.github/copilot-instructions.md` accurately reflects the final-phase
+- [.github/copilot-instructions.md](.github/copilot-instructions.md) accurately reflects the final-phase
   program, target crate map, governance hierarchy, and MCP routing
-- `.github/instructions/rust.instructions.md` is reviewed for alignment with
+- [.github/instructions/rust.instructions.md](.github/instructions/rust.instructions.md) is reviewed for alignment with
   current Rust coding practice and target crate structure
-- `.github/instructions/markdown.instructions.md` is reviewed for alignment
+- [.github/instructions/markdown.instructions.md](.github/instructions/markdown.instructions.md) is reviewed for alignment
   with document hierarchy
-- `docs/ai-context-routing.md` links to parity documents, reflects the 5-crate
+- [docs/ai-context-routing.md](docs/ai-context-routing.md) links to parity documents, reflects the 5-crate
   target map, and includes correct MCP tool references
-- `AGENTS.md` routing table is accurate and complete
-- `SKILLS.md` workflow matches the final-phase contributor workflow
+- [AGENTS.md](AGENTS.md) routing table is accurate and complete
+- [SKILLS.md](SKILLS.md) workflow matches the final-phase contributor workflow
 - no AI-facing doc implies that the current narrow surface is the final target
 - no AI-facing doc implies parity from code shape alone
 - AI contributors can cold-start into the repository and find the right
@@ -643,7 +643,7 @@ match the audited parity surfaces.
 The refactor is mandatory. It is not optional cleanup.
 
 For detailed refactor rules, ownership definitions, preconditions, migration
-waves, and acceptance gates, see `FINAL_PHASE.md` § "Stage 3: Refactor" and
+waves, and acceptance gates, see [FINAL_PHASE.md](FINAL_PHASE.md) § "Stage 3: Refactor" and
 § "Crate Migration Sequence".
 
 ### Stage 3.1: Scope Pruning And Divergence Triage
@@ -701,7 +701,7 @@ dissolved into `cfdrs-shared` (types) and `cfdrs-his` (filesystem discovery).
 
 #### Migration Waves
 
-The migration follows the wave sequence from `FINAL_PHASE.md` §
+The migration follows the wave sequence from [FINAL_PHASE.md](FINAL_PHASE.md) §
 "Migration Waves":
 
 1. **Wave 0: Preparation** — confirm target crate map in docs, confirm
@@ -766,15 +766,15 @@ final-phase crate structure and parity workflow.
 #### Required Outputs
 
 - CI configuration reflects the 5-crate workspace structure
-- debtmap configuration (`.debtmap.toml`) is updated for the new crate paths
+- debtmap configuration ([.debtmap.toml](.debtmap.toml)) is updated for the new crate paths
 - MCP server tools configuration is updated if crate paths changed
 - parity capture and compare harnesses are buildable and runnable in the new
   workspace structure
 - Copilot instructions and AI routing docs reflect the actual crate paths
 - build, test, clippy, and fmt commands work correctly across the new
   workspace
-- any first-slice tooling (`tools/first_slice_parity.py`,
-  `tools/first_slice_go_capture/`) is either updated or marked as historical
+- any first-slice tooling ([tools/first_slice_parity.py](tools/first_slice_parity.py),
+  [tools/first_slice_go_capture/](tools/first_slice_go_capture/)) is either updated or marked as historical
 
 #### Exit Condition
 
@@ -798,7 +798,7 @@ Stage 3 is complete only when all of the following are true:
 
 ## Cross-Stage Rules
 
-These rules apply through all stages. They are restated from `FINAL_PHASE.md`
+These rules apply through all stages. They are restated from [FINAL_PHASE.md](FINAL_PHASE.md)
 with additions for this plan's staged model.
 
 ### Rule 1: No Silent Divergence
@@ -846,7 +846,7 @@ jumping ahead.
 
 ### Rule 9: No Frozen Input Edits
 
-`baseline-2026.2.0/old-impl/` and `baseline-2026.2.0/design-audit/` are frozen
+[baseline-2026.2.0/old-impl/](baseline-2026.2.0/old-impl/) and [baseline-2026.2.0/design-audit/](baseline-2026.2.0/design-audit/) are frozen
 inputs. If they appear inconsistent, fix the Rust workspace or governance docs.
 
 ### Rule 10: Stop At Sub-Stage Boundaries
@@ -908,10 +908,15 @@ If drift is discovered:
   boundaries
 - a partial transport, protocol, and proxy path through Phase 5.1
 - deployment-proof and runtime-evidence work for the admitted lane
-- three seeded but incomplete parity ledgers
-- `FINAL_PHASE.md` as the detailed execution reference
+- three complete 150-row parity ledgers (CLI 32, CDC 44, HIS 74)
+- [FINAL_PHASE.md](FINAL_PHASE.md) as the detailed execution reference
 - governance and policy docs that freeze the Linux production-alpha lane
 - frozen Go baseline and design-audit references
+- root [README.md](README.md) and per-crate [README.md files](crates/) for all five crates
+- target 5-crate workspace structure: `cfdrs-bin`, `cfdrs-cli`, `cfdrs-cdc`,
+  `cfdrs-his`, `cfdrs-shared` (Stage 3.2 complete)
+- fully reconciled repository documentation (Stage 2 complete)
+- scope triage document and 12 feature-group audit documents under [docs/parity/](docs/parity/)
 
 ### What Does Not Exist Yet
 
@@ -919,10 +924,6 @@ If drift is discovered:
 - broad Cloudflare contract parity
 - broad host and service interaction parity
 - complete evidence-backed audit coverage across the three ledgers
-- a root README.md
-- per-crate README.md files for the target crate map
-- the target 5-crate map as the actual workspace structure
-- fully reconciled repository documentation
 - production-alpha parity proof for the declared lane
 
 ## Stage Completion Tracker
@@ -934,13 +935,13 @@ If drift is discovered:
 | 1.2 | CDC audit | **complete** |
 | 1.3 | HIS audit | **complete** |
 | 2.1 | Master repository truth | **complete** |
-| 2.2 | Scope, compatibility, governance | not started |
-| 2.3 | Historical phase and parity docs | not started |
-| 2.4 | Operator and contributor guidance | not started |
-| 2.5 | AI instructions, skills, agent config | not started |
+| 2.2 | Scope, compatibility, governance | **complete** |
+| 2.3 | Historical phase and parity docs | **complete** |
+| 2.4 | Operator and contributor guidance | **complete** |
+| 2.5 | AI instructions, skills, agent config | **complete** |
 | 3.1 | Scope pruning and divergence triage | **complete** |
 | 3.2 | Atomic refactor into five crates | **complete** |
-| 3.3 | Tooling and automation hardening | not started |
+| 3.3 | Tooling and automation hardening | **complete** |
 
 ## Complete Document Reconciliation Inventory
 
@@ -948,108 +949,108 @@ This is the consolidated reconciliation inventory across all Stage 2
 sub-stages. Every document in the repository that could affect contributors'
 understanding of the rewrite is listed here.
 
-### Documents To Create
+### Documents Created
 
-| Document | Stage | Purpose |
-| -------- | ----- | ------- |
-| `README.md` (root) | 2.1 | primary repository landing page |
-| `crates/cfdrs-bin/README.md` | 3.2 | crate ownership and status |
-| `crates/cfdrs-cli/README.md` | 3.2 | crate ownership and status |
-| `crates/cfdrs-cdc/README.md` | 3.2 | crate ownership and status |
-| `crates/cfdrs-his/README.md` | 3.2 | crate ownership and status |
-| `crates/cfdrs-shared/README.md` | 3.2 | crate ownership and status |
+| Document | Stage | Purpose | Status |
+| -------- | ----- | ------- | ------ |
+| [README.md](README.md) (root) | 2.1 | primary repository landing page | created |
+| [crates/cfdrs-bin/README.md](crates/cfdrs-bin/README.md) | 3.2 | crate ownership and status | created |
+| [crates/cfdrs-cli/README.md](crates/cfdrs-cli/README.md) | 3.2 | crate ownership and status | created |
+| [crates/cfdrs-cdc/README.md](crates/cfdrs-cdc/README.md) | 3.2 | crate ownership and status | created |
+| [crates/cfdrs-his/README.md](crates/cfdrs-his/README.md) | 3.2 | crate ownership and status | created |
+| [crates/cfdrs-shared/README.md](crates/cfdrs-shared/README.md) | 3.2 | crate ownership and status | created |
 
 ### Documents To Update
 
 | Document | Stage | Reason |
 | -------- | ----- | ------ |
-| `STATUS.md` | 2.1 | reflect current state honestly |
-| `docs/README.md` | 2.1 | add parity links, crate links |
-| `docs/status/rewrite-foundation.md` | 2.1 | align with current reality |
-| `docs/status/active-surface.md` | 2.1 | align with current reality |
-| `docs/status/phase-5-overhaul.md` | 2.4 | reflect stage completion status |
-| `docs/deployment-notes.md` | 2.4 | align with HIS audit findings |
-| `docs/ai-context-routing.md` | 2.5 | add parity links, update crate paths |
-| `.github/copilot-instructions.md` | 2.5 | align with final-phase program |
-| `AGENTS.md` | 2.5 | update routing table |
-| `SKILLS.md` | 2.5 | update workflow to final-phase model |
-| `FINAL_PHASE.md` | 2.4 | update if structure changed |
-| `FINAL_PLAN.md` (this file) | 2.4 | update stage statuses |
+| [STATUS.md](STATUS.md) | 2.1 | reflect current state honestly |
+| [docs/README.md](docs/README.md) | 2.1 | add parity links, crate links |
+| [docs/status/rewrite-foundation.md](docs/status/rewrite-foundation.md) | 2.1 | align with current reality |
+| [docs/status/active-surface.md](docs/status/active-surface.md) | 2.1 | align with current reality |
+| [docs/status/phase-5-overhaul.md](docs/status/phase-5-overhaul.md) | 2.4 | reflect stage completion status |
+| [docs/deployment-notes.md](docs/deployment-notes.md) | 2.4 | align with HIS audit findings |
+| [docs/ai-context-routing.md](docs/ai-context-routing.md) | 2.5 | add parity links, update crate paths |
+| [.github/copilot-instructions.md](.github/copilot-instructions.md) | 2.5 | align with final-phase program |
+| [AGENTS.md](AGENTS.md) | 2.5 | update routing table |
+| [SKILLS.md](SKILLS.md) | 2.5 | update workflow to final-phase model |
+| [FINAL_PHASE.md](FINAL_PHASE.md) | 2.4 | update if structure changed |
+| [FINAL_PLAN.md](FINAL_PLAN.md) (this file) | 2.4 | update stage statuses |
 
 ### Documents To Review (Retain Or Narrow)
 
 | Document | Stage | Disposition |
 | -------- | ----- | ----------- |
-| `REWRITE_CHARTER.md` | 2.2 | review; update only if charter truth changed |
-| `docs/compatibility-scope.md` | 2.2 | review; update only if scope changed |
-| `docs/build-artifact-policy.md` | 2.2 | review |
-| `docs/dependency-policy.md` | 2.2 | review |
-| `docs/allocator-runtime-baseline.md` | 2.2 | review |
-| `docs/go-rust-semantic-mapping.md` | 2.2 | review |
-| `docs/adr/0001-hybrid-concurrency-model.md` | 2.2 | review |
-| `docs/adr/0002-transport-tls-crypto-lane.md` | 2.2 | review |
-| `docs/adr/0003-pingora-critical-path.md` | 2.2 | review |
-| `docs/adr/0004-fips-in-alpha-definition.md` | 2.2 | review |
-| `docs/adr/0005-deployment-contract.md` | 2.2 | review |
-| `docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md` | 2.2 | review |
-| `docs/first-slice-freeze.md` | 2.3 | review; mark as historical |
-| `docs/status/first-slice-parity.md` | 2.3 | review; mark as first-slice-scoped |
-| `docs/status/porting-rules.md` | 2.3 | review; update or mark as superseded |
-| `crates/cfdrs-shared/tests/README.md` | 2.3 | review |
-| `.github/instructions/rust.instructions.md` | 2.5 | review |
-| `.github/instructions/markdown.instructions.md` | 2.5 | review |
-| `docs/code-style.md` | 2.5 | review |
-| `docs/engineering-standards.md` | 2.5 | review |
+| [REWRITE_CHARTER.md](REWRITE_CHARTER.md) | 2.2 | review; update only if charter truth changed |
+| [docs/compatibility-scope.md](docs/compatibility-scope.md) | 2.2 | review; update only if scope changed |
+| [docs/build-artifact-policy.md](docs/build-artifact-policy.md) | 2.2 | review |
+| [docs/dependency-policy.md](docs/dependency-policy.md) | 2.2 | review |
+| [docs/allocator-runtime-baseline.md](docs/allocator-runtime-baseline.md) | 2.2 | review |
+| [docs/go-rust-semantic-mapping.md](docs/go-rust-semantic-mapping.md) | 2.2 | review |
+| [docs/adr/0001-hybrid-concurrency-model.md](docs/adr/0001-hybrid-concurrency-model.md) | 2.2 | review |
+| [docs/adr/0002-transport-tls-crypto-lane.md](docs/adr/0002-transport-tls-crypto-lane.md) | 2.2 | review |
+| [docs/adr/0003-pingora-critical-path.md](docs/adr/0003-pingora-critical-path.md) | 2.2 | review |
+| [docs/adr/0004-fips-in-alpha-definition.md](docs/adr/0004-fips-in-alpha-definition.md) | 2.2 | review |
+| [docs/adr/0005-deployment-contract.md](docs/adr/0005-deployment-contract.md) | 2.2 | review |
+| [docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md](docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md) | 2.2 | review |
+| [docs/first-slice-freeze.md](docs/first-slice-freeze.md) | 2.3 | review; mark as historical |
+| [docs/status/first-slice-parity.md](docs/status/first-slice-parity.md) | 2.3 | review; mark as first-slice-scoped |
+| [docs/status/porting-rules.md](docs/status/porting-rules.md) | 2.3 | review; update or mark as superseded |
+| [crates/cfdrs-shared/tests/README.md](crates/cfdrs-shared/tests/README.md) | 2.3 | review |
+| [.github/instructions/rust.instructions.md](.github/instructions/rust.instructions.md) | 2.5 | review |
+| [.github/instructions/markdown.instructions.md](.github/instructions/markdown.instructions.md) | 2.5 | review |
+| [docs/code-style.md](docs/code-style.md) | 2.5 | review |
+| [docs/engineering-standards.md](docs/engineering-standards.md) | 2.5 | review |
 
 ### Parity Documents (Live, Updated During Stage 1)
 
 | Document | Domain |
 | -------- | ------ |
-| `docs/parity/cli/implementation-checklist.md` | CLI |
-| `docs/parity/cdc/implementation-checklist.md` | CDC |
-| `docs/parity/his/implementation-checklist.md` | HIS |
+| [docs/parity/cli/implementation-checklist.md](docs/parity/cli/implementation-checklist.md) | CLI |
+| [docs/parity/cdc/implementation-checklist.md](docs/parity/cdc/implementation-checklist.md) | CDC |
+| [docs/parity/his/implementation-checklist.md](docs/parity/his/implementation-checklist.md) | HIS |
 
-Feature-group documents will be added under `docs/parity/cli/`,
-`docs/parity/cdc/`, and `docs/parity/his/` as the audit progresses.
+Feature-group documents will be added under [docs/parity/cli/](docs/parity/cli/),
+[docs/parity/cdc/](docs/parity/cdc/), and [docs/parity/his/](docs/parity/his/) as the audit progresses.
 
 ### Feature-Group Documents (Created During Stage 1)
 
 | Document | Domain |
 | -------- | ------ |
-| `docs/parity/cli/root-and-global-flags.md` | CLI |
-| `docs/parity/cli/tunnel-subtree.md` | CLI |
-| `docs/parity/cli/access-subtree.md` | CLI |
-| `docs/parity/cli/tail-and-management.md` | CLI |
-| `docs/parity/cdc/registration-rpc.md` | CDC |
-| `docs/parity/cdc/stream-contracts.md` | CDC |
-| `docs/parity/cdc/management-and-diagnostics.md` | CDC |
-| `docs/parity/cdc/metrics-readiness-and-api.md` | CDC |
-| `docs/parity/his/service-installation.md` | HIS |
-| `docs/parity/his/filesystem-and-layout.md` | HIS |
-| `docs/parity/his/diagnostics-and-collection.md` | HIS |
-| `docs/parity/his/reload-and-watcher.md` | HIS |
+| [docs/parity/cli/root-and-global-flags.md](docs/parity/cli/root-and-global-flags.md) | CLI |
+| [docs/parity/cli/tunnel-subtree.md](docs/parity/cli/tunnel-subtree.md) | CLI |
+| [docs/parity/cli/access-subtree.md](docs/parity/cli/access-subtree.md) | CLI |
+| [docs/parity/cli/tail-and-management.md](docs/parity/cli/tail-and-management.md) | CLI |
+| [docs/parity/cdc/registration-rpc.md](docs/parity/cdc/registration-rpc.md) | CDC |
+| [docs/parity/cdc/stream-contracts.md](docs/parity/cdc/stream-contracts.md) | CDC |
+| [docs/parity/cdc/management-and-diagnostics.md](docs/parity/cdc/management-and-diagnostics.md) | CDC |
+| [docs/parity/cdc/metrics-readiness-and-api.md](docs/parity/cdc/metrics-readiness-and-api.md) | CDC |
+| [docs/parity/his/service-installation.md](docs/parity/his/service-installation.md) | HIS |
+| [docs/parity/his/filesystem-and-layout.md](docs/parity/his/filesystem-and-layout.md) | HIS |
+| [docs/parity/his/diagnostics-and-collection.md](docs/parity/his/diagnostics-and-collection.md) | HIS |
+| [docs/parity/his/reload-and-watcher.md](docs/parity/his/reload-and-watcher.md) | HIS |
 
 ### Evidence Captures (Created During Stage 1)
 
 | Document | Domain |
 | -------- | ------ |
-| `docs/parity/cli/captures/root-surface.txt` | CLI |
-| `docs/parity/cli/captures/tunnel-subtree.txt` | CLI |
-| `docs/parity/cli/captures/access-subtree.txt` | CLI |
-| `docs/parity/cli/captures/tail-management-service-update.txt` | CLI |
-| `docs/parity/cli/captures/error-and-compat.txt` | CLI |
-| `docs/parity/cli/captures/rust-current-surface.txt` | CLI |
+| [docs/parity/cli/captures/root-surface.txt](docs/parity/cli/captures/root-surface.txt) | CLI |
+| [docs/parity/cli/captures/tunnel-subtree.txt](docs/parity/cli/captures/tunnel-subtree.txt) | CLI |
+| [docs/parity/cli/captures/access-subtree.txt](docs/parity/cli/captures/access-subtree.txt) | CLI |
+| [docs/parity/cli/captures/tail-management-service-update.txt](docs/parity/cli/captures/tail-management-service-update.txt) | CLI |
+| [docs/parity/cli/captures/error-and-compat.txt](docs/parity/cli/captures/error-and-compat.txt) | CLI |
+| [docs/parity/cli/captures/rust-current-surface.txt](docs/parity/cli/captures/rust-current-surface.txt) | CLI |
 
 ### Tools And Configuration
 
 | Item | Stage | Disposition |
 | ---- | ----- | ----------- |
-| `tools/first_slice_parity.py` | 2.3 | review; mark as first-slice-scoped |
-| `tools/first_slice_go_capture/` | 2.3 | review; mark as first-slice-scoped |
-| `.debtmap.toml` | 3.3 | update for new crate paths |
-| `tools/mcp-cfd-rs/` | 3.3 | update if crate paths changed |
-| `Cargo.toml` (workspace root) | 3.2 | update workspace members |
-| `rustfmt.toml` | 3.3 | review |
+| [tools/first_slice_parity.py](tools/first_slice_parity.py) | 2.3 | review; mark as first-slice-scoped |
+| [tools/first_slice_go_capture/](tools/first_slice_go_capture/) | 2.3 | review; mark as first-slice-scoped |
+| [.debtmap.toml](.debtmap.toml) | 3.3 | update for new crate paths |
+| [tools/mcp-cfd-rs/](tools/mcp-cfd-rs/) | 3.3 | update if crate paths changed |
+| [Cargo.toml](Cargo.toml) (workspace root) | 3.2 | update workspace members |
+| [rustfmt.toml](rustfmt.toml) | 3.3 | review |
 
 ---
 
@@ -1063,9 +1064,9 @@ This plan is complete only when all of the following are true:
 - parity claims are backed by evidence, not structure
 - remaining divergences are few, narrow, justified, and documented
 - repository execution reality is aligned with the governing Big Phase 5
-  definition in `docs/promotion-gates.md`
+  definition in [docs/promotion-gates.md](docs/promotion-gates.md)
 - the repository can honestly support the production-alpha claim defined in
-  `docs/promotion-gates.md`: feature-complete 1:1 behavior/surface parity to
+  [docs/promotion-gates.md](docs/promotion-gates.md): feature-complete 1:1 behavior/surface parity to
   frozen `2026.2.0`, performance proven, known divergences recorded and
   justified, and remaining unknowns narrow, named, and bounded
 
@@ -1073,9 +1074,9 @@ This plan is complete only when all of the following are true:
 
 This plan is not:
 
-- a substitute for `FINAL_PHASE.md` (which owns audit field vocabulary,
+- a substitute for [FINAL_PHASE.md](FINAL_PHASE.md) (which owns audit field vocabulary,
   refactor rules, evidence standards, risk register, and contributor workflow)
-- a substitute for `docs/promotion-gates.md` (which owns phase truth)
+- a substitute for [docs/promotion-gates.md](docs/promotion-gates.md) (which owns phase truth)
 - a license to widen platform scope
 - a promise that structural similarity equals compatibility
 - a replacement for the parity ledgers (which own evidence truth)

@@ -36,8 +36,8 @@ cross-domain overlap identified during the Stage 1 audit.
 
 Relevant docs:
 
-- `docs/status/stage-3.1-scope-triage.md` § Crate Ownership Map
-- `FINAL_PHASE.md` § Ownership Definitions → cfdrs-shared
+- [docs/status/stage-3.1-scope-triage.md](../../docs/status/stage-3.1-scope-triage.md) § Crate Ownership Map
+- [FINAL_PHASE.md](../../FINAL_PHASE.md) § Ownership Definitions → cfdrs-shared
 
 ## Baseline surfaces
 

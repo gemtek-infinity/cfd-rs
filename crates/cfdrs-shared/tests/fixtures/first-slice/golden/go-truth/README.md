@@ -11,9 +11,9 @@ Generation model:
 
 - the Python harness stages a small checked-in Go helper in a temporary module
 - that helper imports the frozen Go baseline from
- `baseline-2026.2.0/old-impl/` using a local `replace`
+ [baseline-2026.2.0/old-impl/](../../../../../../../baseline-2026.2.0/old-impl/) using a local `replace`
 - the helper writes one canonical JSON file per fixture ID using the envelope
- documented in `../schema/README.md`
+ documented in [../schema/README.md](../schema/README.md)
 
 The first-slice harness must fail if a fixture is selected for comparison and
 its `go-truth/<fixture-id>.json` file is missing.

@@ -5,12 +5,12 @@ This file describes the currently implemented surface and what remains absent.
 For the complete gap inventory with ranks and evidence status, see the parity
 ledgers:
 
-- `docs/parity/cli/implementation-checklist.md` (32 rows)
-- `docs/parity/cdc/implementation-checklist.md` (44 rows)
-- `docs/parity/his/implementation-checklist.md` (74 rows)
+- [docs/parity/cli/implementation-checklist.md](../parity/cli/implementation-checklist.md) (32 rows)
+- [docs/parity/cdc/implementation-checklist.md](../parity/cdc/implementation-checklist.md) (44 rows)
+- [docs/parity/his/implementation-checklist.md](../parity/his/implementation-checklist.md) (74 rows)
 
 For the cross-domain gap ranking and implementation order, see
-`docs/status/phase-5-overhaul.md`.
+[docs/status/phase-5-overhaul.md](phase-5-overhaul.md).
 
 ## Current Crate Content
 
@@ -49,8 +49,12 @@ Cloudflare-facing RPC contracts owner. Contains:
 
 ### cfdrs-his
 
-Host interaction services owner. Skeleton crate — ownership declared,
-no implemented code yet. New HIS code lands directly here.
+Host interaction services owner. Contains:
+
+- filesystem config discovery IO (`find_default_config_path`,
+  `find_or_create_config_path`, `discover_config`)
+
+New HIS code lands directly here.
 
 ### cfdrs-shared
 
@@ -70,11 +74,13 @@ Config types, credentials, ingress, and error taxonomy owner. Contains:
   cfdrs-cli
 - **cloudflared-proto** — removed from workspace; code moved to cfdrs-cdc
 - **cloudflared-core** — removed from workspace; was empty skeleton
+- **cloudflared-config** — dissolved; shared config types to cfdrs-shared,
+  filesystem discovery IO to cfdrs-his
 
 ## Major Absent Surfaces
 
 These are the highest-impact gaps. For the complete ranked list, see
-`docs/status/phase-5-overhaul.md` § Cross-Domain Gap Ranking.
+[docs/status/phase-5-overhaul.md](phase-5-overhaul.md) § Cross-Domain Gap Ranking.
 
 - **Cap'n Proto registration RPC** — current registration uses JSON; Go
   baseline uses Cap'n Proto binary encoding. This is the single highest-risk

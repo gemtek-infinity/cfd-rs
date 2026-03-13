@@ -1,7 +1,7 @@
 # Code Style
 
 This is a reference document for both human contributors and AI agents.
-For default AI code-edit guidance, start with `.github/instructions/rust.instructions.md` and load this file only when deeper explanation is useful.
+For default AI code-edit guidance, start with [.github/instructions/rust.instructions.md](../.github/instructions/rust.instructions.md) and load this file only when deeper explanation is useful.
 
 ## Quick reference
 
@@ -62,7 +62,7 @@ It does **not** define:
 - design-pattern policy
 - lifecycle/state modeling
 
-Those belong in `docs/engineering-standards.md`.
+Those belong in [docs/engineering-standards.md](engineering-standards.md).
 
 ---
 

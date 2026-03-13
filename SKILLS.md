@@ -20,19 +20,19 @@ For any subsystem or slice:
 
 Parity ledgers:
 
-- `docs/parity/cli/implementation-checklist.md`
-- `docs/parity/cdc/implementation-checklist.md`
-- `docs/parity/his/implementation-checklist.md`
+- [docs/parity/cli/implementation-checklist.md](docs/parity/cli/implementation-checklist.md)
+- [docs/parity/cdc/implementation-checklist.md](docs/parity/cdc/implementation-checklist.md)
+- [docs/parity/his/implementation-checklist.md](docs/parity/his/implementation-checklist.md)
 
-For the full domain and document index, see `docs/parity/README.md`.
+For the full domain and document index, see [docs/parity/README.md](docs/parity/README.md).
 
 ## Source order for subsystem work
 
-1. `baseline-2026.2.0/old-impl/` code and tests
-2. `baseline-2026.2.0/design-audit/`
-3. `REWRITE_CHARTER.md`
-4. `STATUS.md`
-5. matching policy docs under `docs/`
+1. [baseline-2026.2.0/old-impl/](baseline-2026.2.0/old-impl/) code and tests
+2. [baseline-2026.2.0/design-audit/](baseline-2026.2.0/design-audit/)
+3. [REWRITE_CHARTER.md](REWRITE_CHARTER.md)
+4. [STATUS.md](STATUS.md)
+5. matching policy docs under [docs/](docs/)
 
 ## Default code preferences
 
@@ -48,8 +48,8 @@ If this file disagrees with:
 
 - Go code/tests
 - design-audit docs
-- `REWRITE_CHARTER.md`
-- `STATUS.md`
-- policy docs under `docs/`
+- [REWRITE_CHARTER.md](REWRITE_CHARTER.md)
+- [STATUS.md](STATUS.md)
+- policy docs under [docs/](docs/)
 
 then this file loses.

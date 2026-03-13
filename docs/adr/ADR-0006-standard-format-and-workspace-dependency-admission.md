@@ -9,7 +9,7 @@ The rewrite workspace is still intentionally partial, but it is no longer a
 blank scaffold.
 
 The repository already has real code in the accepted first slice, real tool
-code under `tools/`, and multiple manifests that can drift apart if dependency
+code under [tools/](../../tools/), and multiple manifests that can drift apart if dependency
 truth is left implicit.
 
 That creates two policy risks that need to be frozen before later

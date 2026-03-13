@@ -14,7 +14,7 @@ fn temp_dir(name: &str) -> std::path::PathBuf {
         .duration_since(UNIX_EPOCH)
         .expect("clock should be after epoch")
         .as_nanos();
-    let path = std::env::temp_dir().join(format!("cloudflared-config-{name}-{unique}"));
+    let path = std::env::temp_dir().join(format!("cfdrs-shared-{name}-{unique}"));
     fs::create_dir_all(&path).expect("temp directory should be created");
     path
 }

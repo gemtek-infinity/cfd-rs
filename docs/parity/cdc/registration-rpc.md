@@ -11,7 +11,7 @@ connection with the edge.
 
 ## Frozen Baseline Schema
 
-Source: `baseline-2026.2.0/old-impl/tunnelrpc/proto/tunnelrpc.capnp`
+Source: [baseline-2026.2.0/old-impl/tunnelrpc/proto/tunnelrpc.capnp](../../../baseline-2026.2.0/old-impl/tunnelrpc/proto/tunnelrpc.capnp)
 
 ### Active Interfaces
 
@@ -140,7 +140,7 @@ Deprecated features (filtered before sending):
 
 ## Frozen Go Registration Client Behavior
 
-Source: `baseline-2026.2.0/old-impl/tunnelrpc/registration_client.go`
+Source: [baseline-2026.2.0/old-impl/tunnelrpc/registration_client.go](../../../baseline-2026.2.0/old-impl/tunnelrpc/registration_client.go)
 
 ### RegisterConnection Flow
 
@@ -171,8 +171,8 @@ Source: `baseline-2026.2.0/old-impl/tunnelrpc/registration_client.go`
 
 ## Control Stream Lifecycle
 
-Source: `baseline-2026.2.0/old-impl/connection/control.go` (lines 78-147)
-and `baseline-2026.2.0/old-impl/connection/quic_connection.go` (line 89)
+Source: [baseline-2026.2.0/old-impl/connection/control.go](../../../baseline-2026.2.0/old-impl/connection/control.go) (lines 78-147)
+and [baseline-2026.2.0/old-impl/connection/quic_connection.go](../../../baseline-2026.2.0/old-impl/connection/quic_connection.go) (line 89)
 
 ### Control Stream Opening
 
@@ -206,7 +206,7 @@ sequence:
 
 ### Current Rust Control Stream
 
-Source: `crates/cfdrs-bin/src/transport/quic/lifecycle.rs`
+Source: [crates/cfdrs-bin/src/transport/quic/lifecycle.rs](../../../crates/cfdrs-bin/src/transport/quic/lifecycle.rs)
 
 The Rust control stream follows a simplified version of this lifecycle:
 
@@ -224,7 +224,7 @@ Missing lifecycle stages in Rust:
 
 ## Current Rust Registration Surface
 
-Source: `crates/cfdrs-cdc/src/registration.rs`
+Source: [crates/cfdrs-cdc/src/registration.rs](../../../crates/cfdrs-cdc/src/registration.rs)
 
 ### TunnelAuth
 
@@ -254,7 +254,7 @@ pub struct ConnectionOptions {
 }
 ```
 
-**Divergences from Go:**
+#### Divergences from Go
 
 - Go nests `ClientInfo` (with `clientId`, `features`, `version`, `arch`)
   inside `ConnectionOptions`; Rust flattens these fields
@@ -299,7 +299,7 @@ only `error: String`.
 - Rust serializes registration request as **JSON** via `serde_json`
 - Go serializes registration as **Cap'n Proto binary**
 - This is the primary wire encoding divergence for the registration path
-- QUIC connection ALPN `argotunnel` is correctly set in Rust (`session.rs`
+- QUIC connection ALPN `argotunnel` is correctly set in Rust ([crates/cfdrs-bin/src/transport/quic/session.rs](../../../crates/cfdrs-bin/src/transport/quic/session.rs)
   `EDGE_QUIC_ALPN`) — matches Go
 
 ## Gap Summary

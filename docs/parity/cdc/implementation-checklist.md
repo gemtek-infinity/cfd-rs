@@ -67,8 +67,8 @@ Preferred values:
 ## Audited Checklist
 
 This checklist was produced by source-level audit of the frozen Go baseline
-in `baseline-2026.2.0/old-impl/` and comparison against the current Rust CDC
-surface in `crates/cfdrs-cdc/` and `crates/cfdrs-bin/`.
+in [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/) and comparison against the current Rust CDC
+surface in [crates/cfdrs-cdc/](../../../crates/cfdrs-cdc/) and [crates/cfdrs-bin/](../../../crates/cfdrs-bin/).
 
 The frozen Go CDC surface uses Cap'n Proto for registration and stream
 framing. The current Rust CDC surface uses JSON for registration and a custom
@@ -78,7 +78,7 @@ big-endian binary format for stream framing.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-001 | registration RPC schema | `tunnelrpc/proto/tunnelrpc.capnp` | `RegistrationServer.registerConnection(auth: TunnelAuth, tunnelId: Data, connIndex: UInt8, options: ConnectionOptions) -> ConnectionResponse`. Schema IDs: RegistrationServer `@0xf71695ec7fe85497`, TunnelAuth `@0x9496331ab9cd463f`, ConnectionOptions `@0xb4bf9861fe035d04`, ConnectionResponse `@0xdbaa9d03d52b62dc` | cfdrs-cdc `registration.rs` | audited, partial | minimal | open gap | schema field compare, method signature tests, Cap'n Proto codec tests | critical | Rust has `TunnelAuth`, `ConnectionOptions`, `ConnectionDetails` but nesting and field set differ from Cap'n Proto schema. See `docs/parity/cdc/registration-rpc.md` |
+| CDC-001 | registration RPC schema | `tunnelrpc/proto/tunnelrpc.capnp` | `RegistrationServer.registerConnection(auth: TunnelAuth, tunnelId: Data, connIndex: UInt8, options: ConnectionOptions) -> ConnectionResponse`. Schema IDs: RegistrationServer `@0xf71695ec7fe85497`, TunnelAuth `@0x9496331ab9cd463f`, ConnectionOptions `@0xb4bf9861fe035d04`, ConnectionResponse `@0xdbaa9d03d52b62dc` | cfdrs-cdc `registration.rs` | audited, partial | minimal | open gap | schema field compare, method signature tests, Cap'n Proto codec tests | critical | Rust has `TunnelAuth`, `ConnectionOptions`, `ConnectionDetails` but nesting and field set differ from Cap'n Proto schema. See [docs/parity/cdc/registration-rpc.md](registration-rpc.md) |
 | CDC-002 | registration wire encoding | `tunnelrpc/registration_client.go`, capnp-go marshal | registration request/response encoded as Cap'n Proto binary over QUIC control stream (stream ID 0) | current QUIC transport `lifecycle.rs` | audited, partial | weak | open gap | frozen-fixture wire tests, Cap'n Proto binary roundtrip tests | critical | Rust uses JSON via `serde_json`; Go uses Cap'n Proto binary. This is the primary wire encoding divergence. |
 | CDC-003 | registration response contract | `ConnectionResponse` union: `error(ConnectionError)` or `connectionDetails(ConnectionDetails)`. `ConnectionError` has `cause`, `retryAfter` (Int64 ns), `shouldRetry` (Bool). `ConnectionDetails` has `uuid`, `locationName`, `tunnelIsRemotelyManaged` | success returns `ConnectionDetails`; error returns structured `ConnectionError` with retry semantics | cfdrs-cdc `registration.rs` | audited, partial | weak | open gap | response golden tests, error retry-semantics tests, ConnectionError field tests | high | Rust `RegisterConnectionResponse` uses flat `error: String` + `Option<ConnectionDetails>` instead of union. Missing `retryAfter` and `shouldRetry` fields. |
 | CDC-004 | ClientInfo nesting and fields | `ClientInfo` struct: `clientId` (Data, 16-byte UUID), `features` (List(Text)), `version` (Text), `arch` (Text). Nested inside `ConnectionOptions.client` | registration sends client identity with UUID and capability list | cfdrs-cdc `registration.rs` | audited, partial | minimal | open gap | clientId UUID tests, features list tests, nesting shape tests | high | Rust flattens `ClientInfo` fields into `ConnectionOptions`; missing `clientId` and `features` fields entirely |
@@ -115,7 +115,7 @@ big-endian binary format for stream framing.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-023 | management service routes | `management/service.go` | chi router routes: `/ping` (GET/HEAD), `/logs` (GET→WS), `/host_details` (GET), `/metrics` (GET, conditional), `/debug/pprof/{heap or goroutine}` (GET, conditional). All require token query middleware. | none | audited, absent | not present | open gap | endpoint contract tests, route inventory tests, conditional route tests | critical | entire management HTTP service absent. See `docs/parity/cdc/management-and-diagnostics.md` |
+| CDC-023 | management service routes | `management/service.go` | chi router routes: `/ping` (GET/HEAD), `/logs` (GET→WS), `/host_details` (GET), `/metrics` (GET, conditional), `/debug/pprof/{heap or goroutine}` (GET, conditional). All require token query middleware. | none | audited, absent | not present | open gap | endpoint contract tests, route inventory tests, conditional route tests | critical | entire management HTTP service absent. See [docs/parity/cdc/management-and-diagnostics.md](management-and-diagnostics.md) |
 | CDC-024 | management auth middleware | `management/middleware.go` | `?access_token=<JWT>` query param required; parsed via `ParseToken`; error: `{"success":false,"errors":[{"code":1001,"message":"missing access_token..."}]}` with 400 status | none | audited, absent | not present | open gap | auth middleware tests, error response tests, JWT validation tests | critical | no JWT token validation for management routes |
 | CDC-025 | host details contract | `management/service.go` `getHostDetailsResponse` | JSON: `{"connector_id":"uuid","ip":"10.0.0.4","hostname":"custom:label"}` | none | audited, absent | not present | open gap | response shape tests, field derivation tests | high | connector identity endpoint absent |
 | CDC-026 | log streaming WebSocket | `management/events.go` and `session.go` | WebSocket upgrade on `/logs`; client sends `start_streaming` / `stop_streaming`; server sends `logs` with `[{time, level, message, event, fields}]`; filters: events (cloudflared/http/tcp/udp), level (debug/info/warn/error), sampling (0-1); close codes: 4001/4002/4003 | none | audited, absent | not present | open gap | WebSocket event tests, filter tests, sampling tests, close code tests, session limit tests | critical | entire log streaming protocol absent |
@@ -126,7 +126,7 @@ big-endian binary format for stream framing.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-029 | readiness endpoint contract | `metrics/readiness.go` | `GET /ready` returns JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}` with HTTP 200 if active conns > 0, else 503 | none | audited, absent | not present | open gap | HTTP contract tests, ready/not-ready semantics tests | high | CDC owns response contract; HIS-025 owns local HTTP exposure. See `docs/parity/cdc/metrics-readiness-and-api.md` |
+| CDC-029 | readiness endpoint contract | `metrics/readiness.go` | `GET /ready` returns JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}` with HTTP 200 if active conns > 0, else 503 | none | audited, absent | not present | open gap | HTTP contract tests, ready/not-ready semantics tests | high | CDC owns response contract; HIS-025 owns local HTTP exposure. See [docs/parity/cdc/metrics-readiness-and-api.md](metrics-readiness-and-api.md) |
 | CDC-030 | healthcheck endpoint | `metrics/metrics.go` | `GET /healthcheck` returns text `OK\n` with HTTP 200 | none | audited, absent | not present | open gap | liveness tests | medium | CDC owns response contract; HIS-026 owns local HTTP exposure |
 | CDC-031 | Prometheus metrics endpoint | `metrics/metrics.go` | `GET /metrics` served by `promhttp.Handler()` | none | audited, absent | not present | open gap | endpoint tests, metric-name tests | medium | CDC owns metric names and labels; HIS-027 owns local HTTP exposure |
 | CDC-032 | quicktunnel endpoint | `metrics/metrics.go` | `GET /quicktunnel` returns `{"hostname":"<hostname>"}` | none | audited, absent | not present | open gap | quicktunnel response tests | low | CDC owns response contract; HIS-028 owns local HTTP exposure |
@@ -135,7 +135,7 @@ big-endian binary format for stream framing.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-033 | tunnel CRUD API | `cfapi/tunnel.go` and `client.go` | `CreateTunnel`, `GetTunnel`, `GetTunnelToken`, `DeleteTunnel`, `ListTunnels`, `ListActiveClients`, `CleanupConnections` to `/accounts/{accountTag}/cfd_tunnel/...` | none | audited, absent | not present | open gap | API request shape tests, response envelope tests, error mapping tests | critical | blocks tunnel create/list/delete CLI commands. See `docs/parity/cdc/metrics-readiness-and-api.md` |
+| CDC-033 | tunnel CRUD API | `cfapi/tunnel.go` and `client.go` | `CreateTunnel`, `GetTunnel`, `GetTunnelToken`, `DeleteTunnel`, `ListTunnels`, `ListActiveClients`, `CleanupConnections` to `/accounts/{accountTag}/cfd_tunnel/...` | none | audited, absent | not present | open gap | API request shape tests, response envelope tests, error mapping tests | critical | blocks tunnel create/list/delete CLI commands. See [docs/parity/cdc/metrics-readiness-and-api.md](metrics-readiness-and-api.md) |
 | CDC-034 | API response envelope | `cfapi/base_client.go` | JSON envelope: `{"success":true,"errors":[],"messages":[],"result":...,"result_info":{...}}`. Error mapping: 400→ErrBadRequest, 401/403→ErrUnauthorized, 404→ErrNotFound | none | audited, absent | not present | open gap | envelope parsing tests, error mapping tests | critical | required by all API methods |
 | CDC-035 | API auth and headers | `cfapi/base_client.go` | `Authorization: Bearer <token>`, `Accept: application/json;version=1`, `Content-Type: application/json`, timeout 15s, HTTP/2 enabled | none | audited, absent | not present | open gap | auth header tests, content-type tests | high | all API calls require this |
 | CDC-036 | IP route API | `cfapi/ip_route.go` | `ListRoutes`, `AddRoute`, `DeleteRoute`, `GetByIP` to `/accounts/{accountTag}/teamnet/routes/...` | none | audited, absent | not present | open gap | route API tests, filter query tests | high | blocks tunnel route CLI commands |
@@ -280,7 +280,7 @@ High gaps:
 
 Classification performed during Stage 3.1 scope triage. For the full
 classification rationale and lane definition, see
-`docs/status/stage-3.1-scope-triage.md`.
+[docs/status/stage-3.1-scope-triage.md](../../status/stage-3.1-scope-triage.md).
 
 All items not listed below are **lane-required** for the declared Linux
 production-alpha lane.
@@ -298,7 +298,7 @@ production-alpha lane.
 
 1. ~~extract the field-level registration schema and method set from the
    frozen Cap'n Proto baseline~~ — done; see
-   `docs/parity/cdc/registration-rpc.md`
+   [docs/parity/cdc/registration-rpc.md](registration-rpc.md)
 2. ~~record the actual frozen registration wire encoding and framing behavior
    separately from Rust logical-type coverage~~ — done; wire encoding
    divergence (JSON vs Cap'n Proto) documented in registration-rpc.md
@@ -310,15 +310,15 @@ production-alpha lane.
    feature-group docs
 5. ~~inventory management routes, auth gates, and diagnostics exposure from
    the frozen baseline~~ — done; see
-   `docs/parity/cdc/management-and-diagnostics.md`
+   [docs/parity/cdc/management-and-diagnostics.md](management-and-diagnostics.md)
 6. ~~inventory log-streaming session behavior, limits, and output contract
    from the frozen baseline~~ — done; see management-and-diagnostics.md
 7. ~~inventory externally relevant readiness and metrics contracts for the
    declared lane~~ — done; see
-   `docs/parity/cdc/metrics-readiness-and-api.md`
+   [docs/parity/cdc/metrics-readiness-and-api.md](metrics-readiness-and-api.md)
 8. ~~split this ledger into feature-group documents~~ — done; four
    feature-group audit documents created:
-   - `docs/parity/cdc/registration-rpc.md`
-   - `docs/parity/cdc/stream-contracts.md`
-   - `docs/parity/cdc/management-and-diagnostics.md`
-   - `docs/parity/cdc/metrics-readiness-and-api.md`
+   - [docs/parity/cdc/registration-rpc.md](registration-rpc.md)
+   - [docs/parity/cdc/stream-contracts.md](stream-contracts.md)
+   - [docs/parity/cdc/management-and-diagnostics.md](management-and-diagnostics.md)
+   - [docs/parity/cdc/metrics-readiness-and-api.md](metrics-readiness-and-api.md)

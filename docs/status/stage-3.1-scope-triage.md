@@ -31,9 +31,9 @@ Production alpha means: feature-complete 1:1 in behavior and surface to
 frozen `2026.2.0` on the declared Linux lane, performance proven, not every
 edge case necessarily covered.
 
-Source: `REWRITE_CHARTER.md`, `docs/compatibility-scope.md`,
-`docs/adr/0004-fips-in-alpha-definition.md`,
-`docs/adr/0005-deployment-contract.md`.
+Source: [REWRITE_CHARTER.md](../../REWRITE_CHARTER.md), [docs/compatibility-scope.md](../compatibility-scope.md),
+[docs/adr/0004-fips-in-alpha-definition.md](../adr/0004-fips-in-alpha-definition.md),
+[docs/adr/0005-deployment-contract.md](../adr/0005-deployment-contract.md).
 
 ## Classification Scheme
 
@@ -207,7 +207,7 @@ When deferred items are eventually implemented, they will land in these crates:
 
 ## Exit Condition Checklist
 
-Stage 3.1 exit conditions from `FINAL_PLAN.md`:
+Stage 3.1 exit conditions from [FINAL_PLAN.md](../../FINAL_PLAN.md):
 
 - every gap and divergence from the audit has an explicit classification: **yes**
   (150 rows classified; 108 lane-required, 37 deferred, 3 compatibility-only,

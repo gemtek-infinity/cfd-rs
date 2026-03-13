@@ -21,38 +21,38 @@ Do not start by loading all top-level governance docs.
 
 Load first:
 
-- `REWRITE_CHARTER.md`
+- [REWRITE_CHARTER.md](../REWRITE_CHARTER.md)
 
 Load next only if needed:
 
-- `docs/compatibility-scope.md`
-- `docs/promotion-gates.md`
+- [docs/compatibility-scope.md](compatibility-scope.md)
+- [docs/promotion-gates.md](promotion-gates.md)
 
 ### Current repository state
 
 Load first:
 
-- `STATUS.md`
+- [STATUS.md](../STATUS.md)
 
 Load next only if needed:
 
-- `docs/status/rewrite-foundation.md`
-- `docs/status/active-surface.md`
-- `docs/status/first-slice-parity.md`
-- `docs/status/porting-rules.md`
-- `docs/promotion-gates.md`
+- [docs/status/rewrite-foundation.md](status/rewrite-foundation.md)
+- [docs/status/active-surface.md](status/active-surface.md)
+- [docs/status/first-slice-parity.md](status/first-slice-parity.md)
+- [docs/status/porting-rules.md](status/porting-rules.md)
+- [docs/promotion-gates.md](promotion-gates.md)
 
 ### Behavior and parity
 
 Load first:
 
-- `baseline-2026.2.0/old-impl/` code and tests
+- [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) code and tests
 
 Load next only if needed:
 
-- `baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md`
-- `baseline-2026.2.0/design-audit/REPO_REFERENCE.md`
-- other `baseline-2026.2.0/design-audit/*.md` files for the specific surface
+- [baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md](../baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md)
+- [baseline-2026.2.0/design-audit/REPO_REFERENCE.md](../baseline-2026.2.0/design-audit/REPO_REFERENCE.md)
+- other [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/) files for the specific surface
 
 Never claim parity from Rust code shape alone.
 
@@ -60,38 +60,38 @@ Never claim parity from Rust code shape alone.
 
 Load first:
 
-- `STATUS.md`
-- `docs/status/active-surface.md`
+- [STATUS.md](../STATUS.md)
+- [docs/status/active-surface.md](status/active-surface.md)
 
 Load next only if needed:
 
-- `docs/promotion-gates.md`
-- `docs/status/first-slice-parity.md`
-- `docs/first-slice-freeze.md`
+- [docs/promotion-gates.md](promotion-gates.md)
+- [docs/status/first-slice-parity.md](status/first-slice-parity.md)
+- [docs/first-slice-freeze.md](first-slice-freeze.md)
 
 ### Dependency, allocator, and runtime policy
 
 Load first:
 
-- `docs/dependency-policy.md`
-- `docs/allocator-runtime-baseline.md`
+- [docs/dependency-policy.md](dependency-policy.md)
+- [docs/allocator-runtime-baseline.md](allocator-runtime-baseline.md)
 
 Load next only if needed:
 
-- `docs/go-rust-semantic-mapping.md`
-- `docs/adr/0001-hybrid-concurrency-model.md`
-- `docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md`
+- [docs/go-rust-semantic-mapping.md](go-rust-semantic-mapping.md)
+- [docs/adr/0001-hybrid-concurrency-model.md](adr/0001-hybrid-concurrency-model.md)
+- [docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md](adr/ADR-0006-standard-format-and-workspace-dependency-admission.md)
 
 ### Rust code generation, review style, and local structure
 
 Load first:
 
-- `.github/instructions/rust.instructions.md`
+- [.github/instructions/rust.instructions.md](../.github/instructions/rust.instructions.md)
 
 Load next only if needed:
 
-- `docs/code-style.md`
-- `docs/engineering-standards.md`
+- [docs/code-style.md](code-style.md)
+- [docs/engineering-standards.md](engineering-standards.md)
 
 Use the docs files as deeper human-readable explanation, not as the default first-load source for AI code edits.
 
@@ -99,17 +99,17 @@ Use the docs files as deeper human-readable explanation, not as the default firs
 
 Load first:
 
-- `docs/adr/0002-transport-tls-crypto-lane.md`
-- `docs/adr/0003-pingora-critical-path.md`
-- `docs/adr/0004-fips-in-alpha-definition.md`
-- `docs/adr/0005-deployment-contract.md`
+- [docs/adr/0002-transport-tls-crypto-lane.md](adr/0002-transport-tls-crypto-lane.md)
+- [docs/adr/0003-pingora-critical-path.md](adr/0003-pingora-critical-path.md)
+- [docs/adr/0004-fips-in-alpha-definition.md](adr/0004-fips-in-alpha-definition.md)
+- [docs/adr/0005-deployment-contract.md](adr/0005-deployment-contract.md)
 
 ### Agent workflow and operating rules
 
 Load first:
 
-- `AGENTS.md`
-- `SKILLS.md`
+- [AGENTS.md](../AGENTS.md)
+- [SKILLS.md](../SKILLS.md)
 
 These files are workflow notes.
 They do not override charter, status, or policy docs.
@@ -118,14 +118,14 @@ They do not override charter, status, or policy docs.
 
 Load first:
 
-- `docs/parity/README.md`
-- the relevant domain ledger under `docs/parity/`
+- [docs/parity/README.md](parity/README.md)
+- the relevant domain ledger under [docs/parity/](parity/)
 
 Load next only if needed:
 
-- feature-group docs under `docs/parity/cli/`, `docs/parity/cdc/`, or `docs/parity/his/`
-- `docs/status/phase-5-overhaul.md` for cross-domain gap ranking
-- `FINAL_PLAN.md` for stage gates and execution rules
+- feature-group docs under [docs/parity/cli/](parity/cli/), [docs/parity/cdc/](parity/cdc/), or [docs/parity/his/](parity/his/)
+- [docs/status/phase-5-overhaul.md](status/phase-5-overhaul.md) for cross-domain gap ranking
+- [FINAL_PLAN.md](../FINAL_PLAN.md) for stage gates and execution rules
 
 Use frozen baseline code and tests for behavior truth.
 Do not claim parity from Rust code shape alone.
@@ -134,9 +134,9 @@ Do not claim parity from Rust code shape alone.
 
 Load first:
 
-- `docs/ai-context-routing.md`
-- `.github/copilot-instructions.md`
-- `.github/instructions/rust.instructions.md`
+- [docs/ai-context-routing.md](ai-context-routing.md)
+- [.github/copilot-instructions.md](../.github/copilot-instructions.md)
+- [.github/instructions/rust.instructions.md](../.github/instructions/rust.instructions.md)
 
 Then use MCP in this order:
 
@@ -371,14 +371,14 @@ Operational guidance:
 ### Shared config
 
 Both the debtmap CLI and the MCP `debtmap_unified_analysis` / `debtmap_ci_gate`
-tools read the project `.debtmap.toml` file for analysis thresholds
+tools read the project [.debtmap.toml](../.debtmap.toml) file for analysis thresholds
 (`complexity`, `duplication`, ignore patterns, etc.) via the debtmap crate's
 multi-source config loader.
 
 The MCP-level score categories (file 15/30/45/75, function cyclomatic
 11/21/31, cognitive 10/15/25) are this repository's own categorization
 layer on top of the raw debtmap scores.  They are documented in this file
-and are not part of `.debtmap.toml`.
+and are not part of [.debtmap.toml](../.debtmap.toml).
 
 ## Debtmap Workflow — Human
 
@@ -391,7 +391,7 @@ When a human makes changes to this repository:
    before opening a PR.
 4. Warnings should be reviewed; track them for later reduction if not
    immediately fixable.
-5. If `.debtmap.toml` thresholds need adjustment, update the file and confirm
+5. If [.debtmap.toml](../.debtmap.toml) thresholds need adjustment, update the file and confirm
    both CLI and MCP produce the same results.
 
 Quick reference:
@@ -421,15 +421,15 @@ For more targeted review after edits:
 
 1. Call `debtmap_touched_files_review` with the list of changed files.
 2. If any touched file has a score ≥ 30.0, apply the bounded cognitive-load
-   pass from `.github/instructions/rust.instructions.md`.
+   pass from [.github/instructions/rust.instructions.md](../.github/instructions/rust.instructions.md).
 3. If any touched file has a score ≥ 45.0, split or reduce the file before
    completing the task.
 
 ## Anti-Drift Rules
 
-- `REWRITE_CHARTER.md` wins over summaries, plans, and workflow notes
-- `STATUS.md` describes what exists now
-- `docs/*.md` define policy and phase boundaries
+- [REWRITE_CHARTER.md](../REWRITE_CHARTER.md) wins over summaries, plans, and workflow notes
+- [STATUS.md](../STATUS.md) describes what exists now
+- [docs/](../docs/) define policy and phase boundaries
 - branch names and draft planning notes do not change current phase truth by themselves
-- `baseline-2026.2.0/old-impl/` and `baseline-2026.2.0/design-audit/` are frozen inputs
+- [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) and [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/) are frozen inputs
 - missing evidence should be stated explicitly

@@ -8,8 +8,8 @@ slice, not to predeclare the full future dependency graph.
 
 ## Non-Negotiable Constraints
 
-- `baseline-2026.2.0/old-impl/` is frozen input
-- `baseline-2026.2.0/design-audit/` is frozen input
+- [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) is frozen input
+- [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/) is frozen input
 - the Rust workspace version remains `2026.2.0-alpha.202603` until changed by
   explicit baseline/versioning policy
 - manifests should describe code that exists today or the currently accepted
@@ -99,7 +99,7 @@ tool surface:
   `tracing-subscriber` in `cfdrs-bin`
 - shared workspace truth for `pem`, `serde`, `serde_json`, `serde_yaml`,
   `thiserror`, `url`, `uuid`, and `base64`
-- `rmcp`, `schemars`, and `tokio` in `tools/mcp-cfd-rs`
+- `rmcp`, `schemars`, and `tokio` in [tools/mcp-cfd-rs](../tools/mcp-cfd-rs)
 
 Reason:
 
@@ -129,7 +129,7 @@ Reason:
   because root-manifest-first review and feature consistency are part of the
   accepted Phase 2.6 policy, not merely an after-the-fact consequence of broad
   sharing
-- `tools/mcp-cfd-rs` is a real workspace tool, so its private dependencies may
+- [tools/mcp-cfd-rs](../tools/mcp-cfd-rs) is a real workspace tool, so its private dependencies may
   exist locally without authorizing those crates for rewrite crates by default
 - libraries still must not set the global allocator or preload later-slice
   dependencies speculatively
@@ -180,7 +180,7 @@ Slice is active. These dependencies are in `[workspace.dependencies]`:
 
 Ongoing rules:
 
-- their use must follow `docs/go-rust-semantic-mapping.md`
+- their use must follow [docs/go-rust-semantic-mapping.md](go-rust-semantic-mapping.md)
 - do not add alternative channel/runtime frameworks by default
 - do not use convenience crates to bypass the explicit crypto and transport
   governance already frozen elsewhere
@@ -220,11 +220,11 @@ or first-slice implementation tests actually need them.
 Rules:
 
 - harness dev-dependencies for the accepted first slice belong in
-  `crates/cfdrs-shared/Cargo.toml`, not the workspace root
+  [crates/cfdrs-shared/Cargo.toml](../crates/cfdrs-shared/Cargo.toml), not the workspace root
 - do not add snapshot tooling merely to make approval easier; first prefer
   stable JSON or text goldens checked into the repo
 - first-slice checked-in goldens belong under
-  `crates/cfdrs-shared/tests/fixtures/first-slice/golden/`
+  [crates/cfdrs-shared/tests/fixtures/first-slice/golden/](../crates/cfdrs-shared/tests/fixtures/first-slice/golden/)
 - CLI-process test helpers are premature until the Rust CLI actually emits the
   relevant first-slice surface
 

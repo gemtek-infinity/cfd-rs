@@ -9,11 +9,11 @@
 >
 > Broader parity is now tracked by the three final-phase domain ledgers:
 >
-> - `docs/parity/cli/implementation-checklist.md`
-> - `docs/parity/cdc/implementation-checklist.md`
-> - `docs/parity/his/implementation-checklist.md`
+> - [docs/parity/cli/implementation-checklist.md](parity/cli/implementation-checklist.md)
+> - [docs/parity/cdc/implementation-checklist.md](parity/cdc/implementation-checklist.md)
+> - [docs/parity/his/implementation-checklist.md](parity/his/implementation-checklist.md)
 >
-> For the current execution plan, see `FINAL_PHASE.md` and `FINAL_PLAN.md`.
+> For the current execution plan, see [FINAL_PHASE.md](../FINAL_PHASE.md) and [FINAL_PLAN.md](../FINAL_PLAN.md).
 
 This document freezes the first accepted implementation slice so that neither
 humans nor AI assistants reinterpret it while implementation begins.
@@ -40,11 +40,11 @@ It is the smallest slice that meaningfully locks:
 
 Primary owner:
 
-- `crates/cfdrs-shared/`
+- [crates/cfdrs-shared/](../crates/cfdrs-shared/)
 
 Parity harness and fixtures:
 
-- `crates/cfdrs-shared/tests/`
+- [crates/cfdrs-shared/tests/](../crates/cfdrs-shared/tests/)
 
 This slice must not spread into a new top-level crate split unless repo
 governance changes first.
@@ -170,8 +170,8 @@ not future inevitability.
 The first slice must produce all of the following:
 
 - executable Rust-side parsing and normalization code in
-  `crates/cfdrs-shared/`
-- executable parity harness code in `crates/cfdrs-shared/tests/`
+  [crates/cfdrs-shared/](../crates/cfdrs-shared/)
+- executable parity harness code in [crates/cfdrs-shared/tests/](../crates/cfdrs-shared/tests/)
 - checked-in fixtures and/or golden cases for accepted behavior
 - captured Go truth outputs for the first-slice behavior set
 - passing parity-backed tests for accepted cases
@@ -205,7 +205,7 @@ It is meant to prove that:
 
 Any proposal to widen or narrow this slice must update:
 
-- `REWRITE_CHARTER.md`
-- `docs/compatibility-scope.md`
+- [REWRITE_CHARTER.md](../REWRITE_CHARTER.md)
+- [docs/compatibility-scope.md](compatibility-scope.md)
 - this file
-- `docs/promotion-gates.md` if the phase order is affected
+- [docs/promotion-gates.md](promotion-gates.md) if the phase order is affected

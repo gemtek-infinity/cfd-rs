@@ -26,13 +26,13 @@ Local developer builds should remain generic by default.
 That means:
 
 - repo-default local builds must not silently hardcode a shipped CPU lane
-- `.cargo/config.toml` may carry generic release tuning
+- [.cargo/config.toml](../.cargo/config.toml) may carry generic release tuning
 - lane-specific `RUSTFLAGS` belong only in explicit build workflows or explicit
   local commands
 
 Current repo posture:
 
-- `.cargo/config.toml` keeps generic release tuning only
+- [.cargo/config.toml](../.cargo/config.toml) keeps generic release tuning only
 - no repo-default target CPU lane is hardcoded for normal local builds
 
 ## CI validation policy
@@ -42,16 +42,16 @@ PR CI may be narrower than release or manual artifact builds.
 Current PR CI policy:
 
 - validate the generic Linux workspace using path-sensitive job selection
-- application crates (`crates/**`) are validated with formatting, `cargo check`,
+- application crates ([crates/](../crates/)) are validated with formatting, `cargo check`,
   `cargo clippy`, and `cargo test` when application or workspace files change
-- tool crates (`tools/**`) are validated separately only when tool or workspace
+- tool crates ([tools/](../tools/)) are validated separately only when tool or workspace
   files change, so the debtmap dependency tree is not compiled for app-only PRs
 - do not treat PR validation as proof that both shipped CPU lanes are fully
   operational unless lane-specific artifact builds also run
 
 Current workflow mapping:
 
-- `.github/workflows/on-pr-push.yml` validates the workspace via conditional
+- [.github/workflows/on-pr-push.yml](../.github/workflows/on-pr-push.yml) validates the workspace via conditional
   `validate-app` and `validate-tools` jobs
 
 ## Release artifact policy

@@ -8,7 +8,7 @@ behavior as defined by the frozen Go baseline.
 
 ## Management Service Routes
 
-Source: `baseline-2026.2.0/old-impl/management/service.go`
+Source: [baseline-2026.2.0/old-impl/management/service.go](../../../baseline-2026.2.0/old-impl/management/service.go)
 
 The management service is exposed via a chi router on the management tunnel
 hostname (typically `management.argotunnel.com`).
@@ -35,7 +35,7 @@ Returns HTTP 200 with empty body. Supports both GET and HEAD.
 
 ### Host Details Response
 
-Source: `baseline-2026.2.0/old-impl/management/service.go`
+Source: [baseline-2026.2.0/old-impl/management/service.go](../../../baseline-2026.2.0/old-impl/management/service.go)
 
 ```json
 {
@@ -54,7 +54,7 @@ Field semantics:
 
 ## Authentication Middleware
 
-Source: `baseline-2026.2.0/old-impl/management/middleware.go`
+Source: [baseline-2026.2.0/old-impl/management/middleware.go](../../../baseline-2026.2.0/old-impl/management/middleware.go)
 
 ### Token Validation
 
@@ -78,7 +78,7 @@ HTTP status: 400 (Bad Request)
 
 ### Management Token Resource Types
 
-Source: `baseline-2026.2.0/old-impl/cfapi/client.go`
+Source: [baseline-2026.2.0/old-impl/cfapi/client.go](../../../baseline-2026.2.0/old-impl/cfapi/client.go)
 
 `GetManagementToken(tunnelID, resource)` supports three resource scopes:
 
@@ -90,7 +90,7 @@ Source: `baseline-2026.2.0/old-impl/cfapi/client.go`
 
 ## WebSocket Log Streaming Contract
 
-Source: `baseline-2026.2.0/old-impl/management/events.go` and `session.go`
+Source: [baseline-2026.2.0/old-impl/management/events.go](../../../baseline-2026.2.0/old-impl/management/events.go) and [session.go](../../../baseline-2026.2.0/old-impl/management/session.go)
 
 ### Client → Server Events
 
@@ -166,7 +166,7 @@ Source: `baseline-2026.2.0/old-impl/management/events.go` and `session.go`
 
 ### Session Behavior
 
-Source: `baseline-2026.2.0/old-impl/management/session.go`
+Source: [baseline-2026.2.0/old-impl/management/session.go](../../../baseline-2026.2.0/old-impl/management/session.go)
 
 - per-client session with `active` flag
 - buffered listener channel (window = 30 entries; drops when full)
@@ -176,7 +176,7 @@ Source: `baseline-2026.2.0/old-impl/management/session.go`
 
 ## Diagnostics Exposure
 
-Source: `baseline-2026.2.0/old-impl/management/service.go` and
+Source: [baseline-2026.2.0/old-impl/management/service.go](../../../baseline-2026.2.0/old-impl/management/service.go) and
 `diagnostic/` package
 
 ### Conditional Routes

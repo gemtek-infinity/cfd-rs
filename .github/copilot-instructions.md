@@ -1,20 +1,20 @@
 # Repository-wide instructions for cfd-rs
 
 Use the repository's governance split correctly.
-Start cold reads with `docs/ai-context-routing.md`.
+Start cold reads with [docs/ai-context-routing.md](../docs/ai-context-routing.md).
 Do not load all top-level governance files by default.
 
 ## Governing files
-- `REWRITE_CHARTER.md` — non-negotiables, lane decisions, and scope boundaries
-- `docs/ai-context-routing.md` — minimum-file routing for cold starts and staged retrieval order
-- `STATUS.md` — current implemented state
-- `docs/promotion-gates.md` — phase model and promotion boundaries
-- `docs/*.md` — compatibility, dependency, allocator, runtime, and concurrency policy
-- `AGENTS.md` — short operating guide
-- `SKILLS.md` — repeatable subsystem-porting workflow
-- `FINAL_PLAN.md` — staged execution plan for the final phase
-- `FINAL_PHASE.md` — detailed execution reference for the final phase
-- `CONTRIBUTING.md` — human contributor guide (build, test, workflow, parity evidence)
+- [REWRITE_CHARTER.md](../REWRITE_CHARTER.md) — non-negotiables, lane decisions, and scope boundaries
+- [docs/ai-context-routing.md](../docs/ai-context-routing.md) — minimum-file routing for cold starts and staged retrieval order
+- [STATUS.md](../STATUS.md) — current implemented state
+- [docs/promotion-gates.md](../docs/promotion-gates.md) — phase model and promotion boundaries
+- [docs/](../docs/) — compatibility, dependency, allocator, runtime, and concurrency policy
+- [AGENTS.md](../AGENTS.md) — short operating guide
+- [SKILLS.md](../SKILLS.md) — repeatable subsystem-porting workflow
+- [FINAL_PLAN.md](../FINAL_PLAN.md) — staged execution plan for the final phase
+- [FINAL_PHASE.md](../FINAL_PHASE.md) — detailed execution reference for the final phase
+- [CONTRIBUTING.md](../CONTRIBUTING.md) — human contributor guide (build, test, workflow, parity evidence)
 
 ## Before proposing changes
 1. identify the task type
@@ -43,27 +43,27 @@ If MCP is unavailable, inaccessible, or insufficient:
 2. say what was missing or why MCP could not answer
 3. only then fall back to direct repository reads
 
-Do not start with a broad manual workspace scan when MCP or `docs/ai-context-routing.md` can provide a smaller grounded slice.
+Do not start with a broad manual workspace scan when MCP or [docs/ai-context-routing.md](../docs/ai-context-routing.md) can provide a smaller grounded slice.
 
 ## Behavior and parity routing
 1. use the local MCP snapshot surface first when a compact behavior/parity routing answer is enough
-2. use `baseline-2026.2.0/old-impl/` code and tests first for grounded truth
-3. use `baseline-2026.2.0/design-audit/` second
+2. use [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) code and tests first for grounded truth
+3. use [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/) second
 
 Do not claim parity from Rust code shape alone.
 
 ## Parity work routing
 For parity audit, implementation, or gap-review tasks:
 1. identify the domain: CLI, CDC, or HIS
-2. load the relevant parity ledger under `docs/parity/`
-3. load `docs/parity/README.md` for the full domain and document index
+2. load the relevant parity ledger under [docs/parity/](../docs/parity/)
+3. load [docs/parity/README.md](../docs/parity/README.md) for the full domain and document index
 4. use frozen baseline code and tests for behavior truth
-5. use the cross-domain gap ranking in `docs/status/phase-5-overhaul.md` for priority
+5. use the cross-domain gap ranking in [docs/status/phase-5-overhaul.md](../docs/status/phase-5-overhaul.md) for priority
 
 Parity ledgers:
-- `docs/parity/cli/implementation-checklist.md` — CLI command surface
-- `docs/parity/cdc/implementation-checklist.md` — Cloudflare contracts
-- `docs/parity/his/implementation-checklist.md` — host interactions
+- [docs/parity/cli/implementation-checklist.md](../docs/parity/cli/implementation-checklist.md) — CLI command surface
+- [docs/parity/cdc/implementation-checklist.md](../docs/parity/cdc/implementation-checklist.md) — Cloudflare contracts
+- [docs/parity/his/implementation-checklist.md](../docs/parity/his/implementation-checklist.md) — host interactions
 
 ## Refactor and cognitive-load routing
 For refactor, hotspot, architecture-shaping, or medium/large code-change tasks:
@@ -74,10 +74,10 @@ For refactor, hotspot, architecture-shaping, or medium/large code-change tasks:
    - then a narrow path prefix
    - only then broader hotspot queries if still needed
 4. use Debtmap as a hotspot and review aid, not as behavior truth
-5. use the file-level Debtmap score categories owned by `docs/ai-context-routing.md`
+5. use the file-level Debtmap score categories owned by [docs/ai-context-routing.md](../docs/ai-context-routing.md)
 6. treat file-level scores below `15.0` as negligible, `15.0-29.99` as `reviewable`, `30.0-44.99` as `reduce_when_touched`, and `45.0+` as the hard `refactor_now` limit
-7. marker-debt (TODO/FIXME/TestTodo) is excluded from the file score — see `docs/ai-context-routing.md` marker-debt exclusion
-8. for structural analysis (God Object, coupling, cohesion), use `debtmap_unified_analysis`; for PR-readiness, use `debtmap_ci_gate` — see CI gate rules in `docs/ai-context-routing.md`
+7. marker-debt (TODO/FIXME/TestTodo) is excluded from the file score — see [docs/ai-context-routing.md](../docs/ai-context-routing.md) marker-debt exclusion
+8. for structural analysis (God Object, coupling, cohesion), use `debtmap_unified_analysis`; for PR-readiness, use `debtmap_ci_gate` — see CI gate rules in [docs/ai-context-routing.md](../docs/ai-context-routing.md)
 
 If the MCP Debtmap surface is unavailable, inaccessible, or insufficient:
 1. say that explicitly
@@ -95,7 +95,7 @@ Do not auto-run Debtmap for trivial edits.
 - do not imply later-slice behavior exists when it does not
 
 ## Frozen inputs
-Do not edit frozen inputs (`baseline-2026.2.0/old-impl/` and `baseline-2026.2.0/design-audit/`).
+Do not edit frozen inputs ([baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) and [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/)).
 
 ## Bounded self-review
 For medium or large code changes only, do one bounded cognitive-load review of touched files before checks:
@@ -110,7 +110,7 @@ Do not use that cognitive-load pass for trivial edits.
 
 ## Pre-merge debtmap gate
 Before completing a non-trivial task, follow the AI agent workflow in
-`docs/ai-context-routing.md` § "Debtmap Workflow — AI Agent":
+[docs/ai-context-routing.md](../docs/ai-context-routing.md) § "Debtmap Workflow — AI Agent":
 - call `debtmap_ci_gate` to check for blocking violations
 - fix blocking violations in touched files; report untouched blocking violations to the human
 - note warnings but do not block on them

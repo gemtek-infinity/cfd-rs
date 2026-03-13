@@ -10,8 +10,8 @@ Build a production-grade, parity-backed Rust rewrite on the frozen Linux product
 
 ## Compatibility baseline
 
-- behavioral baseline: `baseline-2026.2.0/old-impl/`
-- derived reference layer: `baseline-2026.2.0/design-audit/`
+- behavioral baseline: [baseline-2026.2.0/old-impl/](baseline-2026.2.0/old-impl/)
+- derived reference layer: [baseline-2026.2.0/design-audit/](baseline-2026.2.0/design-audit/)
 - target release baseline: `2026.2.0`
 - Rust workspace version rule: `-alpha.YYYYmm`
 - current workspace version line: `2026.2.0-alpha.202603`
@@ -35,21 +35,21 @@ Build a production-grade, parity-backed Rust rewrite on the frozen Linux product
 Use the right source for the right question:
 
 - behavior and parity:
-  1. `baseline-2026.2.0/old-impl/` code and tests
-  2. `baseline-2026.2.0/design-audit/`
+  1. [baseline-2026.2.0/old-impl/](baseline-2026.2.0/old-impl/) code and tests
+  2. [baseline-2026.2.0/design-audit/](baseline-2026.2.0/design-audit/)
 
 - non-negotiables and scope:
-  - `REWRITE_CHARTER.md`
+  - [REWRITE_CHARTER.md](REWRITE_CHARTER.md)
 
 - current repository state:
-  - `STATUS.md`
+  - [STATUS.md](STATUS.md)
 
 - dependency and runtime policy:
-  - `docs/*.md`
+  - [docs/](docs/)
 
 - workflow notes:
-  - `AGENTS.md`
-  - `SKILLS.md`
+  - [AGENTS.md](AGENTS.md)
+  - [SKILLS.md](SKILLS.md)
 
 Do not smooth conflicts over.
 Resolve them explicitly.
@@ -58,8 +58,8 @@ Resolve them explicitly.
 
 The following directories are frozen inputs and must not be modified during normal rewrite work:
 
-- `baseline-2026.2.0/old-impl/`
-- `baseline-2026.2.0/design-audit/`
+- [baseline-2026.2.0/old-impl/](baseline-2026.2.0/old-impl/)
+- [baseline-2026.2.0/design-audit/](baseline-2026.2.0/design-audit/)
 
 If those inputs appear inconsistent, fix the Rust workspace or the governance docs instead of editing the frozen baseline.
 
