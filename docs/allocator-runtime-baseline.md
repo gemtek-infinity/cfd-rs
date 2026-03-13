@@ -84,7 +84,7 @@ The accepted model is:
 
 The scaffold must remain visibly partial.
 
-At the current 4.1 state:
+At the current admitted state:
 
 - runtime initialization owns lifecycle, supervision, the admitted QUIC
   transport core, the Pingora proxy seam, wire/protocol boundary,

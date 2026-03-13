@@ -183,18 +183,145 @@ Stage 1 is complete.
 
 ### Stage 2: Reconcile Docs
 
-Status: not started
+Status: **complete**
 
-Required outputs:
+Sub-stage status:
 
-- rewritten top-level repository truth
-- updated README and docs map
-- updated phase and status wording
-- updated crate-ownership wording
-- target crate README content
-- links from top-level docs to parity ledgers
+- Stage 2.1 (master repository truth): **complete**
+- Stage 2.2 (scope, compatibility, governance): **complete**
+- Stage 2.3 (historical phase and parity docs): **complete**
+- Stage 2.4 (operator and contributor guidance): **complete**
+- Stage 2.5 (AI instructions, skills, agent config): **complete**
 
-This stage is mandatory implementation work, not cleanup.
+Stage 2.5 outputs:
+
+- `.github/copilot-instructions.md` updated — added `FINAL_PLAN.md` and
+  `FINAL_PHASE.md` to governing files list; added parity work routing section
+  with domain identification, ledger links, and cross-domain gap ranking
+  pointer
+- `AGENTS.md` updated — added parity ledgers, `FINAL_PLAN.md`,
+  `FINAL_PHASE.md`, and `docs/deployment-notes.md` to "Use the right file"
+  routing; replaced stale first-slice async constraint with general
+  synchronous-first preference; added parity ledger update rule to working
+  rules; added `CONTRIBUTING.md`, `docs/code-style.md`, and
+  `docs/engineering-standards.md` to routing table
+- `SKILLS.md` updated — replaced stale "first-slice bias" section with
+  general "default code preferences"; added parity ledger identification
+  and update steps to porting workflow; added ledger links
+- `.github/instructions/rust.instructions.md` updated — replaced "for
+  first-slice work" scoping with general synchronous-first preference
+  (Tokio runtime is now active)
+- `.github/instructions/markdown.instructions.md` reviewed — no changes
+  needed (already accurate and consistent)
+- `docs/ai-context-routing.md` updated — added "Parity audit, implementation,
+  and gap review" task routing section with domain ledger, feature-group doc,
+  and execution doc pointers
+
+Stage 2 wrap-up outputs:
+
+- `CONTRIBUTING.md` created — human contributor guide with build instructions,
+  code style and engineering standards pointers, parity evidence requirements,
+  implementation workflow, frozen-input rules, document hierarchy, and
+  AI-assisted contribution guidance
+- `docs/code-style.md` updated — added quick-reference summary table linking
+  all 30 rules; changed header from "human-facing reference document" to
+  "reference document for both human contributors and AI agents"
+- `docs/engineering-standards.md` updated — added quick-reference summary
+  table linking all 13 standards; changed header from "human-facing reference
+  document" to "reference document for both human contributors and AI agents"
+- `README.md` updated — Contributing section now links to `CONTRIBUTING.md`
+  with quick-start pointers to code-style, engineering-standards, parity
+  index, and AI routing docs
+- `docs/README.md` updated — Rust Coding References section now includes
+  `CONTRIBUTING.md` and updated descriptions with rule counts
+- `AGENTS.md` updated — added `CONTRIBUTING.md`, `docs/code-style.md`, and
+  `docs/engineering-standards.md` to "Use the right file" routing
+
+Stage 2.4 outputs:
+
+- `docs/deployment-notes.md` updated — added parity ledger cross-references,
+  linked known deployment gaps to HIS checklist rows (HIS-012 through HIS-017,
+  HIS-046, HIS-047, HIS-063 through HIS-065), linked operational caveats to
+  CDC checklist rows (CDC-001, CDC-002, CDC-011, CDC-012, CDC-018, HIS-041,
+  HIS-042)
+- `docs/parity/README.md` created — parity navigation index with domain
+  summaries, document links, cross-domain gap count table, and source-of-truth
+  note
+- `docs/README.md` updated — added parity index link and new Operator Guidance
+  section with deployment-notes link
+- crate READMEs reviewed — no crate-root READMEs exist in current workspace;
+  target crate READMEs are Stage 3 work
+- `crates/cloudflared-config/tests/README.md` reviewed — already updated in
+  Stage 2.3, no further changes needed
+
+Stage 2.3 outputs:
+
+- `docs/first-slice-freeze.md` marked as historical record — first slice
+  complete and parity-backed, broader parity governed by domain ledgers
+- `docs/status/first-slice-parity.md` marked as historical record — first
+  slice only, broader parity tracked by domain ledgers
+- `docs/status/porting-rules.md` marked as partially superseded — first
+  implementation gate satisfied, first slice complete, broader porting governed
+  by final-phase program
+- `crates/cloudflared-config/tests/README.md` updated — broader parity
+  tracking pointer added
+- `tools/first_slice_parity.py` reviewed — already clearly scoped to
+  first-slice surface, no changes needed
+
+Stage 2.1 outputs:
+
+- root `README.md` created — honest about current state, gaps, and parity
+  progress
+- `STATUS.md` reduced to a short index with ledger-grounded truth
+- `docs/README.md` updated with clear section groupings and parity links
+- `docs/status/rewrite-foundation.md` reduced — removed duplication of lane
+  and phase model owned by other governing docs
+- `docs/status/active-surface.md` rewritten — replaced 200+ lines of
+  phase-by-phase accretion with crate-grounded content that points to parity
+  ledgers
+- `docs/promotion-gates.md` reviewed — no changes needed (governing truth is
+  accurate)
+
+Stage 2.2 outputs:
+
+- `REWRITE_CHARTER.md` reviewed — no changes needed (governing truth is
+  accurate)
+- `docs/compatibility-scope.md` reviewed — no changes needed
+- `docs/build-artifact-policy.md` reviewed — no changes needed
+- `docs/dependency-policy.md` updated — deferred dependency buckets reconciled
+  against current workspace manifests; three admitted slices (config,
+  async, observability) marked as admitted with ongoing rules preserved;
+  Protocol/Wire remains genuinely deferred
+- `docs/allocator-runtime-baseline.md` updated — removed embedded phase
+  number from scaffold honesty rule; language is now phase-agnostic
+- `docs/go-rust-semantic-mapping.md` updated — "Current Scaffold Application"
+  renamed and updated to reflect operational state; "First Slice Constraint"
+  generalized to "Synchronous And Deterministic Work"; garbled end-of-file
+  paragraph ordering fixed
+- `docs/adr/0001-hybrid-concurrency-model.md` updated — "Current Scaffold
+  Implication" replaced with "Current Operational State" reflecting that
+  Tokio and hybrid concurrency primitives are now active
+- `docs/adr/0002-transport-tls-crypto-lane.md` reviewed — no changes needed
+- `docs/adr/0003-pingora-critical-path.md` updated — acknowledged that
+  `pingora-http` is admitted in workspace dependencies; removed stale
+  deferred follow-ups for ADRs that already exist
+- `docs/adr/0004-fips-in-alpha-definition.md` reviewed — no changes needed
+- `docs/adr/0005-deployment-contract.md` reviewed — no changes needed
+- `docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md`
+  reviewed — no changes needed
+
+Required outputs remaining:
+
+- target crate README content (Stage 3, after crate skeletons exist)
+
+All five Stage 2 sub-stages are complete. Stage 2 documentation reconciliation
+exit conditions are satisfied:
+
+- repository-wide wording is aligned with the final-phase program
+- stale ownership language has been removed or replaced
+- parity documents are linked from top-level docs
+- the repository can be read by a human contributor without relying on tribal knowledge
+- the document set is accurate enough to support the refactor without ambiguity
 
 ### Stage 3: Refactor
 
@@ -365,13 +492,16 @@ Avoid reporting progress only in terms of file count or code movement.
 
 ## Immediate Next Actions
 
-Stage 2 (Reconcile Docs) is the next mandatory stage. It has five sub-stages
-defined in `FINAL_PLAN.md`:
+Stage 2.1 (master repository truth) is complete. The next sub-stage is:
 
-1. Stage 2.1: Master repository truth (root README, STATUS.md, docs map)
+- Stage 2.2: Scope, compatibility, and governance review
+
+The remaining Stage 2 sub-stages are:
+
+1. ~~Stage 2.1: Master repository truth~~ (complete)
 2. Stage 2.2: Scope, compatibility, and governance review
 3. Stage 2.3: Historical phase and parity documents
 4. Stage 2.4: Operator and contributor guidance
 5. Stage 2.5: AI instructions, skills, and agent configuration
 
-No Stage 2 work has started yet. Stage 2 cannot be skipped or reordered.
+No Stage 2 sub-stage may be skipped or reordered.

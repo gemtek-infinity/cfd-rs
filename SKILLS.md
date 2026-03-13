@@ -9,12 +9,22 @@ For any subsystem or slice:
 
 1. identify the exact accepted scope
 2. identify the owning crate
-3. read the relevant design-audit sections
-4. read the corresponding Go source and tests
-5. check dependency and runtime policy before adding crates or async structure
-6. implement the smallest source-grounded slice
-7. write contract-level tests
-8. claim parity only after checked behavior
+3. identify the parity domain (CLI, CDC, or HIS) and the relevant ledger row
+4. read the relevant design-audit sections
+5. read the corresponding Go source and tests
+6. check dependency and runtime policy before adding crates or async structure
+7. implement the smallest source-grounded slice
+8. write contract-level tests
+9. update the relevant parity ledger row with evidence status
+10. claim parity only after checked behavior
+
+Parity ledgers:
+
+- `docs/parity/cli/implementation-checklist.md`
+- `docs/parity/cdc/implementation-checklist.md`
+- `docs/parity/his/implementation-checklist.md`
+
+For the full domain and document index, see `docs/parity/README.md`.
 
 ## Source order for subsystem work
 
@@ -24,14 +34,13 @@ For any subsystem or slice:
 4. `STATUS.md`
 5. matching policy docs under `docs/`
 
-## First-slice bias
+## Default code preferences
 
-For the accepted first slice:
-
-- prefer synchronous and deterministic code
+- prefer synchronous and deterministic code unless the accepted slice requires async
 - keep normalization logic explicit
-- avoid premature daemon/runtime structure
-- do not imply transport, proxy, supervisor, orchestration, management, metrics, or RPC behavior
+- avoid premature daemon/runtime structure in new subsystems
+- do not imply transport, proxy, supervisor, orchestration, management, metrics,
+  or RPC behavior unless the slice being ported requires it
 
 ## Anti-drift reminder
 

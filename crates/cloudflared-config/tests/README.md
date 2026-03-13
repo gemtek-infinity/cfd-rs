@@ -49,3 +49,10 @@ Source-of-truth rule:
 - use `baseline-2026.2.0/design-audit/` second
 
 Do not modify frozen inputs from this test area.
+
+## Broader parity tracking
+
+This test area covers the accepted first slice only.
+
+Broader parity tracking across all three domains (CLI, CDC, HIS) is owned by
+the final-phase domain ledgers under `docs/parity/`.

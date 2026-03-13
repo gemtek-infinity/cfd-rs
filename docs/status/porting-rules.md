@@ -1,5 +1,18 @@
 # Porting Rules Status
 
+> **Historical record — partially superseded.**
+> The first implementation gate described below has been satisfied.
+> The recommended first slice is complete and parity-backed.
+> The "Done Means" criteria remain valid as a general porting standard.
+>
+> Broader subsystem porting is now governed by the final-phase program:
+>
+> - `FINAL_PHASE.md` — detailed execution reference
+> - `FINAL_PLAN.md` — staged execution plan
+> - `docs/parity/cli/implementation-checklist.md`
+> - `docs/parity/cdc/implementation-checklist.md`
+> - `docs/parity/his/implementation-checklist.md`
+
 This file captures the current implementation gate, the recommended first slice,
 and the repository's definition of done.
 

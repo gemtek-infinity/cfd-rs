@@ -10,16 +10,16 @@ decision at ADR level.
 It is intentionally not a crate-substitution cheat sheet. The rewrite target is
 behavioral compatibility with `baseline-2026.2.0/old-impl/`, not one-for-one library replacement.
 
-## Current Scaffold Application
+## Current Application
 
-The repository already contains a scaffold.
+This doctrine is operationally active.
 
-Current implication:
+The workspace now has an admitted runtime/lifecycle shell, QUIC transport
+core, Pingora proxy seam, and observability surface. Tokio, `tokio-util`,
+and the hybrid concurrency primitives described below are admitted in
+workspace manifests and used by active runtime code.
 
-- this doctrine is accepted now
-- it does not require speculative async/runtime code to exist yet
-- the accepted first slice should remain primarily synchronous and deterministic
-- Tokio enters manifests and code only when an accepted slice genuinely needs it
+The doctrine governs all new runtime and async subsystem work.
 
 ## Doctrine Summary
 
@@ -43,17 +43,16 @@ This means:
 - no repo-wide actor framework is adopted by default
 - no subsystem may rely on detached tasks with unclear ownership
 
-## First Slice Constraint
+## Synchronous And Deterministic Work
 
-The accepted first slice is config, credentials, and ingress normalization.
-
-Rules for that slice:
+For slices that are primarily parsing, validation, or normalization work
+(such as config, credentials, and ingress normalization):
 
 - prefer direct synchronous parsing and validation code
 - do not introduce task graphs, channels, or runtime ownership merely to mimic
-  future daemon structure
+  daemon structure
 - keep CLI-origin normalization thin and deterministic
-- reserve async/runtime machinery for later runtime-critical slices
+- reserve async/runtime machinery for slices that genuinely need it
 
 ## Control Plane vs Data Plane
 
@@ -345,12 +344,13 @@ Every subsystem test plan should include, where relevant:
 - stream half-close behavior and flush-sensitive paths
 
 A subsystem is not parity-complete merely because it compiles or passes unit
+tests under nominal load. It needs evidence that its lifecycle, backpressure,
+and shutdown semantics still match `baseline-2026.2.0/old-impl/`.
 
-For the current first slice, parity emphasis shifts toward:
+For synchronous and deterministic work (parsing, config, credentials, ingress),
+parity emphasis shifts toward:
 
 - deterministic parse and validation outcomes
 - fixture-backed normalization behavior
 - preservation of precedence and fallback rules
 - explicit non-claiming of runtime behavior that is not yet implemented
-tests under nominal load. It needs evidence that its lifecycle, backpressure,
-and shutdown semantics still match `baseline-2026.2.0/old-impl/`.

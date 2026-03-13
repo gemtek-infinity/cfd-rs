@@ -1,70 +1,44 @@
 # Documentation Map
 
-This directory holds repository policy, scope, and phase documents.
-Use this directory as an index, not a default full-context load.
-
-For MCP-backed retrieval, prefer this order:
-
-1. snapshot
-2. brief
-3. bundle
-4. targeted reads
-
-For refactor, hotspot, or cognitive-load work, after the first bounded MCP routing step:
-5. MCP Debtmap touched-files or narrow path-prefix review
-
-Do not start with full-repo document loading or broad repo-wide Debtmap output when a smaller bounded MCP slice can answer first.
+This directory holds repository policy, scope, status, and parity documents.
+Use this directory as an index. Load the smallest relevant file first.
 
 ## Start Here
 
-- `docs/ai-context-routing.md`
-  - minimum-file routing for AI and human cold starts
-  - staged retrieval sequence
-  - MCP routing and bounded Debtmap usage for refactor and hotspot work
-  - canonical file-level and function-level Debtmap score categories
-  - marker-debt exclusion policy for rewrite-phase bookkeeping
-- `docs/compatibility-scope.md`
-  - what "compatible" means
-- `docs/promotion-gates.md`
-  - current phase model
-  - promotion boundaries
-- `docs/dependency-policy.md`
-  - dependency admission
-  - workspace dependency truth
-- `docs/allocator-runtime-baseline.md`
-  - allocator and runtime baseline
+- `docs/ai-context-routing.md` — minimum-file routing for cold starts
+- `REWRITE_CHARTER.md` — non-negotiables, active lane, scope
+- `STATUS.md` — short current-state index
+- `docs/promotion-gates.md` — phase model and promotion boundaries
 
-## Policy Groups
+## Policy
 
-### current repository state
+- `docs/compatibility-scope.md` — what "compatible" means
+- `docs/build-artifact-policy.md` — build and artifact policy
+- `docs/dependency-policy.md` — dependency admission, workspace dependency truth
+- `docs/allocator-runtime-baseline.md` — allocator and runtime baseline
+- `docs/go-rust-semantic-mapping.md` — concurrency and lifecycle doctrine
 
-- `STATUS.md`
-- `docs/status/rewrite-foundation.md`
-- `docs/status/active-surface.md`
-- `docs/status/first-slice-parity.md`
-- `docs/status/porting-rules.md`
+## Current State
 
-### scope and compatibility
+- `docs/status/rewrite-foundation.md` — baseline, workspace shape, source precedence
+- `docs/status/active-surface.md` — current crate content and absent surfaces
+- `docs/status/phase-5-overhaul.md` — Big Phase 5 execution tracker
 
-- `docs/compatibility-scope.md`
-- `docs/first-slice-freeze.md`
+### Historical (first-slice era)
 
-### phase and delivery control
+- `docs/status/first-slice-parity.md` — first-slice closure record
+- `docs/status/porting-rules.md` — first-slice porting rules
+- `docs/first-slice-freeze.md` — first-slice freeze record
 
-- `docs/promotion-gates.md`
-- `docs/build-artifact-policy.md`
+## Parity Audit And Tracking
 
-### runtime and dependency rules
+Parity navigation index: `docs/parity/README.md`
 
-- `docs/allocator-runtime-baseline.md`
-- `docs/go-rust-semantic-mapping.md`
-- `docs/dependency-policy.md`
+Implementation checklists (live parity ledgers):
 
-### parity audit and tracking
-
-- `docs/parity/cli/implementation-checklist.md` — CLI parity ledger (32 rows)
-- `docs/parity/cdc/implementation-checklist.md` — CDC parity ledger (44 rows)
-- `docs/parity/his/implementation-checklist.md` — HIS parity ledger (74 rows)
+- `docs/parity/cli/implementation-checklist.md` — CLI (32 rows)
+- `docs/parity/cdc/implementation-checklist.md` — CDC (44 rows)
+- `docs/parity/his/implementation-checklist.md` — HIS (74 rows)
 
 Feature-group audit documents:
 
@@ -83,22 +57,22 @@ Feature-group audit documents:
 
 Baseline evidence captures: `docs/parity/cli/captures/`
 
-### overhaul execution
+## Overhaul Execution
 
 - `FINAL_PLAN.md` — staged execution plan with sub-stage gates
 - `FINAL_PHASE.md` — detailed execution reference
-- `docs/status/phase-5-overhaul.md` — overhaul status tracker
 
-### human-facing Rust coding references
+## Operator Guidance
 
-- `.github/instructions/rust.instructions.md`
-- `docs/code-style.md`
-- `docs/engineering-standards.md`
+- `docs/deployment-notes.md` — deployment contract, build-to-run flow, known gaps
 
-Use the docs files as deeper reference docs; for AI cold starts prefer `.github/instructions/rust.instructions.md` only after routing identifies Rust-local editing work.
+## ADRs
 
-### ADRs
+- `docs/adr/` — architecture decision records; load the smallest relevant one
 
-- `docs/adr/`
+## Rust Coding References
 
-Load the smallest relevant file first.
+- `.github/instructions/rust.instructions.md` — AI and human Rust editing rules
+- `docs/code-style.md` — code style reference (30 rules with quick-reference summary)
+- `docs/engineering-standards.md` — engineering standards reference (13 standards with quick-reference summary)
+- `CONTRIBUTING.md` — contributor guide (build, test, workflow, parity evidence)

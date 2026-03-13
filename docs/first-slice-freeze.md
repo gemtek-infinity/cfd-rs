@@ -1,5 +1,20 @@
 # First Slice Freeze
 
+> **Historical record.**
+> The first slice described in this document is complete and parity-backed
+> (Phase 1B.6 closure, 21/21 fixtures matched).
+> This document is retained as the frozen definition of what the first slice
+> included and excluded.
+> It does not govern broader parity work.
+>
+> Broader parity is now tracked by the three final-phase domain ledgers:
+>
+> - `docs/parity/cli/implementation-checklist.md`
+> - `docs/parity/cdc/implementation-checklist.md`
+> - `docs/parity/his/implementation-checklist.md`
+>
+> For the current execution plan, see `FINAL_PHASE.md` and `FINAL_PLAN.md`.
+
 This document freezes the first accepted implementation slice so that neither
 humans nor AI assistants reinterpret it while implementation begins.
 

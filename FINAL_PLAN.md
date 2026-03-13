@@ -932,7 +932,7 @@ If drift is discovered:
 | 1.1 | CLI audit | **complete** |
 | 1.2 | CDC audit | **complete** |
 | 1.3 | HIS audit | **complete** |
-| 2.1 | Master repository truth | not started |
+| 2.1 | Master repository truth | **complete** |
 | 2.2 | Scope, compatibility, governance | not started |
 | 2.3 | Historical phase and parity docs | not started |
 | 2.4 | Operator and contributor guidance | not started |

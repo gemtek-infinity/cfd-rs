@@ -1,5 +1,19 @@
 # First Slice And Parity Status
 
+> **Historical record — first slice only.**
+> This file documents the implementation history and parity closure for the
+> accepted first slice (config, credentials, ingress).
+> The first slice is complete and parity-backed.
+> This file does not represent broader rewrite parity status.
+>
+> Broader parity is now tracked by the three final-phase domain ledgers:
+>
+> - `docs/parity/cli/implementation-checklist.md`
+> - `docs/parity/cdc/implementation-checklist.md`
+> - `docs/parity/his/implementation-checklist.md`
+>
+> For the current execution plan, see `FINAL_PHASE.md` and `FINAL_PLAN.md`.
+
 This file captures the accepted first-slice implementation history and the
 current parity-backed state for that slice.
 

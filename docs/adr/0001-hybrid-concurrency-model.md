@@ -74,17 +74,16 @@ The following are rejected as default architecture:
 - detached tasks without owner tracking
 - global mutable state behind async locks as a first resort
 
-## Current Scaffold Implication
+## Current Operational State
 
-This ADR does not require Tokio to appear in manifests before async subsystem
-work begins.
+The concurrency model described by this ADR is now operationally active.
 
-For the current scaffold:
+Tokio, `tokio-util`, and related primitives are admitted in workspace
+manifests and used by the admitted runtime/lifecycle shell, QUIC transport
+core, Pingora proxy seam, and observability surface.
 
-- the accepted first slice should remain primarily synchronous
-- manifests should not preload async runtime dependencies merely because the ADR
-  exists
-- concurrency doctrine becomes operational when runtime slices start landing
+The hybrid concurrency model — actor-inspired control plane and
+Tokio structured-async data plane — governs all new runtime subsystem work.
 
 ## Relationship To Other Documents
 
