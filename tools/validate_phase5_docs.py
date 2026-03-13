@@ -15,15 +15,23 @@ LEDGER_PATHS = [
     REPO_ROOT / "docs/parity/his/implementation-checklist.md",
 ]
 ROADMAP_INDEX_PATH = REPO_ROOT / "docs/phase-5/roadmap-index.csv"
+SOURCE_MAP_PATH = REPO_ROOT / "docs/parity/source-map.csv"
 STATUS_PATH = REPO_ROOT / "STATUS.md"
+CHARTER_PATH = REPO_ROOT / "REWRITE_CHARTER.md"
+LOGGING_DOC_PATH = REPO_ROOT / "docs/parity/logging-compatibility.md"
+JUSTFILE_PATH = REPO_ROOT / "Justfile"
 GITIGNORE_PATH = REPO_ROOT / ".gitignore"
 SELF_PATH = REPO_ROOT / "tools/validate_phase5_docs.py"
+CONTRACT_LITERAL_VALIDATOR_PATH = REPO_ROOT / "tools/validate_contract_literals.py"
 MCP_CONFIG_PATH = REPO_ROOT / ".vscode/mcp.json"
 AGENTS_PATH = REPO_ROOT / "AGENTS.md"
 COPILOT_PATH = REPO_ROOT / ".github/copilot-instructions.md"
 ROUTING_PATH = REPO_ROOT / "docs/ai-context-routing.md"
 RUST_INSTRUCTIONS_PATH = REPO_ROOT / ".github/instructions/rust.instructions.md"
 CONTRIBUTING_PATH = REPO_ROOT / "CONTRIBUTING.md"
+README_PATH = REPO_ROOT / "README.md"
+DEPENDENCY_POLICY_PATH = REPO_ROOT / "docs/dependency-policy.md"
+ROADMAP_PATH = REPO_ROOT / "docs/phase-5/roadmap.md"
 MCP_MANIFEST_PATH = REPO_ROOT / "tools/mcp-cfd-rs/Cargo.toml"
 REQUIRED_STATUS_HEADINGS = [
     "## Active Snapshot",
@@ -49,6 +57,8 @@ LEGACY_PATTERNS = {
     "tools/first_slice_go_capture": "legacy Go capture path is still referenced",
     "fixtures/first-slice": "legacy fixture path is still referenced",
     "phase_1": "stage-named test artifact is still referenced",
+    "baseline-2026.2.0/design-audit/": "historical audit tree is still referenced",
+    "ADR-0006-standard-format-and-workspace-dependency-admission.md": "stale ADR path is still referenced",
 }
 TEXT_FILE_NAMES = {
     "AGENTS.md",
@@ -56,10 +66,11 @@ TEXT_FILE_NAMES = {
     "README.md",
     "REWRITE_CHARTER.md",
     "STATUS.md",
+    "Justfile",
     "Cargo.toml",
     "Cargo.lock",
 }
-TEXT_SUFFIXES = {".md", ".rs", ".py", ".go", ".toml", ".yml", ".yaml", ".csv"}
+TEXT_SUFFIXES = {".md", ".rs", ".py", ".go", ".toml", ".yml", ".yaml", ".csv", ".json"}
 CRATE_MANIFESTS = {
     "cfdrs-bin": REPO_ROOT / "crates/cfdrs-bin/Cargo.toml",
     "cfdrs-cli": REPO_ROOT / "crates/cfdrs-cli/Cargo.toml",
@@ -94,18 +105,60 @@ REQUIRED_OPERATIONAL_MCP_GUIDANCE = {
     CONTRIBUTING_PATH: "operational MCP target is debtmap-enabled",
     ROUTING_PATH: "required debtmap-enabled MCP surface",
 }
+REQUIRED_PUBLIC_RECIPES = {
+    "help:",
+    "doctor:",
+    "fmt:",
+    "fmt-check:",
+    "validate-governance:",
+    "validate-app:",
+    "validate-tools:",
+    "validate-pr:",
+    "mcp-run:",
+    "mcp-run-maintenance:",
+    "mcp-smoke:",
+    "mcp-smoke-maintenance:",
+    "shared-behavior-capture:",
+    "shared-behavior-compare:",
+    "preview-test:",
+    "preview-build lane:",
+    "preview-smoke lane:",
+    "preview-package lane:",
+    "preview-all lane:",
+}
+LOGGING_ROWS = {
+    "CLI-003",
+    "CLI-023",
+    "CLI-024",
+    "CDC-023",
+    "CDC-024",
+    "CDC-026",
+    "CDC-038",
+    "HIS-036",
+    "HIS-050",
+    "HIS-063",
+    "HIS-064",
+    "HIS-065",
+    "HIS-067",
+    "HIS-068",
+}
 
 
 def main() -> int:
     errors: list[str] = []
     validate_row_coverage(errors)
+    validate_source_map(errors)
     validate_status_contract(errors)
+    validate_charter_contract(errors)
+    validate_logging_contract(errors)
     validate_evidence_vocabulary(errors)
     validate_legacy_cleanup(errors)
     validate_architecture(errors)
     validate_gcfgr_ignored(errors)
     validate_agent_guidance(errors)
     validate_editor_mcp_config(errors)
+    validate_justfile_contract(errors)
+    validate_cloudflare_rs_gate(errors)
 
     if errors:
         for error in errors:
@@ -147,6 +200,50 @@ def validate_row_coverage(errors: list[str]) -> None:
         )
 
 
+def validate_source_map(errors: list[str]) -> None:
+    ledger_row_ids: list[str] = []
+    for path in LEDGER_PATHS:
+        ledger_row_ids.extend(parse_ledger_row_ids(path))
+
+    with SOURCE_MAP_PATH.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+
+    source_row_ids = [row["row_id"].strip() for row in rows if row.get("row_id")]
+    duplicates = sorted({row_id for row_id in source_row_ids if source_row_ids.count(row_id) > 1})
+    if duplicates:
+        errors.append(f"duplicate source-map row IDs found: {', '.join(duplicates)}")
+
+    missing = sorted(set(ledger_row_ids) - set(source_row_ids))
+    extra = sorted(set(source_row_ids) - set(ledger_row_ids))
+    if missing:
+        errors.append(f"source-map missing ledger rows: {', '.join(missing)}")
+    if extra:
+        errors.append(f"source-map has unknown extra rows: {', '.join(extra)}")
+
+    for row in rows:
+        row_id = row["row_id"].strip()
+        feature_doc = row["feature_doc"].strip()
+        baseline_paths = [value.strip() for value in row["baseline_paths"].split(";") if value.strip()]
+        symbol_hints = [value.strip() for value in row["symbol_hints"].split(";") if value.strip()]
+
+        if not feature_doc:
+            errors.append(f"source-map row {row_id} is missing feature_doc")
+        elif not (REPO_ROOT / feature_doc).exists():
+            errors.append(f"source-map row {row_id} points to missing feature_doc: {feature_doc}")
+
+        if not baseline_paths:
+            errors.append(f"source-map row {row_id} has no baseline_paths")
+        for baseline_path in baseline_paths:
+            resolved = REPO_ROOT / baseline_path
+            if not baseline_path.startswith("baseline-2026.2.0/old-impl/"):
+                errors.append(f"source-map row {row_id} has non-baseline path: {baseline_path}")
+            elif not resolved.exists() or not resolved.is_file():
+                errors.append(f"source-map row {row_id} points to missing baseline file: {baseline_path}")
+
+        if not symbol_hints:
+            errors.append(f"source-map row {row_id} has no symbol_hints")
+
+
 def validate_status_contract(errors: list[str]) -> None:
     text = STATUS_PATH.read_text(encoding="utf-8")
     for heading in REQUIRED_STATUS_HEADINGS:
@@ -157,12 +254,47 @@ def validate_status_contract(errors: list[str]) -> None:
     if active_snapshot is None:
         return
 
-    if len(active_snapshot) > 2000:
-        errors.append("STATUS.md Active Snapshot exceeds 2000 characters")
+    if len(active_snapshot) > 2500:
+        errors.append("STATUS.md Active Snapshot exceeds 2500 characters")
 
     non_empty_lines = [line for line in active_snapshot.splitlines() if line.strip()]
-    if len(non_empty_lines) > 16:
-        errors.append("STATUS.md Active Snapshot exceeds 16 non-empty lines")
+    if len(non_empty_lines) > 18:
+        errors.append("STATUS.md Active Snapshot exceeds 18 non-empty lines")
+
+    if "production-alpha logging blocker set" not in active_snapshot:
+        errors.append("STATUS.md Active Snapshot must call out the production-alpha logging blocker set")
+
+
+def validate_charter_contract(errors: list[str]) -> None:
+    text = CHARTER_PATH.read_text(encoding="utf-8")
+
+    if "Source-of-truth routing" in text:
+        errors.append("REWRITE_CHARTER.md must not contain a routing/index section")
+    if "REWRITE_CHARTER.md" in text:
+        errors.append("REWRITE_CHARTER.md must not self-reference")
+    if "design-audit" in text:
+        errors.append("REWRITE_CHARTER.md must not reference design-audit")
+
+
+def validate_logging_contract(errors: list[str]) -> None:
+    text = LOGGING_DOC_PATH.read_text(encoding="utf-8")
+    for row_id in sorted(LOGGING_ROWS):
+        if row_id not in text:
+            errors.append(f"docs/parity/logging-compatibility.md must mention {row_id}")
+
+    for owner in ("cfdrs-cli", "cfdrs-his", "cfdrs-cdc"):
+        if owner not in text:
+            errors.append(f"docs/parity/logging-compatibility.md must mention owner {owner}")
+
+    if "production-alpha blocker" not in text:
+        errors.append("docs/parity/logging-compatibility.md must say logging is a production-alpha blocker")
+
+    roadmap_text = ROADMAP_PATH.read_text(encoding="utf-8")
+    status_text = STATUS_PATH.read_text(encoding="utf-8")
+    if "logging blocker" not in roadmap_text.lower():
+        errors.append("docs/phase-5/roadmap.md must keep the logging blocker set explicit")
+    if "production-alpha logging blocker set" not in status_text:
+        errors.append("STATUS.md must keep the logging blocker set explicit")
 
 
 def validate_evidence_vocabulary(errors: list[str]) -> None:
@@ -212,6 +344,11 @@ def validate_agent_guidance(errors: list[str]) -> None:
         if "cargo +nightly fmt" not in text:
             errors.append(f"{path.relative_to(REPO_ROOT)} must require cargo +nightly fmt")
 
+    for path in (AGENTS_PATH, COPILOT_PATH, CONTRIBUTING_PATH, ROUTING_PATH, README_PATH):
+        text = path.read_text(encoding="utf-8")
+        if "Justfile" not in text and "just " not in text:
+            errors.append(f"{path.relative_to(REPO_ROOT)} must route normal execution through Justfile")
+
     for path in (AGENTS_PATH, COPILOT_PATH, ROUTING_PATH):
         text = path.read_text(encoding="utf-8")
         for snippet in REQUIRED_CORE_TOOL_SNIPPETS:
@@ -240,24 +377,12 @@ def validate_editor_mcp_config(errors: list[str]) -> None:
         errors.append(".vscode/mcp.json must define the cfd-rs-memory server")
         return
 
-    if core.get("command") != "cargo":
-        errors.append(".vscode/mcp.json must launch cfd-rs-memory via cargo")
+    if core.get("command") != "just":
+        errors.append(".vscode/mcp.json must launch cfd-rs-memory via just")
 
     args = core.get("args")
-    if not isinstance(args, list):
-        errors.append(".vscode/mcp.json cfd-rs-memory args must be a list")
-        return
-
-    for required_arg in ("run", "--locked", "--quiet", "--release", "--features", "debtmap"):
-        if required_arg not in args:
-            errors.append(f".vscode/mcp.json cfd-rs-memory args must include {required_arg}")
-
-    if "--no-default-features" in args:
-        errors.append(".vscode/mcp.json must not start cfd-rs-memory with --no-default-features")
-
-    manifest_path = "${workspaceFolder}/tools/mcp-cfd-rs/Cargo.toml"
-    if "--manifest-path" not in args or manifest_path not in args:
-        errors.append(".vscode/mcp.json must point cfd-rs-memory at tools/mcp-cfd-rs/Cargo.toml")
+    if args != ["mcp-run"]:
+        errors.append(".vscode/mcp.json cfd-rs-memory args must be ['mcp-run']")
 
     env = core.get("env", {})
     if env.get("MCP_LOG") != "brief":
@@ -270,6 +395,51 @@ def validate_editor_mcp_config(errors: list[str]) -> None:
     default_features = feature_table.get("default", [])
     if "debtmap" not in default_features:
         errors.append("tools/mcp-cfd-rs/Cargo.toml must keep debtmap in the default feature set")
+
+
+def validate_justfile_contract(errors: list[str]) -> None:
+    if not JUSTFILE_PATH.exists():
+        errors.append("Justfile is missing")
+        return
+
+    text = JUSTFILE_PATH.read_text(encoding="utf-8")
+    if 'cargo +nightly fmt --all' not in text:
+        errors.append("Justfile fmt recipe must run cargo +nightly fmt --all")
+    if 'cargo +nightly fmt --all --check' not in text:
+        errors.append("Justfile fmt-check recipe must run cargo +nightly fmt --all --check")
+
+    public_headers = set()
+    recipe_header = re.compile(r"^([A-Za-z0-9_-]+(?:\s+[A-Za-z0-9_-]+)?)\s*:")
+    for line in text.splitlines():
+        if line.startswith((" ", "\t", "#")) or not line.strip():
+            continue
+        if line.startswith(("set ", "alias ", "export ")):
+            continue
+        match = recipe_header.match(line)
+        if not match:
+            continue
+        header = f"{match.group(1)}:"
+        if header.startswith("_"):
+            continue
+        public_headers.add(header)
+
+    if public_headers != REQUIRED_PUBLIC_RECIPES:
+        missing = sorted(REQUIRED_PUBLIC_RECIPES - public_headers)
+        extra = sorted(public_headers - REQUIRED_PUBLIC_RECIPES)
+        if missing:
+            errors.append(f"Justfile is missing public recipes: {', '.join(missing)}")
+        if extra:
+            errors.append(f"Justfile has unexpected public recipes: {', '.join(extra)}")
+
+    if not CONTRACT_LITERAL_VALIDATOR_PATH.exists():
+        errors.append("tools/validate_contract_literals.py is missing")
+
+
+def validate_cloudflare_rs_gate(errors: list[str]) -> None:
+    text = DEPENDENCY_POLICY_PATH.read_text(encoding="utf-8")
+    for snippet in ("cloudflare-rs", "CDC-033", "CDC-034", "CDC-038", "no admission"):
+        if snippet not in text:
+            errors.append(f"docs/dependency-policy.md must keep the cloudflare-rs gate snippet: {snippet}")
 
 
 def parse_ledger_row_ids(path: Path) -> list[str]:

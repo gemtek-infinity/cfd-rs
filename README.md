@@ -17,7 +17,8 @@ What exists now:
 - QUIC tunnel shell with quiche + BoringSSL
 - Pingora proxy seam with limited origin dispatch
 - registration and stream type boundaries
-- parity ledgers across CLI, CDC, and HIS
+- parity ledgers and source routing across CLI, CDC, and HIS
+- debtmap-enabled MCP routing surface
 
 Largest remaining gaps:
 
@@ -27,6 +28,7 @@ Largest remaining gaps:
 - broad CLI parity beyond the current alpha surface
 - Linux service install/uninstall and systemd integration
 - local HTTP endpoints, config reload, and file watcher
+- logging compatibility across local sinks, journald/systemd, and upstream management flows
 - final performance-optimization architectural overhaul
 
 ## Active lane
@@ -42,11 +44,11 @@ Largest remaining gaps:
 - `STATUS.md` — the only tracked status file
 - `docs/phase-5/roadmap.md` — normative Phase 5 roadmap
 - `docs/parity/README.md` — parity index
-- `docs/parity/cli/implementation-checklist.md` — CLI ledger
-- `docs/parity/cdc/implementation-checklist.md` — CDC ledger
-- `docs/parity/his/implementation-checklist.md` — HIS ledger
+- `docs/parity/source-map.csv` — exact row-to-baseline routing
+- `docs/parity/logging-compatibility.md` — cross-domain logging contract
 - `REWRITE_CHARTER.md` — non-negotiables and scope
 - `docs/promotion-gates.md` — phase model and promotion rules
+- `Justfile` — authoritative command surface
 
 ## Workspace structure
 
@@ -58,17 +60,27 @@ Largest remaining gaps:
 | `crates/cfdrs-his` | host interaction services |
 | `crates/cfdrs-shared` | narrowly admitted shared types |
 
-## Building
+## Building And Validation
+
+Normal entry:
 
 ```bash
-cargo build
-cargo test --workspace
-cargo clippy --workspace --all-targets --locked -- -D warnings
+just validate-pr
+```
+
+Useful focused recipes:
+
+```bash
+just doctor
+just fmt
+just validate-governance
+just validate-app
+just validate-tools
 ```
 
 ## Contributing
 
-See `CONTRIBUTING.md` for build, test, parity-evidence, and workflow guidance.
+See `CONTRIBUTING.md` for workflow, parity-evidence, and CI guidance.
 
 Useful entrypoints:
 

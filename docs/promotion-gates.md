@@ -62,7 +62,8 @@ Current gate requires:
 
 - baseline-backed closure of the lane-blocking CDC rows called out in `STATUS.md`
 - roadmap-index ownership and evidence references that match the CDC ledger
-- no reliance on deleted Phase 5 planning/status files or stage-named evidence surfaces
+- no reliance on deleted Phase 5 planning/status files or historical audit routing
+- the cross-domain logging blocker set stays explicit and cannot be treated as a post-alpha cleanup item
 
 ## Production-Alpha Gate
 
@@ -73,6 +74,7 @@ Production-alpha readiness requires all of the following after `Performance Arch
 - no parity regressions across the admitted lane
 - architecture boundaries still satisfy the crate-dependency contract in `STATUS.md`
 - performance-critical hot paths are rerun with the admitted probes or benchmarks
+- logging compatibility reruns are green across CLI, local sinks, journald/systemd, and upstream management flows
 - deployment, failure/recovery, and parity evidence reruns are green
 
 ## Canonical Sources

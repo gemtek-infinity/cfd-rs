@@ -39,8 +39,7 @@ When editing Markdown in this repository:
 ## Frozen inputs
 
 - do not edit [baseline-2026.2.0/old-impl/](../../baseline-2026.2.0/old-impl/)
-- do not edit [baseline-2026.2.0/design-audit/](../../baseline-2026.2.0/design-audit/)
-- if frozen inputs appear inconsistent, update repo-local governance or status docs instead
+- if frozen inputs appear inconsistent, update repo-local governance, status, or parity docs instead
 
 ## Writing style
 

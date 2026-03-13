@@ -9,7 +9,7 @@ slice, not to predeclare the full future dependency graph.
 ## Non-Negotiable Constraints
 
 - [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) is frozen input
-- [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/) is frozen input
+- [docs/parity/source-map.csv](parity/source-map.csv) is the derived row-to-baseline routing surface
 - the Rust workspace version remains `2026.2.0-alpha.202603` until changed by
   explicit baseline/versioning policy
 - manifests should describe code that exists today or the currently accepted
@@ -68,6 +68,35 @@ For mature, standard, security-relevant formats:
 
 If a change chooses bespoke parsing instead of a mature crate or a direct
 upstream loader, that choice should be justified explicitly.
+
+## Cloudflare REST API Crate Gate
+
+`cloudflare-rs` is not admitted during preparation.
+
+Evaluation is gated only for the CDC API slice and dependent CLI flows:
+
+- `CDC-033`
+- `CDC-034`
+- `CDC-038`
+- CLI tunnel CRUD and management-token flows that depend on those rows
+
+The evaluation must reject `cloudflare-rs` for:
+
+- transport, registration, or control-stream paths
+- management log sinks or `/logs` runtime handling
+- service-management or host-runtime behavior
+- any other runtime-critical path
+
+The gate checklist must cover:
+
+- endpoint coverage against the exact required rows
+- response-envelope and error-mapping fit
+- auth model fit
+- TLS and HTTP client fit with repo constraints
+- dependency footprint and maintenance status
+
+Default decision during preparation: no admission. Record the gate and defer the
+admit-or-reject decision to the CDC API implementation slice.
 
 ## Current Workspace Rule
 

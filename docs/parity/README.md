@@ -1,9 +1,10 @@
 # Parity Tracking
 
-This directory holds the live parity ledgers and feature-group audit documents
-for the Rust rewrite.
+This directory holds the live parity ledgers, feature-group documents, and
+source-routing data for the rewrite.
 
-Parity is tracked against the frozen Go baseline `2026.2.0` across three domains.
+Parity is tracked against the frozen Go baseline `2026.2.0` across three
+domains.
 
 ## Domains
 
@@ -42,7 +43,12 @@ behavior.
 - `his/diagnostics-and-collection.md`
 - `his/reload-and-watcher.md`
 
-## Cross-domain summary
+### Cross-domain contracts
+
+- `source-map.csv` — exact row-to-baseline routing
+- `logging-compatibility.md` — logging, journald/systemd, and upstream log-streaming contract
+
+## Cross-Domain Summary
 
 | Domain | Rows | Critical | High |
 | --- | --- | --- | --- |
@@ -54,10 +60,10 @@ behavior.
 Use `STATUS.md` for the current priority queue and `docs/phase-5/roadmap.md`
 plus `docs/phase-5/roadmap-index.csv` for implementation order.
 
-## Source of truth
+## Source Of Truth
 
 - behavior truth: `baseline-2026.2.0/old-impl/`
-- design audit: `baseline-2026.2.0/design-audit/`
+- derived parity routing: `docs/parity/source-map.csv`
 - status truth: `STATUS.md`
 - roadmap truth: `docs/phase-5/roadmap.md`
 

@@ -41,11 +41,14 @@ jobs:
                         - 'Cargo.toml'
                         - 'Cargo.lock'
                         - 'rustfmt.toml'
+                        - 'Justfile'
                       tools:
                         - 'tools/**'
                         - 'Cargo.toml'
                         - 'Cargo.lock'
                         - '.debtmap.toml'
+                        - '.vscode/mcp.json'
+                        - 'Justfile'
                         - 'STATUS.md'
                         - 'REWRITE_CHARTER.md'
                         - 'docs/ai-context-routing.md'
@@ -65,8 +68,10 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v6
-            - name: Validate Phase 5 docs and architecture contract
-              run: python3 tools/validate_phase5_docs.py
+            - name: Install just
+              uses: taiki-e/install-action@just
+            - name: Validate governance and prep contracts
+              run: just validate-governance
 
     validate-app:
         needs: changes
@@ -75,6 +80,8 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v6
+            - name: Install just
+              uses: taiki-e/install-action@just
             - name: Install stable toolchain
               run: |
                   rustup toolchain install stable --profile minimal --no-self-update
@@ -98,33 +105,8 @@ jobs:
                   key: ${{ runner.os }}-cargo-app-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
                       ${{ runner.os }}-cargo-app-
-            - name: Format (nightly rustfmt)
-              run: cargo +nightly fmt --all --check
-            - name: Check (stable)
-              run: |
-                  cargo check --locked \
-                    -p cfdrs-bin \
-                    -p cfdrs-cdc \
-                    -p cfdrs-cli \
-                    -p cfdrs-his \
-                    -p cfdrs-shared
-            - name: Clippy (stable)
-              run: |
-                  cargo clippy --all-targets --locked \
-                    -p cfdrs-bin \
-                    -p cfdrs-cdc \
-                    -p cfdrs-cli \
-                    -p cfdrs-his \
-                    -p cfdrs-shared \
-                    -- -D warnings
-            - name: Test (stable)
-              run: |
-                  cargo test --locked \
-                    -p cfdrs-bin \
-                    -p cfdrs-cdc \
-                    -p cfdrs-cli \
-                    -p cfdrs-his \
-                    -p cfdrs-shared
+            - name: Validate app crates
+              run: just validate-app
 
     validate-tools:
         needs: changes
@@ -133,6 +115,8 @@ jobs:
         steps:
             - name: Checkout
               uses: actions/checkout@v6
+            - name: Install just
+              uses: taiki-e/install-action@just
             - name: Install stable toolchain
               run: |
                   rustup toolchain install stable --profile minimal --no-self-update
@@ -140,6 +124,11 @@ jobs:
                   rustup default stable
                   rustc -Vv
                   cargo -V
+            - name: Install nightly rustfmt
+              run: |
+                  rustup toolchain install nightly --profile minimal --no-self-update
+                  rustup component add rustfmt --toolchain nightly
+                  rustup run nightly rustfmt -V
             - name: Cache Cargo registry and build
               uses: actions/cache@v5
               with:
@@ -151,38 +140,8 @@ jobs:
                   key: ${{ runner.os }}-cargo-tools-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
                       ${{ runner.os }}-cargo-tools-
-            - name: Check MCP required surface (stable)
-              run: cargo check --locked -p cfd-rs-memory --features debtmap
-            - name: Clippy MCP required surface (stable)
-              run: cargo clippy --all-targets --locked -p cfd-rs-memory --features debtmap -- -D warnings
-            - name: Test MCP required surface (stable)
-              run: cargo test --locked -p cfd-rs-memory --features debtmap
-            - name: Smoke-start MCP required surface
-              run: |
-                  set +e
-                  timeout 5s cargo run --quiet --locked -p cfd-rs-memory --features debtmap < /dev/null > /tmp/mcp-required.log 2>&1
-                  status=$?
-                  set -e
-                  if [ "$status" -ne 0 ] && [ "$status" -ne 124 ] && ! grep -q "mcp:ready" /tmp/mcp-required.log; then
-                    cat /tmp/mcp-required.log
-                    exit "$status"
-                  fi
-            - name: Check MCP maintenance surface (stable)
-              run: cargo check --locked -p cfd-rs-memory --no-default-features
-            - name: Clippy MCP maintenance surface (stable)
-              run: cargo clippy --all-targets --locked -p cfd-rs-memory --no-default-features -- -D warnings
-            - name: Test MCP maintenance surface (stable)
-              run: cargo test --locked -p cfd-rs-memory --no-default-features
-            - name: Smoke-start MCP maintenance surface
-              run: |
-                  set +e
-                  timeout 5s cargo run --quiet --locked -p cfd-rs-memory --no-default-features < /dev/null > /tmp/mcp-maintenance.log 2>&1
-                  status=$?
-                  set -e
-                  if [ "$status" -ne 0 ] && [ "$status" -ne 124 ] && ! grep -q "mcp:ready" /tmp/mcp-maintenance.log; then
-                    cat /tmp/mcp-maintenance.log
-                    exit "$status"
-                  fi
+            - name: Validate tool crates and MCP surfaces
+              run: just validate-tools
 
     ci-gate:
         if: ${{ always() }}

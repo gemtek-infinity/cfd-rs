@@ -5,7 +5,7 @@
   "report_kind": "normalized-config.v1",
   "comparison": "exact-json",
   "source_refs": [
-    "baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §3-§7",
+    "baseline-2026.2.0/old-impl/config/configuration.go §3-§7",
     "baseline-2026.2.0/old-impl/config/configuration_test.go::TestConfigFileSettings"
   ],
   "payload": {

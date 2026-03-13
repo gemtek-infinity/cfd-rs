@@ -1,14 +1,12 @@
 use serde::Serialize;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub const STATUS_PATH: &str = "STATUS.md";
 pub const ROADMAP_PATH: &str = "docs/phase-5/roadmap.md";
 pub const ROADMAP_INDEX_PATH: &str = "docs/phase-5/roadmap-index.csv";
-pub const DESIGN_AUDIT_INDEX_PATH: &str = "baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md";
-pub const DESIGN_AUDIT_REFERENCE_PATH: &str = "baseline-2026.2.0/design-audit/REPO_REFERENCE.md";
-pub const BASELINE_IMPL_ROOT: &str = "baseline-2026.2.0/old-impl";
+pub const SOURCE_MAP_PATH: &str = "docs/parity/source-map.csv";
 
 const MILESTONE_ORDER: &[&str] = &[
     "Program Reset",
@@ -101,9 +99,10 @@ pub struct ParityRowDetailsResponse {
     pub domain: String,
     pub section: String,
     pub feature_group: String,
+    pub feature_doc: String,
     pub baseline_source: String,
     pub baseline_paths: Vec<String>,
-    pub design_audit_matches: Vec<String>,
+    pub symbol_hints: Vec<String>,
     pub baseline_behavior_or_contract: String,
     pub ledger_status: LedgerStatus,
     pub roadmap: RoadmapStatus,
@@ -137,9 +136,10 @@ pub struct BaselineSourceMappingResponse {
     pub source_paths: Vec<String>,
     pub row_id: String,
     pub domain: String,
+    pub feature_doc: String,
     pub baseline_source: String,
     pub baseline_paths: Vec<String>,
-    pub design_audit_matches: Vec<String>,
+    pub symbol_hints: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -150,6 +150,13 @@ struct RoadmapIndexEntry {
     status_bucket: String,
     blocked_by: String,
     evidence_ref: String,
+}
+
+#[derive(Debug, Clone)]
+struct SourceMapEntry {
+    feature_doc: String,
+    baseline_paths: Vec<String>,
+    symbol_hints: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -244,26 +251,29 @@ pub fn parity_row_details(repo_root: &Path, row_id: &str) -> Result<ParityRowDet
         .find(|entry| entry.row_id == normalized)
         .ok_or_else(|| format!("row not found in {domain} ledger: {normalized}"))?;
     let index = parse_roadmap_index(repo_root)?;
+    let source_map = parse_source_map(repo_root)?;
     let roadmap = index
         .get(&normalized)
         .ok_or_else(|| format!("row not found in roadmap index: {normalized}"))?;
-    let baseline_paths = resolve_baseline_paths(repo_root, &row.baseline_source);
-    let design_audit_matches = design_audit_matches(repo_root, &row.baseline_source, &row.feature_group)?;
+    let source_map_entry = source_map
+        .get(&normalized)
+        .ok_or_else(|| format!("row not found in source map: {normalized}"))?;
 
     Ok(ParityRowDetailsResponse {
-        source_paths: vec![
+        source_paths: collect_source_paths(&[
             ledger_path_for_domain(&domain).to_string(),
             ROADMAP_INDEX_PATH.to_string(),
-            DESIGN_AUDIT_INDEX_PATH.to_string(),
-            DESIGN_AUDIT_REFERENCE_PATH.to_string(),
-        ],
+            SOURCE_MAP_PATH.to_string(),
+            source_map_entry.feature_doc.clone(),
+        ]),
         row_id: row.row_id,
         domain: row.domain,
         section: row.section,
         feature_group: row.feature_group,
+        feature_doc: source_map_entry.feature_doc.clone(),
         baseline_source: row.baseline_source.clone(),
-        baseline_paths,
-        design_audit_matches,
+        baseline_paths: source_map_entry.baseline_paths.clone(),
+        symbol_hints: source_map_entry.symbol_hints.clone(),
         baseline_behavior_or_contract: row.baseline_behavior_or_contract,
         ledger_status: LedgerStatus {
             rust_owner_now: row.rust_owner_now,
@@ -343,16 +353,17 @@ pub fn baseline_source_mapping(
     let details = parity_row_details(repo_root, row_id)?;
 
     Ok(BaselineSourceMappingResponse {
-        source_paths: vec![
+        source_paths: collect_source_paths(&[
             details.source_paths[0].clone(),
-            DESIGN_AUDIT_INDEX_PATH.to_string(),
-            DESIGN_AUDIT_REFERENCE_PATH.to_string(),
-        ],
+            SOURCE_MAP_PATH.to_string(),
+            details.feature_doc.clone(),
+        ]),
         row_id: details.row_id,
         domain: details.domain,
+        feature_doc: details.feature_doc,
         baseline_source: details.baseline_source,
         baseline_paths: details.baseline_paths,
-        design_audit_matches: details.design_audit_matches,
+        symbol_hints: details.symbol_hints,
     })
 }
 
@@ -841,96 +852,102 @@ fn ledger_path_for_domain(domain: &str) -> &'static str {
     }
 }
 
-fn resolve_baseline_paths(repo_root: &Path, baseline_source: &str) -> Vec<String> {
-    let mut candidates = BTreeSet::new();
+fn parse_source_map(repo_root: &Path) -> Result<HashMap<String, SourceMapEntry>, String> {
+    let text = read_repo_text(repo_root, SOURCE_MAP_PATH)?;
+    let mut lines = text.lines();
+    let Some(header) = lines.next() else {
+        return Err("source map is empty".to_string());
+    };
 
-    for token in extract_backtick_tokens(baseline_source) {
-        maybe_push_baseline_path(repo_root, &mut candidates, &token);
+    let columns = split_csv_row(header);
+    let expected_header = vec![
+        "row_id".to_string(),
+        "domain".to_string(),
+        "feature_doc".to_string(),
+        "baseline_paths".to_string(),
+        "symbol_hints".to_string(),
+    ];
+    if columns != expected_header {
+        return Err("source map header does not match the expected contract".to_string());
     }
 
-    for token in baseline_source.split_whitespace() {
-        maybe_push_baseline_path(
-            repo_root,
-            &mut candidates,
-            token.trim_matches(|ch| ch == ',' || ch == ';'),
-        );
-    }
+    let mut rows = HashMap::new();
 
-    candidates.into_iter().collect()
-}
-
-fn extract_backtick_tokens(text: &str) -> Vec<String> {
-    let mut tokens = Vec::new();
-    let mut in_tick = false;
-    let mut current = String::new();
-
-    for ch in text.chars() {
-        if ch == '`' {
-            if in_tick && !current.is_empty() {
-                tokens.push(current.clone());
-                current.clear();
-            }
-            in_tick = !in_tick;
+    for (line_number, line) in lines.enumerate() {
+        if line.trim().is_empty() {
             continue;
         }
 
-        if in_tick {
-            current.push(ch);
+        let columns = split_csv_row(line);
+        if columns.len() != 5 {
+            return Err(format!(
+                "source map row {} has {} columns, expected 5",
+                line_number + 2,
+                columns.len()
+            ));
+        }
+
+        let row_id = columns[0].to_string();
+        rows.insert(
+            row_id,
+            SourceMapEntry {
+                feature_doc: columns[2].to_string(),
+                baseline_paths: split_semicolon_list(&columns[3]),
+                symbol_hints: split_semicolon_list(&columns[4]),
+            },
+        );
+    }
+
+    Ok(rows)
+}
+
+fn split_csv_row(line: &str) -> Vec<String> {
+    let mut columns = Vec::new();
+    let mut current = String::new();
+    let mut in_quotes = false;
+    let mut chars = line.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        match ch {
+            '"' => {
+                if in_quotes && chars.peek() == Some(&'"') {
+                    current.push('"');
+                    let _ = chars.next();
+                } else {
+                    in_quotes = !in_quotes;
+                }
+            }
+            ',' if !in_quotes => {
+                columns.push(current.clone());
+                current.clear();
+            }
+            _ => current.push(ch),
         }
     }
 
-    tokens
+    columns.push(current);
+    columns
 }
 
-fn maybe_push_baseline_path(repo_root: &Path, candidates: &mut BTreeSet<String>, token: &str) {
-    let cleaned = token.trim().trim_matches('`').trim_matches('/');
-    if !cleaned.ends_with(".go") && !cleaned.ends_with(".md") {
-        return;
-    }
-
-    let relative = format!("{BASELINE_IMPL_ROOT}/{cleaned}");
-    if repo_root.join(&relative).exists() {
-        let _ = candidates.insert(relative);
-    }
+fn split_semicolon_list(value: &str) -> Vec<String> {
+    value
+        .split(';')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(ToOwned::to_owned)
+        .collect()
 }
 
-fn design_audit_matches(
-    repo_root: &Path,
-    baseline_source: &str,
-    feature_group: &str,
-) -> Result<Vec<String>, String> {
-    let index_text = read_repo_text(repo_root, DESIGN_AUDIT_INDEX_PATH)?;
-    let reference_text = read_repo_text(repo_root, DESIGN_AUDIT_REFERENCE_PATH)?;
-    let mut needles = extract_backtick_tokens(baseline_source);
+fn collect_source_paths(paths: &[String]) -> Vec<String> {
+    let mut unique = Vec::new();
 
-    if needles.is_empty() {
-        needles.push(feature_group.to_string());
-    }
-
-    let mut matches = BTreeSet::new();
-
-    for needle in needles {
-        let basename = PathBuf::from(needle.trim_matches('/'))
-            .file_name()
-            .map(|value| value.to_string_lossy().to_string())
-            .unwrap_or_else(|| needle.clone());
-
-        collect_matching_lines(&index_text, &basename, &mut matches);
-        collect_matching_lines(&reference_text, &basename, &mut matches);
-    }
-
-    Ok(matches.into_iter().take(8).collect())
-}
-
-fn collect_matching_lines(text: &str, needle: &str, matches: &mut BTreeSet<String>) {
-    let lowered_needle = needle.to_lowercase();
-
-    for line in text.lines() {
-        let trimmed = line.trim();
-        if trimmed.to_lowercase().contains(&lowered_needle) {
-            let _ = matches.insert(trimmed.to_string());
+    for path in paths {
+        if !unique.contains(path) {
+            unique.push(path.clone());
         }
     }
+
+    unique
 }
 
 fn is_closed_row(row: &ParityRowRecord) -> bool {
@@ -1022,7 +1039,9 @@ mod tests {
 
         assert_eq!(row.roadmap.milestone, "CLI Foundation");
         assert_eq!(row.domain, "CLI");
+        assert_eq!(row.feature_doc, "docs/parity/cli/root-and-global-flags.md");
         assert!(!row.baseline_paths.is_empty());
+        assert!(!row.symbol_hints.is_empty());
     }
 
     #[test]
@@ -1039,6 +1058,8 @@ mod tests {
         let mapping = baseline_source_mapping(&repo_root(), "CLI-001").expect("baseline mapping");
 
         assert_eq!(mapping.domain, "CLI");
+        assert_eq!(mapping.feature_doc, "docs/parity/cli/root-and-global-flags.md");
         assert!(!mapping.baseline_paths.is_empty());
+        assert!(!mapping.symbol_hints.is_empty());
     }
 }

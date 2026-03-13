@@ -53,7 +53,7 @@ Current PR CI policy:
 Current workflow mapping:
 
 - [.github/workflows/on-pr-push.yml](../.github/workflows/on-pr-push.yml) validates the workspace via conditional
-  `validate-app` and `validate-tools` jobs
+  `validate-app` and `validate-tools` jobs, both driven through `Justfile` recipes
 
 ## Release artifact policy
 
@@ -119,9 +119,9 @@ Merge or manual artifact workflows:
 
 Current repo posture:
 
-- PR CI validates the generic workspace via path-sensitive conditional jobs
+- PR CI validates the generic workspace via path-sensitive conditional jobs and `Justfile` recipes
 - merge or manual preview artifact workflows run a single test gate before
-  the lane-specific build matrix
+  the lane-specific build matrix, also through `Justfile` recipes
 - full release publication and packaging automation are still outside this
   policy slice unless the workflow actually exists
 

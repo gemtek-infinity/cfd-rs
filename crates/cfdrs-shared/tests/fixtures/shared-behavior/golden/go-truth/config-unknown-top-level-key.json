@@ -5,7 +5,7 @@
   "report_kind": "normalized-config.v1",
   "comparison": "warning-or-report",
   "source_refs": [
-    "baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §2.2"
+    "baseline-2026.2.0/old-impl/config/configuration.go §2.2"
   ],
   "payload": {
     "source_kind": "discovered-path",

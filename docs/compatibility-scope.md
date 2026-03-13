@@ -2,69 +2,57 @@
 
 This document defines what "compatible" means for the Rust rewrite.
 
-It exists to keep behavioral compatibility, current implemented scope, and later deployment concerns from being blurred together.
+It exists to keep behavioral compatibility, current implemented scope, and
+production-alpha gate expectations from being blurred together.
 
-## Primary compatibility baseline
+## Primary Compatibility Baseline
 
 The rewrite target is the behavior of the frozen Go snapshot in:
 
-- [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/)
+- `baseline-2026.2.0/old-impl/`
 
 The target release baseline is:
 
 - `2026.2.0`
 
-The derived navigation/spec layer is:
+The derived parity routing layer is:
 
-- [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/)
+- `docs/parity/`
+- `docs/parity/source-map.csv`
 
-## Compatibility routing
+## Compatibility Routing
 
 Use the right source for the right question:
 
-- behavior and parity:
-  1. [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) code and tests
-  2. [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/)
-
-- current repository state:
-  - [STATUS.md](../STATUS.md)
-
-- non-negotiables and scope:
-  - [REWRITE_CHARTER.md](../REWRITE_CHARTER.md)
-
-- dependency and runtime policy:
-  - [docs/](../docs/)
-
-- workflow notes:
-  - [AGENTS.md](../AGENTS.md)
-  - [SKILLS.md](../SKILLS.md)
+- behavior truth: `baseline-2026.2.0/old-impl/`
+- derived parity routing: `docs/parity/README.md`, `docs/parity/source-map.csv`, and the relevant parity doc
+- current repository state: `STATUS.md`
+- scope and lane boundary: `REWRITE_CHARTER.md`
+- implementation order: `docs/phase-5/roadmap.md`
+- promotion boundary: `docs/promotion-gates.md`
 
 Do not claim compatibility from Rust code shape alone.
 
-## Frozen inputs
+## Frozen Inputs
 
-[baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) and [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/) are frozen inputs.
+`baseline-2026.2.0/old-impl/` is a frozen input.
 
-Do not modify either directory during normal rewrite work.
+Do not modify it during normal rewrite work.
 
-## Active lane
+## Active Lane
 
 The active lane is:
 
 - Linux only
 - target triple: `x86_64-unknown-linux-gnu`
-- shipped GNU artifacts:
-  - `x86-64-v2`
-  - `x86-64-v4`
+- shipped GNU artifacts: `x86-64-v2`, `x86-64-v4`
 
 This document does not imply broader platform parity.
 
-## First accepted implementation slice
+## Production-Alpha Boundaries
 
-The first accepted implementation slice remains:
+Production-alpha requires all lane-required CLI, CDC, and HIS rows to be backed
+by current evidence, plus a clean exit from the final `Performance Architecture
+Overhaul` milestone.
 
-- config discovery/loading/normalization
-- credentials surface
-- ingress normalization/ordering/defaulting
-
-Anything beyond that must be justified explicitly by accepted scope and checked behavior.
+Logging compatibility is part of that gate, not a follow-up item.

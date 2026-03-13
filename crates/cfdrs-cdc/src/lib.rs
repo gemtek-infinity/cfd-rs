@@ -14,6 +14,7 @@
 
 pub mod registration;
 pub mod stream;
+pub(crate) mod stream_contract;
 
 pub use registration::{ConnectionDetails, ConnectionOptions, TunnelAuth};
 pub use stream::{ConnectRequest, ConnectResponse, ConnectionType, Metadata};

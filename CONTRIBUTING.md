@@ -7,6 +7,7 @@ Read these first:
 3. `docs/phase-5/roadmap.md`
 4. `REWRITE_CHARTER.md`
 5. `docs/promotion-gates.md`
+6. `docs/ai-context-routing.md`
 
 ## How to find work
 
@@ -18,17 +19,28 @@ Parity work is tracked in three live ledgers:
 
 Use `STATUS.md` for the current priority queue.
 Use `docs/phase-5/roadmap-index.csv` when you need the exact milestone for a row.
+Use `docs/parity/source-map.csv` when you need the exact frozen-baseline jump path.
 
 ## Build and test
 
+Normal entry:
+
 ```bash
-cargo build
-cargo test --workspace
-cargo clippy --workspace --all-targets --locked -- -D warnings
-cargo +nightly fmt --all
+just validate-pr
 ```
 
-All four commands must pass before submission.
+Useful focused entrypoints:
+
+```bash
+just fmt
+just fmt-check
+just validate-governance
+just validate-app
+just validate-tools
+just mcp-smoke
+```
+
+`fmt` always means `cargo +nightly fmt --all`.
 
 ## Parity evidence
 
@@ -42,17 +54,18 @@ Typical evidence includes:
 - host-behavior tests
 
 Update the touched ledger row when the evidence changes.
+Update `docs/parity/source-map.csv` when the baseline routing for a row changes.
 
 ## Document order
 
 When documents conflict, resolve in this order:
 
 1. frozen Go baseline code and tests
-2. frozen design-audit documents
-3. `REWRITE_CHARTER.md` and `docs/compatibility-scope.md`
-4. `docs/promotion-gates.md`
-5. `STATUS.md`
-6. `docs/phase-5/roadmap.md` and `docs/phase-5/roadmap-index.csv`
+2. `REWRITE_CHARTER.md` and `docs/compatibility-scope.md`
+3. `docs/promotion-gates.md`
+4. `STATUS.md`
+5. `docs/phase-5/roadmap.md` and `docs/phase-5/roadmap-index.csv`
+6. `docs/parity/README.md`, `docs/parity/source-map.csv`, and the relevant parity doc
 7. `AGENTS.md` and `SKILLS.md`
 
 ## AI-assisted work
@@ -60,3 +73,4 @@ When documents conflict, resolve in this order:
 AI contributors should start with `docs/ai-context-routing.md`.
 When MCP is available, prefer `status_summary`, `phase5_priority`, `parity_row_details`, `domain_gaps_ranked`, `baseline_source_mapping`, `crate_surface_summary`, and `crate_dependency_graph` before loading larger docs.
 The operational MCP target is debtmap-enabled; if MCP files change, rebuild and smoke that target before trusting MCP again.
+Use `Justfile` as the normal command surface rather than open-coded cargo chains.

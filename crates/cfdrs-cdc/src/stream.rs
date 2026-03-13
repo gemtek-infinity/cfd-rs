@@ -10,28 +10,11 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Metadata key for the HTTP method in a ConnectRequest.
-pub const HTTP_METHOD_KEY: &str = "HttpMethod";
-
-/// Metadata key for the HTTP host in a ConnectRequest.
-pub const HTTP_HOST_KEY: &str = "HttpHost";
-
-/// Metadata key prefix for HTTP headers in a ConnectRequest.
-///
-/// Individual headers are encoded as `HttpHeader:Header-Name`.
-pub const HTTP_HEADER_KEY: &str = "HttpHeader";
-
-/// Metadata key for the HTTP status in a ConnectResponse.
-pub const HTTP_STATUS_KEY: &str = "HttpStatus";
-
-/// Metadata key for QUIC flow tracking.
-pub const FLOW_ID_KEY: &str = "FlowID";
-
-/// Metadata key for Cloudflare trace ID propagation.
-pub const CF_TRACE_ID_KEY: &str = "cf-trace-id";
-
-/// Metadata key for content length.
-pub const CONTENT_LENGTH_KEY: &str = "HttpHeader:Content-Length";
+use crate::stream_contract::{
+    CF_TRACE_ID_KEY, DEFAULT_HTTP_METHOD, FLOW_ID_KEY, HTTP_HOST_KEY, HTTP_LABEL, HTTP_METHOD_KEY,
+    HTTP_STATUS_KEY, TCP_LABEL, TRACE_CONTEXT_KEY, WEBSOCKET_LABEL, header_metadata_key,
+    header_metadata_prefix,
+};
 
 /// Connection type for a QUIC data stream.
 ///
@@ -61,9 +44,9 @@ impl ConnectionType {
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::Http => "HTTP",
-            Self::WebSocket => "WebSocket",
-            Self::Tcp => "TCP",
+            Self::Http => HTTP_LABEL,
+            Self::WebSocket => WEBSOCKET_LABEL,
+            Self::Tcp => TCP_LABEL,
         }
     }
 }
@@ -111,13 +94,14 @@ impl ConnectRequest {
     pub fn metadata_value(&self, key: &str) -> Option<&str> {
         self.metadata
             .iter()
-            .find(|m| m.key == key)
-            .map(|m| m.val.as_str())
+            .find(|metadata| metadata.key == key)
+            .map(|metadata| metadata.val.as_str())
     }
 
     /// Extract the HTTP method from metadata, defaulting to GET.
     pub fn http_method(&self) -> &str {
-        self.metadata_value(HTTP_METHOD_KEY).unwrap_or("GET")
+        self.metadata_value(HTTP_METHOD_KEY)
+            .unwrap_or(DEFAULT_HTTP_METHOD)
     }
 
     /// Extract the HTTP host from metadata.
@@ -129,11 +113,12 @@ impl ConnectRequest {
     ///
     /// Headers are encoded as `HttpHeader:Header-Name` keys.
     pub fn http_headers(&self) -> impl Iterator<Item = (&str, &str)> {
-        let prefix = format!("{HTTP_HEADER_KEY}:");
-        self.metadata.iter().filter_map(move |m| {
-            m.key
+        let prefix = header_metadata_prefix();
+        self.metadata.iter().filter_map(move |metadata| {
+            metadata
+                .key
                 .strip_prefix(&prefix)
-                .map(|header_name| (header_name, m.val.as_str()))
+                .map(|header_name| (header_name, metadata.val.as_str()))
         })
     }
 
@@ -183,7 +168,7 @@ impl ConnectResponse {
         metadata.push(Metadata::new(HTTP_STATUS_KEY, status.to_string()));
 
         for (name, value) in headers {
-            metadata.push(Metadata::new(format!("{HTTP_HEADER_KEY}:{name}"), value));
+            metadata.push(Metadata::new(header_metadata_key(&name), value));
         }
 
         Self::success(metadata)
@@ -192,7 +177,7 @@ impl ConnectResponse {
     /// Create a TCP ack response (no error, optional trace propagation).
     pub fn tcp_ack(trace_propagation: Option<&str>) -> Self {
         let metadata = trace_propagation
-            .map(|tp| vec![Metadata::new("cf-trace-context", tp)])
+            .map(|trace_context| vec![Metadata::new(TRACE_CONTEXT_KEY, trace_context)])
             .unwrap_or_default();
         Self::success(metadata)
     }
@@ -206,6 +191,9 @@ impl ConnectResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::stream_contract::{
+        CONTENT_LENGTH_KEY, HTTP_LABEL, TCP_LABEL, TRACE_CONTEXT_KEY, WEBSOCKET_LABEL, header_metadata_key,
+    };
 
     #[test]
     fn connection_type_roundtrip() {
@@ -213,6 +201,9 @@ mod tests {
         assert_eq!(ConnectionType::from_u16(1), Some(ConnectionType::WebSocket));
         assert_eq!(ConnectionType::from_u16(2), Some(ConnectionType::Tcp));
         assert_eq!(ConnectionType::from_u16(3), None);
+        assert_eq!(ConnectionType::Http.as_str(), HTTP_LABEL);
+        assert_eq!(ConnectionType::WebSocket.as_str(), WEBSOCKET_LABEL);
+        assert_eq!(ConnectionType::Tcp.as_str(), TCP_LABEL);
     }
 
     #[test]
@@ -223,8 +214,8 @@ mod tests {
             metadata: vec![
                 Metadata::new(HTTP_METHOD_KEY, "POST"),
                 Metadata::new(HTTP_HOST_KEY, "example.com"),
-                Metadata::new(format!("{HTTP_HEADER_KEY}:Content-Type"), "application/json"),
-                Metadata::new(format!("{HTTP_HEADER_KEY}:Authorization"), "Bearer tok"),
+                Metadata::new(header_metadata_key("Content-Type"), "application/json"),
+                Metadata::new(header_metadata_key("Authorization"), "Bearer tok"),
                 Metadata::new(FLOW_ID_KEY, "flow-123"),
             ],
         };
@@ -241,28 +232,29 @@ mod tests {
 
     #[test]
     fn connect_response_http() {
-        let resp = ConnectResponse::http(200, vec![("Content-Type".into(), "text/html".into())]);
-        assert!(resp.is_ok());
-        assert_eq!(resp.metadata.len(), 2);
-        assert_eq!(resp.metadata[0].key, HTTP_STATUS_KEY);
-        assert_eq!(resp.metadata[0].val, "200");
+        let response = ConnectResponse::http(200, vec![("Content-Type".into(), "text/html".into())]);
+        assert!(response.is_ok());
+        assert_eq!(response.metadata.len(), 2);
+        assert_eq!(response.metadata[0].key, HTTP_STATUS_KEY);
+        assert_eq!(response.metadata[0].val, "200");
     }
 
     #[test]
     fn connect_response_error() {
-        let resp = ConnectResponse::error("origin unreachable");
-        assert!(!resp.is_ok());
-        assert_eq!(resp.error, "origin unreachable");
+        let response = ConnectResponse::error("origin unreachable");
+        assert!(!response.is_ok());
+        assert_eq!(response.error, "origin unreachable");
     }
 
     #[test]
     fn connect_response_tcp_ack() {
-        let resp = ConnectResponse::tcp_ack(Some("trace-abc"));
-        assert!(resp.is_ok());
-        assert_eq!(resp.metadata.len(), 1);
+        let response = ConnectResponse::tcp_ack(Some("trace-abc"));
+        assert!(response.is_ok());
+        assert_eq!(response.metadata.len(), 1);
+        assert_eq!(response.metadata[0].key, TRACE_CONTEXT_KEY);
 
-        let resp_no_trace = ConnectResponse::tcp_ack(None);
-        assert!(resp_no_trace.metadata.is_empty());
+        let no_trace_response = ConnectResponse::tcp_ack(None);
+        assert!(no_trace_response.metadata.is_empty());
     }
 
     #[test]
@@ -272,6 +264,11 @@ mod tests {
             connection_type: ConnectionType::Http,
             metadata: vec![],
         };
-        assert_eq!(request.http_method(), "GET");
+        assert_eq!(request.http_method(), DEFAULT_HTTP_METHOD);
+    }
+
+    #[test]
+    fn content_length_key_remains_exact() {
+        assert_eq!(CONTENT_LENGTH_KEY, header_metadata_key("Content-Length"));
     }
 }

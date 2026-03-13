@@ -34,8 +34,8 @@ pub fn governance_roots(repo_root: &Path) -> Vec<PathBuf> {
 
 pub fn behavior_truth_roots(repo_root: &Path) -> Vec<PathBuf> {
     vec![
-        repo_root.join("baseline-2026.2.0/design-audit"),
         repo_root.join("baseline-2026.2.0/old-impl"),
+        repo_root.join("docs/parity"),
     ]
 }
 
@@ -201,12 +201,12 @@ fn behavior_baseline_bundle() -> ContextBundle {
         summary: "Use this bundle for frozen behavior truth and source routing.",
         entries: vec![
             BundleEntry {
-                path: "baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md".to_string(),
-                reason: "Topic-to-source map into frozen baseline.",
+                path: "docs/parity/source-map.csv".to_string(),
+                reason: "Exact row-to-baseline routing for the parity ledgers.",
             },
             BundleEntry {
-                path: "baseline-2026.2.0/design-audit/REPO_REFERENCE.md".to_string(),
-                reason: "Baseline reference index.",
+                path: "docs/parity/README.md".to_string(),
+                reason: "Parity index and feature-document map.",
             },
             BundleEntry {
                 path: "baseline-2026.2.0/old-impl".to_string(),
@@ -280,8 +280,8 @@ fn governing_files_snapshot() -> ContextSnapshot {
             },
             SnapshotFact {
                 label: "behavior_truth",
-                value: "Use baseline-2026.2.0/design-audit and baseline-2026.2.0/old-impl for frozen \
-                        baseline truth.",
+                value: "Use baseline-2026.2.0/old-impl for frozen behavior truth and \
+                        docs/parity/source-map.csv for bounded row-to-source routing.",
             },
         ],
         source_paths: vec![
@@ -415,7 +415,8 @@ fn behavior_baseline_snapshot() -> ContextSnapshot {
             },
             SnapshotFact {
                 label: "routing_source",
-                value: "Use baseline-2026.2.0/design-audit for source routing and references.",
+                value: "Use docs/parity/source-map.csv to route one row back into the frozen baseline and \
+                        matching parity feature doc.",
             },
             SnapshotFact {
                 label: "guardrail",
@@ -424,8 +425,8 @@ fn behavior_baseline_snapshot() -> ContextSnapshot {
         ],
         source_paths: vec![
             "baseline-2026.2.0/old-impl".to_string(),
-            "baseline-2026.2.0/design-audit/REPO_SOURCE_INDEX.md".to_string(),
-            "baseline-2026.2.0/design-audit/REPO_REFERENCE.md".to_string(),
+            "docs/parity/source-map.csv".to_string(),
+            "docs/parity/README.md".to_string(),
         ],
     }
 }

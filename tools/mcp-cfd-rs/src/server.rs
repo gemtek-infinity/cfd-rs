@@ -478,7 +478,8 @@ impl CfdRsMemory {
     }
 
     #[tool(
-        description = "Map one parity row ID back to frozen baseline source files and design-audit hints."
+        description = "Map one parity row ID back to frozen baseline source files, symbol hints, and the \
+                       exact parity feature doc."
     )]
     async fn baseline_source_mapping(
         &self,

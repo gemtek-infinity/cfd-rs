@@ -8,10 +8,12 @@ binary honest without implying that runtime subsystems are already ported.
 
 ## Frozen Inputs
 
-Do not modify either frozen input as part of allocator or runtime work:
+Do not modify the frozen behavior input as part of allocator or runtime work:
 
 - [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/)
-- [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/)
+
+Use [docs/parity/source-map.csv](parity/source-map.csv) when you need row-level
+routing back into that baseline.
 
 ## Target Platform
 

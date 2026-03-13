@@ -5,16 +5,9 @@
       "env": {
         "MCP_LOG": "brief"
       },
-      "command": "cargo",
+      "command": "just",
       "args": [
-        "run",
-        "--locked",
-        "--quiet",
-        "--manifest-path",
-        "${workspaceFolder}/tools/mcp-cfd-rs/Cargo.toml",
-        "--release",
-        "--features",
-        "debtmap"
+        "mcp-run"
       ],
       "cwd": "${workspaceFolder}"
     },

@@ -35,6 +35,14 @@ The governing ADR is [docs/adr/0005-deployment-contract.md](adr/0005-deployment-
 
 ### Generic local build
 
+Normal entry:
+
+```bash
+just validate-app
+```
+
+Raw reference build:
+
 ```bash
 cargo build --release --locked -p cfdrs-bin
 ```
@@ -46,19 +54,13 @@ The resulting binary is at `target/release/cloudflared`.
 For `x86-64-v2` (baseline):
 
 ```bash
-RUSTFLAGS="-C target-cpu=x86-64-v2 -C strip=symbols" \
-  cargo build --release --locked \
-  --target x86_64-unknown-linux-gnu \
-  -p cfdrs-bin
+just preview-build x86-64-v2
 ```
 
 For `x86-64-v4` (AVX-512 capable):
 
 ```bash
-RUSTFLAGS="-C target-cpu=x86-64-v4 -C strip=symbols" \
-  cargo build --release --locked \
-  --target x86_64-unknown-linux-gnu \
-  -p cfdrs-bin
+just preview-build x86-64-v4
 ```
 
 The resulting binary is at `target/x86_64-unknown-linux-gnu/release/cloudflared`.

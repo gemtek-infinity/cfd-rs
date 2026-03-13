@@ -24,6 +24,6 @@ They are not a general runtime or transport test area.
 ## Source of truth
 
 - `baseline-2026.2.0/old-impl/` code and tests first
-- `baseline-2026.2.0/design-audit/` second
+- `docs/parity/source-map.csv` for bounded row-to-source routing
 
 Do not modify frozen inputs from this test area.

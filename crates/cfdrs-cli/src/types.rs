@@ -1,7 +1,9 @@
 use std::fmt;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+use crate::surface_contract;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
     Help,
     Version,
@@ -11,13 +13,7 @@ pub enum Command {
 
 impl fmt::Display for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let label = match self {
-            Self::Help => "help",
-            Self::Version => "version",
-            Self::Validate => "validate",
-            Self::Run => "run",
-        };
-        f.write_str(label)
+        f.write_str(surface_contract::command_label(*self))
     }
 }
 
@@ -33,9 +29,9 @@ mod tests {
 
     #[test]
     fn command_display() {
-        assert_eq!(Command::Help.to_string(), "help");
-        assert_eq!(Command::Version.to_string(), "version");
-        assert_eq!(Command::Validate.to_string(), "validate");
-        assert_eq!(Command::Run.to_string(), "run");
+        assert_eq!(Command::Help.to_string(), surface_contract::HELP_COMMAND);
+        assert_eq!(Command::Version.to_string(), surface_contract::VERSION_COMMAND);
+        assert_eq!(Command::Validate.to_string(), surface_contract::VALIDATE_COMMAND);
+        assert_eq!(Command::Run.to_string(), surface_contract::RUN_COMMAND);
     }
 }

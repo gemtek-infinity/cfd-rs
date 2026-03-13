@@ -9,16 +9,19 @@ Use this file as a short operating guide, not as a document index dump.
 - `docs/phase-5/roadmap.md` — normative Phase 5 roadmap
 - `docs/parity/README.md` — parity index
 - `REWRITE_CHARTER.md` — non-negotiables and scope
+- `Justfile` — authoritative command surface
 
 ## Working rules
 
 - do not treat this repository as a blank-slate Rust project
-- do not edit frozen inputs under `baseline-2026.2.0/`
+- do not edit frozen inputs under `baseline-2026.2.0/old-impl/`
 - do not claim parity from Rust code shape alone
 - keep patches narrow and source-grounded
 - update the relevant parity ledger for parity work
+- update `docs/parity/source-map.csv` when baseline routing changes
 - `GCFGR.md` is optional local handoff state only; `STATUS.md` wins
 - when formatting Rust, use `cargo +nightly fmt`, never plain `cargo fmt`
+- use `Justfile` for normal execution instead of open-coded local command chains
 - if you touch `tools/mcp-cfd-rs*` or MCP-facing routing docs, rebuild and smoke the debtmap-enabled MCP target before relying on MCP again
 
 ## MCP-first routing
@@ -43,3 +46,4 @@ Fall back to docs only when MCP is unavailable or the first MCP answer is insuff
 - exact row ownership or milestone mapping: `docs/phase-5/roadmap-index.csv`
 - behavior truth: frozen Go baseline first
 - parity work: identify CLI, CDC, or HIS and open that ledger first
+- logging compatibility: `docs/parity/logging-compatibility.md`

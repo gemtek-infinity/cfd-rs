@@ -3,28 +3,28 @@ schema = 1
 [[fixture]]
 category = "config-discovery"
 comparison = "exact"
-go_truth = ["baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §1-§2"]
+go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §1-§2"]
 id = "discover-home-cloudflared"
 input = "config-discovery/cases.toml"
 
 [[fixture]]
 category = "config-discovery"
 comparison = "exact"
-go_truth = ["baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §1-§2"]
+go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §1-§2"]
 id = "discover-home-cloudflare-warp"
 input = "config-discovery/cases.toml"
 
 [[fixture]]
 category = "config-discovery"
 comparison = "exact"
-go_truth = ["baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §1-§2"]
+go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §1-§2"]
 id = "discover-home-cloudflare-warp-legacy"
 input = "config-discovery/cases.toml"
 
 [[fixture]]
 category = "config-discovery"
 comparison = "structural"
-go_truth = ["baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §1.4"]
+go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §1.4"]
 id = "discover-auto-create-default"
 input = "config-discovery/cases.toml"
 
@@ -32,7 +32,7 @@ input = "config-discovery/cases.toml"
 category = "yaml-config"
 comparison = "exact-json"
 go_truth = [
-  "baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §3-§7",
+  "baseline-2026.2.0/old-impl/config/configuration.go §3-§7",
   "baseline-2026.2.0/old-impl/config/configuration_test.go::TestConfigFileSettings",
 ]
 id = "config-basic-named-tunnel"
@@ -42,7 +42,7 @@ input = "yaml-config/valid/basic_named_tunnel.yaml"
 category = "yaml-config"
 comparison = "exact-json"
 go_truth = [
-  "baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §4.2",
+  "baseline-2026.2.0/old-impl/config/configuration.go §4.2",
   "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Unicode domain",
 ]
 id = "config-unicode-ingress"
@@ -70,7 +70,7 @@ input = "invalid-input/ingress/invalid_wildcard.yaml"
 category = "ordering-defaulting"
 comparison = "semantic"
 go_truth = [
-  "baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §4.4",
+  "baseline-2026.2.0/old-impl/config/configuration.go §4.4",
   "baseline-2026.2.0/old-impl/component-tests/test_tunnel.py::test_tunnel_no_ingress",
 ]
 id = "config-no-ingress-minimal"
@@ -79,7 +79,7 @@ input = "yaml-config/edge/no_ingress_minimal.yaml"
 [[fixture]]
 category = "yaml-config"
 comparison = "warning-or-report"
-go_truth = ["baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §2.2"]
+go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §2.2"]
 id = "config-unknown-top-level-key"
 input = "yaml-config/edge/unknown_top_level_key.yaml"
 
@@ -171,6 +171,6 @@ input = "ordering-defaulting/cases.toml"
 [[fixture]]
 category = "ordering-defaulting"
 comparison = "semantic"
-go_truth = ["baseline-2026.2.0/design-audit/REPO_CONFIG_CONTRACT.md §4.4"]
+go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §4.4"]
 id = "default-no-ingress-contract"
 input = "ordering-defaulting/cases.toml"
