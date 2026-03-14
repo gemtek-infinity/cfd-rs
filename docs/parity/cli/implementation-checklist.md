@@ -67,7 +67,7 @@ Preferred values:
 ## Audited Checklist
 
 This checklist was produced by source-level audit of the frozen Go baseline
-in [baseline-2026.2.0/old-impl/cmd/cloudflared/](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/) and comparison against
+in [baseline-2026.2.0/cmd/cloudflared/](../../../baseline-2026.2.0/cmd/cloudflared/) and comparison against
 the current Rust CLI surface in [crates/cfdrs-cli/src/](../../../crates/cfdrs-cli/src/).
 
 The frozen Go CLI uses `urfave/cli` v2. The current Rust CLI uses a custom

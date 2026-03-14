@@ -9,7 +9,7 @@ Covered surfaces:
 - credentials and origin-cert decoding
 - ingress normalization, ordering, and flag-derived defaults
 
-The assets in `tests/fixtures/shared-behavior/` are baseline-backed evidence.
+The assets in [`tests/fixtures/shared-behavior/`](fixtures/shared-behavior/) are baseline-backed evidence.
 They are not a general runtime or transport test area.
 
 ## Execution model
@@ -23,7 +23,7 @@ They are not a general runtime or transport test area.
 
 ## Source of truth
 
-- `baseline-2026.2.0/old-impl/` code and tests first
-- `docs/parity/source-map.csv` for bounded row-to-source routing
+- [`baseline-2026.2.0/`](../../../baseline-2026.2.0/) code and tests first
+- [`docs/parity/source-map.csv`](../../../docs/parity/source-map.csv) for bounded row-to-source routing
 
 Do not modify frozen inputs from this test area.

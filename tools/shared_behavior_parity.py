@@ -526,7 +526,7 @@ require (
     gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/cloudflare/cloudflared => {REPO_ROOT / 'baseline-2026.2.0' / 'old-impl'}
+replace github.com/cloudflare/cloudflared => {REPO_ROOT / 'baseline-2026.2.0'}
 """
     (temp_root / "go.mod").write_text(go_mod)
 

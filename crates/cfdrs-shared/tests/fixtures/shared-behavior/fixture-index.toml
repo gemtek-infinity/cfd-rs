@@ -3,28 +3,28 @@ schema = 1
 [[fixture]]
 category = "config-discovery"
 comparison = "exact"
-go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §1-§2"]
+go_truth = ["baseline-2026.2.0/config/configuration.go §1-§2"]
 id = "discover-home-cloudflared"
 input = "config-discovery/cases.toml"
 
 [[fixture]]
 category = "config-discovery"
 comparison = "exact"
-go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §1-§2"]
+go_truth = ["baseline-2026.2.0/config/configuration.go §1-§2"]
 id = "discover-home-cloudflare-warp"
 input = "config-discovery/cases.toml"
 
 [[fixture]]
 category = "config-discovery"
 comparison = "exact"
-go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §1-§2"]
+go_truth = ["baseline-2026.2.0/config/configuration.go §1-§2"]
 id = "discover-home-cloudflare-warp-legacy"
 input = "config-discovery/cases.toml"
 
 [[fixture]]
 category = "config-discovery"
 comparison = "structural"
-go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §1.4"]
+go_truth = ["baseline-2026.2.0/config/configuration.go §1.4"]
 id = "discover-auto-create-default"
 input = "config-discovery/cases.toml"
 
@@ -32,8 +32,8 @@ input = "config-discovery/cases.toml"
 category = "yaml-config"
 comparison = "exact-json"
 go_truth = [
-  "baseline-2026.2.0/old-impl/config/configuration.go §3-§7",
-  "baseline-2026.2.0/old-impl/config/configuration_test.go::TestConfigFileSettings",
+  "baseline-2026.2.0/config/configuration.go §3-§7",
+  "baseline-2026.2.0/config/configuration_test.go::TestConfigFileSettings",
 ]
 id = "config-basic-named-tunnel"
 input = "yaml-config/valid/basic_named_tunnel.yaml"
@@ -42,8 +42,8 @@ input = "yaml-config/valid/basic_named_tunnel.yaml"
 category = "yaml-config"
 comparison = "exact-json"
 go_truth = [
-  "baseline-2026.2.0/old-impl/config/configuration.go §4.2",
-  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Unicode domain",
+  "baseline-2026.2.0/config/configuration.go §4.2",
+  "baseline-2026.2.0/ingress/ingress_test.go::TestParseIngress/Unicode domain",
 ]
 id = "config-unicode-ingress"
 input = "yaml-config/valid/unicode_ingress.yaml"
@@ -52,7 +52,7 @@ input = "yaml-config/valid/unicode_ingress.yaml"
 category = "invalid-input"
 comparison = "error-category"
 go_truth = [
-  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Last rule isn't catchall",
+  "baseline-2026.2.0/ingress/ingress_test.go::TestParseIngress/Last rule isn't catchall",
 ]
 id = "config-missing-catch-all"
 input = "invalid-input/ingress/missing_catch_all.yaml"
@@ -61,7 +61,7 @@ input = "invalid-input/ingress/missing_catch_all.yaml"
 category = "invalid-input"
 comparison = "error-category"
 go_truth = [
-  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Wildcard not at start",
+  "baseline-2026.2.0/ingress/ingress_test.go::TestParseIngress/Wildcard not at start",
 ]
 id = "config-invalid-wildcard"
 input = "invalid-input/ingress/invalid_wildcard.yaml"
@@ -70,8 +70,8 @@ input = "invalid-input/ingress/invalid_wildcard.yaml"
 category = "ordering-defaulting"
 comparison = "semantic"
 go_truth = [
-  "baseline-2026.2.0/old-impl/config/configuration.go §4.4",
-  "baseline-2026.2.0/old-impl/component-tests/test_tunnel.py::test_tunnel_no_ingress",
+  "baseline-2026.2.0/config/configuration.go §4.4",
+  "baseline-2026.2.0/component-tests/test_tunnel.py::test_tunnel_no_ingress",
 ]
 id = "config-no-ingress-minimal"
 input = "yaml-config/edge/no_ingress_minimal.yaml"
@@ -79,7 +79,7 @@ input = "yaml-config/edge/no_ingress_minimal.yaml"
 [[fixture]]
 category = "yaml-config"
 comparison = "warning-or-report"
-go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §2.2"]
+go_truth = ["baseline-2026.2.0/config/configuration.go §2.2"]
 id = "config-unknown-top-level-key"
 input = "yaml-config/edge/unknown_top_level_key.yaml"
 
@@ -87,8 +87,8 @@ input = "yaml-config/edge/unknown_top_level_key.yaml"
 category = "credentials-origin-cert"
 comparison = "exact-json"
 go_truth = [
-  "baseline-2026.2.0/old-impl/credentials/credentials_test.go::TestCredentialsRead",
-  "baseline-2026.2.0/old-impl/credentials/origin_cert_test.go::TestJSONArgoTunnelToken",
+  "baseline-2026.2.0/credentials/credentials_test.go::TestCredentialsRead",
+  "baseline-2026.2.0/credentials/origin_cert_test.go::TestJSONArgoTunnelToken",
 ]
 id = "origin-cert-json-token"
 input = "credentials-origin-cert/sources.toml"
@@ -97,7 +97,7 @@ input = "credentials-origin-cert/sources.toml"
 category = "credentials-origin-cert"
 comparison = "error-category"
 go_truth = [
-  "baseline-2026.2.0/old-impl/credentials/origin_cert_test.go::TestJSONArgoTunnelTokenEmpty",
+  "baseline-2026.2.0/credentials/origin_cert_test.go::TestJSONArgoTunnelTokenEmpty",
 ]
 id = "origin-cert-missing-token"
 input = "credentials-origin-cert/sources.toml"
@@ -105,7 +105,7 @@ input = "credentials-origin-cert/sources.toml"
 [[fixture]]
 category = "credentials-origin-cert"
 comparison = "error-category"
-go_truth = ["baseline-2026.2.0/old-impl/credentials/origin_cert_test.go::TestLoadOriginCert"]
+go_truth = ["baseline-2026.2.0/credentials/origin_cert_test.go::TestLoadOriginCert"]
 id = "origin-cert-unknown-block"
 input = "credentials-origin-cert/sources.toml"
 
@@ -113,7 +113,7 @@ input = "credentials-origin-cert/sources.toml"
 category = "ingress-normalization"
 comparison = "exact-json"
 go_truth = [
-  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/Valid hello-world",
+  "baseline-2026.2.0/ingress/ingress_test.go::TestSingleOriginServices/Valid hello-world",
 ]
 id = "flag-origin-hello-world"
 input = "ingress-normalization/cases.toml"
@@ -122,7 +122,7 @@ input = "ingress-normalization/cases.toml"
 category = "ingress-normalization"
 comparison = "exact-json"
 go_truth = [
-  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/Valid bastion",
+  "baseline-2026.2.0/ingress/ingress_test.go::TestSingleOriginServices/Valid bastion",
 ]
 id = "flag-origin-bastion"
 input = "ingress-normalization/cases.toml"
@@ -130,14 +130,14 @@ input = "ingress-normalization/cases.toml"
 [[fixture]]
 category = "ingress-normalization"
 comparison = "exact-json"
-go_truth = ["baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices_URL/http"]
+go_truth = ["baseline-2026.2.0/ingress/ingress_test.go::TestSingleOriginServices_URL/http"]
 id = "flag-origin-url-http"
 input = "ingress-normalization/cases.toml"
 
 [[fixture]]
 category = "ingress-normalization"
 comparison = "exact-json"
-go_truth = ["baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices_URL/tcp"]
+go_truth = ["baseline-2026.2.0/ingress/ingress_test.go::TestSingleOriginServices_URL/tcp"]
 id = "flag-origin-url-tcp"
 input = "ingress-normalization/cases.toml"
 
@@ -145,7 +145,7 @@ input = "ingress-normalization/cases.toml"
 category = "ingress-normalization"
 comparison = "exact-json"
 go_truth = [
-  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/Unix socket",
+  "baseline-2026.2.0/ingress/ingress_test.go::TestSingleOriginServices/Unix socket",
 ]
 id = "flag-origin-unix-socket"
 input = "ingress-normalization/cases.toml"
@@ -154,7 +154,7 @@ input = "ingress-normalization/cases.toml"
 category = "ingress-normalization"
 comparison = "error-category"
 go_truth = [
-  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices/No origins defined",
+  "baseline-2026.2.0/ingress/ingress_test.go::TestSingleOriginServices/No origins defined",
 ]
 id = "flag-origin-no-origin"
 input = "ingress-normalization/cases.toml"
@@ -163,7 +163,7 @@ input = "ingress-normalization/cases.toml"
 category = "ordering-defaulting"
 comparison = "exact-json"
 go_truth = [
-  "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Default catch-all ordering",
+  "baseline-2026.2.0/ingress/ingress_test.go::TestParseIngress/Default catch-all ordering",
 ]
 id = "ordering-catch-all-last"
 input = "ordering-defaulting/cases.toml"
@@ -171,6 +171,6 @@ input = "ordering-defaulting/cases.toml"
 [[fixture]]
 category = "ordering-defaulting"
 comparison = "semantic"
-go_truth = ["baseline-2026.2.0/old-impl/config/configuration.go §4.4"]
+go_truth = ["baseline-2026.2.0/config/configuration.go §4.4"]
 id = "default-no-ingress-contract"
 input = "ordering-defaulting/cases.toml"

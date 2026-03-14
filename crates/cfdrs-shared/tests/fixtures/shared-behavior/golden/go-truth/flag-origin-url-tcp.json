@@ -5,7 +5,7 @@
   "report_kind": "ingress-report.v1",
   "comparison": "exact-json",
   "source_refs": [
-    "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestSingleOriginServices_URL/tcp"
+    "baseline-2026.2.0/ingress/ingress_test.go::TestSingleOriginServices_URL/tcp"
   ],
   "payload": {
     "source_kind": "flag-single-origin",

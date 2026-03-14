@@ -9,7 +9,7 @@ production-alpha gate expectations from being blurred together.
 
 The rewrite target is the behavior of the frozen Go snapshot in:
 
-- `baseline-2026.2.0/old-impl/`
+- [`baseline-2026.2.0/`](../baseline-2026.2.0/)
 
 The target release baseline is:
 
@@ -17,25 +17,25 @@ The target release baseline is:
 
 The derived parity routing layer is:
 
-- `docs/parity/`
-- `docs/parity/source-map.csv`
+- [`docs/parity/`](parity/)
+- [`docs/parity/source-map.csv`](parity/source-map.csv)
 
 ## Compatibility Routing
 
 Use the right source for the right question:
 
-- behavior truth: `baseline-2026.2.0/old-impl/`
-- derived parity routing: `docs/parity/README.md`, `docs/parity/source-map.csv`, and the relevant parity doc
-- current repository state: `STATUS.md`
-- scope and lane boundary: `REWRITE_CHARTER.md`
-- implementation order: `docs/phase-5/roadmap.md`
-- promotion boundary: `docs/promotion-gates.md`
+- behavior truth: [`baseline-2026.2.0/`](../baseline-2026.2.0/)
+- derived parity routing: [`docs/parity/README.md`](parity/README.md), [`docs/parity/source-map.csv`](parity/source-map.csv), and the relevant parity doc
+- current repository state: [`STATUS.md`](../STATUS.md)
+- scope and lane boundary: [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md)
+- implementation order: [`docs/phase-5/roadmap.md`](phase-5/roadmap.md)
+- promotion boundary: [`docs/promotion-gates.md`](promotion-gates.md)
 
 Do not claim compatibility from Rust code shape alone.
 
 ## Frozen Inputs
 
-`baseline-2026.2.0/old-impl/` is a frozen input.
+[`baseline-2026.2.0/`](../baseline-2026.2.0/) is a frozen input.
 
 Do not modify it during normal rewrite work.
 

@@ -3,8 +3,8 @@
 ## Active Snapshot
 
 - lane: Linux only, `x86_64-unknown-linux-gnu`, quiche + BoringSSL, 0-RTT required
-- compatibility baseline: frozen Go `2026.2.0` in `baseline-2026.2.0/old-impl/`
-- parity routing baseline: `docs/parity/source-map.csv`
+- compatibility baseline: frozen Go `2026.2.0` in [`baseline-2026.2.0/`](baseline-2026.2.0/)
+- parity routing baseline: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - workspace version: `2026.2.0-alpha.202603`
 - roadmap state: `Program Reset` complete; active implementation milestone: `CDC Contract Foundation`
 - highest-risk blockers: `CDC-001`, `CDC-002`, `CDC-011`, `CDC-012`, `CDC-018`, `CLI-001`, `CLI-002`, `CLI-003`, `HIS-012` through `HIS-017`, `HIS-024`, `HIS-025`, `HIS-041`, `HIS-042`
@@ -22,10 +22,10 @@ What exists now:
 - `cfdrs-cdc`: registration and stream contract types
 - `cfdrs-his`: filesystem config discovery IO
 - `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion
-- live parity ledgers, feature docs, and source routing under `docs/parity/`
-- frozen Go baseline in `baseline-2026.2.0/old-impl/`
+- live parity ledgers, feature docs, and source routing under [`docs/parity/`](docs/parity/)
+- frozen Go baseline in [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - debtmap-enabled MCP server surface for bounded repo truth and routing
-- repo-wide task entry through `Justfile`
+- repo-wide task entry through [`Justfile`](Justfile)
 
 What does not exist yet:
 
@@ -100,15 +100,15 @@ Ownership rules:
 
 ## Canonical Links
 
-- scope and non-negotiables: `REWRITE_CHARTER.md`
-- roadmap: `docs/phase-5/roadmap.md`
-- roadmap row map: `docs/phase-5/roadmap-index.csv`
-- parity index: `docs/parity/README.md`
-- parity source routing: `docs/parity/source-map.csv`
-- logging contract: `docs/parity/logging-compatibility.md`
-- CLI ledger: `docs/parity/cli/implementation-checklist.md`
-- CDC ledger: `docs/parity/cdc/implementation-checklist.md`
-- HIS ledger: `docs/parity/his/implementation-checklist.md`
-- phase model and promotion rules: `docs/promotion-gates.md`
-- AI routing: `docs/ai-context-routing.md`
-- command surface: `Justfile`
+- scope and non-negotiables: [`REWRITE_CHARTER.md`](REWRITE_CHARTER.md)
+- roadmap: [`docs/phase-5/roadmap.md`](docs/phase-5/roadmap.md)
+- roadmap row map: [`docs/phase-5/roadmap-index.csv`](docs/phase-5/roadmap-index.csv)
+- parity index: [`docs/parity/README.md`](docs/parity/README.md)
+- parity source routing: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
+- logging contract: [`docs/parity/logging-compatibility.md`](docs/parity/logging-compatibility.md)
+- CLI ledger: [`docs/parity/cli/implementation-checklist.md`](docs/parity/cli/implementation-checklist.md)
+- CDC ledger: [`docs/parity/cdc/implementation-checklist.md`](docs/parity/cdc/implementation-checklist.md)
+- HIS ledger: [`docs/parity/his/implementation-checklist.md`](docs/parity/his/implementation-checklist.md)
+- phase model and promotion rules: [`docs/promotion-gates.md`](docs/promotion-gates.md)
+- AI routing: [`docs/ai-context-routing.md`](docs/ai-context-routing.md)
+- command surface: [`Justfile`](Justfile)

@@ -17,7 +17,7 @@ Envelope shape:
   "report_kind": "normalized-config.v1",
   "comparison": "exact-json",
   "source_refs": [
-    "baseline-2026.2.0/old-impl/config/configuration_test.go::TestConfigFileSettings"
+    "baseline-2026.2.0/config/configuration_test.go::TestConfigFileSettings"
   ],
   "payload": {}
 }

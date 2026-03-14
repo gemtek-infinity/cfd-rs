@@ -1,27 +1,27 @@
 # AGENTS.md
 
-Start cold reads with `docs/ai-context-routing.md`.
+Start cold reads with [`docs/ai-context-routing.md`](docs/ai-context-routing.md).
 Use this file as a short operating guide, not as a document index dump.
 
 ## Read first
 
-- `STATUS.md` — the only tracked status file
-- `docs/phase-5/roadmap.md` — normative Phase 5 roadmap
-- `docs/parity/README.md` — parity index
-- `REWRITE_CHARTER.md` — non-negotiables and scope
-- `Justfile` — authoritative command surface
+- [`STATUS.md`](STATUS.md) — the only tracked status file
+- [`docs/phase-5/roadmap.md`](docs/phase-5/roadmap.md) — normative Phase 5 roadmap
+- [`docs/parity/README.md`](docs/parity/README.md) — parity index
+- [`REWRITE_CHARTER.md`](REWRITE_CHARTER.md) — non-negotiables and scope
+- [`Justfile`](Justfile) — authoritative command surface
 
 ## Working rules
 
 - do not treat this repository as a blank-slate Rust project
-- do not edit frozen inputs under `baseline-2026.2.0/old-impl/`
+- do not edit frozen inputs under [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - do not claim parity from Rust code shape alone
 - keep patches narrow and source-grounded
 - update the relevant parity ledger for parity work
-- update `docs/parity/source-map.csv` when baseline routing changes
-- `GCFGR.md` is optional local handoff state only; `STATUS.md` wins
+- update [`docs/parity/source-map.csv`](docs/parity/source-map.csv) when baseline routing changes
+- `GCFGR.md` is optional local handoff state only; [`STATUS.md`](STATUS.md) wins
 - when formatting Rust, use `cargo +nightly fmt`, never plain `cargo fmt`
-- use `Justfile` for normal execution instead of open-coded local command chains
+- use [`Justfile`](Justfile) for normal execution instead of open-coded local command chains
 - if you touch `tools/mcp-cfd-rs*` or MCP-facing routing docs, rebuild and smoke the debtmap-enabled MCP target before relying on MCP again
 
 ## MCP-first routing
@@ -42,8 +42,8 @@ Fall back to docs only when MCP is unavailable or the first MCP answer is insuff
 
 ## Direct doc routing
 
-- implementation order or milestone question: `docs/phase-5/roadmap.md`
-- exact row ownership or milestone mapping: `docs/phase-5/roadmap-index.csv`
+- implementation order or milestone question: [`docs/phase-5/roadmap.md`](docs/phase-5/roadmap.md)
+- exact row ownership or milestone mapping: [`docs/phase-5/roadmap-index.csv`](docs/phase-5/roadmap-index.csv)
 - behavior truth: frozen Go baseline first
 - parity work: identify CLI, CDC, or HIS and open that ledger first
-- logging compatibility: `docs/parity/logging-compatibility.md`
+- logging compatibility: [`docs/parity/logging-compatibility.md`](docs/parity/logging-compatibility.md)

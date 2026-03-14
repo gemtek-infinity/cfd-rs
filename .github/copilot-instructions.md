@@ -1,18 +1,18 @@
 # Repository-wide instructions for cfd-rs
 
-Start cold reads with `docs/ai-context-routing.md`.
+Start cold reads with [`docs/ai-context-routing.md`](../docs/ai-context-routing.md).
 Do not load broad top-level docs by default.
 
 ## Governing files
 
-- `STATUS.md` — only tracked status file
-- `docs/phase-5/roadmap.md` — normative implementation roadmap
-- `REWRITE_CHARTER.md` — scope and non-negotiables
-- `docs/promotion-gates.md` — phase model and promotion rules
-- `docs/parity/README.md` plus the relevant ledger — parity truth index
-- `docs/parity/source-map.csv` — exact row-to-baseline routing
-- `Justfile` — authoritative command surface
-- `CONTRIBUTING.md` — contributor workflow
+- [`STATUS.md`](../STATUS.md) — only tracked status file
+- [`docs/phase-5/roadmap.md`](../docs/phase-5/roadmap.md) — normative implementation roadmap
+- [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md) — scope and non-negotiables
+- [`docs/promotion-gates.md`](../docs/promotion-gates.md) — phase model and promotion rules
+- [`docs/parity/README.md`](../docs/parity/README.md) plus the relevant ledger — parity truth index
+- [`docs/parity/source-map.csv`](../docs/parity/source-map.csv) — exact row-to-baseline routing
+- [`Justfile`](../Justfile) — authoritative command surface
+- [`CONTRIBUTING.md`](../CONTRIBUTING.md) — contributor workflow
 
 ## Rules
 
@@ -20,9 +20,9 @@ Do not load broad top-level docs by default.
 - do not claim parity from Rust code shape alone
 - use frozen baseline code/tests first for behavior truth
 - keep scope bounded to one owning domain when possible
-- `GCFGR.md` is optional local handoff state only; `STATUS.md` wins
+- `GCFGR.md` is optional local handoff state only; [`STATUS.md`](../STATUS.md) wins
 - format Rust with `cargo +nightly fmt`, not plain `cargo fmt`
-- use `Justfile` for normal execution, not ad hoc local command chains
+- use [`Justfile`](../Justfile) for normal execution, not ad hoc local command chains
 
 ## MCP-first rule
 

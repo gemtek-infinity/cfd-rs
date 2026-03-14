@@ -5,7 +5,7 @@
   "report_kind": "discovery-report.v1",
   "comparison": "structural",
   "source_refs": [
-    "baseline-2026.2.0/old-impl/config/configuration.go §1.4"
+    "baseline-2026.2.0/config/configuration.go §1.4"
   ],
   "payload": {
     "action": "create-default-config",

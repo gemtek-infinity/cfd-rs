@@ -11,6 +11,6 @@ CLI command surface for `cloudflared`.
 
 ## Governing docs
 
-- `docs/parity/cli/implementation-checklist.md`
-- `docs/phase-5/roadmap.md`
-- `STATUS.md`
+- [`docs/parity/cli/implementation-checklist.md`](../../docs/parity/cli/implementation-checklist.md)
+- [`docs/phase-5/roadmap.md`](../../docs/phase-5/roadmap.md)
+- [`STATUS.md`](../../STATUS.md)

@@ -9,8 +9,8 @@
 //! stream framing, management routes, and REST API client behavior.
 //!
 //! Wire-format types match the behavioral contract from
-//! `baseline-2026.2.0/old-impl/tunnelrpc/pogs/` and
-//! `baseline-2026.2.0/old-impl/connection/`.
+//! `baseline-2026.2.0/tunnelrpc/pogs/` and
+//! `baseline-2026.2.0/connection/`.
 
 pub mod registration;
 pub mod stream;

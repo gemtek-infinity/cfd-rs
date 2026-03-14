@@ -1,8 +1,8 @@
 # Promotion Gates
 
 This document defines the current promotion model for the rewrite.
-It stays compact on purpose: `STATUS.md` owns tracked status, and
-`docs/phase-5/roadmap.md` owns the implementation roadmap.
+It stays compact on purpose: [`STATUS.md`](../STATUS.md) owns tracked status, and
+[`docs/phase-5/roadmap.md`](phase-5/roadmap.md) owns the implementation roadmap.
 
 ## Purpose
 
@@ -45,7 +45,7 @@ Phase 5 advances in this exact order:
 Promotion rule:
 
 - do not advance a milestone in substance until its roadmap exit evidence is real
-- update parity ledgers and `STATUS.md` when milestone truth changes
+- update parity ledgers and [`STATUS.md`](../STATUS.md) when milestone truth changes
 - keep deferred, non-lane, and intentional-divergence rows explicit in the ledgers and roadmap index
 
 ## Current Gate
@@ -60,7 +60,7 @@ Next milestone:
 
 Current gate requires:
 
-- baseline-backed closure of the lane-blocking CDC rows called out in `STATUS.md`
+- baseline-backed closure of the lane-blocking CDC rows called out in [`STATUS.md`](../STATUS.md)
 - roadmap-index ownership and evidence references that match the CDC ledger
 - no reliance on deleted Phase 5 planning/status files or historical audit routing
 - the cross-domain logging blocker set stays explicit and cannot be treated as a post-alpha cleanup item
@@ -72,14 +72,14 @@ Production-alpha is not claimed at `Proof Closure`.
 Production-alpha readiness requires all of the following after `Performance Architecture Overhaul`:
 
 - no parity regressions across the admitted lane
-- architecture boundaries still satisfy the crate-dependency contract in `STATUS.md`
+- architecture boundaries still satisfy the crate-dependency contract in [`STATUS.md`](../STATUS.md)
 - performance-critical hot paths are rerun with the admitted probes or benchmarks
 - logging compatibility reruns are green across CLI, local sinks, journald/systemd, and upstream management flows
 - deployment, failure/recovery, and parity evidence reruns are green
 
 ## Canonical Sources
 
-- tracked status: `STATUS.md`
-- roadmap: `docs/phase-5/roadmap.md`
-- exact row ownership: `docs/phase-5/roadmap-index.csv`
-- parity evidence: `docs/parity/README.md` and the domain ledgers
+- tracked status: [`STATUS.md`](../STATUS.md)
+- roadmap: [`docs/phase-5/roadmap.md`](phase-5/roadmap.md)
+- exact row ownership: [`docs/phase-5/roadmap-index.csv`](phase-5/roadmap-index.csv)
+- parity evidence: [`docs/parity/README.md`](parity/README.md) and the domain ledgers

@@ -8,7 +8,7 @@ This document is complemented by
 decision at ADR level.
 
 It is intentionally not a crate-substitution cheat sheet. The rewrite target is
-behavioral compatibility with [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/), not one-for-one library replacement.
+behavioral compatibility with [baseline-2026.2.0/](../baseline-2026.2.0/), not one-for-one library replacement.
 
 ## Current Application
 
@@ -345,7 +345,7 @@ Every subsystem test plan should include, where relevant:
 
 A subsystem is not parity-complete merely because it compiles or passes unit
 tests under nominal load. It needs evidence that its lifecycle, backpressure,
-and shutdown semantics still match [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/).
+and shutdown semantics still match [baseline-2026.2.0/](../baseline-2026.2.0/).
 
 For synchronous and deterministic work (parsing, config, credentials, ingress),
 parity emphasis shifts toward:

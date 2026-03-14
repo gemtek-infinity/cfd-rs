@@ -25,9 +25,8 @@ fn baseline_credential_fixture(path: &str) -> std::path::PathBuf {
 
 #[test]
 fn valid_origin_cert_fixture_decodes() {
-    let fixture = baseline_credential_fixture(
-        "baseline-2026.2.0/old-impl/credentials/test-cloudflare-tunnel-cert-json.pem",
-    );
+    let fixture =
+        baseline_credential_fixture("baseline-2026.2.0/credentials/test-cloudflare-tunnel-cert-json.pem");
     let token = OriginCertToken::from_pem_path(&fixture).expect("fixture should decode");
 
     assert_eq!(token.zone_id, "7b0a4d77dfb881c1a3b7d61ea9443e19");
@@ -38,9 +37,8 @@ fn valid_origin_cert_fixture_decodes() {
 
 #[test]
 fn valid_origin_cert_user_read_preserves_path() {
-    let fixture = baseline_credential_fixture(
-        "baseline-2026.2.0/old-impl/credentials/test-cloudflare-tunnel-cert-json.pem",
-    );
+    let fixture =
+        baseline_credential_fixture("baseline-2026.2.0/credentials/test-cloudflare-tunnel-cert-json.pem");
     let user = OriginCertUser::read(&fixture).expect("fixture should read as user");
 
     assert_eq!(user.cert_path, fixture);
@@ -49,8 +47,7 @@ fn valid_origin_cert_user_read_preserves_path() {
 
 #[test]
 fn missing_token_fixture_maps_to_origin_cert_category() {
-    let fixture =
-        baseline_credential_fixture("baseline-2026.2.0/old-impl/credentials/test-cert-no-token.pem");
+    let fixture = baseline_credential_fixture("baseline-2026.2.0/credentials/test-cert-no-token.pem");
     let error = OriginCertToken::from_pem_path(&fixture).expect_err("fixture should fail");
 
     assert_eq!(error.category().to_string(), "origin-cert-missing-token");
@@ -59,8 +56,7 @@ fn missing_token_fixture_maps_to_origin_cert_category() {
 
 #[test]
 fn unknown_block_fixture_maps_to_origin_cert_category() {
-    let fixture =
-        baseline_credential_fixture("baseline-2026.2.0/old-impl/credentials/test-cert-unknown-block.pem");
+    let fixture = baseline_credential_fixture("baseline-2026.2.0/credentials/test-cert-unknown-block.pem");
     let error = OriginCertToken::from_pem_path(&fixture).expect_err("fixture should fail");
 
     assert_eq!(error.category().to_string(), "origin-cert-unknown-block");

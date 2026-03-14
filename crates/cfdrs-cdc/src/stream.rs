@@ -6,7 +6,7 @@
 //! between the eyeball and the origin service.
 //!
 //! These types match the behavioral contract from
-//! `baseline-2026.2.0/old-impl/tunnelrpc/pogs/quic_metadata_protocol.go`.
+//! `baseline-2026.2.0/tunnelrpc/pogs/quic_metadata_protocol.go`.
 
 use serde::{Deserialize, Serialize};
 

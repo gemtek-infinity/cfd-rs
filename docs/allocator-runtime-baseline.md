@@ -10,7 +10,7 @@ binary honest without implying that runtime subsystems are already ported.
 
 Do not modify the frozen behavior input as part of allocator or runtime work:
 
-- [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/)
+- [baseline-2026.2.0/](../baseline-2026.2.0/)
 
 Use [docs/parity/source-map.csv](parity/source-map.csv) when you need row-level
 routing back into that baseline.

@@ -5,8 +5,8 @@
 //! credentials and connection options; the edge returns connection details.
 //!
 //! Matches the behavioral contract from
-//! `baseline-2026.2.0/old-impl/tunnelrpc/pogs/tunnelrpc.go` and
-//! `baseline-2026.2.0/old-impl/connection/connection.go`.
+//! `baseline-2026.2.0/tunnelrpc/pogs/tunnelrpc.go` and
+//! `baseline-2026.2.0/connection/connection.go`.
 
 use std::net::{IpAddr, SocketAddr};
 
