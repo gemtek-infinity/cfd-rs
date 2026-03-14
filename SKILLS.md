@@ -10,7 +10,7 @@ For any subsystem or slice:
 1. identify the exact accepted scope
 2. identify the owning crate
 3. identify the parity domain (CLI, CDC, or HIS) and the relevant ledger row
-4. read the relevant parity feature doc and `docs/parity/source-map.csv` entry
+4. read the relevant parity feature doc and [`docs/parity/source-map.csv`](docs/parity/source-map.csv) entry
 5. read the corresponding Go source and tests
 6. check dependency and runtime policy before adding crates or async structure
 7. implement the smallest source-grounded slice
@@ -47,7 +47,7 @@ For the full domain and document index, see [docs/parity/README.md](docs/parity/
 If this file disagrees with:
 
 - Go code/tests
-- parity ledgers, feature docs, and `docs/parity/source-map.csv`
+- parity ledgers, feature docs, and [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - [REWRITE_CHARTER.md](REWRITE_CHARTER.md)
 - [STATUS.md](STATUS.md)
 - policy docs under [docs/](docs/)

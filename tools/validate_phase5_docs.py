@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import json
 import re
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -159,6 +160,8 @@ def main() -> int:
     validate_editor_mcp_config(errors)
     validate_justfile_contract(errors)
     validate_cloudflare_rs_gate(errors)
+    validate_markdown_repo_links(errors)
+    validate_markdown_link_targets(errors)
 
     if errors:
         for error in errors:
@@ -442,6 +445,41 @@ def validate_cloudflare_rs_gate(errors: list[str]) -> None:
             errors.append(f"docs/dependency-policy.md must keep the cloudflare-rs gate snippet: {snippet}")
 
 
+def validate_markdown_repo_links(errors: list[str]) -> None:
+    tracked_files, tracked_dirs = tracked_repo_paths()
+    for path in markdown_paths():
+        for line_number, line in enumerate(iter_markdown_non_fence_lines(path), start=1):
+            for match in re.finditer(r"`([^`]+)`", line):
+                start, end = match.span()
+                if start > 0 and line[start - 1] == "[" and line[end : end + 2] == "](":
+                    continue
+                candidate = match.group(1)
+                target = resolve_linkable_repo_target(path, candidate, tracked_files, tracked_dirs)
+                if target is None:
+                    continue
+                errors.append(
+                    f"{path.relative_to(REPO_ROOT)}:{line_number} has repo path in code span without markdown link: {candidate}"
+                )
+
+
+def validate_markdown_link_targets(errors: list[str]) -> None:
+    tracked_files, tracked_dirs = tracked_repo_paths()
+    link_pattern = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+    for path in markdown_paths():
+        for line_number, line in enumerate(iter_markdown_non_fence_lines(path), start=1):
+            for match in link_pattern.finditer(line):
+                href = match.group(1)
+                if "://" in href or href.startswith("#"):
+                    continue
+                href_path = href.split("#", 1)[0]
+                target = (path.parent / href_path).resolve()
+                if target in tracked_files or target in tracked_dirs:
+                    continue
+                errors.append(
+                    f"{path.relative_to(REPO_ROOT)}:{line_number} links to non-repo path: {href}"
+                )
+
+
 def parse_ledger_row_ids(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     return re.findall(r"^\|\s*((?:CLI|CDC|HIS)-\d{3})\s*\|", text, flags=re.MULTILINE)
@@ -465,6 +503,73 @@ def extract_section(text: str, heading: str) -> str | None:
     if not capture:
         return None
     return "\n".join(captured).strip()
+
+
+def markdown_paths() -> list[Path]:
+    return sorted(
+        path
+        for path in REPO_ROOT.rglob("*.md")
+        if "baseline-2026.2.0/old-impl" not in str(path)
+    )
+
+
+def tracked_repo_paths() -> tuple[set[Path], set[Path]]:
+    tracked_files: set[Path] = set()
+    tracked_dirs: set[Path] = {REPO_ROOT}
+    output = subprocess.check_output(["git", "ls-files", "-z"], cwd=REPO_ROOT)
+    for entry in output.split(b"\0"):
+        if not entry:
+            continue
+        file_path = (REPO_ROOT / entry.decode("utf-8")).resolve()
+        tracked_files.add(file_path)
+        current = file_path.parent
+        while True:
+            tracked_dirs.add(current)
+            if current == REPO_ROOT:
+                break
+            current = current.parent
+    return tracked_files, tracked_dirs
+
+
+def iter_markdown_non_fence_lines(path: Path) -> list[str]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    in_fence = False
+    visible_lines: list[str] = []
+    for line in lines:
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            visible_lines.append("")
+            continue
+        visible_lines.append("" if in_fence else line)
+    return visible_lines
+
+
+def resolve_linkable_repo_target(
+    path: Path,
+    candidate: str,
+    tracked_files: set[Path],
+    tracked_dirs: set[Path],
+) -> Path | None:
+    if not is_linkable_repo_candidate(candidate):
+        return None
+    for target in ((path.parent / candidate).resolve(), (REPO_ROOT / candidate).resolve()):
+        if target in tracked_files or target in tracked_dirs:
+            return target
+    return None
+
+
+def is_linkable_repo_candidate(candidate: str) -> bool:
+    if "://" in candidate or candidate.startswith(("/", "--")):
+        return False
+    if " " in candidate or any(char in candidate for char in "*{}"):
+        return False
+    if candidate.startswith(("CLI-", "CDC-", "HIS-")):
+        return False
+    return (
+        "/" in candidate
+        or candidate.endswith((".md", ".csv", ".toml", ".json", ".yml", ".yaml", ".rs", ".go"))
+        or candidate in {"Justfile", "Cargo.toml", "Cargo.lock"}
+    )
 
 
 def iter_repo_text_files() -> list[Path]:

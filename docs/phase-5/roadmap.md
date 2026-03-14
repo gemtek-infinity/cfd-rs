@@ -1,7 +1,7 @@
 # Phase 5 Roadmap
 
 This document is the normative implementation roadmap for Big Phase 5.
-It is a roadmap, not a status file. `STATUS.md` is the single tracked status source.
+It is a roadmap, not a status file. [`STATUS.md`](../../STATUS.md) is the single tracked status source.
 
 ## Objective
 
@@ -20,19 +20,19 @@ It is not a deferred follow-up track.
 Goal:
 
 - remove stale routing and historical audit surfaces
-- keep `STATUS.md` as the only tracked status file
-- replace historical audit routing with `docs/parity/source-map.csv`
-- make `Justfile` the normal human, AI, and CI command surface
+- keep [`STATUS.md`](../../STATUS.md) as the only tracked status file
+- replace historical audit routing with [`docs/parity/source-map.csv`](../parity/source-map.csv)
+- make [`Justfile`](../../Justfile) the normal human, AI, and CI command surface
 - keep MCP routing tools and debtmap analysis tools separated in code, but require a debtmap-enabled operational server surface for agents
 - ban contract-critical ad hoc literals from the initial hotspot files by moving them into owned contract modules
 
 Exact rows:
 
-- all already-proven or intentional-divergence rows mapped to `Program Reset` in `docs/phase-5/roadmap-index.csv`
+- all already-proven or intentional-divergence rows mapped to `Program Reset` in [`docs/phase-5/roadmap-index.csv`](roadmap-index.csv)
 
 Owner crates:
 
-- `cfdrs-shared`, `cfdrs-bin`, `cfdrs-cli`, `cfdrs-cdc`, `tools/mcp-cfd-rs`
+- `cfdrs-shared`, `cfdrs-bin`, `cfdrs-cli`, `cfdrs-cdc`, [`tools/mcp-cfd-rs`](../../tools/mcp-cfd-rs/)
 
 Prerequisites:
 
@@ -52,10 +52,10 @@ Required tests and checks:
 
 Exit evidence:
 
-- `STATUS.md` is the only tracked status file
+- [`STATUS.md`](../../STATUS.md) is the only tracked status file
 - the historical audit tree is gone
-- `docs/parity/source-map.csv` routes every parity row back to `baseline-2026.2.0/old-impl/`
-- `Justfile` is the normal command surface for humans, agents, and CI
+- [`docs/parity/source-map.csv`](../parity/source-map.csv) routes every parity row back to [`baseline-2026.2.0/old-impl/`](../../baseline-2026.2.0/old-impl/)
+- [`Justfile`](../../Justfile) is the normal command surface for humans, agents, and CI
 - debtmap-enabled MCP starts as the required operational surface
 - the `--no-default-features` surface remains buildable only as a maintenance check
 
@@ -69,7 +69,7 @@ Goal:
 
 Exact rows:
 
-- all rows mapped to `CDC Contract Foundation` in `docs/phase-5/roadmap-index.csv`
+- all rows mapped to `CDC Contract Foundation` in [`docs/phase-5/roadmap-index.csv`](roadmap-index.csv)
 
 Primary rows:
 
@@ -99,7 +99,7 @@ Exit evidence:
 
 - registration and stream contracts match the frozen baseline on the admitted lane
 - current CDC shortcuts are either removed or explicitly documented as temporary with a closure path
-- all closed CDC rows show current evidence in the ledger and stable routing in `docs/parity/source-map.csv`
+- all closed CDC rows show current evidence in the ledger and stable routing in [`docs/parity/source-map.csv`](../parity/source-map.csv)
 
 ### 3. Host and Runtime Foundation
 
@@ -111,7 +111,7 @@ Goal:
 
 Exact rows:
 
-- all rows mapped to `Host and Runtime Foundation` in `docs/phase-5/roadmap-index.csv`
+- all rows mapped to `Host and Runtime Foundation` in [`docs/phase-5/roadmap-index.csv`](roadmap-index.csv)
 
 Primary rows:
 
@@ -155,7 +155,7 @@ Goal:
 
 Exact rows:
 
-- all rows mapped to `CLI Foundation` in `docs/phase-5/roadmap-index.csv`
+- all rows mapped to `CLI Foundation` in [`docs/phase-5/roadmap-index.csv`](roadmap-index.csv)
 
 Primary rows:
 
@@ -197,7 +197,7 @@ Goal:
 
 Exact rows:
 
-- all rows mapped to `Command Family Closure` in `docs/phase-5/roadmap-index.csv`
+- all rows mapped to `Command Family Closure` in [`docs/phase-5/roadmap-index.csv`](roadmap-index.csv)
 
 Primary rows:
 
@@ -241,7 +241,7 @@ Goal:
 
 Exact rows:
 
-- all rows mapped to `Proof Closure` in `docs/phase-5/roadmap-index.csv`
+- all rows mapped to `Proof Closure` in [`docs/phase-5/roadmap-index.csv`](roadmap-index.csv)
 
 Owner crates:
 

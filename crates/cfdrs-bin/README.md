@@ -18,6 +18,6 @@ Binary entrypoint and composition owner for `cloudflared`.
 
 ## Governing docs
 
-- `STATUS.md`
-- `docs/phase-5/roadmap.md`
-- `REWRITE_CHARTER.md`
+- [`STATUS.md`](../../STATUS.md)
+- [`docs/phase-5/roadmap.md`](../../docs/phase-5/roadmap.md)
+- [`REWRITE_CHARTER.md`](../../REWRITE_CHARTER.md)

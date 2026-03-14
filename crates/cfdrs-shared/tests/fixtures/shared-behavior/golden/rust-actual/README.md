@@ -9,5 +9,5 @@ Generation command:
 Rules:
 
 - one JSON file per emitted fixture ID
-- the envelope must follow `golden/schema/README.md`
+- the envelope must follow [`golden/schema/README.md`](../schema/README.md)
 - no file here implies parity unless matching Go truth exists and compare passes

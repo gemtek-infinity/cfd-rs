@@ -12,6 +12,6 @@ Cloudflare-facing contracts for `cloudflared`.
 
 ## Governing docs
 
-- `docs/parity/cdc/implementation-checklist.md`
-- `docs/phase-5/roadmap.md`
-- `STATUS.md`
+- [`docs/parity/cdc/implementation-checklist.md`](../../docs/parity/cdc/implementation-checklist.md)
+- [`docs/phase-5/roadmap.md`](../../docs/phase-5/roadmap.md)
+- [`STATUS.md`](../../STATUS.md)

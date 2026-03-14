@@ -6,12 +6,12 @@ command-entry rule for the rewrite.
 ## Retrieval Order
 
 1. if MCP is available, call `status_summary` first
-2. if MCP is unavailable, read the `Active Snapshot` section in `STATUS.md`
+2. if MCP is unavailable, read the `Active Snapshot` section in [`STATUS.md`](../STATUS.md)
 3. identify the owning domain or policy boundary
 4. use `phase5_priority`, `parity_row_details`, `domain_gaps_ranked`, `baseline_source_mapping`, `crate_surface_summary`, or `crate_dependency_graph` before widening to larger docs
 5. load only the matching roadmap, ledger, feature doc, or policy file when the first MCP answer is insufficient
 6. use frozen Go baseline code/tests first for behavior truth
-7. use `Justfile` as the normal command entry surface for local execution, CI, and agent-directed commands
+7. use [`Justfile`](../Justfile) as the normal command entry surface for local execution, CI, and agent-directed commands
 
 ## Minimum Context
 
@@ -19,50 +19,50 @@ command-entry rule for the rewrite.
 
 Load first:
 
-- `STATUS.md`
+- [`STATUS.md`](../STATUS.md)
 
 Load next only if needed:
 
-- `docs/phase-5/roadmap.md`
-- `docs/phase-5/roadmap-index.csv`
+- [`docs/phase-5/roadmap.md`](phase-5/roadmap.md)
+- [`docs/phase-5/roadmap-index.csv`](phase-5/roadmap-index.csv)
 
 ### Scope, Lane, And Non-Negotiables
 
 Load first:
 
-- `REWRITE_CHARTER.md`
-- `docs/promotion-gates.md`
+- [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md)
+- [`docs/promotion-gates.md`](promotion-gates.md)
 
 ### Parity Work
 
 Load first:
 
-- `docs/parity/README.md`
-- `docs/parity/source-map.csv`
+- [`docs/parity/README.md`](parity/README.md)
+- [`docs/parity/source-map.csv`](parity/source-map.csv)
 - the relevant domain ledger:
-  - `docs/parity/cli/implementation-checklist.md`
-  - `docs/parity/cdc/implementation-checklist.md`
-  - `docs/parity/his/implementation-checklist.md`
+  - [`docs/parity/cli/implementation-checklist.md`](parity/cli/implementation-checklist.md)
+  - [`docs/parity/cdc/implementation-checklist.md`](parity/cdc/implementation-checklist.md)
+  - [`docs/parity/his/implementation-checklist.md`](parity/his/implementation-checklist.md)
 
 Load next only if needed:
 
-- the matching feature-group document under `docs/parity/`
-- `docs/parity/logging-compatibility.md` for logging and management-log questions
-- `docs/phase-5/roadmap-index.csv`
+- the matching feature-group document under [`docs/parity/`](parity/)
+- [`docs/parity/logging-compatibility.md`](parity/logging-compatibility.md) for logging and management-log questions
+- [`docs/phase-5/roadmap-index.csv`](phase-5/roadmap-index.csv)
 
 ### Runtime Or Dependency Policy
 
 Load first:
 
-- `docs/dependency-policy.md`
-- `docs/allocator-runtime-baseline.md`
+- [`docs/dependency-policy.md`](dependency-policy.md)
+- [`docs/allocator-runtime-baseline.md`](allocator-runtime-baseline.md)
 
 ### Behavior Truth
 
 Load first:
 
-- `baseline-2026.2.0/old-impl/`
-- `docs/parity/source-map.csv`
+- [`baseline-2026.2.0/old-impl/`](../baseline-2026.2.0/old-impl/)
+- [`docs/parity/source-map.csv`](parity/source-map.csv)
 
 Never claim parity from Rust code shape alone.
 
@@ -122,8 +122,8 @@ Never claim parity from Rust code shape alone.
 
 ### Editor Default Surface
 
-- `.vscode/mcp.json` starts the required debtmap-enabled MCP surface through `just mcp-run`
-- `tools/mcp-cfd-rs/Cargo.toml` keeps debtmap in the default feature set for normal MCP startup
+- [`.vscode/mcp.json`](../.vscode/mcp.json) starts the required debtmap-enabled MCP surface through `just mcp-run`
+- [`tools/mcp-cfd-rs/Cargo.toml`](../tools/mcp-cfd-rs/Cargo.toml) keeps debtmap in the default feature set for normal MCP startup
 - the `--no-default-features` surface is maintenance-only and must not be treated as the normal agent startup target
 
 ## MCP Routing
