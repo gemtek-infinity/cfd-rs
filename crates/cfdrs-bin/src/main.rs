@@ -51,109 +51,70 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::Version { short: false } => CliOutput::success(render_version_output(PROGRAM_NAME)),
         Command::Validate => execute_startup_command(&cli, CliMode::Validate),
 
-        Command::Tunnel(TunnelSubcommand::Run) => execute_startup_command(&cli, CliMode::Run),
-
-        // Bare tunnel invocation without subcommand — currently delegates to run.
-        // Go baseline: TunnelCommand() which starts quick tunnel or named tunnel.
-        Command::Tunnel(TunnelSubcommand::Bare) => execute_startup_command(&cli, CliMode::Run),
-
-        // Service mode — empty invocation enters daemon mode.
-        // Go baseline: handleServiceMode() in main.go.
-        Command::ServiceMode => CliOutput::failure(String::new(), stub_not_implemented("(service-mode)"), 1),
-
-        // Stubs for commands that exist in the Go baseline but are not yet
-        // implemented in the Rust rewrite. Each prints a clear message so
-        // callers know the command is recognized but deferred.
-        Command::Update => CliOutput::failure(String::new(), stub_not_implemented("update"), 1),
-        Command::Login => CliOutput::failure(String::new(), stub_not_implemented("login"), 1),
-
-        // Access sub-tree stubs.
-        Command::Access(sub) => {
-            let label = match sub {
-                AccessSubcommand::Login => "access login",
-                AccessSubcommand::Curl => "access curl",
-                AccessSubcommand::Token => "access token",
-                AccessSubcommand::Tcp => "access tcp",
-                AccessSubcommand::SshConfig => "access ssh-config",
-                AccessSubcommand::SshGen => "access ssh-gen",
-                AccessSubcommand::Bare => "access",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
+        Command::Tunnel(TunnelSubcommand::Run | TunnelSubcommand::Bare) => {
+            execute_startup_command(&cli, CliMode::Run)
         }
-
-        // Tail sub-tree stubs.
-        Command::Tail(sub) => {
-            let label = match sub {
-                TailSubcommand::Token => "tail token",
-                TailSubcommand::Bare => "tail",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
-
-        // Management sub-tree stubs.
-        Command::Management(sub) => {
-            let label = match sub {
-                ManagementSubcommand::Token => "management token",
-                ManagementSubcommand::Bare => "management",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
-
-        Command::Service(_) => CliOutput::failure(String::new(), stub_not_implemented("service"), 1),
 
         // Removed features — exact error messages from Go baseline.
-        Command::ProxyDns => CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1),
+        Command::ProxyDns | Command::Tunnel(TunnelSubcommand::ProxyDns) => {
+            CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1)
+        }
         Command::Tunnel(TunnelSubcommand::DbConnect) => {
             CliOutput::failure(String::new(), DB_CONNECT_REMOVED_MSG.to_owned(), 1)
         }
-        Command::Tunnel(TunnelSubcommand::ProxyDns) => {
-            CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1)
-        }
 
-        // Route sub-tree stubs.
-        Command::Tunnel(TunnelSubcommand::Route(sub)) => {
-            let label = match sub {
-                RouteSubcommand::Dns => "tunnel route dns",
-                RouteSubcommand::Lb => "tunnel route lb",
-                RouteSubcommand::Ip(ip) => match ip {
-                    IpRouteSubcommand::Add => "tunnel route ip add",
-                    IpRouteSubcommand::Show => "tunnel route ip show",
-                    IpRouteSubcommand::Delete => "tunnel route ip delete",
-                    IpRouteSubcommand::Get => "tunnel route ip get",
-                    IpRouteSubcommand::Bare => "tunnel route ip",
-                },
-                RouteSubcommand::Bare => "tunnel route",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
+        // Everything else is recognized but not yet implemented.
+        other => CliOutput::failure(String::new(), stub_not_implemented(&full_command_label(other)), 1),
+    }
+}
 
-        // Vnet sub-tree stubs.
-        Command::Tunnel(TunnelSubcommand::Vnet(sub)) => {
-            let label = match sub {
-                VnetSubcommand::Add => "tunnel vnet add",
-                VnetSubcommand::List => "tunnel vnet list",
-                VnetSubcommand::Delete => "tunnel vnet delete",
-                VnetSubcommand::Update => "tunnel vnet update",
-                VnetSubcommand::Bare => "tunnel vnet",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
-
-        // Ingress sub-tree stubs.
-        Command::Tunnel(TunnelSubcommand::Ingress(sub)) => {
-            let label = match sub {
-                IngressSubcommand::Validate => "tunnel ingress validate",
-                IngressSubcommand::Rule => "tunnel ingress rule",
-                IngressSubcommand::Bare => "tunnel ingress",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
-
-        // Tunnel subcommands not yet implemented.
-        Command::Tunnel(sub) => {
-            let label = format!("tunnel {sub}");
-            CliOutput::failure(String::new(), stub_not_implemented(&label), 1)
-        }
+/// Build a human-readable label for any command variant, including sub-tree
+/// depth.  Used for stub-not-implemented messages.
+fn full_command_label(command: &Command) -> String {
+    match command {
+        Command::Access(sub) => match sub {
+            AccessSubcommand::Login => "access login".into(),
+            AccessSubcommand::Curl => "access curl".into(),
+            AccessSubcommand::Token => "access token".into(),
+            AccessSubcommand::Tcp => "access tcp".into(),
+            AccessSubcommand::SshConfig => "access ssh-config".into(),
+            AccessSubcommand::SshGen => "access ssh-gen".into(),
+            AccessSubcommand::Bare => "access".into(),
+        },
+        Command::Tail(sub) => match sub {
+            TailSubcommand::Token => "tail token".into(),
+            TailSubcommand::Bare => "tail".into(),
+        },
+        Command::Management(sub) => match sub {
+            ManagementSubcommand::Token => "management token".into(),
+            ManagementSubcommand::Bare => "management".into(),
+        },
+        Command::Tunnel(TunnelSubcommand::Route(sub)) => match sub {
+            RouteSubcommand::Dns => "tunnel route dns".into(),
+            RouteSubcommand::Lb => "tunnel route lb".into(),
+            RouteSubcommand::Ip(ip) => match ip {
+                IpRouteSubcommand::Add => "tunnel route ip add".into(),
+                IpRouteSubcommand::Show => "tunnel route ip show".into(),
+                IpRouteSubcommand::Delete => "tunnel route ip delete".into(),
+                IpRouteSubcommand::Get => "tunnel route ip get".into(),
+                IpRouteSubcommand::Bare => "tunnel route ip".into(),
+            },
+            RouteSubcommand::Bare => "tunnel route".into(),
+        },
+        Command::Tunnel(TunnelSubcommand::Vnet(sub)) => match sub {
+            VnetSubcommand::Add => "tunnel vnet add".into(),
+            VnetSubcommand::List => "tunnel vnet list".into(),
+            VnetSubcommand::Delete => "tunnel vnet delete".into(),
+            VnetSubcommand::Update => "tunnel vnet update".into(),
+            VnetSubcommand::Bare => "tunnel vnet".into(),
+        },
+        Command::Tunnel(TunnelSubcommand::Ingress(sub)) => match sub {
+            IngressSubcommand::Validate => "tunnel ingress validate".into(),
+            IngressSubcommand::Rule => "tunnel ingress rule".into(),
+            IngressSubcommand::Bare => "tunnel ingress".into(),
+        },
+        Command::Tunnel(sub) => format!("tunnel {sub}"),
+        _ => format!("{command}"),
     }
 }
 

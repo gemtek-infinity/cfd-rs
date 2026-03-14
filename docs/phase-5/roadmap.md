@@ -15,6 +15,16 @@ It is not a deferred follow-up track.
 
 ## Milestones
 
+The `milestone` column in [`roadmap-index.csv`](roadmap-index.csv) indicates the
+milestone during which a row's exit evidence must be provided.  Rows whose
+`blocked_by` dependency is already satisfied may be started at any time,
+regardless of which milestone they close in.  The `blocked_by` column is the
+real sequencing constraint; `milestone` is the evidence-closure target.
+
+Rows that have already been proven and closed carry `status_bucket:
+already_proven` with `blocked_by: none`, regardless of which milestone
+originally owned them.
+
 ### 1. Program Reset
 
 Goal:

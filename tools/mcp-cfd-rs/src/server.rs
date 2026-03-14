@@ -133,38 +133,32 @@ struct DebtmapHotspotsRequest {
     path_prefix: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapFileSummaryRequest {
     path: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapTouchedFilesRequest {
     paths: Vec<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapCodeSmellsRequest {
     path: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapFunctionComplexityRequest {
     path: String,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapUnifiedAnalysisRequest {
     limit: Option<u32>,
     path_prefix: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 struct DebtmapCiGateRequest {
     path_prefix: Option<String>,
@@ -680,14 +674,13 @@ impl CfdRsMemory {
         to_json(result)
     }
 
-    #[cfg_attr(
-        feature = "debtmap",
-        tool(
-            description = "Return top cognitive-load hotspot files for the repo or a bounded path prefix. \
-                           Use for refactor triage, not as always-on context."
-        )
+    #[tool(
+        description = "Return top cognitive-load hotspot files for the repo or a bounded path prefix. Each \
+                       file includes score, score_category \
+                       (negligible/reviewable/hotspot/high_hotspot/critical_hotspot), and \
+                       recommended_action. Scores >= 30.0 are high priority, >= 45.0 are refactor-now, >= \
+                       75.0 are critical. Use for refactor triage, not as always-on context."
     )]
-    #[allow(dead_code)]
     async fn debtmap_top_hotspots(
         &self,
         Parameters(DebtmapHotspotsRequest { limit, path_prefix }): Parameters<DebtmapHotspotsRequest>,
@@ -722,11 +715,11 @@ impl CfdRsMemory {
         }
     }
 
-    #[cfg_attr(
-        feature = "debtmap",
-        tool(description = "Return a focused debtmap summary for one file.")
+    #[tool(
+        description = "Return a focused debtmap summary for one file, including per-function complexity \
+                       breakdown, code smells, TODO locations, and long-function line numbers. Use to \
+                       understand why a file scores high and identify specific functions to fix."
     )]
-    #[allow(dead_code)]
     async fn debtmap_file_summary(
         &self,
         Parameters(DebtmapFileSummaryRequest { path }): Parameters<DebtmapFileSummaryRequest>,
@@ -762,11 +755,11 @@ impl CfdRsMemory {
         }
     }
 
-    #[cfg_attr(
-        feature = "debtmap",
-        tool(description = "Score a provided list of touched files for bounded cognitive-load review.")
+    #[tool(
+        description = "Score a list of touched files for bounded cognitive-load review. Returns per-file \
+                       scores with categories and recommended actions. Files scoring >= 30.0 should be \
+                       reduced before merge. Use after editing files to verify cognitive load is acceptable."
     )]
-    #[allow(dead_code)]
     async fn debtmap_touched_files_review(
         &self,
         Parameters(DebtmapTouchedFilesRequest { paths }): Parameters<DebtmapTouchedFilesRequest>,
@@ -806,11 +799,7 @@ impl CfdRsMemory {
         }
     }
 
-    #[cfg_attr(
-        feature = "debtmap",
-        tool(description = "Detect code smells in a single file using debtmap AST analysis.")
-    )]
-    #[allow(dead_code)]
+    #[tool(description = "Detect code smells in a single file using debtmap AST analysis.")]
     async fn debtmap_code_smells(
         &self,
         Parameters(DebtmapCodeSmellsRequest { path }): Parameters<DebtmapCodeSmellsRequest>,
@@ -846,11 +835,7 @@ impl CfdRsMemory {
         }
     }
 
-    #[cfg_attr(
-        feature = "debtmap",
-        tool(description = "Return per-function complexity breakdown for a single file.")
-    )]
-    #[allow(dead_code)]
+    #[tool(description = "Return per-function complexity breakdown for a single file.")]
     async fn debtmap_function_complexity(
         &self,
         Parameters(DebtmapFunctionComplexityRequest { path }): Parameters<DebtmapFunctionComplexityRequest>,
@@ -889,11 +874,7 @@ impl CfdRsMemory {
         }
     }
 
-    #[cfg_attr(
-        feature = "debtmap",
-        tool(description = "Run full unified debtmap analysis for deep structural review.")
-    )]
-    #[allow(dead_code)]
+    #[tool(description = "Run full unified debtmap analysis for deep structural review.")]
     async fn debtmap_unified_analysis(
         &self,
         Parameters(DebtmapUnifiedAnalysisRequest { limit, path_prefix }): Parameters<
@@ -940,11 +921,13 @@ impl CfdRsMemory {
         }
     }
 
-    #[cfg_attr(
-        feature = "debtmap",
-        tool(description = "Evaluate debtmap CI gate rules against the repo or a bounded file set.")
+    #[tool(
+        description = "Evaluate debtmap CI gate rules against the repo or a bounded file set. Returns \
+                       pass/fail with blocking violations (must fix) and warnings (monitor). Blocking \
+                       rules: function score >= 30.0, god_object_score >= 45.0, density > 50.0/1K LOC, \
+                       cyclomatic >= 31, cognitive >= 25. Each violation includes path, line, score, and a \
+                       suggestion for how to fix it. Run on touched files before completing a task."
     )]
-    #[allow(dead_code)]
     async fn debtmap_ci_gate(
         &self,
         Parameters(DebtmapCiGateRequest { path_prefix, paths }): Parameters<DebtmapCiGateRequest>,

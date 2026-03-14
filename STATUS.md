@@ -32,11 +32,11 @@ What does not exist yet:
 - Cap'n Proto registration RPC and full stream round-trip through origin
 - management service, log streaming, Cloudflare REST API client, and management-token workflows
 - broad CLI behavioral parity: root service-mode runtime, tunnel/access/tail/service/update behavioral implementations behind parsed stubs
-- real service install/uninstall execution (trait contracts and templates exist, `CommandRunner` integration pending)
-- real local HTTP endpoints: metrics, readiness, diagnostics (trait contracts and response types exist, server binding pending)
-- real config reload and file watcher (trait contracts exist, notify/inotify integration pending)
-- real logging sinks: file rotation, journald/systemd output, upstream management log streaming (config types exist, actual sink implementations pending)
-- ICMP proxy, hello server, graceful restart (trait stubs exist, real implementations pending)
+- service install/uninstall: `CommandRunner` trait integration is structurally complete and parity-tested; real host `systemctl` execution not yet verified end-to-end
+- local HTTP endpoints: metrics, readiness, diagnostics trait contracts and response types exist; HTTP server binding pending
+- config reload and file watcher: trait contracts exist; `notify`/`inotify` integration pending
+- logging sinks: file rotation, journald/systemd output, upstream management log streaming config types exist; actual sink implementations pending
+- ICMP proxy, hello server, graceful restart: trait stubs exist; real implementations pending
 - performance-architectural overhaul of the final admitted hot paths
 
 ## Active Milestone
@@ -69,10 +69,10 @@ Tier 1 lane-blocking rows, in implementation order:
 2. `CDC-011`, `CDC-012`, `CDC-018` — stream schema, framing, and round-trip
 3. `CLI-001`, `CLI-002`, `CLI-003` — root invocation, help text, global flags
 4. `CLI-008`, `CLI-010`, `CLI-012` — tunnel root behavior, create, run
-5. `HIS-012` through `HIS-017`, `HIS-022` — service install/uninstall and systemd templates
-6. `HIS-024`, `HIS-025`, `HIS-027` — local metrics, readiness, and Prometheus exposure
-7. `HIS-041`, `HIS-042`, `HIS-044` — file watcher, reload loop, remote config update
-8. logging blocker set — `CLI-003`, `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-050`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`, `HIS-068`
+5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service install/uninstall and systemd templates (parity-backed; `CommandRunner` end-to-end pending)
+6. `HIS-024`, `HIS-025`, `HIS-027` — local metrics, readiness, and Prometheus exposure (trait contracts exist; server binding pending)
+7. `HIS-041`, `HIS-042`, `HIS-044` — file watcher, reload loop, remote config update (trait contracts exist; integration pending)
+8. logging blocker set — `CLI-003`, `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`, `HIS-068`
 9. `CDC-033`, `CDC-034` — Cloudflare REST API client and response envelope
 10. `cloudflare-rs` remains gate-only for `CDC-033`, `CDC-034`, `CDC-038` and dependent CLI flows; no dependency admission during prep
 11. final milestone: `Performance Architecture Overhaul` after proof closure reruns cleanly

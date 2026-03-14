@@ -4,6 +4,174 @@ use std::path::PathBuf;
 use super::types::{GlobalFlags, TunnelSubcommand};
 use super::{Cli, Command, surface_contract};
 
+/// Short-circuit builder for value-flag matching.
+///
+/// Each method is a no-op once a previous method has already matched.
+/// After all candidates are tried, call `.matched()` to learn whether
+/// the argument was consumed.
+struct FlagMatcher<'a, I> {
+    arg: &'a OsStr,
+    args: &'a mut I,
+    flags: &'a mut GlobalFlags,
+    matched: bool,
+}
+
+impl<'a, I: Iterator<Item = OsString>> FlagMatcher<'a, I> {
+    fn new(arg: &'a OsStr, args: &'a mut I, flags: &'a mut GlobalFlags) -> Self {
+        Self {
+            arg,
+            args,
+            flags,
+            matched: false,
+        }
+    }
+
+    fn string(
+        &mut self,
+        name: &str,
+        target: impl FnOnce(&mut GlobalFlags) -> &mut Option<String>,
+    ) -> Result<&mut Self, String> {
+        if !self.matched
+            && let Some(v) = try_string_flag(self.arg, self.args, name)?
+        {
+            *target(self.flags) = Some(v);
+            self.matched = true;
+        }
+        Ok(self)
+    }
+
+    fn string_alias(
+        &mut self,
+        name: &str,
+        alias: &str,
+        target: impl FnOnce(&mut GlobalFlags) -> &mut Option<String>,
+    ) -> Result<&mut Self, String> {
+        if !self.matched {
+            let v =
+                try_string_flag(self.arg, self.args, name)?.or(try_string_flag(self.arg, self.args, alias)?);
+
+            if let Some(v) = v {
+                *target(self.flags) = Some(v);
+                self.matched = true;
+            }
+        }
+        Ok(self)
+    }
+
+    fn path(
+        &mut self,
+        name: &str,
+        target: impl FnOnce(&mut GlobalFlags) -> &mut Option<PathBuf>,
+    ) -> Result<&mut Self, String> {
+        if !self.matched
+            && let Some(v) = try_string_flag(self.arg, self.args, name)?
+        {
+            set_path_flag(target(self.flags), v, name)?;
+            self.matched = true;
+        }
+        Ok(self)
+    }
+
+    fn path_alias(
+        &mut self,
+        name: &str,
+        alias: &str,
+        target: impl FnOnce(&mut GlobalFlags) -> &mut Option<PathBuf>,
+    ) -> Result<&mut Self, String> {
+        if !self.matched {
+            let v =
+                try_string_flag(self.arg, self.args, name)?.or(try_string_flag(self.arg, self.args, alias)?);
+
+            if let Some(v) = v {
+                set_path_flag(target(self.flags), v, name)?;
+                self.matched = true;
+            }
+        }
+        Ok(self)
+    }
+
+    fn push(
+        &mut self,
+        name: &str,
+        target: impl FnOnce(&mut GlobalFlags) -> &mut Vec<String>,
+    ) -> Result<&mut Self, String> {
+        if !self.matched
+            && let Some(v) = try_string_flag(self.arg, self.args, name)?
+        {
+            target(self.flags).push(v);
+            self.matched = true;
+        }
+        Ok(self)
+    }
+
+    fn push_alias(
+        &mut self,
+        name: &str,
+        alias: &str,
+        target: impl FnOnce(&mut GlobalFlags) -> &mut Vec<String>,
+    ) -> Result<&mut Self, String> {
+        if !self.matched {
+            let v =
+                try_string_flag(self.arg, self.args, name)?.or(try_string_flag(self.arg, self.args, alias)?);
+
+            if let Some(v) = v {
+                target(self.flags).push(v);
+                self.matched = true;
+            }
+        }
+        Ok(self)
+    }
+
+    fn u16_val(
+        &mut self,
+        name: &str,
+        target: impl FnOnce(&mut GlobalFlags) -> &mut Option<u16>,
+    ) -> Result<&mut Self, String> {
+        if !self.matched
+            && let Some(v) = try_string_flag(self.arg, self.args, name)?
+        {
+            *target(self.flags) = Some(
+                v.parse::<u16>()
+                    .map_err(|_| format!("invalid value for {name}: {v}"))?,
+            );
+            self.matched = true;
+        }
+        Ok(self)
+    }
+
+    fn u32_val(
+        &mut self,
+        name: &str,
+        target: impl FnOnce(&mut GlobalFlags) -> &mut Option<u32>,
+    ) -> Result<&mut Self, String> {
+        if !self.matched
+            && let Some(v) = try_string_flag(self.arg, self.args, name)?
+        {
+            *target(self.flags) = Some(parse_u32(&v, name)?);
+            self.matched = true;
+        }
+        Ok(self)
+    }
+
+    fn u64_val(
+        &mut self,
+        name: &str,
+        target: impl FnOnce(&mut GlobalFlags) -> &mut Option<u64>,
+    ) -> Result<&mut Self, String> {
+        if !self.matched
+            && let Some(v) = try_string_flag(self.arg, self.args, name)?
+        {
+            *target(self.flags) = Some(parse_u64(&v, name)?);
+            self.matched = true;
+        }
+        Ok(self)
+    }
+
+    fn matched(&self) -> bool {
+        self.matched
+    }
+}
+
 #[derive(Default)]
 struct ParseState {
     flags: GlobalFlags,
@@ -76,143 +244,13 @@ fn handle_argument(
 
     // If we're already inside a command that expects subcommands,
     // try to resolve this token as a subcommand.
-    if let Some(ctx) = &state.awaiting_subcommand {
-        match ctx {
-            SubcommandContext::Tunnel => {
-                if let Some(sub) = surface_contract::parse_tunnel_subcommand(token_str) {
-                    // Subcommands with their own sub-subcommands enter deeper parsing.
-                    match &sub {
-                        TunnelSubcommand::Route(_) => {
-                            state.awaiting_subcommand = Some(SubcommandContext::Route);
-                        }
-                        TunnelSubcommand::Vnet(_) => {
-                            state.awaiting_subcommand = Some(SubcommandContext::Vnet);
-                        }
-                        TunnelSubcommand::Ingress(_) => {
-                            state.awaiting_subcommand = Some(SubcommandContext::Ingress);
-                        }
-                        _ => {
-                            state.awaiting_subcommand = None;
-                        }
-                    }
-                    state.command = Some(Command::Tunnel(sub));
-                    return Ok(());
-                }
-            }
-
-            SubcommandContext::Service => {
-                if let Some(action) = surface_contract::parse_service_subcommand(token_str) {
-                    state.command = Some(Command::Service(action));
-                    state.awaiting_subcommand = None;
-                    return Ok(());
-                }
-            }
-
-            SubcommandContext::Access => {
-                if let Some(sub) = surface_contract::parse_access_subcommand(token_str) {
-                    state.command = Some(Command::Access(sub));
-                    state.awaiting_subcommand = None;
-                    return Ok(());
-                }
-            }
-
-            SubcommandContext::Tail => {
-                if let Some(sub) = surface_contract::parse_tail_subcommand(token_str) {
-                    state.command = Some(Command::Tail(sub));
-                    state.awaiting_subcommand = None;
-                    return Ok(());
-                }
-            }
-
-            SubcommandContext::Management => {
-                if let Some(sub) = surface_contract::parse_management_subcommand(token_str) {
-                    state.command = Some(Command::Management(sub));
-                    state.awaiting_subcommand = None;
-                    return Ok(());
-                }
-            }
-
-            SubcommandContext::Route => {
-                if let Some(sub) = surface_contract::parse_route_subcommand(token_str) {
-                    match &sub {
-                        super::types::RouteSubcommand::Ip(_) => {
-                            state.awaiting_subcommand = Some(SubcommandContext::RouteIp);
-                        }
-                        _ => {
-                            state.awaiting_subcommand = None;
-                        }
-                    }
-                    state.command = Some(Command::Tunnel(TunnelSubcommand::Route(sub)));
-                    return Ok(());
-                }
-            }
-
-            SubcommandContext::RouteIp => {
-                if let Some(sub) = surface_contract::parse_ip_route_subcommand(token_str) {
-                    state.command = Some(Command::Tunnel(TunnelSubcommand::Route(
-                        super::types::RouteSubcommand::Ip(sub),
-                    )));
-                    state.awaiting_subcommand = None;
-                    return Ok(());
-                }
-            }
-
-            SubcommandContext::Vnet => {
-                if let Some(sub) = surface_contract::parse_vnet_subcommand(token_str) {
-                    state.command = Some(Command::Tunnel(TunnelSubcommand::Vnet(sub)));
-                    state.awaiting_subcommand = None;
-                    return Ok(());
-                }
-            }
-
-            SubcommandContext::Ingress => {
-                if let Some(sub) = surface_contract::parse_ingress_subcommand(token_str) {
-                    state.command = Some(Command::Tunnel(TunnelSubcommand::Ingress(sub)));
-                    state.awaiting_subcommand = None;
-                    return Ok(());
-                }
-            }
-        }
-
-        // Not a known subcommand — collect as rest arg.
-        state.flags.rest_args.push(token_str.to_owned());
-        return Ok(());
+    if state.awaiting_subcommand.is_some() {
+        return resolve_subcommand(token_str, state);
     }
 
     // Try top-level command word.
     if let Some(command) = surface_contract::parse_command_token(token_str) {
-        // For commands with subcommands, enter subcommand parsing mode.
-        match &command {
-            Command::Tunnel(TunnelSubcommand::Bare) => {
-                state.awaiting_subcommand = Some(SubcommandContext::Tunnel);
-                state.command = Some(command);
-            }
-
-            Command::Service(_) => {
-                state.awaiting_subcommand = Some(SubcommandContext::Service);
-                state.command = Some(command);
-            }
-
-            Command::Access(_) => {
-                state.awaiting_subcommand = Some(SubcommandContext::Access);
-                state.command = Some(command);
-            }
-
-            Command::Tail(_) => {
-                state.awaiting_subcommand = Some(SubcommandContext::Tail);
-                state.command = Some(command);
-            }
-
-            Command::Management(_) => {
-                state.awaiting_subcommand = Some(SubcommandContext::Management);
-                state.command = Some(command);
-            }
-
-            _ => {
-                set_command(&mut state.command, command)?;
-            }
-        }
-
+        apply_top_level_command(command, state)?;
         return Ok(());
     }
 
@@ -232,6 +270,123 @@ fn handle_argument(
     Err(surface_contract::unknown_argument_message(token_str))
 }
 
+/// Resolve a token as a subcommand within the current subcommand context.
+/// Called only when `state.awaiting_subcommand` is `Some`.
+fn resolve_subcommand(token_str: &str, state: &mut ParseState) -> Result<(), String> {
+    // Take ownership to avoid holding an immutable borrow across mutable
+    // sub-function calls (resolve_tunnel_subcommand / resolve_route_subcommand).
+    let ctx = state.awaiting_subcommand.take().expect("caller checks Some");
+
+    let resolved = match ctx {
+        SubcommandContext::Tunnel => resolve_tunnel_subcommand(token_str, state),
+
+        SubcommandContext::Service => {
+            surface_contract::parse_service_subcommand(token_str).map(Command::Service)
+        }
+        SubcommandContext::Access => {
+            surface_contract::parse_access_subcommand(token_str).map(Command::Access)
+        }
+        SubcommandContext::Tail => surface_contract::parse_tail_subcommand(token_str).map(Command::Tail),
+        SubcommandContext::Management => {
+            surface_contract::parse_management_subcommand(token_str).map(Command::Management)
+        }
+
+        SubcommandContext::Route => resolve_route_subcommand(token_str, state),
+
+        SubcommandContext::RouteIp => surface_contract::parse_ip_route_subcommand(token_str)
+            .map(|s| Command::Tunnel(TunnelSubcommand::Route(super::types::RouteSubcommand::Ip(s)))),
+        SubcommandContext::Vnet => surface_contract::parse_vnet_subcommand(token_str)
+            .map(|s| Command::Tunnel(TunnelSubcommand::Vnet(s))),
+        SubcommandContext::Ingress => surface_contract::parse_ingress_subcommand(token_str)
+            .map(|s| Command::Tunnel(TunnelSubcommand::Ingress(s))),
+    };
+
+    if let Some(cmd) = resolved {
+        state.command = Some(cmd);
+    } else {
+        // Not resolved — restore the context for subsequent tokens.
+        state.awaiting_subcommand = Some(ctx);
+        state.flags.rest_args.push(token_str.to_owned());
+    }
+
+    Ok(())
+}
+
+/// Tunnel subcommands may enter deeper sub-subcommand parsing.
+fn resolve_tunnel_subcommand(token_str: &str, state: &mut ParseState) -> Option<Command> {
+    let sub = surface_contract::parse_tunnel_subcommand(token_str)?;
+
+    match &sub {
+        TunnelSubcommand::Route(_) => {
+            state.awaiting_subcommand = Some(SubcommandContext::Route);
+        }
+        TunnelSubcommand::Vnet(_) => {
+            state.awaiting_subcommand = Some(SubcommandContext::Vnet);
+        }
+        TunnelSubcommand::Ingress(_) => {
+            state.awaiting_subcommand = Some(SubcommandContext::Ingress);
+        }
+        _ => {
+            state.awaiting_subcommand = None;
+        }
+    }
+
+    Some(Command::Tunnel(sub))
+}
+
+/// Route subcommands may enter IP sub-subcommand parsing.
+fn resolve_route_subcommand(token_str: &str, state: &mut ParseState) -> Option<Command> {
+    let sub = surface_contract::parse_route_subcommand(token_str)?;
+
+    match &sub {
+        super::types::RouteSubcommand::Ip(_) => {
+            state.awaiting_subcommand = Some(SubcommandContext::RouteIp);
+        }
+        _ => {
+            state.awaiting_subcommand = None;
+        }
+    }
+
+    Some(Command::Tunnel(TunnelSubcommand::Route(sub)))
+}
+
+/// Apply a recognized top-level command word, entering subcommand parsing
+/// mode for commands that have sub-subcommands.
+fn apply_top_level_command(command: Command, state: &mut ParseState) -> Result<(), String> {
+    match &command {
+        Command::Tunnel(TunnelSubcommand::Bare) => {
+            state.awaiting_subcommand = Some(SubcommandContext::Tunnel);
+            state.command = Some(command);
+        }
+
+        Command::Service(_) => {
+            state.awaiting_subcommand = Some(SubcommandContext::Service);
+            state.command = Some(command);
+        }
+
+        Command::Access(_) => {
+            state.awaiting_subcommand = Some(SubcommandContext::Access);
+            state.command = Some(command);
+        }
+
+        Command::Tail(_) => {
+            state.awaiting_subcommand = Some(SubcommandContext::Tail);
+            state.command = Some(command);
+        }
+
+        Command::Management(_) => {
+            state.awaiting_subcommand = Some(SubcommandContext::Management);
+            state.command = Some(command);
+        }
+
+        _ => {
+            set_command(&mut state.command, command)?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Try to parse the argument as a known flag.
 /// Returns `true` if the argument was consumed as a flag.
 fn try_parse_flag(
@@ -239,495 +394,141 @@ fn try_parse_flag(
     args: &mut impl Iterator<Item = OsString>,
     state: &mut ParseState,
 ) -> Result<bool, String> {
-    // --config VALUE or --config=VALUE
-    if let Some(value) = try_string_flag(arg, args, surface_contract::CONFIG_FLAG)? {
-        set_path_flag(&mut state.flags.config_path, value, surface_contract::CONFIG_FLAG)?;
-        state.any_flag_set = true;
+    if try_parse_value_flag(arg, args, state)? {
         return Ok(true);
     }
 
-    // --credentials-file VALUE or --cred-file VALUE
-    if let Some(value) =
-        try_string_flag(arg, args, "--credentials-file")?.or(try_string_flag(arg, args, "--cred-file")?)
-    {
-        set_path_flag(&mut state.flags.credentials_file, value, "--credentials-file")?;
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --credentials-contents VALUE
-    if let Some(value) = try_string_flag(arg, args, "--credentials-contents")? {
-        state.flags.credentials_contents = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --token VALUE
-    if let Some(value) = try_string_flag(arg, args, "--token")? {
-        state.flags.token = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --token-file VALUE
-    if let Some(value) = try_string_flag(arg, args, "--token-file")? {
-        set_path_flag(&mut state.flags.token_file, value, "--token-file")?;
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --origincert VALUE
-    if let Some(value) = try_string_flag(arg, args, "--origincert")? {
-        set_path_flag(&mut state.flags.origincert, value, "--origincert")?;
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --loglevel VALUE
-    if let Some(value) = try_string_flag(arg, args, "--loglevel")? {
-        state.flags.loglevel = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --transport-loglevel VALUE
-    if let Some(value) = try_string_flag(arg, args, "--transport-loglevel")? {
-        state.flags.transport_loglevel = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --logfile VALUE
-    if let Some(value) = try_string_flag(arg, args, "--logfile")? {
-        set_path_flag(&mut state.flags.logfile, value, "--logfile")?;
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --log-directory VALUE
-    if let Some(value) = try_string_flag(arg, args, "--log-directory")? {
-        set_path_flag(&mut state.flags.log_directory, value, "--log-directory")?;
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --output VALUE (log format)
-    if let Some(value) = try_string_flag(arg, args, "--output")? {
-        state.flags.log_format_output = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --metrics VALUE
-    if let Some(value) = try_string_flag(arg, args, "--metrics")? {
-        state.flags.metrics = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --pidfile VALUE
-    if let Some(value) = try_string_flag(arg, args, "--pidfile")? {
-        set_path_flag(&mut state.flags.pidfile, value, "--pidfile")?;
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --grace-period VALUE
-    if let Some(value) = try_string_flag(arg, args, "--grace-period")? {
-        state.flags.grace_period = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --url VALUE
-    if let Some(value) = try_string_flag(arg, args, "--url")? {
-        state.flags.url = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --name or -n VALUE
-    if let Some(value) = try_string_flag(arg, args, "--name")?.or(try_string_flag(arg, args, "-n")?) {
-        state.flags.tunnel_name = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --protocol or -p VALUE
-    if let Some(value) = try_string_flag(arg, args, "--protocol")?.or(try_string_flag(arg, args, "-p")?) {
-        state.flags.protocol = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --edge VALUE (hidden, repeated)
-    if let Some(value) = try_string_flag(arg, args, "--edge")? {
-        state.flags.edge.push(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --region VALUE
-    if let Some(value) = try_string_flag(arg, args, "--region")? {
-        state.flags.region = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --edge-ip-version VALUE
-    if let Some(value) = try_string_flag(arg, args, "--edge-ip-version")? {
-        state.flags.edge_ip_version = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --edge-bind-address VALUE
-    if let Some(value) = try_string_flag(arg, args, "--edge-bind-address")? {
-        state.flags.edge_bind_address = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --hostname VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--hostname")? {
-        state.flags.hostname = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --id VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--id")? {
-        state.flags.tunnel_id = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --lb-pool VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--lb-pool")? {
-        state.flags.lb_pool = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --tag VALUE (hidden, repeated)
-    if let Some(value) = try_string_flag(arg, args, "--tag")? {
-        state.flags.tag.push(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --features or -F VALUE (repeated)
-    if let Some(value) = try_string_flag(arg, args, "--features")?.or(try_string_flag(arg, args, "-F")?) {
-        state.flags.features.push(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --label VALUE
-    if let Some(value) = try_string_flag(arg, args, "--label")? {
-        state.flags.label = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --autoupdate-freq VALUE
-    if let Some(value) = try_string_flag(arg, args, "--autoupdate-freq")? {
-        state.flags.autoupdate_freq = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --metrics-update-freq VALUE
-    if let Some(value) = try_string_flag(arg, args, "--metrics-update-freq")? {
-        state.flags.metrics_update_freq = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --retries VALUE
-    if let Some(value) = try_string_flag(arg, args, "--retries")? {
-        state.flags.retries = Some(parse_u32(&value, "--retries")?);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --ha-connections VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--ha-connections")? {
-        state.flags.ha_connections = Some(parse_u32(&value, "--ha-connections")?);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --max-edge-addr-retries VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--max-edge-addr-retries")? {
-        state.flags.max_edge_addr_retries = Some(parse_u32(&value, "--max-edge-addr-retries")?);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --rpc-timeout VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--rpc-timeout")? {
-        state.flags.rpc_timeout = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --heartbeat-interval VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--heartbeat-interval")? {
-        state.flags.heartbeat_interval = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --heartbeat-count VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--heartbeat-count")? {
-        state.flags.heartbeat_count = Some(parse_u32(&value, "--heartbeat-count")?);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --write-stream-timeout VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--write-stream-timeout")? {
-        state.flags.write_stream_timeout = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --max-active-flows VALUE
-    if let Some(value) = try_string_flag(arg, args, "--max-active-flows")? {
-        state.flags.max_active_flows = Some(parse_u64(&value, "--max-active-flows")?);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --management-hostname VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--management-hostname")? {
-        state.flags.management_hostname = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --api-url VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--api-url")? {
-        state.flags.api_url = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --trace-output VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--trace-output")? {
-        state.flags.trace_output = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --unix-socket VALUE
-    if let Some(value) = try_string_flag(arg, args, "--unix-socket")? {
-        state.flags.unix_socket = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --http-host-header VALUE
-    if let Some(value) = try_string_flag(arg, args, "--http-host-header")? {
-        state.flags.http_host_header = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --origin-server-name VALUE
-    if let Some(value) = try_string_flag(arg, args, "--origin-server-name")? {
-        state.flags.origin_server_name = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --origin-ca-pool / --cacert VALUE (hidden)
-    if let Some(value) =
-        try_string_flag(arg, args, "--origin-ca-pool")?.or(try_string_flag(arg, args, "--cacert")?)
-    {
-        state.flags.origin_ca_pool = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --icmpv4-src VALUE
-    if let Some(value) = try_string_flag(arg, args, "--icmpv4-src")? {
-        state.flags.icmpv4_src = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --icmpv6-src VALUE
-    if let Some(value) = try_string_flag(arg, args, "--icmpv6-src")? {
-        state.flags.icmpv6_src = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --proxy-address VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--proxy-address")? {
-        state.flags.proxy_address = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --proxy-port VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--proxy-port")? {
-        state.flags.proxy_port = Some(
-            value
-                .parse::<u16>()
-                .map_err(|_| format!("invalid value for --proxy-port: {value}"))?,
-        );
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --proxy-connect-timeout VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--proxy-connect-timeout")? {
-        state.flags.proxy_connect_timeout = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --proxy-tls-timeout VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--proxy-tls-timeout")? {
-        state.flags.proxy_tls_timeout = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --proxy-tcp-keepalive VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--proxy-tcp-keepalive")? {
-        state.flags.proxy_tcp_keepalive = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --proxy-keepalive-connections VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--proxy-keepalive-connections")? {
-        state.flags.proxy_keepalive_connections = Some(parse_u32(&value, "--proxy-keepalive-connections")?);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --proxy-keepalive-timeout VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--proxy-keepalive-timeout")? {
-        state.flags.proxy_keepalive_timeout = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --service-op-ip VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--service-op-ip")? {
-        state.flags.service_op_ip = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --quic-connection-level-flow-control-limit VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--quic-connection-level-flow-control-limit")? {
-        state.flags.quic_conn_flow_control =
-            Some(parse_u64(&value, "--quic-connection-level-flow-control-limit")?);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // --quic-stream-level-flow-control-limit VALUE (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--quic-stream-level-flow-control-limit")? {
-        state.flags.quic_stream_flow_control =
-            Some(parse_u64(&value, "--quic-stream-level-flow-control-limit")?);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // Deprecated credential flags (hidden)
-    if let Some(value) = try_string_flag(arg, args, "--api-key")? {
-        state.flags.api_key = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    if let Some(value) = try_string_flag(arg, args, "--api-email")? {
-        state.flags.api_email = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    if let Some(value) = try_string_flag(arg, args, "--api-ca-key")? {
-        state.flags.api_ca_key = Some(value);
-        state.any_flag_set = true;
-        return Ok(true);
-    }
-
-    // Bool flags
-    let arg_str = arg.to_string_lossy();
-    let bool_match = match arg_str.as_ref() {
-        "--no-autoupdate" => {
-            state.flags.no_autoupdate = true;
-            true
-        }
-        "--hello-world" => {
-            state.flags.hello_world = true;
-            true
-        }
-        "--no-tls-verify" => {
-            state.flags.no_tls_verify = true;
-            true
-        }
-        "--no-chunked-encoding" => {
-            state.flags.no_chunked_encoding = true;
-            true
-        }
-        "--http2-origin" => {
-            state.flags.http2_origin = true;
-            true
-        }
-        "--post-quantum" | "-pq" => {
-            state.flags.post_quantum = Some(true);
-            true
-        }
-        "--quiet" | "-q" => {
-            state.flags.quiet = true;
-            true
-        }
-        "--is-autoupdated" => {
-            state.flags.is_autoupdated = true;
-            true
-        }
-        "--bastion" => {
-            state.flags.bastion = true;
-            true
-        }
-        "--socks5" => {
-            state.flags.socks5 = true;
-            true
-        }
-        "--proxy-no-happy-eyeballs" => {
-            state.flags.proxy_no_happy_eyeballs = true;
-            true
-        }
-        "--quic-disable-pmtu-discovery" => {
-            state.flags.quic_disable_pmtu = true;
-            true
-        }
-        "--no-update-service" => {
-            state.flags.no_update_service = true;
-            true
-        }
-        "--proxy-dns" => {
-            state.flags.proxy_dns = true;
-            true
-        }
-        _ => false,
-    };
-
-    if bool_match {
+    if try_parse_bool_flag(arg, state) {
         state.any_flag_set = true;
         return Ok(true);
     }
 
     Ok(false)
+}
+
+/// Try to consume the argument as a flag that takes a value
+/// (`--flag VALUE` or `--flag=VALUE`).  Returns `true` if matched.
+fn try_parse_value_flag(
+    arg: &OsStr,
+    args: &mut impl Iterator<Item = OsString>,
+    state: &mut ParseState,
+) -> Result<bool, String> {
+    let m = &mut FlagMatcher::new(arg, args, &mut state.flags);
+
+    // Config and credential flags
+    m.path(surface_contract::CONFIG_FLAG, |f| &mut f.config_path)?
+        .path_alias("--credentials-file", "--cred-file", |f| &mut f.credentials_file)?
+        .string("--credentials-contents", |f| &mut f.credentials_contents)?
+        .string("--token", |f| &mut f.token)?
+        .path("--token-file", |f| &mut f.token_file)?
+        .path("--origincert", |f| &mut f.origincert)?;
+
+    // Logging flags
+    m.string("--loglevel", |f| &mut f.loglevel)?
+        .string("--transport-loglevel", |f| &mut f.transport_loglevel)?
+        .path("--logfile", |f| &mut f.logfile)?
+        .path("--log-directory", |f| &mut f.log_directory)?
+        .string("--output", |f| &mut f.log_format_output)?;
+
+    // Metrics, pidfile, and grace
+    m.string("--metrics", |f| &mut f.metrics)?
+        .path("--pidfile", |f| &mut f.pidfile)?
+        .string("--grace-period", |f| &mut f.grace_period)?;
+
+    // Tunnel identity and protocol
+    m.string("--url", |f| &mut f.url)?
+        .string_alias("--name", "-n", |f| &mut f.tunnel_name)?
+        .string_alias("--protocol", "-p", |f| &mut f.protocol)?
+        .push("--edge", |f| &mut f.edge)?
+        .string("--region", |f| &mut f.region)?
+        .string("--edge-ip-version", |f| &mut f.edge_ip_version)?
+        .string("--edge-bind-address", |f| &mut f.edge_bind_address)?
+        .string("--hostname", |f| &mut f.hostname)?
+        .string("--id", |f| &mut f.tunnel_id)?
+        .string("--lb-pool", |f| &mut f.lb_pool)?
+        .push("--tag", |f| &mut f.tag)?
+        .push_alias("--features", "-F", |f| &mut f.features)?
+        .string("--label", |f| &mut f.label)?;
+
+    // Timing and connection tuning
+    m.string("--autoupdate-freq", |f| &mut f.autoupdate_freq)?
+        .string("--metrics-update-freq", |f| &mut f.metrics_update_freq)?
+        .u32_val("--retries", |f| &mut f.retries)?
+        .u32_val("--ha-connections", |f| &mut f.ha_connections)?
+        .u32_val("--max-edge-addr-retries", |f| &mut f.max_edge_addr_retries)?
+        .string("--rpc-timeout", |f| &mut f.rpc_timeout)?
+        .string("--heartbeat-interval", |f| &mut f.heartbeat_interval)?
+        .u32_val("--heartbeat-count", |f| &mut f.heartbeat_count)?
+        .string("--write-stream-timeout", |f| &mut f.write_stream_timeout)?
+        .u64_val("--max-active-flows", |f| &mut f.max_active_flows)?;
+
+    // Management and API
+    m.string("--management-hostname", |f| &mut f.management_hostname)?
+        .string("--api-url", |f| &mut f.api_url)?
+        .string("--trace-output", |f| &mut f.trace_output)?;
+
+    // Origin and proxy
+    m.string("--unix-socket", |f| &mut f.unix_socket)?
+        .string("--http-host-header", |f| &mut f.http_host_header)?
+        .string("--origin-server-name", |f| &mut f.origin_server_name)?
+        .string_alias("--origin-ca-pool", "--cacert", |f| &mut f.origin_ca_pool)?
+        .string("--icmpv4-src", |f| &mut f.icmpv4_src)?
+        .string("--icmpv6-src", |f| &mut f.icmpv6_src)?
+        .string("--proxy-address", |f| &mut f.proxy_address)?
+        .u16_val("--proxy-port", |f| &mut f.proxy_port)?
+        .string("--proxy-connect-timeout", |f| &mut f.proxy_connect_timeout)?
+        .string("--proxy-tls-timeout", |f| &mut f.proxy_tls_timeout)?
+        .string("--proxy-tcp-keepalive", |f| &mut f.proxy_tcp_keepalive)?
+        .u32_val("--proxy-keepalive-connections", |f| {
+            &mut f.proxy_keepalive_connections
+        })?
+        .string("--proxy-keepalive-timeout", |f| &mut f.proxy_keepalive_timeout)?
+        .string("--service-op-ip", |f| &mut f.service_op_ip)?;
+
+    // QUIC flow control
+    m.u64_val("--quic-connection-level-flow-control-limit", |f| {
+        &mut f.quic_conn_flow_control
+    })?
+    .u64_val("--quic-stream-level-flow-control-limit", |f| {
+        &mut f.quic_stream_flow_control
+    })?;
+
+    // Deprecated credential flags
+    m.string("--api-key", |f| &mut f.api_key)?
+        .string("--api-email", |f| &mut f.api_email)?
+        .string("--api-ca-key", |f| &mut f.api_ca_key)?;
+
+    if m.matched() {
+        state.any_flag_set = true;
+    }
+
+    Ok(m.matched())
+}
+
+/// Try to consume the argument as a boolean flag (no value).
+/// Returns `true` if matched.
+fn try_parse_bool_flag(arg: &OsStr, state: &mut ParseState) -> bool {
+    let arg_str = arg.to_string_lossy();
+
+    match arg_str.as_ref() {
+        "--no-autoupdate" => state.flags.no_autoupdate = true,
+        "--hello-world" => state.flags.hello_world = true,
+        "--no-tls-verify" => state.flags.no_tls_verify = true,
+        "--no-chunked-encoding" => state.flags.no_chunked_encoding = true,
+        "--http2-origin" => state.flags.http2_origin = true,
+        "--post-quantum" | "-pq" => state.flags.post_quantum = Some(true),
+        "--quiet" | "-q" => state.flags.quiet = true,
+        "--is-autoupdated" => state.flags.is_autoupdated = true,
+        "--bastion" => state.flags.bastion = true,
+        "--socks5" => state.flags.socks5 = true,
+        "--proxy-no-happy-eyeballs" => state.flags.proxy_no_happy_eyeballs = true,
+        "--quic-disable-pmtu-discovery" => state.flags.quic_disable_pmtu = true,
+        "--no-update-service" => state.flags.no_update_service = true,
+        "--proxy-dns" => state.flags.proxy_dns = true,
+        _ => return false,
+    }
+
+    true
 }
 
 /// Try to extract a string value from `--flag VALUE` or `--flag=VALUE`.

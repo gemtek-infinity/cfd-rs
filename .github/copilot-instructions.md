@@ -27,15 +27,18 @@ Do not load broad top-level docs by default.
 ## MCP-first rule
 
 If MCP is available, use the startup/routing MCP tools first.
-The required operational MCP surface includes debtmap:
+The required operational MCP surface is 25 tools (18 core + 7 debtmap):
 
 - `status_summary` for startup truth and per-domain parity progress
 - `phase5_priority` for the active queue
+- `crate_dependency_graph` for the workspace dependency graph and architecture-policy verdict
 - `parity_row_details` or `domain_gaps_ranked` for parity work — `domain_gaps_ranked` includes partial vs absent breakdown
 - `baseline_source_mapping` for frozen-source routing
-- `crate_surface_summary` or `crate_dependency_graph` before broad code scans
+- `crate_surface_summary` for one crate's ownership, surface, and allowed dependencies
 - `get_context_snapshot`, `get_context_bundle`, and `get_context_brief` for compact routing
-- `debtmap_*` for hotspot, review, and refactor work once the task is localized
+- `read_file`, `read_file_lines`, and `file_metadata` for repo-boundary-enforced file access
+- `find_governance`, `find_behavior_truth`, `search_paths`, `grep_paths`, and `list_paths` for scoped search
+- `debtmap_top_hotspots`, `debtmap_file_summary`, `debtmap_touched_files_review`, `debtmap_code_smells`, `debtmap_function_complexity`, `debtmap_unified_analysis`, and `debtmap_ci_gate` for hotspot, review, and refactor work once the task is localized
 
 Only widen to direct doc reads when the first MCP answer is missing or insufficient.
 

@@ -80,7 +80,7 @@ For medium or large Rust or manifest changes, before running checks:
 - for per-function output, treat cognitive `25+`, cyclomatic `31+`, or total complexity `50+` as `refactor_now` on active-path code
 - marker-debt (TODO/FIXME/TestTodo) is excluded from the file score — these are expected during rewrite phases and do not represent real cognitive load
 - if the MCP Debtmap surface is unavailable, inaccessible, or insufficient, say so explicitly and continue with bounded direct review
-- for PR-readiness, run `debtmap_ci_gate` or `debtmap validate` — blocking violations must be fixed before merge (see CI gate rules in [docs/ai-context-routing.md](../../docs/ai-context-routing.md))
+- for PR-readiness, run `debtmap_ci_gate` or `just validate-debtmap` — blocking violations must be fixed before merge (see CI gate rules in [docs/ai-context-routing.md](../../docs/ai-context-routing.md))
 
 Do not force this pass on trivial edits.
 

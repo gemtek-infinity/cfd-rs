@@ -758,48 +758,7 @@ fn parse_ledger_rows(repo_root: &Path, domain: &str) -> Result<Vec<ParityRowReco
 
             if is_id_table && has_divider {
                 index += 2;
-
-                while index < lines.len() {
-                    let row_line = lines[index].trim();
-                    if !row_line.starts_with('|') {
-                        break;
-                    }
-
-                    let cells = split_markdown_row(row_line);
-                    if cells.len() != header.len() {
-                        break;
-                    }
-
-                    let row = map_row(&header, &cells);
-                    let Some(row_id) = row.get("ID") else {
-                        index += 1;
-                        continue;
-                    };
-
-                    if !row_id.starts_with(domain) {
-                        index += 1;
-                        continue;
-                    }
-
-                    rows.push(ParityRowRecord {
-                        row_id: row_id.to_string(),
-                        domain: domain.to_string(),
-                        section: current_section.clone(),
-                        feature_group: value_or_empty(&row, "Feature group"),
-                        baseline_source: value_or_empty(&row, "Baseline source"),
-                        baseline_behavior_or_contract: value_or_empty(&row, "Baseline behavior or contract"),
-                        rust_owner_now: value_or_empty(&row, "Rust owner now"),
-                        rust_status_now: value_or_empty(&row, "Rust status now"),
-                        parity_evidence_status: value_or_empty(&row, "Parity evidence status"),
-                        divergence_status: value_or_empty(&row, "Divergence status"),
-                        required_tests: value_or_empty(&row, "Required tests"),
-                        priority: value_or_empty(&row, "Priority"),
-                        notes: value_or_empty(&row, "Notes"),
-                    });
-
-                    index += 1;
-                }
-
+                parse_table_body(&lines, &header, domain, &current_section, &mut rows, &mut index);
                 continue;
             }
         }
@@ -808,6 +767,57 @@ fn parse_ledger_rows(repo_root: &Path, domain: &str) -> Result<Vec<ParityRowReco
     }
 
     Ok(rows)
+}
+
+/// Parse consecutive table-body rows after the header+divider lines.
+fn parse_table_body(
+    lines: &[&str],
+    header: &[String],
+    domain: &str,
+    section: &str,
+    rows: &mut Vec<ParityRowRecord>,
+    index: &mut usize,
+) {
+    while *index < lines.len() {
+        let row_line = lines[*index].trim();
+        if !row_line.starts_with('|') {
+            break;
+        }
+
+        let cells = split_markdown_row(row_line);
+        if cells.len() != header.len() {
+            break;
+        }
+
+        let row = map_row(header, &cells);
+        let Some(row_id) = row.get("ID") else {
+            *index += 1;
+            continue;
+        };
+
+        if !row_id.starts_with(domain) {
+            *index += 1;
+            continue;
+        }
+
+        rows.push(ParityRowRecord {
+            row_id: row_id.to_string(),
+            domain: domain.to_string(),
+            section: section.to_string(),
+            feature_group: value_or_empty(&row, "Feature group"),
+            baseline_source: value_or_empty(&row, "Baseline source"),
+            baseline_behavior_or_contract: value_or_empty(&row, "Baseline behavior or contract"),
+            rust_owner_now: value_or_empty(&row, "Rust owner now"),
+            rust_status_now: value_or_empty(&row, "Rust status now"),
+            parity_evidence_status: value_or_empty(&row, "Parity evidence status"),
+            divergence_status: value_or_empty(&row, "Divergence status"),
+            required_tests: value_or_empty(&row, "Required tests"),
+            priority: value_or_empty(&row, "Priority"),
+            notes: value_or_empty(&row, "Notes"),
+        });
+
+        *index += 1;
+    }
 }
 
 fn split_markdown_row(line: &str) -> Vec<String> {

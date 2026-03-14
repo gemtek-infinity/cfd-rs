@@ -128,13 +128,83 @@ Never claim parity from Rust code shape alone.
 
 ## MCP Routing
 
+### Startup and status (no parameters)
+
 - use `status_summary` as the default startup entry for repo truth and per-domain parity progress (closed, partial, absent counts for CLI, CDC, HIS)
 - use `phase5_priority` for the current lane-blocking queue
-- use `parity_row_details` when you already know the ledger row ID
+- use `crate_dependency_graph` for the workspace dependency graph and architecture-policy verdict
+
+### Parity and milestone work
+
+- use `parity_row_details` when you already know the ledger row ID — returns combined ledger and roadmap detail
 - use `domain_gaps_ranked` when you need bounded ranked work inside one domain — includes partial vs absent breakdown so you can prioritize rows that are already started
 - use `baseline_source_mapping` to jump from a row ID to the frozen baseline source area and exact parity feature doc
-- use `crate_surface_summary` or `crate_dependency_graph` before broad code scans
-- debtmap is always available in the required MCP surface; use `debtmap_*` once the task is localized to hotspot, review, or refactor work
+- use `crate_surface_summary` to get one crate's ownership, surface, and allowed dependencies
+
+### Context routing (curated, no file reads)
+
+- use `get_context_bundle` for a curated narrow context bundle keyed by a common repository question type
+- use `get_context_brief` for a compact first-read brief of a curated bundle
+- use `get_context_snapshot` for a compact source-backed snapshot of a core rewrite routing question
+
+### File access (repo-boundary enforced)
+
+- use `read_file` to read a repo file with truncation and repo-boundary enforcement
+- use `read_file_lines` to read a specific line range from a repo file
+- use `file_metadata` to get metadata (kind, size, line count) for a repo path
+
+### Search (scoped, bounded)
+
+- use `find_governance` to search governance and policy files for grounded hits
+- use `find_behavior_truth` to search frozen behavior and parity sources for grounded hits
+- use `search_paths` to search specific repo-relative files or directories for grounded hits
+- use `grep_paths` to regex search across repo-relative files or directories, returning matched lines with paths and line numbers
+- use `list_paths` to list repo paths under a directory with optional recursion and extension filtering
+
+### Debtmap (cognitive-load analysis)
+
+Debtmap is always available in the required MCP surface.
+Use `debtmap_*` once the task is localized to hotspot, review, or refactor work.
+
+- use `debtmap_top_hotspots` for the top cognitive-load hotspot files (repo-wide or bounded by path prefix) — use for refactor triage, not as always-on context
+- use `debtmap_file_summary` for a focused debtmap summary of one file — includes per-function complexity, code smells, TODO locations, and long-function line numbers
+- use `debtmap_touched_files_review` to score a provided list of touched files for bounded cognitive-load review
+- use `debtmap_code_smells` to detect code smells in a single file using AST analysis
+- use `debtmap_function_complexity` to get per-function complexity breakdown for a single file
+- use `debtmap_unified_analysis` for full unified debtmap analysis for deep structural review
+- use `debtmap_ci_gate` to evaluate CI gate rules against the repo or a bounded file set — blocking violations must be fixed before merge; each violation includes path, line, score, and a fix suggestion
+
+### Debtmap score categories
+
+| Score range | Category | Priority | Action |
+| --- | --- | --- | --- |
+| < 15.0 | negligible | low | ignore |
+| 15.0–29.99 | reviewable | medium | review when in the file |
+| 30.0–44.99 | hotspot | high | reduce when touched; blocks CI gate |
+| 45.0–74.99 | high_hotspot | high | refactor now; blocks CI gate |
+| >= 75.0 | critical_hotspot | critical | refactor now; blocks CI gate |
+
+### Debtmap CI gate rules
+
+Blocking (must fix before merge):
+
+- function or file score >= 30.0
+- god_object_score >= 45.0
+- debt_density > 50.0 per 1K LOC
+- function cyclomatic complexity >= 31
+- function cognitive complexity >= 25
+
+Warning (monitor, non-blocking):
+
+- score 15.0–29.99 (medium priority)
+- god_object_score < 45.0
+- coupling classification `highly_coupled` or `Hub`
+- function cyclomatic 21–30 or cognitive 15–24
+
+The `debtmap_ci_gate` tool returns the thresholds in every response so agents
+do not need to memorize them.
+The Justfile `validate-debtmap` recipe enforces the same score >= 30.0 gate
+using the debtmap CLI JSON output.
 
 ## MCP Maintenance Mode
 

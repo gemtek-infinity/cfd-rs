@@ -114,11 +114,13 @@ REQUIRED_PUBLIC_RECIPES = {
     "validate-governance:",
     "validate-app:",
     "validate-tools:",
+    "validate-debtmap:",
     "validate-pr:",
     "mcp-run:",
     "mcp-run-maintenance:",
     "mcp-smoke:",
     "mcp-smoke-maintenance:",
+    "debtmap-report:",
     "shared-behavior-capture:",
     "shared-behavior-compare:",
     "preview-test:",
@@ -177,7 +179,9 @@ def validate_row_coverage(errors: list[str]) -> None:
     for path in LEDGER_PATHS:
         ledger_row_ids.extend(parse_ledger_row_ids(path))
 
-    duplicates = sorted({row_id for row_id in ledger_row_ids if ledger_row_ids.count(row_id) > 1})
+    duplicates = sorted(
+        {row_id for row_id in ledger_row_ids if ledger_row_ids.count(row_id) > 1}
+    )
     if duplicates:
         errors.append(f"duplicate ledger row IDs found: {', '.join(duplicates)}")
 
@@ -185,9 +189,13 @@ def validate_row_coverage(errors: list[str]) -> None:
         rows = list(csv.DictReader(handle))
 
     csv_row_ids = [row["row_id"].strip() for row in rows if row.get("row_id")]
-    csv_duplicates = sorted({row_id for row_id in csv_row_ids if csv_row_ids.count(row_id) > 1})
+    csv_duplicates = sorted(
+        {row_id for row_id in csv_row_ids if csv_row_ids.count(row_id) > 1}
+    )
     if csv_duplicates:
-        errors.append(f"duplicate roadmap-index row IDs found: {', '.join(csv_duplicates)}")
+        errors.append(
+            f"duplicate roadmap-index row IDs found: {', '.join(csv_duplicates)}"
+        )
 
     missing = sorted(set(ledger_row_ids) - set(csv_row_ids))
     extra = sorted(set(csv_row_ids) - set(ledger_row_ids))
@@ -212,7 +220,9 @@ def validate_source_map(errors: list[str]) -> None:
         rows = list(csv.DictReader(handle))
 
     source_row_ids = [row["row_id"].strip() for row in rows if row.get("row_id")]
-    duplicates = sorted({row_id for row_id in source_row_ids if source_row_ids.count(row_id) > 1})
+    duplicates = sorted(
+        {row_id for row_id in source_row_ids if source_row_ids.count(row_id) > 1}
+    )
     if duplicates:
         errors.append(f"duplicate source-map row IDs found: {', '.join(duplicates)}")
 
@@ -226,22 +236,32 @@ def validate_source_map(errors: list[str]) -> None:
     for row in rows:
         row_id = row["row_id"].strip()
         feature_doc = row["feature_doc"].strip()
-        baseline_paths = [value.strip() for value in row["baseline_paths"].split(";") if value.strip()]
-        symbol_hints = [value.strip() for value in row["symbol_hints"].split(";") if value.strip()]
+        baseline_paths = [
+            value.strip() for value in row["baseline_paths"].split(";") if value.strip()
+        ]
+        symbol_hints = [
+            value.strip() for value in row["symbol_hints"].split(";") if value.strip()
+        ]
 
         if not feature_doc:
             errors.append(f"source-map row {row_id} is missing feature_doc")
         elif not (REPO_ROOT / feature_doc).exists():
-            errors.append(f"source-map row {row_id} points to missing feature_doc: {feature_doc}")
+            errors.append(
+                f"source-map row {row_id} points to missing feature_doc: {feature_doc}"
+            )
 
         if not baseline_paths:
             errors.append(f"source-map row {row_id} has no baseline_paths")
         for baseline_path in baseline_paths:
             resolved = REPO_ROOT / baseline_path
             if not baseline_path.startswith("baseline-2026.2.0/"):
-                errors.append(f"source-map row {row_id} has non-baseline path: {baseline_path}")
+                errors.append(
+                    f"source-map row {row_id} has non-baseline path: {baseline_path}"
+                )
             elif not resolved.exists() or not resolved.is_file():
-                errors.append(f"source-map row {row_id} points to missing baseline file: {baseline_path}")
+                errors.append(
+                    f"source-map row {row_id} points to missing baseline file: {baseline_path}"
+                )
 
         if not symbol_hints:
             errors.append(f"source-map row {row_id} has no symbol_hints")
@@ -265,7 +285,9 @@ def validate_status_contract(errors: list[str]) -> None:
         errors.append("STATUS.md Active Snapshot exceeds 18 non-empty lines")
 
     if "production-alpha logging blocker set" not in active_snapshot:
-        errors.append("STATUS.md Active Snapshot must call out the production-alpha logging blocker set")
+        errors.append(
+            "STATUS.md Active Snapshot must call out the production-alpha logging blocker set"
+        )
 
 
 def validate_charter_contract(errors: list[str]) -> None:
@@ -287,15 +309,21 @@ def validate_logging_contract(errors: list[str]) -> None:
 
     for owner in ("cfdrs-cli", "cfdrs-his", "cfdrs-cdc"):
         if owner not in text:
-            errors.append(f"docs/parity/logging-compatibility.md must mention owner {owner}")
+            errors.append(
+                f"docs/parity/logging-compatibility.md must mention owner {owner}"
+            )
 
     if "production-alpha blocker" not in text:
-        errors.append("docs/parity/logging-compatibility.md must say logging is a production-alpha blocker")
+        errors.append(
+            "docs/parity/logging-compatibility.md must say logging is a production-alpha blocker"
+        )
 
     roadmap_text = ROADMAP_PATH.read_text(encoding="utf-8")
     status_text = STATUS_PATH.read_text(encoding="utf-8")
     if "logging blocker" not in roadmap_text.lower():
-        errors.append("docs/phase-5/roadmap.md must keep the logging blocker set explicit")
+        errors.append(
+            "docs/phase-5/roadmap.md must keep the logging blocker set explicit"
+        )
     if "production-alpha logging blocker set" not in status_text:
         errors.append("STATUS.md must keep the logging blocker set explicit")
 
@@ -305,7 +333,9 @@ def validate_evidence_vocabulary(errors: list[str]) -> None:
         text = path.read_text(encoding="utf-8")
         for pattern in STALE_EVIDENCE_PATTERNS:
             if pattern in text:
-                errors.append(f"stale evidence vocabulary '{pattern}' still present in {path.relative_to(REPO_ROOT)}")
+                errors.append(
+                    f"stale evidence vocabulary '{pattern}' still present in {path.relative_to(REPO_ROOT)}"
+                )
 
 
 def validate_legacy_cleanup(errors: list[str]) -> None:
@@ -345,18 +375,30 @@ def validate_agent_guidance(errors: list[str]) -> None:
     for path in (AGENTS_PATH, COPILOT_PATH, CONTRIBUTING_PATH, RUST_INSTRUCTIONS_PATH):
         text = path.read_text(encoding="utf-8")
         if "cargo +nightly fmt" not in text:
-            errors.append(f"{path.relative_to(REPO_ROOT)} must require cargo +nightly fmt")
+            errors.append(
+                f"{path.relative_to(REPO_ROOT)} must require cargo +nightly fmt"
+            )
 
-    for path in (AGENTS_PATH, COPILOT_PATH, CONTRIBUTING_PATH, ROUTING_PATH, README_PATH):
+    for path in (
+        AGENTS_PATH,
+        COPILOT_PATH,
+        CONTRIBUTING_PATH,
+        ROUTING_PATH,
+        README_PATH,
+    ):
         text = path.read_text(encoding="utf-8")
         if "Justfile" not in text and "just " not in text:
-            errors.append(f"{path.relative_to(REPO_ROOT)} must route normal execution through Justfile")
+            errors.append(
+                f"{path.relative_to(REPO_ROOT)} must route normal execution through Justfile"
+            )
 
     for path in (AGENTS_PATH, COPILOT_PATH, ROUTING_PATH):
         text = path.read_text(encoding="utf-8")
         for snippet in REQUIRED_CORE_TOOL_SNIPPETS:
             if snippet not in text:
-                errors.append(f"{path.relative_to(REPO_ROOT)} is missing MCP startup-tool guidance for {snippet}")
+                errors.append(
+                    f"{path.relative_to(REPO_ROOT)} is missing MCP startup-tool guidance for {snippet}"
+                )
 
     for path in (AGENTS_PATH, COPILOT_PATH):
         text = path.read_text(encoding="utf-8")
@@ -369,7 +411,9 @@ def validate_agent_guidance(errors: list[str]) -> None:
     for path, snippet in REQUIRED_OPERATIONAL_MCP_GUIDANCE.items():
         text = path.read_text(encoding="utf-8")
         if snippet not in text:
-            errors.append(f"{path.relative_to(REPO_ROOT)} must describe the debtmap-enabled operational MCP surface")
+            errors.append(
+                f"{path.relative_to(REPO_ROOT)} must describe the debtmap-enabled operational MCP surface"
+            )
 
 
 def validate_editor_mcp_config(errors: list[str]) -> None:
@@ -397,7 +441,9 @@ def validate_editor_mcp_config(errors: list[str]) -> None:
     feature_table = manifest.get("features", {})
     default_features = feature_table.get("default", [])
     if "debtmap" not in default_features:
-        errors.append("tools/mcp-cfd-rs/Cargo.toml must keep debtmap in the default feature set")
+        errors.append(
+            "tools/mcp-cfd-rs/Cargo.toml must keep debtmap in the default feature set"
+        )
 
 
 def validate_justfile_contract(errors: list[str]) -> None:
@@ -406,10 +452,12 @@ def validate_justfile_contract(errors: list[str]) -> None:
         return
 
     text = JUSTFILE_PATH.read_text(encoding="utf-8")
-    if 'cargo +nightly fmt --all' not in text:
+    if "cargo +nightly fmt --all" not in text:
         errors.append("Justfile fmt recipe must run cargo +nightly fmt --all")
-    if 'cargo +nightly fmt --all --check' not in text:
-        errors.append("Justfile fmt-check recipe must run cargo +nightly fmt --all --check")
+    if "cargo +nightly fmt --all --check" not in text:
+        errors.append(
+            "Justfile fmt-check recipe must run cargo +nightly fmt --all --check"
+        )
 
     public_headers = set()
     recipe_header = re.compile(r"^([A-Za-z0-9_-]+(?:\s+[A-Za-z0-9_-]+)?)\s*:")
@@ -442,12 +490,16 @@ def validate_cloudflare_rs_gate(errors: list[str]) -> None:
     text = DEPENDENCY_POLICY_PATH.read_text(encoding="utf-8")
     for snippet in ("cloudflare-rs", "CDC-033", "CDC-034", "CDC-038", "no admission"):
         if snippet not in text:
-            errors.append(f"docs/dependency-policy.md must keep the cloudflare-rs gate snippet: {snippet}")
+            errors.append(
+                f"docs/dependency-policy.md must keep the cloudflare-rs gate snippet: {snippet}"
+            )
 
 
 def validate_markdown_repo_links(errors: list[str]) -> None:
     for path in markdown_paths():
-        for line_number, line in enumerate(iter_markdown_non_fence_lines(path), start=1):
+        for line_number, line in enumerate(
+            iter_markdown_non_fence_lines(path), start=1
+        ):
             for match in re.finditer(r"`([^`]+)`", line):
                 start, end = match.span()
                 if start > 0 and line[start - 1] == "[" and line[end : end + 2] == "](":
@@ -464,7 +516,9 @@ def validate_markdown_repo_links(errors: list[str]) -> None:
 def validate_markdown_link_targets(errors: list[str]) -> None:
     link_pattern = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     for path in markdown_paths():
-        for line_number, line in enumerate(iter_markdown_non_fence_lines(path), start=1):
+        for line_number, line in enumerate(
+            iter_markdown_non_fence_lines(path), start=1
+        ):
             for match in link_pattern.finditer(line):
                 href = match.group(1)
                 if "://" in href or href.startswith("#"):
@@ -505,9 +559,7 @@ def extract_section(text: str, heading: str) -> str | None:
 
 def markdown_paths() -> list[Path]:
     return sorted(
-        path
-        for path in REPO_ROOT.rglob("*.md")
-        if "baseline-2026.2.0" not in str(path)
+        path for path in REPO_ROOT.rglob("*.md") if "baseline-2026.2.0" not in str(path)
     )
 
 
@@ -530,7 +582,10 @@ def resolve_linkable_repo_target(
 ) -> Path | None:
     if not is_linkable_repo_candidate(candidate):
         return None
-    for target in ((path.parent / candidate).resolve(), (REPO_ROOT / candidate).resolve()):
+    for target in (
+        (path.parent / candidate).resolve(),
+        (REPO_ROOT / candidate).resolve(),
+    ):
         if is_repo_path(target):
             return target
     return None
@@ -557,7 +612,9 @@ def is_linkable_repo_candidate(candidate: str) -> bool:
         return False
     return (
         "/" in candidate
-        or candidate.endswith((".md", ".csv", ".toml", ".json", ".yml", ".yaml", ".rs", ".go"))
+        or candidate.endswith(
+            (".md", ".csv", ".toml", ".json", ".yml", ".yaml", ".rs", ".go")
+        )
         or candidate in {"Justfile", "Cargo.toml", "Cargo.lock"}
     )
 

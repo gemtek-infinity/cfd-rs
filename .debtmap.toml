@@ -14,7 +14,7 @@ max_file_length = 500
 max_function_length = 50
 
 [languages]
-enabled = ["javascript", "rust", "typescript"]
+enabled = ["rust"]
 
 [ignore]
 patterns = ["*.min.js", "baseline-2026.2.0/**", "node_modules/**", "target/**", "venv/**"]
