@@ -38,19 +38,31 @@ fn help_lists_admitted_surface() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(output.status.success());
-    assert!(stdout.contains("Pingora proxy seam"));
-    assert!(stdout.contains("wire/protocol boundary"));
-    assert!(stdout.contains("narrow operability reporting"));
-    assert!(stdout.contains("cloudflared [--config FILEPATH] validate"));
-    assert!(stdout.contains("cloudflared [--config FILEPATH] run"));
-    assert!(stdout.contains("HOME"));
-    assert!(stdout.contains("lifecycle, readiness, and failure visibility"));
-    assert!(stdout.contains("Admitted operability surface"));
-    assert!(stdout.contains("http_status only"));
-    assert!(stdout.contains("Broader origin support"));
-    assert!(stdout.contains("registration RPC"));
-    assert!(stdout.contains("incoming stream handling"));
-    assert!(!stdout.contains("cloudflared tunnel"));
+
+    // Standard help layout sections (matching Go baseline urfave/cli output).
+    assert!(stdout.contains("NAME:"));
+    assert!(stdout.contains("USAGE:"));
+    assert!(stdout.contains("VERSION:"));
+    assert!(stdout.contains("DESCRIPTION:"));
+    assert!(stdout.contains("COMMANDS:"));
+    assert!(stdout.contains("GLOBAL OPTIONS:"));
+
+    // Program identity.
+    assert!(stdout.contains("cloudflared - Cloudflare's command-line tool and agent"));
+
+    // All command families from the Go baseline are listed.
+    assert!(stdout.contains("update"));
+    assert!(stdout.contains("tunnel"));
+    assert!(stdout.contains("access"));
+    assert!(stdout.contains("tail"));
+    assert!(stdout.contains("service"));
+    assert!(stdout.contains("validate"));
+    assert!(stdout.contains("help"));
+
+    // Key global options.
+    assert!(stdout.contains("--config"));
+    assert!(stdout.contains("--help"));
+    assert!(stdout.contains("--version"));
 }
 
 #[test]
