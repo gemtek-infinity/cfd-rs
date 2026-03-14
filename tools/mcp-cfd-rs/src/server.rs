@@ -401,7 +401,10 @@ impl CfdRsMemory {
         }
     }
 
-    #[tool(description = "Return the current tracked status summary from STATUS.md.")]
+    #[tool(
+        description = "Return the current tracked status summary from STATUS.md, including per-domain \
+                       parity progress (closed, partial, absent counts for CLI, CDC, HIS)."
+    )]
     async fn status_summary(&self, Parameters(EmptyRequest {}): Parameters<EmptyRequest>) -> String {
         let span = log::ToolSpan::start("status_summary");
 
@@ -456,7 +459,8 @@ impl CfdRsMemory {
     }
 
     #[tool(
-        description = "Return ranked open gaps for one parity domain without loading all ledgers together."
+        description = "Return ranked open gaps for one parity domain with partial vs absent breakdown, \
+                       without loading all ledgers together."
     )]
     async fn domain_gaps_ranked(
         &self,
@@ -1033,10 +1037,11 @@ impl ServerHandler for CfdRsMemory {
     fn get_info(&self) -> ServerInfo {
         let mut info = ServerInfo::default();
         info.instructions = Some(
-            "Read-only repository memory server. Start with `status_summary` for repo truth and \
-             `phase5_priority` for the active queue. Use `parity_row_details` or `domain_gaps_ranked` for \
-             parity work, `baseline_source_mapping` for frozen-source routing, and `crate_surface_summary` \
-             or `crate_dependency_graph` before broad code scans. Use `get_context_snapshot`, \
+            "Read-only repository memory server. Start with `status_summary` for repo truth, per-domain \
+             parity progress, and the priority queue. Use `domain_gaps_ranked` for bounded ranked work \
+             inside one domain with partial vs absent breakdown. Use `parity_row_details` for one exact \
+             row, `baseline_source_mapping` for frozen-source routing, and `crate_surface_summary` or \
+             `crate_dependency_graph` before broad code scans. Use `get_context_snapshot`, \
              `get_context_bundle`, or `get_context_brief` for compact routing, and widen to direct file \
              reads only when the first MCP answer is insufficient. The required operational server surface \
              includes debtmap; use `debtmap_*` once the task narrows to hotspot, review, or refactor work."
