@@ -12,7 +12,19 @@
 //! This crate owns the filesystem discovery workflow: finding config files
 //! on disk, creating default configs, and resolving platform-specific paths.
 
+pub mod credentials;
+pub mod diagnostics;
 pub mod discovery;
+pub mod environment;
+pub mod hello;
+pub mod icmp;
+pub mod logging;
+pub mod metrics_server;
+pub mod process;
+pub mod service;
+pub mod signal;
+pub mod updater;
+pub mod watcher;
 
 /// Discover config by searching platform-specific paths or creating a default.
 pub fn discover_config(

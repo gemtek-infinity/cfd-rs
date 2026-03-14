@@ -20,7 +20,7 @@ What exists now:
 - `cfdrs-bin`: binary entrypoint, runtime composition, QUIC tunnel shell, Pingora seam, deployment/performance/failure evidence
 - `cfdrs-cli`: CLI parsing for all 40+ baseline command paths, 40+ global flags, help, dispatch (stubs for most commands), and CLI-facing error/output types
 - `cfdrs-cdc`: registration and stream contract types
-- `cfdrs-his`: filesystem config discovery IO
+- `cfdrs-his`: filesystem config discovery IO, credential lookup, service install/uninstall trait contracts, systemd/SysV template generation, metrics server and readiness stubs, diagnostics collection stubs, file watcher and config reload trait contracts, signal handling, logging configuration types, updater stubs, ICMP proxy stubs, hello server stub, environment/privilege detection
 - `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion
 - live parity ledgers, feature docs, and source routing under [`docs/parity/`](docs/parity/)
 - frozen Go baseline in [`baseline-2026.2.0/`](baseline-2026.2.0/)
@@ -32,10 +32,11 @@ What does not exist yet:
 - Cap'n Proto registration RPC and full stream round-trip through origin
 - management service, log streaming, Cloudflare REST API client, and management-token workflows
 - broad CLI behavioral parity: root service-mode runtime, tunnel/access/tail/service/update behavioral implementations behind parsed stubs
-- Linux service install/uninstall and systemd integration
-- local HTTP endpoints: metrics, readiness, diagnostics
-- config reload and file watcher
-- 100% compatible logging across stderr/file rotation/journald/systemd/upstream management flows
+- real service install/uninstall execution (trait contracts and templates exist, `CommandRunner` integration pending)
+- real local HTTP endpoints: metrics, readiness, diagnostics (trait contracts and response types exist, server binding pending)
+- real config reload and file watcher (trait contracts exist, notify/inotify integration pending)
+- real logging sinks: file rotation, journald/systemd output, upstream management log streaming (config types exist, actual sink implementations pending)
+- ICMP proxy, hello server, graceful restart (trait stubs exist, real implementations pending)
 - performance-architectural overhaul of the final admitted hot paths
 
 ## Active Milestone

@@ -32,6 +32,7 @@ pub enum ErrorCategory {
     IngressHostnameContainsPort,
     IngressCatchAllNotLast,
     InvalidIngressService,
+    TokenDecode,
     InvariantViolation,
     Deferred,
 }
@@ -61,6 +62,7 @@ impl fmt::Display for ErrorCategory {
             Self::IngressHostnameContainsPort => "ingress-hostname-contains-port",
             Self::IngressCatchAllNotLast => "ingress-catch-all-not-last",
             Self::InvalidIngressService => "invalid-ingress-service",
+            Self::TokenDecode => "token-decode",
             Self::InvariantViolation => "invariant-violation",
             Self::Deferred => "deferred",
         };
@@ -181,6 +183,9 @@ pub enum ConfigError {
     #[error("invalid ingress service {value}: {reason}")]
     InvalidIngressService { value: String, reason: String },
 
+    #[error("failed to decode tunnel token: {reason}")]
+    TokenDecode { reason: String },
+
     #[error("{message}")]
     InvariantViolation { message: String },
 
@@ -281,6 +286,12 @@ impl ConfigError {
         Self::Deferred { operation }
     }
 
+    pub fn token_decode(reason: impl Into<String>) -> Self {
+        Self::TokenDecode {
+            reason: reason.into(),
+        }
+    }
+
     pub fn category(&self) -> ErrorCategory {
         match self {
             Self::NoConfigFile => ErrorCategory::NoConfigFile,
@@ -305,6 +316,7 @@ impl ConfigError {
             Self::IngressHostnameContainsPort => ErrorCategory::IngressHostnameContainsPort,
             Self::IngressCatchAllNotLast { .. } => ErrorCategory::IngressCatchAllNotLast,
             Self::InvalidIngressService { .. } => ErrorCategory::InvalidIngressService,
+            Self::TokenDecode { .. } => ErrorCategory::TokenDecode,
             Self::InvariantViolation { .. } => ErrorCategory::InvariantViolation,
             Self::Deferred { .. } => ErrorCategory::Deferred,
         }

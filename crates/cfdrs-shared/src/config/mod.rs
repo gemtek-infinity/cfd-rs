@@ -15,8 +15,8 @@ pub mod raw_config;
 
 pub use self::config_source::ConfigSource;
 pub use self::credentials::{
-    CredentialSurface, FED_ENDPOINT, OriginCertLocator, OriginCertToken, OriginCertUser,
-    TunnelCredentialsFile, TunnelReference, TunnelSecret,
+    CredentialSurface, DEFAULT_ORIGIN_CERT_FILE, FED_ENDPOINT, OriginCertLocator, OriginCertToken,
+    OriginCertUser, TunnelCredentialsFile, TunnelReference, TunnelSecret, TunnelToken,
 };
 pub use self::discovery::{
     DiscoveryAction, DiscoveryCandidate, DiscoveryDefaults, DiscoveryOrigin, DiscoveryOutcome, DiscoveryPlan,

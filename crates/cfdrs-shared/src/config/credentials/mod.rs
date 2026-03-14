@@ -108,6 +108,66 @@ impl TunnelCredentialsFile {
     }
 }
 
+/// Compact tunnel token for the `--token` flag.
+///
+/// Matches Go `connection.TunnelToken` with short JSON field names encoded as
+/// `base64(json({"a", "s", "t", "e"}))`.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+pub struct TunnelToken {
+    /// Account tag (short key `a`).
+    #[serde(rename = "a")]
+    pub account_tag: String,
+
+    /// Tunnel secret bytes (short key `s`, base64-encoded at JSON level).
+    #[serde(rename = "s")]
+    pub tunnel_secret: TunnelSecret,
+
+    /// Tunnel UUID (short key `t`).
+    #[serde(rename = "t")]
+    pub tunnel_id: Uuid,
+
+    /// Optional edge endpoint override (short key `e`).
+    #[serde(rename = "e", default, skip_serializing_if = "Option::is_none")]
+    pub endpoint: Option<String>,
+}
+
+impl TunnelToken {
+    /// Encode the token as a base64 string for use with `--token`.
+    pub fn encode(&self) -> Result<String> {
+        let json =
+            serde_json::to_vec(self).map_err(|source| ConfigError::json_serialize("tunnel token", source))?;
+        Ok(BASE64_STANDARD.encode(&json))
+    }
+
+    /// Decode a base64-encoded token string from `--token`.
+    pub fn decode(encoded: &str) -> Result<Self> {
+        let bytes = BASE64_STANDARD
+            .decode(encoded.as_bytes())
+            .map_err(|source| ConfigError::token_decode(source.to_string()))?;
+        serde_json::from_slice(&bytes).map_err(|source| ConfigError::json_parse("tunnel token", source))
+    }
+
+    /// Convert to the full credentials file format.
+    pub fn to_credentials_file(&self) -> TunnelCredentialsFile {
+        TunnelCredentialsFile {
+            account_tag: self.account_tag.clone(),
+            tunnel_secret: self.tunnel_secret.clone(),
+            tunnel_id: self.tunnel_id,
+            endpoint: self.endpoint.clone(),
+        }
+    }
+
+    /// Create from a credentials file.
+    pub fn from_credentials_file(cred: &TunnelCredentialsFile) -> Self {
+        Self {
+            account_tag: cred.account_tag.clone(),
+            tunnel_secret: cred.tunnel_secret.clone(),
+            tunnel_id: cred.tunnel_id,
+            endpoint: cred.endpoint.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct OriginCertToken {
     #[serde(rename = "zoneID")]

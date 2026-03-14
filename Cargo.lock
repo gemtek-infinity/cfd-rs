@@ -294,6 +294,9 @@ name = "cfdrs-his"
 version = "2026.2.0-alpha.202603"
 dependencies = [
  "cfdrs-shared",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]
