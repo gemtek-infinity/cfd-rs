@@ -52,8 +52,8 @@ Preferred values:
 - weak
 - partial
 - parity-backed
-- first-slice evidence exists
-- partial local tests only
+- compare-backed
+- local tests
 
 If a new value is needed later, add it deliberately and keep it short.
 
@@ -84,18 +84,18 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-001 | config search directory order | `config/configuration.go` `DefaultConfigSearchDirectories()` | search `~/.cloudflared`, `~/.cloudflare-warp`, `~/cloudflare-warp`, `/etc/cloudflared`, `/usr/local/etc/cloudflared` in order, check `config.yml` and `config.yaml` in each | cfdrs-his `discovery.rs` | audited, parity-backed | first-slice evidence exists | none recorded | parity compare tests, discovery fixture tests | high | Rust search order matches frozen baseline exactly |
-| HIS-002 | config auto-create behavior | `config/configuration.go` `FindOrCreateConfigPath()` | create parent dir, create config at `/usr/local/etc/cloudflared/config.yml`, create `/var/log/cloudflared`, write minimal YAML with `logDirectory` | cfdrs-his `discovery.rs` | audited, parity-backed | first-slice evidence exists | none recorded | filesystem-effect tests, config creation golden tests | high | Rust implements auto-create with correct paths and minimal YAML |
-| HIS-003 | config file YAML loading | `config/configuration.go` `ReadConfigFile()` | YAML decode with empty-file handling, `--config` flag override, strict-mode unknown-field warnings | cfdrs-shared `config/raw_config.rs`, `config/normalized.rs` | audited, partial | first-slice evidence exists | open gap | config golden tests, unknown-field warning tests | medium | Rust loads YAML and tracks warnings but strict-mode double-parse not confirmed |
-| HIS-004 | default path constants | `config/configuration.go` constants | `DefaultUnixConfigLocation=/usr/local/etc/cloudflared`, `DefaultUnixLogLocation=/var/log/cloudflared`, `DefaultConfigFiles=[config.yml, config.yaml]` | cfdrs-shared `config/discovery.rs` | audited, parity-backed | first-slice evidence exists | none recorded | constant assertion tests | medium | all constants match |
-| HIS-005 | HOME expansion | `config/configuration.go` and `homedir.Expand` | `~/` prefix expanded via HOME environment variable | cfdrs-shared `config/discovery.rs` | audited, parity-backed | first-slice evidence exists | none recorded | HOME expansion tests | medium | implemented |
+| HIS-001 | config search directory order | `config/configuration.go` `DefaultConfigSearchDirectories()` | search `~/.cloudflared`, `~/.cloudflare-warp`, `~/cloudflare-warp`, `/etc/cloudflared`, `/usr/local/etc/cloudflared` in order, check `config.yml` and `config.yaml` in each | cfdrs-his `discovery.rs` | audited, parity-backed | compare-backed | none recorded | parity compare tests, discovery fixture tests | high | Rust search order matches frozen baseline exactly |
+| HIS-002 | config auto-create behavior | `config/configuration.go` `FindOrCreateConfigPath()` | create parent dir, create config at `/usr/local/etc/cloudflared/config.yml`, create `/var/log/cloudflared`, write minimal YAML with `logDirectory` | cfdrs-his `discovery.rs` | audited, parity-backed | compare-backed | none recorded | filesystem-effect tests, config creation golden tests | high | Rust implements auto-create with correct paths and minimal YAML |
+| HIS-003 | config file YAML loading | `config/configuration.go` `ReadConfigFile()` | YAML decode with empty-file handling, `--config` flag override, strict-mode unknown-field warnings | cfdrs-shared `config/raw_config.rs`, `config/normalized.rs` | audited, partial | compare-backed | open gap | config golden tests, unknown-field warning tests | medium | Rust loads YAML and tracks warnings but strict-mode double-parse not confirmed |
+| HIS-004 | default path constants | `config/configuration.go` constants | `DefaultUnixConfigLocation=/usr/local/etc/cloudflared`, `DefaultUnixLogLocation=/var/log/cloudflared`, `DefaultConfigFiles=[config.yml, config.yaml]` | cfdrs-shared `config/discovery.rs` | audited, parity-backed | compare-backed | none recorded | constant assertion tests | medium | all constants match |
+| HIS-005 | HOME expansion | `config/configuration.go` and `homedir.Expand` | `~/` prefix expanded via HOME environment variable | cfdrs-shared `config/discovery.rs` | audited, parity-backed | compare-backed | none recorded | HOME expansion tests | medium | implemented |
 
 ### Credentials and Lookup
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-006 | tunnel credentials JSON parsing | `credentials/credentials.go`, `connection/connection.go` | parse JSON with fields `AccountTag`, `TunnelSecret` (base64), `TunnelID` (UUID), `Endpoint` | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | first-slice evidence exists | none recorded | credential JSON parsing tests | high | all fields parsed correctly |
-| HIS-007 | origin cert PEM parsing | `credentials/origin_cert.go` | parse PEM with `ARGO TUNNEL TOKEN` block, decode base64 to JSON with `zoneID`, `accountID`, `apiToken`, `endpoint` | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | first-slice evidence exists | none recorded | PEM decoding tests, fixture tests | high | implemented with FED endpoint detection |
+| HIS-006 | tunnel credentials JSON parsing | `credentials/credentials.go`, `connection/connection.go` | parse JSON with fields `AccountTag`, `TunnelSecret` (base64), `TunnelID` (UUID), `Endpoint` | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | compare-backed | none recorded | credential JSON parsing tests | high | all fields parsed correctly |
+| HIS-007 | origin cert PEM parsing | `credentials/origin_cert.go` | parse PEM with `ARGO TUNNEL TOKEN` block, decode base64 to JSON with `zoneID`, `accountID`, `apiToken`, `endpoint` | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | compare-backed | none recorded | PEM decoding tests, fixture tests | high | implemented with FED endpoint detection |
 | HIS-008 | credential search-by-ID | `cmd/cloudflared/tunnel/credential_finder.go` `searchByID` | search for `{TunnelID}.json` in origincert dir first, then each discovery directory | none | audited, absent | not present | open gap | credential search tests, directory traversal tests | high | blocks `tunnel run` without explicit `--credentials-file` |
 | HIS-009 | origin cert search across dirs | `credentials/origin_cert.go` `FindDefaultOriginCertPath()` | search discovery directories for `cert.pem`, return first match | none | audited, absent | not present | open gap | cert search tests | high | needed for cert-based flows |
 | HIS-010 | tunnel token compact format | `connection/connection.go` `TunnelToken` | JSON struct with short keys `a`, `s`, `t`, `e`, base64-encoded for `--token` flag | none | audited, absent | not present | open gap | token parse and roundtrip tests | high | needed for token-based service install |
@@ -181,9 +181,9 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-053 | deployment evidence vs host parity | deployment contract and runtime evidence | current deployment evidence is contract-level and honesty-oriented, not host-behavior parity; must not be mistaken for full HIS closure | cfdrs-bin `deployment_evidence.rs` | audited, intentional divergence | partial local tests only | intentional divergence | divergence note, evidence-scope tests | medium | Rust explicitly declares known gaps (`no-installer`, `no-systemd-unit`, etc.) |
-| HIS-054 | binary path detection | `std::env::current_exe()` equivalent | runtime reports its own executable path | cfdrs-bin `deployment_evidence.rs` | audited, parity-backed | partial local tests only | none recorded | binary path tests | low | implemented |
-| HIS-055 | glibc marker detection | deployment contract | check for `/lib64/ld-linux-x86-64.so.2`, `/lib/x86_64-linux-gnu/libc.so.6`, `/usr/lib64/libc.so.6` | cfdrs-bin `deployment.rs` | audited, parity-backed | partial local tests only | none recorded | glibc detection tests | low | implemented, specific to declared lane |
+| HIS-053 | deployment evidence vs host parity | deployment contract and runtime evidence | current deployment evidence is contract-level and honesty-oriented, not host-behavior parity; must not be mistaken for full HIS closure | cfdrs-bin `deployment_evidence.rs` | audited, intentional divergence | local tests | intentional divergence | divergence note, evidence-scope tests | medium | Rust explicitly declares known gaps (`no-installer`, `no-systemd-unit`, etc.) |
+| HIS-054 | binary path detection | `std::env::current_exe()` equivalent | runtime reports its own executable path | cfdrs-bin `deployment_evidence.rs` | audited, parity-backed | local tests | none recorded | binary path tests | low | implemented |
+| HIS-055 | glibc marker detection | deployment contract | check for `/lib64/ld-linux-x86-64.so.2`, `/lib/x86_64-linux-gnu/libc.so.6`, `/usr/lib64/libc.so.6` | cfdrs-bin `deployment.rs` | audited, parity-backed | local tests | none recorded | glibc detection tests | low | implemented, specific to declared lane |
 
 ### Package Manager Scripts
 
@@ -196,7 +196,7 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-058 | SIGTERM/SIGINT shutdown | `signal/safe_signal.go`, `cmd/cloudflared/tunnel/signal.go` | `signal.Notify()` listens for SIGTERM and SIGINT, closes `graceShutdownC` channel, triggers graceful shutdown | cfdrs-bin `runtime/tasks/bridges.rs` | audited, parity-backed | partial local tests only | none recorded | signal handling tests | high | Rust uses tokio::signal::unix with ShutdownRequested command; functional parity |
+| HIS-058 | SIGTERM/SIGINT shutdown | `signal/safe_signal.go`, `cmd/cloudflared/tunnel/signal.go` | `signal.Notify()` listens for SIGTERM and SIGINT, closes `graceShutdownC` channel, triggers graceful shutdown | cfdrs-bin `runtime/tasks/bridges.rs` | audited, parity-backed | local tests | none recorded | signal handling tests | high | Rust uses tokio::signal::unix with ShutdownRequested command; functional parity |
 | HIS-059 | `--grace-period` flag | `cmd/cloudflared/tunnel/cmd.go` | default 30 seconds; waits for in-progress requests before shutdown; controls `GracefulShutdown()` RPC on HTTP/2 connections | cfdrs-bin `runtime/types.rs` | audited, partial | weak | open gap | grace period flag tests, shutdown timing tests | critical | Rust internal default is 100ms, no CLI flag exposed; Go default is 30s; significant behavioral divergence |
 | HIS-060 | double-signal immediate shutdown | `cmd/cloudflared/tunnel/signal.go` | second SIGTERM/SIGINT interrupts grace period wait, forces immediate exit | none | audited, absent | not present | open gap | double-signal tests | medium | operator escape hatch |
 | HIS-061 | `--pidfile` flag | `cmd/cloudflared/tunnel/cmd.go` | optional; writes PID after tunnel connects (not on startup); triggered by `connectedSignal` in background goroutine | none | audited, absent | not present | open gap | pidfile creation tests, timing tests | medium | optional systemd integration |
@@ -207,7 +207,7 @@ interactions are absent.
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-063 | log file creation (`--logfile`) | `logger/create.go` | `--logfile` flag creates log file at specified path; `LogFile` config key | none | audited, absent | not present | open gap | log file creation tests | high | Rust writes to stderr only, no file appender |
-| HIS-064 | log directory (`--log-directory`) | `logger/create.go`, `config/configuration.go` | `--log-directory` flag; auto-created by config discovery; default `/var/log/cloudflared` | cfdrs-his `discovery.rs` | audited, partial | first-slice evidence exists | open gap | log directory tests | high | Rust creates directory but does not write log files to it |
+| HIS-064 | log directory (`--log-directory`) | `logger/create.go`, `config/configuration.go` | `--log-directory` flag; auto-created by config discovery; default `/var/log/cloudflared` | cfdrs-his `discovery.rs` | audited, partial | compare-backed | open gap | log directory tests | high | Rust creates directory but does not write log files to it |
 | HIS-065 | rolling log rotation | `logger/create.go`, lumberjack.v2 | automatic rotation when size exceeded: MaxSize=1MB, MaxBackups=5, MaxAge=0 (forever) | none | audited, absent | not present | open gap | rotation tests, size limit tests | high | no equivalent in Rust |
 | HIS-066 | log file permissions | `logger/create.go` | files created with mode 0644, directories with mode 0744 | none | audited, absent | not present | open gap | permission assertion tests | medium | Rust auto-creates dirs but does not create log files |
 | HIS-067 | `--log-format-output` flag | `logger/configuration.go` | JSON or text log format output selection | none | audited, absent | not present | open gap | format output tests | medium | Rust uses tracing_subscriber default format |
@@ -370,11 +370,9 @@ Low gaps:
 - HIS-054, HIS-055: deployment evidence details
 - HIS-056, HIS-057: package manager scripts
 
-## Scope Classification (Stage 3.1)
+## Scope Classification
 
-Classification performed during Stage 3.1 scope triage. For the full
-classification rationale and lane definition, see
-[docs/status/stage-3.1-scope-triage.md](../../status/stage-3.1-scope-triage.md).
+Lane classification is recorded directly in this ledger for roadmap and promotion use.
 
 All items not listed below are **lane-required** for the declared Linux
 production-alpha lane.

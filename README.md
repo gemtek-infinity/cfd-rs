@@ -1,114 +1,90 @@
 # cloudflared (Rust rewrite)
 
-This repository contains the Rust rewrite of
-[cloudflared](https://github.com/cloudflare/cloudflared), Cloudflare's tunnel
-client.
+This repository contains the Rust rewrite of Cloudflare's tunnel client,
+`cloudflared`.
 
 The rewrite targets behavioral parity with the frozen Go baseline release
-`2026.2.0`. The frozen Go source lives in [baseline-2026.2.0/old-impl/](baseline-2026.2.0/old-impl/) and
-serves as the primary behavior reference.
+`2026.2.0`. The frozen Go source lives in `baseline-2026.2.0/old-impl/` and
+is the primary behavior reference.
 
 ## Current state
 
-This is a real but partial implementation. It is not yet production-ready.
+This is a real but partial implementation. It is not yet production-alpha ready.
 
-What exists:
+What exists now:
 
 - config discovery, credentials decoding, and ingress matching
-- QUIC tunnel core (quiche + BoringSSL) with session management
+- QUIC tunnel shell with quiche + BoringSSL
 - Pingora proxy seam with limited origin dispatch
-- wire-format types and registration type boundaries
-- observability, performance validation, failure-mode, and deployment evidence
+- registration and stream type boundaries
+- parity ledgers and source routing across CLI, CDC, and HIS
+- debtmap-enabled MCP routing surface
 
-What is missing (major gaps):
+Largest remaining gaps:
 
-- Cap'n Proto registration RPC (highest-risk gap)
+- Cap'n Proto registration RPC and stream framing parity
 - full stream round-trip through origin services
-- management service, log streaming, Cloudflare REST API client
-- broad CLI surface (4 commands implemented vs 9 command families needed)
+- management service, log streaming, and Cloudflare REST API client
+- broad CLI parity beyond the current alpha surface
 - Linux service install/uninstall and systemd integration
-- local HTTP endpoints (metrics, readiness, diagnostics)
-- config reload and file watcher
-
-For the complete gap inventory (150 rows across 3 domains), see the parity
-ledgers below.
+- local HTTP endpoints, config reload, and file watcher
+- logging compatibility across local sinks, journald/systemd, and upstream management flows
+- final performance-optimization architectural overhaul
 
 ## Active lane
 
 - Linux only (`x86_64-unknown-linux-gnu`)
-- quiche + BoringSSL (0-RTT required)
+- quiche + BoringSSL
+- 0-RTT required
 - Pingora in the production-alpha critical path
 - shipped artifacts: `x86-64-v2` and `x86-64-v4`
 
-## Parity progress
+## Where truth lives
 
-Parity is tracked across three domains with evidence-backed implementation
-checklists:
-
-| Domain | Ledger | Rows | Critical | High |
-| ------ | ------ | ---- | -------- | ---- |
-| CLI — command surface | [docs/parity/cli/implementation-checklist.md](docs/parity/cli/implementation-checklist.md) | 32 | 9 | 13 |
-| CDC — Cloudflare contracts | [docs/parity/cdc/implementation-checklist.md](docs/parity/cdc/implementation-checklist.md) | 44 | 10 | 18 |
-| HIS — host interactions | [docs/parity/his/implementation-checklist.md](docs/parity/his/implementation-checklist.md) | 74 | 13 | 31 |
-
-Each domain also has feature-group audit documents under [docs/parity/](docs/parity/).
+- `STATUS.md` — the only tracked status file
+- `docs/phase-5/roadmap.md` — normative Phase 5 roadmap
+- `docs/parity/README.md` — parity index
+- `docs/parity/source-map.csv` — exact row-to-baseline routing
+- `docs/parity/logging-compatibility.md` — cross-domain logging contract
+- `REWRITE_CHARTER.md` — non-negotiables and scope
+- `docs/promotion-gates.md` — phase model and promotion rules
+- `Justfile` — authoritative command surface
 
 ## Workspace structure
 
 | Crate | Purpose |
 | ----- | ------- |
-| [crates/cfdrs-bin](crates/cfdrs-bin) | binary entrypoint, runtime composition, transport, proxy |
-| [crates/cfdrs-cli](crates/cfdrs-cli) | CLI command surface: parsing, help, dispatch |
-| [crates/cfdrs-cdc](crates/cfdrs-cdc) | Cloudflare-facing RPC contracts (registration, stream) |
-| [crates/cfdrs-his](crates/cfdrs-his) | host interaction services, filesystem config discovery |
-| [crates/cfdrs-shared](crates/cfdrs-shared) | config types, credentials, ingress, error taxonomy |
+| `crates/cfdrs-bin` | binary entrypoint and composition owner |
+| `crates/cfdrs-cli` | CLI command surface |
+| `crates/cfdrs-cdc` | Cloudflare-facing contracts |
+| `crates/cfdrs-his` | host interaction services |
+| `crates/cfdrs-shared` | narrowly admitted shared types |
 
-## Building
+## Building And Validation
+
+Normal entry:
 
 ```bash
-cargo build
-cargo test --workspace
-cargo clippy --workspace --all-targets --locked -- -D warnings
+just validate-pr
 ```
 
-## Big Phase 5
+Useful focused recipes:
 
-The repository is in Big Phase 5: Production-Alpha Completion. This phase
-completes and proves production alpha — feature-complete 1:1 behavior/surface
-parity to frozen `2026.2.0` on the declared Linux lane.
-
-The overhaul follows three mandatory stages in order:
-
-1. **Audit** (complete) — 150-row parity inventory across CLI, CDC, HIS
-2. **Reconcile docs** (complete) — align repository truth with audit findings
-3. **Refactor** (complete) — restructure workspace into audited ownership boundaries
-
-For execution details, see [FINAL_PLAN.md](FINAL_PLAN.md).
-
-## Key documents
-
-- [REWRITE_CHARTER.md](REWRITE_CHARTER.md) — non-negotiables and scope
-- [STATUS.md](STATUS.md) — current state index
-- [docs/promotion-gates.md](docs/promotion-gates.md) — phase model and promotion gates
-- [docs/README.md](docs/README.md) — full documentation map
-- [FINAL_PLAN.md](FINAL_PLAN.md) — staged execution plan
-- [FINAL_PHASE.md](FINAL_PHASE.md) — detailed execution reference
+```bash
+just doctor
+just fmt
+just validate-governance
+just validate-app
+just validate-tools
+```
 
 ## Contributing
 
-This repository supports both human and GitHub Copilot-assisted contributions.
+See `CONTRIBUTING.md` for workflow, parity-evidence, and CI guidance.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide, including build
-instructions, code style expectations, parity evidence requirements, and
-how to find work.
+Useful entrypoints:
 
-Quick start:
-
-- [docs/code-style.md](docs/code-style.md) — how code should look and read
-- [docs/engineering-standards.md](docs/engineering-standards.md) — how code should be structured and owned
-- [docs/parity/README.md](docs/parity/README.md) — parity navigation index
-- [docs/ai-context-routing.md](docs/ai-context-routing.md) — AI-assisted contribution routing
-
-Parity claims must be evidence-based against the frozen Go baseline.
-All three parity ledgers are live documents — they track what exists, what is
-partial, and what is missing.
+- `docs/ai-context-routing.md`
+- `docs/code-style.md`
+- `docs/engineering-standards.md`
+- `docs/parity/README.md`

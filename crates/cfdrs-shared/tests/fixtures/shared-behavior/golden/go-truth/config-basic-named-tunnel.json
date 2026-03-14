@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "fixture_id": "config-basic-named-tunnel",
+  "producer": "go-truth",
+  "report_kind": "normalized-config.v1",
+  "comparison": "exact-json",
+  "source_refs": [
+    "baseline-2026.2.0/old-impl/config/configuration.go §3-§7",
+    "baseline-2026.2.0/old-impl/config/configuration_test.go::TestConfigFileSettings"
+  ],
+  "payload": {
+    "source_kind": "discovered-path",
+    "source_path": "yaml-config/valid/basic_named_tunnel.yaml",
+    "tunnel": {
+      "raw": "config-file-test",
+      "uuid": null
+    },
+    "credentials": {
+      "credentials_file": null,
+      "origin_cert": null,
+      "tunnel": {
+        "raw": "config-file-test",
+        "uuid": null
+      }
+    },
+    "ingress": [
+      {
+        "hostname": "tunnel1.example.com",
+        "punycode_hostname": null,
+        "path": "/id",
+        "service": {
+          "kind": "http",
+          "uri": "https://localhost:8000"
+        },
+        "origin_request": {
+          "connectTimeout": "30s",
+          "tlsTimeout": "10s",
+          "tcpKeepAlive": "30s",
+          "noHappyEyeballs": false,
+          "keepAliveConnections": 100,
+          "keepAliveTimeout": "1m30s",
+          "httpHostHeader": null,
+          "originServerName": null,
+          "matchSNItoHost": false,
+          "caPool": null,
+          "noTLSVerify": false,
+          "disableChunkedEncoding": false,
+          "bastionMode": false,
+          "proxyAddress": "127.0.0.1",
+          "proxyPort": 0,
+          "proxyType": null,
+          "ipRules": [
+            {
+              "prefix": "10.0.0.0/8",
+              "ports": [
+                80,
+                8080
+              ],
+              "allow": false
+            },
+            {
+              "prefix": "fc00::/7",
+              "ports": [
+                443,
+                4443
+              ],
+              "allow": true
+            }
+          ],
+          "http2Origin": false,
+          "access": null
+        }
+      },
+      {
+        "hostname": "*",
+        "punycode_hostname": null,
+        "path": null,
+        "service": {
+          "kind": "http",
+          "uri": "https://localhost:8001"
+        },
+        "origin_request": {
+          "connectTimeout": "30s",
+          "tlsTimeout": "10s",
+          "tcpKeepAlive": "30s",
+          "noHappyEyeballs": false,
+          "keepAliveConnections": 100,
+          "keepAliveTimeout": "1m30s",
+          "httpHostHeader": null,
+          "originServerName": null,
+          "matchSNItoHost": false,
+          "caPool": null,
+          "noTLSVerify": false,
+          "disableChunkedEncoding": false,
+          "bastionMode": false,
+          "proxyAddress": "127.0.0.1",
+          "proxyPort": 0,
+          "proxyType": null,
+          "ipRules": [
+            {
+              "prefix": "10.0.0.0/8",
+              "ports": [
+                80,
+                8080
+              ],
+              "allow": false
+            },
+            {
+              "prefix": "fc00::/7",
+              "ports": [
+                443,
+                4443
+              ],
+              "allow": true
+            }
+          ],
+          "http2Origin": false,
+          "access": null
+        }
+      }
+    ],
+    "origin_request": {
+      "connectTimeout": "30s",
+      "tlsTimeout": "10s",
+      "tcpKeepAlive": "30s",
+      "noHappyEyeballs": false,
+      "keepAliveConnections": 100,
+      "keepAliveTimeout": "1m30s",
+      "httpHostHeader": null,
+      "originServerName": null,
+      "matchSNItoHost": false,
+      "caPool": null,
+      "noTLSVerify": false,
+      "disableChunkedEncoding": false,
+      "bastionMode": false,
+      "proxyAddress": "127.0.0.1",
+      "proxyPort": 0,
+      "proxyType": null,
+      "ipRules": [
+        {
+          "prefix": "10.0.0.0/8",
+          "ports": [
+            80,
+            8080
+          ],
+          "allow": false
+        },
+        {
+          "prefix": "fc00::/7",
+          "ports": [
+            443,
+            4443
+          ],
+          "allow": true
+        }
+      ],
+      "http2Origin": false,
+      "access": null
+    },
+    "warp_routing": {
+      "connectTimeout": "2s",
+      "maxActiveFlows": null,
+      "tcpKeepAlive": "10s"
+    },
+    "log_directory": null,
+    "warnings": null
+  }
+}

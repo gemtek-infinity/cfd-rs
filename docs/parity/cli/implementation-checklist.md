@@ -49,8 +49,8 @@ Preferred values:
 - weak
 - partial
 - parity-backed
-- first-slice evidence exists
-- partial local tests only
+- compare-backed
+- local tests
 
 If a new value is needed later, add it deliberately and keep it short.
 
@@ -127,8 +127,8 @@ hand-written parser (no clap or structopt).
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CLI-031 | validate command (Rust-only) | no frozen baseline equivalent | `validate` is a transitional alpha command that resolves config, loads YAML, normalizes ingress, and reports startup readiness; not present in baseline top-level surface | current CLI surface | audited, intentional divergence | partial local tests only | intentional divergence | divergence note, transitional command tests, retirement/rename tracking | medium | may become internal, renamed, or retired; not a parity target |
-| CLI-032 | run command (Rust alpha) | partial overlap with frozen `tunnel` and `tunnel run` | current Rust `run` enters QUIC transport core + Pingora proxy seam; only partially overlaps frozen `tunnel` root runnable behavior and `tunnel run` named-tunnel flow; must not be treated as CLI parity | current runtime + current CLI surface | audited, partial | partial local tests only | open gap | command contract tests, compare against frozen `tunnel` root and `tunnel run` behavior | critical | must be reconciled against upstream `tunnel` root and `tunnel run`, not treated as equivalent by name alone |
+| CLI-031 | validate command (Rust-only) | no frozen baseline equivalent | `validate` is a transitional alpha command that resolves config, loads YAML, normalizes ingress, and reports startup readiness; not present in baseline top-level surface | current CLI surface | audited, intentional divergence | local tests | intentional divergence | divergence note, transitional command tests, retirement/rename tracking | medium | may become internal, renamed, or retired; not a parity target |
+| CLI-032 | run command (Rust alpha) | partial overlap with frozen `tunnel` and `tunnel run` | current Rust `run` enters QUIC transport core + Pingora proxy seam; only partially overlaps frozen `tunnel` root runnable behavior and `tunnel run` named-tunnel flow; must not be treated as CLI parity | current runtime + current CLI surface | audited, partial | local tests | open gap | command contract tests, compare against frozen `tunnel` root and `tunnel run` behavior | critical | must be reconciled against upstream `tunnel` root and `tunnel run`, not treated as equivalent by name alone |
 
 ## Audit Summary
 
@@ -215,11 +215,9 @@ High gaps:
 - CLI-028: login at root compatibility
 - CLI-030: usage failure behavior
 
-## Scope Classification (Stage 3.1)
+## Scope Classification
 
-Classification performed during Stage 3.1 scope triage. For the full
-classification rationale and lane definition, see
-[docs/status/stage-3.1-scope-triage.md](../../status/stage-3.1-scope-triage.md).
+Lane classification is recorded directly in this ledger for roadmap and promotion use.
 
 All items not listed below are **lane-required** for the declared Linux
 production-alpha lane.
@@ -260,6 +258,6 @@ They do not require working implementations of the removed features.
 ### Remaining Work (Post-Audit Stages)
 
 1. replace substring-only Rust CLI tests with snapshot-grade parity tests
-   where a surface is implemented — owned by Stage 3 refactor
+   where a surface is implemented — owned by the current implementation milestones
 2. root invocation divergence is now documented above and in captures
 3. version format divergence is now documented above and in captures

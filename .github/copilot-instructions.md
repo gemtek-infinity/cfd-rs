@@ -1,116 +1,45 @@
 # Repository-wide instructions for cfd-rs
 
-Use the repository's governance split correctly.
-Start cold reads with [docs/ai-context-routing.md](../docs/ai-context-routing.md).
-Do not load all top-level governance files by default.
+Start cold reads with `docs/ai-context-routing.md`.
+Do not load broad top-level docs by default.
 
 ## Governing files
-- [REWRITE_CHARTER.md](../REWRITE_CHARTER.md) — non-negotiables, lane decisions, and scope boundaries
-- [docs/ai-context-routing.md](../docs/ai-context-routing.md) — minimum-file routing for cold starts and staged retrieval order
-- [STATUS.md](../STATUS.md) — current implemented state
-- [docs/promotion-gates.md](../docs/promotion-gates.md) — phase model and promotion boundaries
-- [docs/](../docs/) — compatibility, dependency, allocator, runtime, and concurrency policy
-- [AGENTS.md](../AGENTS.md) — short operating guide
-- [SKILLS.md](../SKILLS.md) — repeatable subsystem-porting workflow
-- [FINAL_PLAN.md](../FINAL_PLAN.md) — staged execution plan for the final phase
-- [FINAL_PHASE.md](../FINAL_PHASE.md) — detailed execution reference for the final phase
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — human contributor guide (build, test, workflow, parity evidence)
 
-## Before proposing changes
-1. identify the task type
-2. identify the governing file
-3. keep the answer narrow to the requested scope
-4. state uncertainty explicitly if evidence is missing
+- `STATUS.md` — only tracked status file
+- `docs/phase-5/roadmap.md` — normative implementation roadmap
+- `REWRITE_CHARTER.md` — scope and non-negotiables
+- `docs/promotion-gates.md` — phase model and promotion rules
+- `docs/parity/README.md` plus the relevant ledger — parity truth index
+- `docs/parity/source-map.csv` — exact row-to-baseline routing
+- `Justfile` — authoritative command surface
+- `CONTRIBUTING.md` — contributor workflow
 
-## MCP-first retrieval
-Use the local workspace MCP server first for:
-- compact repo-state discovery
-- active-phase or active-surface questions
-- ownership and routing confirmation
-- targeted file and line reads
-- regex-based search across repo files (`grep_paths`)
+## Rules
 
-For compact routing questions, prefer the local MCP snapshot surface first.
+- use the smallest file set that answers the question
+- do not claim parity from Rust code shape alone
+- use frozen baseline code/tests first for behavior truth
+- keep scope bounded to one owning domain when possible
+- `GCFGR.md` is optional local handoff state only; `STATUS.md` wins
+- format Rust with `cargo +nightly fmt`, not plain `cargo fmt`
+- use `Justfile` for normal execution, not ad hoc local command chains
 
-Examples:
-- use a snapshot for questions like "what phase is active?", "which file owns this topic?", or "what is the transport/Pingora/FIPS lane?"
-- use `grep_paths` for pattern-based searches like `Big Phase|production.alpha|widen` across specific directories
-- use `search_paths` with quoted phrases like `"Big Phase 5"` for exact phrase scoring
-- use the frozen baseline after that when the question is about behavior or parity rather than governance routing
+## MCP-first rule
 
-If MCP is unavailable, inaccessible, or insufficient:
-1. say that explicitly
-2. say what was missing or why MCP could not answer
-3. only then fall back to direct repository reads
+If MCP is available, use the startup/routing MCP tools first.
+The required operational MCP surface includes debtmap:
 
-Do not start with a broad manual workspace scan when MCP or [docs/ai-context-routing.md](../docs/ai-context-routing.md) can provide a smaller grounded slice.
+- `status_summary` for startup truth
+- `phase5_priority` for the active queue
+- `parity_row_details` or `domain_gaps_ranked` for parity work
+- `baseline_source_mapping` for frozen-source routing
+- `crate_surface_summary` or `crate_dependency_graph` before broad code scans
+- `get_context_snapshot`, `get_context_bundle`, and `get_context_brief` for compact routing
+- `debtmap_*` for hotspot, review, and refactor work once the task is localized
 
-## Behavior and parity routing
-1. use the local MCP snapshot surface first when a compact behavior/parity routing answer is enough
-2. use [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) code and tests first for grounded truth
-3. use [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/) second
+Only widen to direct doc reads when the first MCP answer is missing or insufficient.
 
-Do not claim parity from Rust code shape alone.
+## MCP maintenance rule
 
-## Parity work routing
-For parity audit, implementation, or gap-review tasks:
-1. identify the domain: CLI, CDC, or HIS
-2. load the relevant parity ledger under [docs/parity/](../docs/parity/)
-3. load [docs/parity/README.md](../docs/parity/README.md) for the full domain and document index
-4. use frozen baseline code and tests for behavior truth
-5. use the cross-domain gap ranking in [docs/status/phase-5-overhaul.md](../docs/status/phase-5-overhaul.md) for priority
-
-Parity ledgers:
-- [docs/parity/cli/implementation-checklist.md](../docs/parity/cli/implementation-checklist.md) — CLI command surface
-- [docs/parity/cdc/implementation-checklist.md](../docs/parity/cdc/implementation-checklist.md) — Cloudflare contracts
-- [docs/parity/his/implementation-checklist.md](../docs/parity/his/implementation-checklist.md) — host interactions
-
-## Refactor and cognitive-load routing
-For refactor, hotspot, architecture-shaping, or medium/large code-change tasks:
-1. use normal MCP routing first to identify the owning boundary and smallest relevant file set
-2. then consult the MCP Debtmap surface first when available
-3. prefer bounded Debtmap queries over repo-wide analysis:
-   - touched files first
-   - then a narrow path prefix
-   - only then broader hotspot queries if still needed
-4. use Debtmap as a hotspot and review aid, not as behavior truth
-5. use the file-level Debtmap score categories owned by [docs/ai-context-routing.md](../docs/ai-context-routing.md)
-6. treat file-level scores below `15.0` as negligible, `15.0-29.99` as `reviewable`, `30.0-44.99` as `reduce_when_touched`, and `45.0+` as the hard `refactor_now` limit
-7. marker-debt (TODO/FIXME/TestTodo) is excluded from the file score — see [docs/ai-context-routing.md](../docs/ai-context-routing.md) marker-debt exclusion
-8. for structural analysis (God Object, coupling, cohesion), use `debtmap_unified_analysis`; for PR-readiness, use `debtmap_ci_gate` — see CI gate rules in [docs/ai-context-routing.md](../docs/ai-context-routing.md)
-
-If the MCP Debtmap surface is unavailable, inaccessible, or insufficient:
-1. say that explicitly
-2. say what was missing or why it could not answer
-3. continue with bounded direct reads instead of broad scans
-
-Do not auto-run Debtmap for trivial edits.
-
-## Prompt sizing and scope discipline
-- keep task prompts slice-specific
-- prefer one hotspot or one ownership boundary per task
-- do not restate broad roadmap or history unless the task truly needs it
-- stable repeated guidance belongs in repository instruction files, not repeated prompt boilerplate
-- do not silently widen scope
-- do not imply later-slice behavior exists when it does not
-
-## Frozen inputs
-Do not edit frozen inputs ([baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) and [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/)).
-
-## Bounded self-review
-For medium or large code changes only, do one bounded cognitive-load review of touched files before checks:
-- re-read touched files as a reviewer
-- consult the MCP Debtmap surface first when available
-- reduce mixed responsibilities where a small local seam clearly improves readability
-- keep ownership boundaries explicit
-- preserve top-level flow visibility
-- do not widen scope beyond touched files unless a tiny adjacent fix is strictly necessary
-
-Do not use that cognitive-load pass for trivial edits.
-
-## Pre-merge debtmap gate
-Before completing a non-trivial task, follow the AI agent workflow in
-[docs/ai-context-routing.md](../docs/ai-context-routing.md) § "Debtmap Workflow — AI Agent":
-- call `debtmap_ci_gate` to check for blocking violations
-- fix blocking violations in touched files; report untouched blocking violations to the human
-- note warnings but do not block on them
+If you change `tools/mcp-cfd-rs*` or MCP-facing routing docs, pause MCP use until the debtmap-enabled MCP target is rebuilt and smoke-started.
+Keep the `--no-default-features` surface green as a maintenance check, but it does not unblock operational MCP use by itself.

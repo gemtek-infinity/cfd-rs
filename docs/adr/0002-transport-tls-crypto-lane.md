@@ -94,10 +94,6 @@ This ADR does not:
 
 ## Deferred Follow-Ups
 
-- Phase 2.3: define the Pingora critical-path relationship and first admitted
-  Pingora crates
-- Phase 2.4: define what FIPS-in-alpha means at the runtime, build, and
-  validation boundary
-- Phase 2.5: define the Linux deployment contract
-- later implementation phases: realize the chosen lane in actual transport,
-  runtime, and validation work without widening platform or artifact scope
+- keep Pingora, FIPS, and deployment ADRs aligned with this lane decision
+- realize the chosen lane in actual transport, runtime, and validation work without widening
+  platform or artifact scope

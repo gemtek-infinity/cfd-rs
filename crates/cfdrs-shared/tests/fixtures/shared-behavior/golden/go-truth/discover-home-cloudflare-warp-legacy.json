@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "fixture_id": "discover-home-cloudflare-warp-legacy",
+  "producer": "go-truth",
+  "report_kind": "discovery-report.v1",
+  "comparison": "exact",
+  "source_refs": [
+    "baseline-2026.2.0/old-impl/config/configuration.go §1-§2"
+  ],
+  "payload": {
+    "action": "use-existing",
+    "source_kind": "discovered-path",
+    "resolved_path": "/home/cloudflare-warp/config.yml",
+    "created_paths": [],
+    "written_config": null
+  }
+}

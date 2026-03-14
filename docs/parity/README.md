@@ -1,65 +1,70 @@
 # Parity Tracking
 
-This directory holds the live parity audit and tracking documents for the
-Rust rewrite.
+This directory holds the live parity ledgers, feature-group documents, and
+source-routing data for the rewrite.
 
-Parity is tracked across three domains against the frozen Go baseline
-`2026.2.0`.
+Parity is tracked against the frozen Go baseline `2026.2.0` across three
+domains.
 
 ## Domains
 
-### CLI — command surface
+### CLI
 
-The blackbox user and operator command surface: command tree, help text, flags,
-env bindings, exit codes, hidden and compatibility commands, formatting.
+User-visible command surface: command tree, help text, flags, environment
+bindings, exit codes, compatibility paths, and output formatting.
 
-- [cli/implementation-checklist.md](cli/implementation-checklist.md) — master ledger (32 rows)
-- [cli/root-and-global-flags.md](cli/root-and-global-flags.md) — root invocation, global flags, env bindings
-- [cli/tunnel-subtree.md](cli/tunnel-subtree.md) — tunnel command family
-- [cli/access-subtree.md](cli/access-subtree.md) — access command family and forward alias
-- [cli/tail-and-management.md](cli/tail-and-management.md) — tail, management, service, update commands
-- [cli/captures/](cli/captures/) — baseline evidence captures from frozen Go binary
+- `cli/implementation-checklist.md`
+- `cli/root-and-global-flags.md`
+- `cli/tunnel-subtree.md`
+- `cli/access-subtree.md`
+- `cli/tail-and-management.md`
+- `cli/captures/`
 
-### CDC — Cloudflare contracts
+### CDC
 
-Interactions with Cloudflare-managed services: registration RPC, stream
-contracts, management service, log streaming, metrics, readiness, Cloudflare
-REST API.
+Cloudflare-facing contracts: registration RPC, stream framing, management,
+log streaming, readiness, metrics, and REST API boundaries.
 
-- [cdc/implementation-checklist.md](cdc/implementation-checklist.md) — master ledger (44 rows)
-- [cdc/registration-rpc.md](cdc/registration-rpc.md) — registration schema, wire encoding, RPC methods
-- [cdc/stream-contracts.md](cdc/stream-contracts.md) — ConnectRequest/Response, framing, round-trip
-- [cdc/management-and-diagnostics.md](cdc/management-and-diagnostics.md) — management HTTP service, log streaming
-- [cdc/metrics-readiness-and-api.md](cdc/metrics-readiness-and-api.md) — metrics, readiness, Cloudflare API client
+- `cdc/implementation-checklist.md`
+- `cdc/registration-rpc.md`
+- `cdc/stream-contracts.md`
+- `cdc/management-and-diagnostics.md`
+- `cdc/metrics-readiness-and-api.md`
 
-### HIS — host interactions
+### HIS
 
-Interactions with the local host: filesystem, config discovery, service
-install/uninstall, systemd, watcher/reload, diagnostics, local endpoints,
-privilege and environment assumptions.
+Host interaction services: filesystem effects, service install/uninstall,
+watcher/reload, diagnostics, local endpoints, signals, and deployment-facing
+behavior.
 
-- [his/implementation-checklist.md](his/implementation-checklist.md) — master ledger (74 rows)
-- [his/service-installation.md](his/service-installation.md) — service install, uninstall, systemd templates
-- [his/filesystem-and-layout.md](his/filesystem-and-layout.md) — paths, file creation, permissions
-- [his/diagnostics-and-collection.md](his/diagnostics-and-collection.md) — diagnostic collectors and output
-- [his/reload-and-watcher.md](his/reload-and-watcher.md) — config reload, file watcher, SIGHUP
+- `his/implementation-checklist.md`
+- `his/service-installation.md`
+- `his/filesystem-and-layout.md`
+- `his/diagnostics-and-collection.md`
+- `his/reload-and-watcher.md`
 
-## Cross-domain summary
+### Cross-domain contracts
 
-| Domain | Rows | Critical | High | Medium | Low |
-| --- | --- | --- | --- | --- | --- |
-| CLI | 32 | 9 | 13 | 10 | 0 |
-| CDC | 44 | 10 | 18 | 15 | 1 |
-| HIS | 74 | 13 | 31 | 25 | 5 |
-| **Total** | **150** | **32** | **62** | **50** | **6** |
+- `source-map.csv` — exact row-to-baseline routing
+- `logging-compatibility.md` — logging, journald/systemd, and upstream log-streaming contract
 
-For the cross-domain gap ranking and implementation order, see
-[docs/status/phase-5-overhaul.md](../status/phase-5-overhaul.md).
+## Cross-Domain Summary
 
-## Source of truth
+| Domain | Rows | Critical | High |
+| --- | --- | --- | --- |
+| CLI | 32 | 9 | 13 |
+| CDC | 44 | 10 | 18 |
+| HIS | 74 | 13 | 31 |
+| Total | 150 | 32 | 62 |
 
-The frozen Go baseline under [baseline-2026.2.0/old-impl/](../../baseline-2026.2.0/old-impl/) is the primary
-behavior reference. The design-audit documents under
-[baseline-2026.2.0/design-audit/](../../baseline-2026.2.0/design-audit/) are the secondary reference.
+Use `STATUS.md` for the current priority queue and `docs/phase-5/roadmap.md`
+plus `docs/phase-5/roadmap-index.csv` for implementation order.
+
+## Source Of Truth
+
+- behavior truth: `baseline-2026.2.0/old-impl/`
+- derived parity routing: `docs/parity/source-map.csv`
+- status truth: `STATUS.md`
+- roadmap truth: `docs/phase-5/roadmap.md`
 
 Parity claims must be evidence-based. Structure alone is not parity.

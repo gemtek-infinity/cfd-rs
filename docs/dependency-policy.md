@@ -9,7 +9,7 @@ slice, not to predeclare the full future dependency graph.
 ## Non-Negotiable Constraints
 
 - [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) is frozen input
-- [baseline-2026.2.0/design-audit/](../baseline-2026.2.0/design-audit/) is frozen input
+- [docs/parity/source-map.csv](parity/source-map.csv) is the derived row-to-baseline routing surface
 - the Rust workspace version remains `2026.2.0-alpha.202603` until changed by
   explicit baseline/versioning policy
 - manifests should describe code that exists today or the currently accepted
@@ -34,7 +34,7 @@ When multiple valid choices still satisfy those rules:
   decoding, parsing, and validation work over ad hoc local representations or
   handwritten edge-case handling
 
-## Phase 2.6 Default Rules
+## Default Workspace Rules
 
 The default dependency truth for the workspace is now:
 
@@ -69,6 +69,35 @@ For mature, standard, security-relevant formats:
 If a change chooses bespoke parsing instead of a mature crate or a direct
 upstream loader, that choice should be justified explicitly.
 
+## Cloudflare REST API Crate Gate
+
+`cloudflare-rs` is not admitted during preparation.
+
+Evaluation is gated only for the CDC API slice and dependent CLI flows:
+
+- `CDC-033`
+- `CDC-034`
+- `CDC-038`
+- CLI tunnel CRUD and management-token flows that depend on those rows
+
+The evaluation must reject `cloudflare-rs` for:
+
+- transport, registration, or control-stream paths
+- management log sinks or `/logs` runtime handling
+- service-management or host-runtime behavior
+- any other runtime-critical path
+
+The gate checklist must cover:
+
+- endpoint coverage against the exact required rows
+- response-envelope and error-mapping fit
+- auth model fit
+- TLS and HTTP client fit with repo constraints
+- dependency footprint and maintenance status
+
+Default decision during preparation: no admission. Record the gate and defer the
+admit-or-reject decision to the CDC API implementation slice.
+
 ## Current Workspace Rule
 
 The current workspace is still intentionally narrow, but it is no longer an
@@ -91,9 +120,9 @@ That means:
 ## Current Admitted Dependencies
 
 The current manifests admit only the dependencies needed by the binary runtime
-baseline, the active first-slice config implementation, the active QUIC tunnel
-core, the admitted Pingora and observability seams, and the existing workspace
-tool surface:
+baseline, the active shared config/credentials/ingress implementation, the
+active QUIC tunnel core, the admitted Pingora and observability seams, and the
+existing workspace tool surface:
 
 - `mimalloc`, `tokio`, `tokio-util`, `quiche`, `pingora-http`, `tracing`, and
   `tracing-subscriber` in `cfdrs-bin`
@@ -104,31 +133,26 @@ tool surface:
 Reason:
 
 - allocator policy is still a process-wide runtime baseline owned by the binary
-- Phase 3.2 runtime/lifecycle shell is admitted, so the admitted runtime/lifecycle shell in
-  `cfdrs-bin` may use `tokio` and `tokio-util` for owned task tracking,
-  bounded command flow, and cancellation at the binary boundary
-- Phase 3.3 QUIC tunnel core is admitted, so the admitted QUIC tunnel core in
-  `cfdrs-bin` may use `quiche` on the locked quiche + BoringSSL lane for
-  real transport ownership and handshake/session state under the runtime
+- the admitted runtime and lifecycle shell in `cfdrs-bin` may use `tokio` and `tokio-util`
+  for owned task tracking, bounded command flow, and cancellation at the binary boundary
+- the admitted QUIC tunnel core in `cfdrs-bin` may use `quiche` on the locked quiche +
+  BoringSSL lane for real transport ownership and handshake/session state under the runtime
   boundary
-- Phase 3.4 Pingora seam is admitted, so the admitted Pingora seam in
-  `cfdrs-bin` may use `pingora-http` inside its owned proxy boundary for
-  the first narrow origin path
-- Phase 3.7 standard-format boundary is admitted, so the active origin-cert path may use the mature
-  `pem` crate through owned credential adapters in `cfdrs-shared`
-- Phase 4.1 observability and operability is admitted, so the admitted runtime observability surface in
-  `cfdrs-bin` may use `tracing` and `tracing-subscriber` for live,
-  owner-scoped reporting at the binary boundary
+- the admitted Pingora seam in `cfdrs-bin` may use `pingora-http` inside its owned proxy
+  boundary for the current narrow origin path
+- the active origin-cert path may use the mature `pem` crate through owned credential
+  adapters in `cfdrs-shared`
+- the admitted runtime observability surface in `cfdrs-bin` may use `tracing` and
+  `tracing-subscriber` for live, owner-scoped reporting at the binary boundary
 - config, credential, and ingress normalization work is active in
   `cfdrs-shared`, so its admitted slice dependencies now exist honestly in
   manifests
 - credentials-file handling now depends on the mature `base64` crate so the
   tunnel secret is decoded into owned bytes at the config boundary rather than
   being carried as an encoded string into runtime and transport code
-- several first-slice crates are centralized in the root manifest already
-  because root-manifest-first review and feature consistency are part of the
-  accepted Phase 2.6 policy, not merely an after-the-fact consequence of broad
-  sharing
+- several active rewrite crates are centralized in the root manifest already because
+  root-manifest-first review and feature consistency are part of the accepted workspace policy,
+  not merely an after-the-fact consequence of broad sharing
 - [tools/mcp-cfd-rs](../tools/mcp-cfd-rs) is a real workspace tool, so its private dependencies may
   exist locally without authorizing those crates for rewrite crates by default
 - libraries still must not set the global allocator or preload later-slice
@@ -204,10 +228,10 @@ Slice is active. These dependencies are in `[workspace.dependencies]`:
 - `tracing`
 - `tracing-subscriber`
 
-### Harness And First-Slice Test Support
+### Shared-Behavior Evidence Support
 
-These are not scaffold defaults. Admit them only when first-slice harness code
-or first-slice implementation tests actually need them.
+These are not scaffold defaults. Admit them only when shared-behavior evidence
+code or implementation tests actually need them.
 
 - `tempfile`: acceptable for deterministic filesystem-layout tests and config
   discovery harness cases
@@ -219,14 +243,14 @@ or first-slice implementation tests actually need them.
 
 Rules:
 
-- harness dev-dependencies for the accepted first slice belong in
+- harness dev-dependencies for shared-behavior evidence belong in
   [crates/cfdrs-shared/Cargo.toml](../crates/cfdrs-shared/Cargo.toml), not the workspace root
 - do not add snapshot tooling merely to make approval easier; first prefer
   stable JSON or text goldens checked into the repo
-- first-slice checked-in goldens belong under
-  [crates/cfdrs-shared/tests/fixtures/first-slice/golden/](../crates/cfdrs-shared/tests/fixtures/first-slice/golden/)
+- shared-behavior checked-in goldens belong under
+  [crates/cfdrs-shared/tests/fixtures/shared-behavior/golden/](../crates/cfdrs-shared/tests/fixtures/shared-behavior/golden/)
 - CLI-process test helpers are premature until the Rust CLI actually emits the
-  relevant first-slice surface
+  relevant surface
 
 ## Disallowed By Default
 

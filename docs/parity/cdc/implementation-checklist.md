@@ -49,8 +49,8 @@ Preferred values:
 - weak
 - partial
 - parity-backed
-- first-slice evidence exists
-- partial local tests only
+- compare-backed
+- local tests
 
 If a new value is needed later, add it deliberately and keep it short.
 
@@ -93,10 +93,10 @@ big-endian binary format for stream framing.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-011 | ConnectRequest schema | `quic_metadata_protocol.capnp`: `ConnectRequest` with `dest` (Text), `type` (ConnectionType), `metadata` (List(Metadata)). `ConnectionType` enum: http=0, websocket=1, tcp=2 | per-stream request shape over QUIC data streams | cfdrs-cdc `stream.rs` | audited, partial | partial local tests only | open gap | schema compare, enum value tests, metadata key convention tests | critical | Rust logical types match Go schema fields; metadata key constants match. Wire encoding differs. |
-| CDC-012 | ConnectRequest wire framing | `tunnelrpc/pogs/quic_metadata_protocol.go` uses Cap'n Proto binary marshaling via `ToPogs()` | stream requests encoded as Cap'n Proto binary | current QUIC transport `lifecycle.rs` | audited, partial | partial local tests only | open gap | frozen-fixture wire tests, binary format comparison, malformed-input tests | critical | Rust uses custom big-endian binary format (type u16, dest len u16, dest bytes, metadata count u16, per-entry key-len/key/val-len/val). Not Cap'n Proto. |
+| CDC-011 | ConnectRequest schema | `quic_metadata_protocol.capnp`: `ConnectRequest` with `dest` (Text), `type` (ConnectionType), `metadata` (List(Metadata)). `ConnectionType` enum: http=0, websocket=1, tcp=2 | per-stream request shape over QUIC data streams | cfdrs-cdc `stream.rs` | audited, partial | local tests | open gap | schema compare, enum value tests, metadata key convention tests | critical | Rust logical types match Go schema fields; metadata key constants match. Wire encoding differs. |
+| CDC-012 | ConnectRequest wire framing | `tunnelrpc/pogs/quic_metadata_protocol.go` uses Cap'n Proto binary marshaling via `ToPogs()` | stream requests encoded as Cap'n Proto binary | current QUIC transport `lifecycle.rs` | audited, partial | local tests | open gap | frozen-fixture wire tests, binary format comparison, malformed-input tests | critical | Rust uses custom big-endian binary format (type u16, dest len u16, dest bytes, metadata count u16, per-entry key-len/key/val-len/val). Not Cap'n Proto. |
 | CDC-013 | ConnectResponse schema and framing | `quic_metadata_protocol.capnp`: `ConnectResponse` with `error` (Text), `metadata` (List(Metadata)). Cap'n Proto binary encoding. | per-stream response shape back to edge | cfdrs-cdc `stream.rs` | audited, partial | minimal | open gap | schema compare, response construction tests, wire encoding tests | high | Rust types match logically but ConnectResponse is not wired into the response path. No wire encoding for responses. |
-| CDC-014 | metadata key conventions | `quic_metadata_protocol.go` and `connection/header.go` | keys: `HttpMethod`, `HttpHost`, `HttpHeader:<name>`, `HttpStatus`, `FlowID`, `cf-trace-id`, `HttpHeader:Content-Length` | cfdrs-cdc `stream.rs` | audited, partial | partial local tests only | open gap | metadata key inventory tests, accessor tests | medium | Rust defines matching constants. Accessors exist. Missing evidence that all edge-expected keys are handled. |
+| CDC-014 | metadata key conventions | `quic_metadata_protocol.go` and `connection/header.go` | keys: `HttpMethod`, `HttpHost`, `HttpHeader:<name>`, `HttpStatus`, `FlowID`, `cf-trace-id`, `HttpHeader:Content-Length` | cfdrs-cdc `stream.rs` | audited, partial | local tests | open gap | metadata key inventory tests, accessor tests | medium | Rust defines matching constants. Accessors exist. Missing evidence that all edge-expected keys are handled. |
 | CDC-015 | transport header serialization | `connection/header.go` | base64.RawStdEncoding pairs joined by `;` for `cf-cloudflared-request-headers` and `cf-cloudflared-response-headers`; JSON for `cf-cloudflared-response-meta` | none | audited, absent | not present | open gap | header serialization roundtrip tests, base64 encoding tests | high | entire header serialization layer absent; required for HTTP/2 transport and for correct edge communication over QUIC where metadata carry headers |
 | CDC-016 | ResponseMeta contract | `connection/header.go` | pre-generated JSON: `{"src":"origin"}`, `{"src":"cloudflared"}`, `{"src":"cloudflared","flow_rate_limited":true}` | none | audited, absent | not present | open gap | response meta shape tests | medium | response source attribution absent |
 | CDC-017 | control header stripping | `connection/header.go` `IsControlResponseHeader` | headers with prefixes `:`, `cf-int-`, `cf-cloudflared-`, `cf-proxy-` stripped from user-visible responses | none | audited, absent | not present | open gap | control header detection tests, stripping tests | medium | internal headers would leak to users without this |
@@ -107,7 +107,7 @@ big-endian binary format for stream framing.
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CDC-019 | control stream lifecycle | `connection/control.go` `ControlStreamHandler` | open control stream → register → optionally send local config → monitor for graceful shutdown → unregister | current QUIC transport `lifecycle.rs` and `protocol.rs` | audited, partial | partial | open gap | lifecycle integration tests, stage transition tests | high | Rust reports `Registered`, `RegistrationComplete`, `IncomingStream` events. Missing: config push, graceful shutdown, unregister. |
-| CDC-020 | connection status events | `connection/event.go` | `Event` with Index, EventType (Disconnected=0, Connected=1, Reconnecting=2, SetURL=3, RegisteringTunnel=4, Unregistering=5), Location, Protocol, URL, EdgeAddress | current protocol `protocol.rs` | audited, partial | partial local tests only | open gap | event type inventory tests, transition tests | medium | Rust `ProtocolBridgeState` has: BridgeUnavailable, BridgeCreated, RegistrationSent, RegistrationObserved, BridgeClosed. Different granularity from Go. |
+| CDC-020 | connection status events | `connection/event.go` | `Event` with Index, EventType (Disconnected=0, Connected=1, Reconnecting=2, SetURL=3, RegisteringTunnel=4, Unregistering=5), Location, Protocol, URL, EdgeAddress | current protocol `protocol.rs` | audited, partial | local tests | open gap | event type inventory tests, transition tests | medium | Rust `ProtocolBridgeState` has: BridgeUnavailable, BridgeCreated, RegistrationSent, RegistrationObserved, BridgeClosed. Different granularity from Go. |
 | CDC-021 | protocol negotiation | `connection/protocol.go` | Protocol enum: HTTP2=0, QUIC=1. TLS server names: `h2.cftunnel.com` (HTTP/2), `quic.cftunnel.com` (QUIC). QUIC ALPN: `argotunnel`. Fallback: QUIC→HTTP/2. | current QUIC transport `edge.rs` | audited, partial | partial | open gap | protocol selection tests, SNI tests, ALPN tests, fallback tests | high | Rust QUIC-only with `quic.cftunnel.com` SNI. ALPN `argotunnel` not verified in Rust. No HTTP/2 transport or fallback. |
 | CDC-022 | edge discovery | `edgediscovery/` | SRV record `_v2-origintunneld._tcp.argotunnel.com`, DNS-over-TLS fallback (dial `1.1.1.1:853`, TLS serverName `cloudflare-dns.com`), priority+weight sorting via Go stdlib, region1+region2 redundancy | current QUIC transport `edge.rs` | audited, partial | weak | open gap | SRV record tests, DoT fallback tests, region failover tests | high | Rust uses DNS A/AAAA via `tokio::net::lookup_host` (no SRV), only `region1.v2.argotunnel.com` (no region2 fallback), hardcoded `quic.cftunnel.com` SNI |
 
@@ -154,14 +154,14 @@ big-endian binary format for stream framing.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-042 | tunnel token encoding | `connection/` tunnel token | JSON fields: `a` (accountTag), `s` (tunnelSecret), `t` (tunnelUUID), `e` (endpoint optional); then base64-encoded | cfdrs-shared `config/credentials/mod.rs` | audited, partial | partial local tests only | open gap | token encoding roundtrip tests, field mapping tests | high | Rust `TunnelCredentialsFile` has matching fields but single-letter JSON key mapping not verified |
-| CDC-043 | origin cert encoding | `connection/` origin cert PEM | PEM block type `ARGO TUNNEL TOKEN`; JSON fields: `zoneID`, `accountID`, `apiToken`, `endpoint` optional | cfdrs-shared `config/credentials/mod.rs` | audited, partial | partial local tests only | open gap | PEM parsing tests, field extraction tests | high | Rust `OriginCertToken` exists with matching fields |
+| CDC-042 | tunnel token encoding | `connection/` tunnel token | JSON fields: `a` (accountTag), `s` (tunnelSecret), `t` (tunnelUUID), `e` (endpoint optional); then base64-encoded | cfdrs-shared `config/credentials/mod.rs` | audited, partial | local tests | open gap | token encoding roundtrip tests, field mapping tests | high | Rust `TunnelCredentialsFile` has matching fields but single-letter JSON key mapping not verified |
+| CDC-043 | origin cert encoding | `connection/` origin cert PEM | PEM block type `ARGO TUNNEL TOKEN`; JSON fields: `zoneID`, `accountID`, `apiToken`, `endpoint` optional | cfdrs-shared `config/credentials/mod.rs` | audited, partial | local tests | open gap | PEM parsing tests, field extraction tests | high | Rust `OriginCertToken` exists with matching fields |
 
 ### QUIC Transport Wire Contract
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-044 | QUIC ALPN protocol | `connection/protocol.go` | QUIC connections use ALPN `\"argotunnel\"` during TLS handshake | current QUIC transport `session.rs` | audited, parity-backed | partial local tests only | none recorded | ALPN negotiation tests, connection rejection tests | medium | Rust sets ALPN `argotunnel` via `EDGE_QUIC_ALPN` constant in `session.rs` — matches Go |
+| CDC-044 | QUIC ALPN protocol | `connection/protocol.go` | QUIC connections use ALPN `\"argotunnel\"` during TLS handshake | current QUIC transport `session.rs` | audited, parity-backed | local tests | none recorded | ALPN negotiation tests, connection rejection tests | medium | Rust sets ALPN `argotunnel` via `EDGE_QUIC_ALPN` constant in `session.rs` — matches Go |
 
 ## Audit Summary
 
@@ -221,7 +221,7 @@ Wire encoding evidence artifacts needed before claiming wire parity:
 - ALPN handshake evidence from Go QUIC connection
 
 These fixtures should be generated by running Go test code against the frozen
-baseline capnp schemas. This is deferred to implementation stages (Stage 3).
+baseline capnp schemas. This is deferred to the active implementation milestones.
 
 ### Divergence records
 
@@ -276,11 +276,9 @@ High gaps:
 - CDC-043: origin cert encoding
 - CDC-044: QUIC ALPN protocol (parity-backed)
 
-## Scope Classification (Stage 3.1)
+## Scope Classification
 
-Classification performed during Stage 3.1 scope triage. For the full
-classification rationale and lane definition, see
-[docs/status/stage-3.1-scope-triage.md](../../status/stage-3.1-scope-triage.md).
+Lane classification is recorded directly in this ledger for roadmap and promotion use.
 
 All items not listed below are **lane-required** for the declared Linux
 production-alpha lane.

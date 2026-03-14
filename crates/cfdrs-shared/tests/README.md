@@ -1,58 +1,29 @@
-# cfdrs-shared Test Harness
+# cfdrs-shared Evidence Tests
 
-This directory owns the parity harness and fixtures for the accepted first
-slice only:
+This directory holds evergreen parity evidence for the shared config,
+credentials, and ingress surfaces.
 
-- config discovery/loading/normalization
-- credentials surface
-- ingress normalization, ordering, and defaulting
+Covered surfaces:
 
-It must not grow into a general runtime or transport test area before those
-subsystems start.
+- config discovery and loading
+- credentials and origin-cert decoding
+- ingress normalization, ordering, and flag-derived defaults
 
-Current state:
+The assets in `tests/fixtures/shared-behavior/` are baseline-backed evidence.
+They are not a general runtime or transport test area.
 
-- Phase 1A fixture taxonomy and harness scaffolding exist
-- Phase 1B.2 can emit Rust actual artifacts for config discovery/loading fixtures
-- Phase 1B.3 can emit Rust actual artifacts for credentials/origin-cert fixtures
-- Phase 1B.4 can emit Rust actual artifacts for ingress normalization and ordering/defaulting fixtures
-- checked-in Go truth artifacts exist for the accepted first-slice fixture surface
-- Phase 1B.6 closes the accepted first-slice Rust-versus-Go mismatch set
-- Phase 1B.6 compare mode runs a real Rust-versus-Go comparison for that surface and is currently green
-- config, credentials, and ingress behavior are parity-backed only for the accepted first slice
+## Execution model
 
-Phase 1A outputs in this directory:
+- `python3 tools/shared_behavior_parity.py inventory` lists the fixture set
+- `python3 tools/shared_behavior_parity.py capture-go-truth` refreshes checked-in Go truth artifacts
+- `python3 tools/shared_behavior_parity.py check-go-truth` verifies that every selected fixture has Go truth
+- `python3 tools/shared_behavior_parity.py emit-rust-actual` emits readable Rust-side artifacts
+- `python3 tools/shared_behavior_parity.py compare --require-go-truth --require-rust-actual` performs the Rust-vs-Go compare loop
+- `cargo test -p cfdrs-shared` validates the fixture inventory, Go-truth gate, targeted emission paths, and compare closure for these shared surfaces
 
-- explicit fixture taxonomy under [tests/fixtures/first-slice/](fixtures/first-slice/)
-- a checked-in golden artifact contract for future Go truth and Rust actuals
-- Rust-side helper scaffolding and ignored parity test entrypoints
-- an external runner entrypoint at [tools/first_slice_parity.py](../../../tools/first_slice_parity.py)
-- a Rust actual emission path for the currently implemented first-slice fixture categories
+## Source of truth
 
-Current execution model:
-
-- `python3 tools/first_slice_parity.py inventory` shows the accepted fixture set
-- `python3 tools/first_slice_parity.py capture-go-truth` refreshes the checked-in
- Go truth JSON artifacts under [tests/fixtures/first-slice/golden/go-truth/](fixtures/first-slice/golden/go-truth/)
-- `python3 tools/first_slice_parity.py check-go-truth` now verifies that every
- accepted fixture has a checked-in Go truth artifact
-- `python3 tools/first_slice_parity.py emit-rust-actual` writes readable JSON
- artifacts for the currently implemented config, credentials, and ingress fixtures
-- `python3 tools/first_slice_parity.py compare --require-go-truth --require-rust-actual`
- now runs a real compare and exits nonzero when artifacts differ
-- `cargo test -p cfdrs-shared` validates the fixture inventory, the Go-truth gate,
- the narrow compare checks, and the full accepted first-slice compare closure
-
-Source-of-truth rule:
-
-- use [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/) code and tests first
-- use [baseline-2026.2.0/design-audit/](../../../baseline-2026.2.0/design-audit/) second
+- `baseline-2026.2.0/old-impl/` code and tests first
+- `docs/parity/source-map.csv` for bounded row-to-source routing
 
 Do not modify frozen inputs from this test area.
-
-## Broader parity tracking
-
-This test area covers the accepted first slice only.
-
-Broader parity tracking across all three domains (CLI, CDC, HIS) is owned by
-the final-phase domain ledgers under [docs/parity/](../../../docs/parity/).

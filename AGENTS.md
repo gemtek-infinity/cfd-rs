@@ -1,121 +1,49 @@
 # AGENTS.md
 
-This file is the short operating guide for coding agents in this repository.
+Start cold reads with `docs/ai-context-routing.md`.
+Use this file as a short operating guide, not as a document index dump.
 
-Keep it short.
-Do not turn this file into a status report, architecture dump, dependency catalog, or command manual.
+## Read first
 
-Start cold reads with [docs/ai-context-routing.md](docs/ai-context-routing.md).
-Use this file as the short operating guide, not as the full routing map.
-
-## Use the right file
-
-- [docs/ai-context-routing.md](docs/ai-context-routing.md)
-  - minimum-file routing for cold starts
-  - staged retrieval order
-
-- [REWRITE_CHARTER.md](REWRITE_CHARTER.md)
-  - shortest non-negotiables
-  - active lane
-  - scope boundary
-
-- [STATUS.md](STATUS.md)
-  - what exists now
-  - what is partial
-  - what is still unported
-
-- [docs/compatibility-scope.md](docs/compatibility-scope.md)
-  - what "compatible" means
-
-- [docs/build-artifact-policy.md](docs/build-artifact-policy.md)
-  - local dev build expectations
-  - CI validation policy
-  - shipped artifact policy
-
-- [docs/promotion-gates.md](docs/promotion-gates.md)
-  - current big-phase model
-  - active phase/task
-  - promotion boundaries
-
-- [docs/dependency-policy.md](docs/dependency-policy.md)
-  - dependency admission rules
-
-- [docs/allocator-runtime-baseline.md](docs/allocator-runtime-baseline.md)
-  - allocator and runtime admission rules
-
-- [docs/go-rust-semantic-mapping.md](docs/go-rust-semantic-mapping.md)
-  - concurrency and lifecycle doctrine
-
-- [docs/adr/0001-hybrid-concurrency-model.md](docs/adr/0001-hybrid-concurrency-model.md)
-  - ADR-level runtime decision
-
-- [docs/adr/0002-transport-tls-crypto-lane.md](docs/adr/0002-transport-tls-crypto-lane.md)
-  - transport / TLS / crypto lane decision
-
-- [docs/adr/0003-pingora-critical-path.md](docs/adr/0003-pingora-critical-path.md)
-  - Pingora critical-path scope decision
-
-- [docs/adr/0004-fips-in-alpha-definition.md](docs/adr/0004-fips-in-alpha-definition.md)
-  - FIPS-in-alpha boundary and validation definition
-
-- [docs/adr/0005-deployment-contract.md](docs/adr/0005-deployment-contract.md)
-  - Linux deployment contract definition
-
-- [docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md](docs/adr/ADR-0006-standard-format-and-workspace-dependency-admission.md)
-  - standard-format and workspace-dependency admission policy
-
-- [SKILLS.md](SKILLS.md)
-  - repeatable porting workflow
-
-- [FINAL_PLAN.md](FINAL_PLAN.md)
-  - staged execution plan for the final phase
-
-- [FINAL_PHASE.md](FINAL_PHASE.md)
-  - detailed execution reference
-
-- [docs/parity/README.md](docs/parity/README.md)
-  - parity domain index and document map
-
-- [docs/parity/cli/implementation-checklist.md](docs/parity/cli/implementation-checklist.md)
-  - CLI parity ledger
-
-- [docs/parity/cdc/implementation-checklist.md](docs/parity/cdc/implementation-checklist.md)
-  - CDC parity ledger
-
-- [docs/parity/his/implementation-checklist.md](docs/parity/his/implementation-checklist.md)
-  - HIS parity ledger
-
-- [docs/deployment-notes.md](docs/deployment-notes.md)
-  - operator deployment contract and known gaps
-
-- [CONTRIBUTING.md](CONTRIBUTING.md)
-  - human contributor guide
-  - build and test instructions
-  - code style and engineering standards pointers
-  - parity evidence workflow
-
-- [docs/code-style.md](docs/code-style.md)
-  - code style reference (30 rules with quick-reference summary)
-
-- [docs/engineering-standards.md](docs/engineering-standards.md)
-  - engineering standards reference (13 standards with quick-reference summary)
+- `STATUS.md` — the only tracked status file
+- `docs/phase-5/roadmap.md` — normative Phase 5 roadmap
+- `docs/parity/README.md` — parity index
+- `REWRITE_CHARTER.md` — non-negotiables and scope
+- `Justfile` — authoritative command surface
 
 ## Working rules
 
 - do not treat this repository as a blank-slate Rust project
-- do not edit frozen inputs during normal rewrite work
-- do not claim parity from Rust code alone
-- do not silently widen scope
-- do not preload speculative dependencies
-- prefer synchronous and deterministic code unless the accepted slice requires async
+- do not edit frozen inputs under `baseline-2026.2.0/old-impl/`
+- do not claim parity from Rust code shape alone
 - keep patches narrow and source-grounded
-- when finishing Rust work, follow the completion workflow in [.github/instructions/rust.instructions.md](.github/instructions/rust.instructions.md) (test+clippy → debtmap gate → fmt → summary+docs)
-- for parity work, identify the domain (CLI, CDC, or HIS) and update the relevant ledger
+- update the relevant parity ledger for parity work
+- update `docs/parity/source-map.csv` when baseline routing changes
+- `GCFGR.md` is optional local handoff state only; `STATUS.md` wins
+- when formatting Rust, use `cargo +nightly fmt`, never plain `cargo fmt`
+- use `Justfile` for normal execution instead of open-coded local command chains
+- if you touch `tools/mcp-cfd-rs*` or MCP-facing routing docs, rebuild and smoke the debtmap-enabled MCP target before relying on MCP again
 
-## Question routing
+## MCP-first routing
 
-Use [docs/ai-context-routing.md](docs/ai-context-routing.md) for the detailed task-to-file map.
+When MCP is available, prefer the startup/routing MCP tools before opening larger docs.
+The required operational MCP surface includes debtmap:
 
-For repo-state, active-phase, scope-lane, runtime-deps, lane-decisions, behavior-baseline, and governing-files questions, prefer the local MCP snapshot surface first before loading larger docs or frozen trees.
+- repo status or startup truth: `status_summary`
+- current lane-blocking queue: `phase5_priority`
+- one exact parity row: `parity_row_details`
+- ranked work inside one domain: `domain_gaps_ranked`
+- jump from a row to frozen Go sources: `baseline_source_mapping`
+- crate ownership or dependency direction: `crate_surface_summary`, `crate_dependency_graph`
+- compact file routing: `get_context_snapshot`, `get_context_bundle`, `get_context_brief`
+- hotspot/refactor/review work: `debtmap_*`
 
-If evidence is missing or conflicting, say so explicitly.
+Fall back to docs only when MCP is unavailable or the first MCP answer is insufficient.
+
+## Direct doc routing
+
+- implementation order or milestone question: `docs/phase-5/roadmap.md`
+- exact row ownership or milestone mapping: `docs/phase-5/roadmap-index.csv`
+- behavior truth: frozen Go baseline first
+- parity work: identify CLI, CDC, or HIS and open that ledger first
+- logging compatibility: `docs/parity/logging-compatibility.md`

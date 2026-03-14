@@ -145,18 +145,15 @@ This ADR does not:
 - the repository must remain explicit that FIPS is part of the production-alpha
   lane as a governance commitment, not as proof of working implementation or
   certification
-- later deployment and validation phases must stay consistent with the runtime
-  and build/link boundaries frozen here
+- later deployment and validation work must stay consistent with the runtime and build/link
+  boundaries frozen here
 
 ## Deferred Follow-Ups
 
-- Phase 2.5: define the Linux deployment contract that any later FIPS-capable
-  alpha would have to honor operationally
-- Big Phase 3: realize the bounded runtime crypto surface and explicit
-  build/link path without widening platform or artifact scope
-- Big Phase 4: validate the implemented boundary with real runtime evidence,
-  operational evidence, and any certification-adjacent proof required for
-  credible claims
-- any broader compliance, certification, or post-alpha widening work: only
-  after explicit governance change and evidence, not by implication from this
-  ADR
+- keep deployment governance aligned with the bounded FIPS runtime contract
+- realize the bounded runtime crypto surface and explicit build/link path without widening
+  platform or artifact scope
+- validate the implemented boundary with runtime, operational, and certification-adjacent evidence
+  required for credible claims
+- allow any broader compliance, certification, or post-alpha widening work only after explicit
+  governance change and evidence

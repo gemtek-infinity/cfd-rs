@@ -1,6 +1,6 @@
 use cfdrs_shared::ConfigError;
 
-use super::CliOutput;
+use super::{CliOutput, surface_contract};
 
 pub enum CliError {
     Usage(String),
@@ -18,15 +18,10 @@ impl CliError {
 
     pub fn into_output(self) -> CliOutput {
         match self {
-            Self::Usage(message) => CliOutput::usage_failure(format!(
-                "error: {message}\nRun `cloudflared help` for the admitted command surface.\n"
-            )),
+            Self::Usage(message) => CliOutput::usage_failure(surface_contract::usage_guidance(&message)),
             Self::Config(error) => CliOutput::failure(
                 String::new(),
-                format!(
-                    "error: startup validation failed [{}]: {error}\n",
-                    error.category()
-                ),
+                surface_contract::config_error_message(&error.category().to_string(), &error.to_string()),
                 1,
             ),
         }

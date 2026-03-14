@@ -10,15 +10,15 @@ use std::env;
 use std::ffi::OsString;
 use std::process::ExitCode;
 
-use cfdrs_cli::{Cli, CliError, CliOutput, Command, parse_args, render_help};
+use cfdrs_cli::{
+    Cli, CliError, CliOutput, Command, PROGRAM_NAME, parse_args, render_help, render_version_output,
+};
 use mimalloc::MiMalloc;
 
 use crate::startup::{StartupSurface, render_run_output, render_validate_output, resolve_startup};
 
 #[global_allocator]
 static GLOBAL_ALLOCATOR: MiMalloc = MiMalloc;
-
-const PROGRAM_NAME: &str = "cloudflared";
 
 fn main() -> ExitCode {
     let output = execute(env::args_os());
@@ -44,7 +44,7 @@ fn execute(args: impl IntoIterator<Item = OsString>) -> CliOutput {
 fn execute_command(cli: Cli) -> CliOutput {
     match cli.command {
         Command::Help => CliOutput::success(render_help(PROGRAM_NAME)),
-        Command::Version => CliOutput::success(format!("{PROGRAM_NAME} {}\n", env!("CARGO_PKG_VERSION"))),
+        Command::Version => CliOutput::success(render_version_output(PROGRAM_NAME)),
         Command::Validate => execute_startup_command(cli, CliMode::Validate),
         Command::Run => execute_startup_command(cli, CliMode::Run),
     }

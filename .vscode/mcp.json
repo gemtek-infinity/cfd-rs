@@ -5,12 +5,9 @@
       "env": {
         "MCP_LOG": "brief"
       },
-      "command": "cargo",
+      "command": "just",
       "args": [
-        "run",
-        "--manifest-path",
-        "${workspaceFolder}/tools/mcp-cfd-rs/Cargo.toml",
-        "--release"
+        "mcp-run"
       ],
       "cwd": "${workspaceFolder}"
     },

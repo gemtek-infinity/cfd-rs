@@ -92,9 +92,8 @@ For the alpha contract, that means:
 - configuration, credentials, logs, and runtime state must be treated as
   explicit operator-managed filesystem concerns rather than implicit packaging
   side effects
-- filesystem/layout expectations must remain compatible with a supervised host
-  service model and with the current narrow first-slice config and credential
-  surfaces
+- filesystem/layout expectations must remain compatible with a supervised host service model
+  and with the current narrow config and credential surfaces
 - this ADR freezes the need for explicit layout expectations without claiming
   that final package-owned paths, installer behavior, or updater behavior
   already exist
@@ -155,9 +154,9 @@ This ADR does not:
 
 ## Deferred Follow-Ups
 
-- Big Phase 3: realize the minimum runnable alpha against the frozen Linux GNU/
-  glibc host contract without widening platform or artifact scope
-- Big Phase 4: validate the deployment contract with real operational evidence,
-  hardening work, and measured runtime behavior in actual supervised use
-- Big Phase 5: consider any broader distro, init-system, packaging, or
-  container widening only through explicit governance change and evidence
+- realize the minimum runnable alpha against the frozen Linux GNU/glibc host contract without
+  widening platform or artifact scope
+- validate the deployment contract with real operational evidence, hardening work, and measured
+  runtime behavior in actual supervised use
+- consider any broader distro, init-system, packaging, or container widening only through explicit
+  governance change and evidence

@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "fixture_id": "config-unicode-ingress",
+  "producer": "go-truth",
+  "report_kind": "normalized-config.v1",
+  "comparison": "exact-json",
+  "source_refs": [
+    "baseline-2026.2.0/old-impl/config/configuration.go §4.2",
+    "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Unicode domain"
+  ],
+  "payload": {
+    "source_kind": "discovered-path",
+    "source_path": "yaml-config/valid/unicode_ingress.yaml",
+    "tunnel": null,
+    "credentials": {
+      "credentials_file": null,
+      "origin_cert": null,
+      "tunnel": null
+    },
+    "ingress": [
+      {
+        "hostname": "môô.cloudflare.com",
+        "punycode_hostname": "xn--m-xgaa.cloudflare.com",
+        "path": null,
+        "service": {
+          "kind": "http",
+          "uri": "https://localhost:8000"
+        },
+        "origin_request": {
+          "connectTimeout": "30s",
+          "tlsTimeout": "10s",
+          "tcpKeepAlive": "30s",
+          "noHappyEyeballs": false,
+          "keepAliveConnections": 100,
+          "keepAliveTimeout": "1m30s",
+          "httpHostHeader": null,
+          "originServerName": null,
+          "matchSNItoHost": false,
+          "caPool": null,
+          "noTLSVerify": false,
+          "disableChunkedEncoding": false,
+          "bastionMode": false,
+          "proxyAddress": "127.0.0.1",
+          "proxyPort": 0,
+          "proxyType": null,
+          "ipRules": [],
+          "http2Origin": false,
+          "access": null
+        }
+      },
+      {
+        "hostname": null,
+        "punycode_hostname": null,
+        "path": null,
+        "service": {
+          "kind": "http",
+          "uri": "https://localhost:8001"
+        },
+        "origin_request": {
+          "connectTimeout": "30s",
+          "tlsTimeout": "10s",
+          "tcpKeepAlive": "30s",
+          "noHappyEyeballs": false,
+          "keepAliveConnections": 100,
+          "keepAliveTimeout": "1m30s",
+          "httpHostHeader": null,
+          "originServerName": null,
+          "matchSNItoHost": false,
+          "caPool": null,
+          "noTLSVerify": false,
+          "disableChunkedEncoding": false,
+          "bastionMode": false,
+          "proxyAddress": "127.0.0.1",
+          "proxyPort": 0,
+          "proxyType": null,
+          "ipRules": [],
+          "http2Origin": false,
+          "access": null
+        }
+      }
+    ],
+    "origin_request": {
+      "connectTimeout": "30s",
+      "tlsTimeout": "10s",
+      "tcpKeepAlive": "30s",
+      "noHappyEyeballs": false,
+      "keepAliveConnections": 100,
+      "keepAliveTimeout": "1m30s",
+      "httpHostHeader": null,
+      "originServerName": null,
+      "matchSNItoHost": false,
+      "caPool": null,
+      "noTLSVerify": false,
+      "disableChunkedEncoding": false,
+      "bastionMode": false,
+      "proxyAddress": "127.0.0.1",
+      "proxyPort": 0,
+      "proxyType": null,
+      "ipRules": [],
+      "http2Origin": false,
+      "access": null
+    },
+    "warp_routing": {
+      "connectTimeout": null,
+      "maxActiveFlows": null,
+      "tcpKeepAlive": null
+    },
+    "log_directory": null,
+    "warnings": null
+  }
+}
