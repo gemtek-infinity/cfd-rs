@@ -38,6 +38,15 @@ pub struct CanonicalLink {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct ParityDomainProgress {
+    pub domain: String,
+    pub total: usize,
+    pub closed: usize,
+    pub partial: usize,
+    pub absent: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct StatusSummaryResponse {
     pub source_path: &'static str,
     pub active_snapshot: Vec<StatusField>,
@@ -46,6 +55,7 @@ pub struct StatusSummaryResponse {
     pub missing_now: Vec<String>,
     pub active_milestone: String,
     pub next_milestone: Option<String>,
+    pub parity_progress: Vec<ParityDomainProgress>,
     pub priority_rows: Vec<PriorityQueueEntry>,
     pub architecture_contract: Vec<String>,
     pub canonical_links: Vec<CanonicalLink>,
@@ -128,6 +138,8 @@ pub struct DomainGapsRankedResponse {
     pub domain: String,
     pub active_milestone: String,
     pub total_open_rows: usize,
+    pub partial_rows: usize,
+    pub absent_rows: usize,
     pub rows: Vec<DomainGapEntry>,
 }
 
@@ -193,6 +205,8 @@ pub fn status_summary(repo_root: &Path) -> Result<StatusSummaryResponse, String>
     let architecture_contract = section_content(&sections, "Architecture Contract")?;
     let canonical_links = section_content(&sections, "Canonical Links")?;
 
+    let parity_progress = compute_parity_progress(repo_root)?;
+
     Ok(StatusSummaryResponse {
         source_path: STATUS_PATH,
         active_snapshot: parse_status_fields(active_snapshot),
@@ -201,6 +215,7 @@ pub fn status_summary(repo_root: &Path) -> Result<StatusSummaryResponse, String>
         missing_now: extract_list_block(current_reality, "What does not exist yet"),
         active_milestone: first_h3_heading(active_milestone)?,
         next_milestone: extract_inline_backtick_item(active_milestone, "Next milestone after"),
+        parity_progress,
         priority_rows: parse_priority_queue(priority_rows)?,
         architecture_contract: extract_list_block(
             architecture_contract,
@@ -331,6 +346,12 @@ pub fn domain_gaps_ranked(
 
     open_rows.sort_by(|left, right| compare_gap_entries(left, right, &active_milestone));
     let total_open_rows = open_rows.len();
+    let partial_rows = open_rows
+        .iter()
+        .filter(|row| is_partial_status(&row.rust_status_now))
+        .count();
+    let absent_rows = total_open_rows - partial_rows;
+
     open_rows.truncate(limit.max(1));
 
     Ok(DomainGapsRankedResponse {
@@ -342,6 +363,8 @@ pub fn domain_gaps_ranked(
         domain: normalized_domain,
         active_milestone,
         total_open_rows,
+        partial_rows,
+        absent_rows,
         rows: open_rows,
     })
 }
@@ -957,6 +980,34 @@ fn is_closed_row(row: &ParityRowRecord) -> bool {
     )
 }
 
+fn is_partial_status(status: &str) -> bool {
+    status.contains("partial") || status.contains("minimal")
+}
+
+fn compute_parity_progress(repo_root: &Path) -> Result<Vec<ParityDomainProgress>, String> {
+    ["CLI", "CDC", "HIS"]
+        .iter()
+        .map(|domain| {
+            let rows = parse_ledger_rows(repo_root, domain)?;
+            let total = rows.len();
+            let closed = rows.iter().filter(|row| is_closed_row(row)).count();
+            let partial = rows
+                .iter()
+                .filter(|row| !is_closed_row(row) && is_partial_status(&row.rust_status_now))
+                .count();
+            let absent = total - closed - partial;
+
+            Ok(ParityDomainProgress {
+                domain: domain.to_string(),
+                total,
+                closed,
+                partial,
+                absent,
+            })
+        })
+        .collect()
+}
+
 fn compare_gap_entries(
     left: &DomainGapEntry,
     right: &DomainGapEntry,
@@ -1012,6 +1063,33 @@ mod tests {
             Some("Host and Runtime Foundation")
         );
         assert!(!summary.priority_rows.is_empty());
+
+        assert_eq!(summary.parity_progress.len(), 3);
+
+        let cli = summary
+            .parity_progress
+            .iter()
+            .find(|p| p.domain == "CLI")
+            .expect("CLI progress");
+        assert_eq!(cli.total, 32);
+        assert!(cli.partial > 0);
+        assert_eq!(cli.closed + cli.partial + cli.absent, cli.total);
+
+        let cdc = summary
+            .parity_progress
+            .iter()
+            .find(|p| p.domain == "CDC")
+            .expect("CDC progress");
+        assert_eq!(cdc.total, 44);
+        assert_eq!(cdc.closed + cdc.partial + cdc.absent, cdc.total);
+
+        let his = summary
+            .parity_progress
+            .iter()
+            .find(|p| p.domain == "HIS")
+            .expect("HIS progress");
+        assert_eq!(his.total, 74);
+        assert_eq!(his.closed + his.partial + his.absent, his.total);
     }
 
     #[test]
@@ -1051,6 +1129,7 @@ mod tests {
         assert_eq!(ranked.domain, "CDC");
         assert!(ranked.total_open_rows >= ranked.rows.len());
         assert!(!ranked.rows.is_empty());
+        assert_eq!(ranked.partial_rows + ranked.absent_rows, ranked.total_open_rows);
     }
 
     #[test]

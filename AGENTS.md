@@ -29,10 +29,10 @@ Use this file as a short operating guide, not as a document index dump.
 When MCP is available, prefer the startup/routing MCP tools before opening larger docs.
 The required operational MCP surface includes debtmap:
 
-- repo status or startup truth: `status_summary`
+- repo status, startup truth, and per-domain parity progress: `status_summary`
 - current lane-blocking queue: `phase5_priority`
 - one exact parity row: `parity_row_details`
-- ranked work inside one domain: `domain_gaps_ranked`
+- ranked work inside one domain with partial vs absent breakdown: `domain_gaps_ranked`
 - jump from a row to frozen Go sources: `baseline_source_mapping`
 - crate ownership or dependency direction: `crate_surface_summary`, `crate_dependency_graph`
 - compact file routing: `get_context_snapshot`, `get_context_bundle`, `get_context_brief`

@@ -29,9 +29,9 @@ Do not load broad top-level docs by default.
 If MCP is available, use the startup/routing MCP tools first.
 The required operational MCP surface includes debtmap:
 
-- `status_summary` for startup truth
+- `status_summary` for startup truth and per-domain parity progress
 - `phase5_priority` for the active queue
-- `parity_row_details` or `domain_gaps_ranked` for parity work
+- `parity_row_details` or `domain_gaps_ranked` for parity work — `domain_gaps_ranked` includes partial vs absent breakdown
 - `baseline_source_mapping` for frozen-source routing
 - `crate_surface_summary` or `crate_dependency_graph` before broad code scans
 - `get_context_snapshot`, `get_context_bundle`, and `get_context_brief` for compact routing

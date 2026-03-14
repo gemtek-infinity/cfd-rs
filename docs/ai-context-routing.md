@@ -128,10 +128,10 @@ Never claim parity from Rust code shape alone.
 
 ## MCP Routing
 
-- use `status_summary` as the default startup entry for repo truth
+- use `status_summary` as the default startup entry for repo truth and per-domain parity progress (closed, partial, absent counts for CLI, CDC, HIS)
 - use `phase5_priority` for the current lane-blocking queue
 - use `parity_row_details` when you already know the ledger row ID
-- use `domain_gaps_ranked` when you need bounded ranked work inside one domain
+- use `domain_gaps_ranked` when you need bounded ranked work inside one domain — includes partial vs absent breakdown so you can prioritize rows that are already started
 - use `baseline_source_mapping` to jump from a row ID to the frozen baseline source area and exact parity feature doc
 - use `crate_surface_summary` or `crate_dependency_graph` before broad code scans
 - debtmap is always available in the required MCP surface; use `debtmap_*` once the task is localized to hotspot, review, or refactor work
