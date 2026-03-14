@@ -89,6 +89,7 @@ pub const HEALTHCHECK_RESPONSE: &str = "OK\n";
 /// Build info for the Prometheus `build_info` gauge.
 #[derive(Debug, Clone)]
 pub struct BuildInfo {
+    pub goversion: &'static str,
     pub version: &'static str,
     pub revision: &'static str,
     pub build_type: &'static str,
@@ -122,7 +123,19 @@ pub struct ConfigResponse {
 ///
 /// Go accepts `ADDRESS` (e.g., `localhost:2000`, `:2000`).
 pub fn parse_metrics_address(addr: &str) -> Option<SocketAddr> {
-    addr.parse().ok()
+    if let Ok(address) = addr.parse() {
+        return Some(address);
+    }
+
+    if let Some(port) = addr.strip_prefix(':') {
+        return format!("127.0.0.1:{port}").parse().ok();
+    }
+
+    if let Some(port) = addr.strip_prefix("localhost:") {
+        return format!("127.0.0.1:{port}").parse().ok();
+    }
+
+    None
 }
 
 // --- HIS-030: diagnostic/pprof surface ---
@@ -201,6 +214,8 @@ mod tests {
     #[test]
     fn parse_metrics_address_valid() {
         assert!(parse_metrics_address("127.0.0.1:9090").is_some());
+        assert!(parse_metrics_address("localhost:9090").is_some());
+        assert!(parse_metrics_address(":9090").is_some());
     }
 
     #[test]

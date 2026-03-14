@@ -225,8 +225,9 @@ Platform-specific files:
   with signal name, conditionally enabled (disabled in tests)
 - graceful shutdown with child task draining in [crates/cfdrs-bin/src/runtime/tasks/drain.rs](../../../crates/cfdrs-bin/src/runtime/tasks/drain.rs):
   waits for children with grace period, aborts timed-out tasks
-- internal shutdown grace period defaulting to 100ms (vs Go's 30s)
-- no `--grace-period` CLI flag exposed
+- runtime shutdown grace period defaulting to 30s via cfdrs-his and accepting parsed `--grace-period` overrides
+- pidfile helpers wired on runtime service-ready and cleanup through
+        [crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs](../../../crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs)
 
 ### What is missing
 
@@ -242,10 +243,8 @@ Platform-specific files:
 - graceful process restart (fork/exec)
 - package manager detection (`.installedFromPackageManager`)
 - double-signal immediate shutdown (second signal bypass grace period)
-- `--pidfile` flag
 - token lock file (host-side `.lock` file with signal cleanup)
 - gracenet socket inheritance for restart
-- `--grace-period` CLI flag (Go default 30s; internal Rust default 100ms)
 
 ## Signal Handling
 
@@ -274,8 +273,9 @@ Signals are conditionally registered (`enable_signals: true`) and disabled in
 test harnesses.
 
 **Divergence:** Rust has no double-signal escape (second signal does not force
-immediate exit). The grace period internal default is 100ms vs Go's 30s, and
-there is no `--grace-period` CLI flag to configure it.
+immediate exit). The runtime now uses the 30s default and parsed
+`--grace-period` values, but the Go connection-level `GracefulShutdown()`
+behavior is still not implemented.
 
 ## PID Files
 

@@ -20,7 +20,7 @@ What exists now:
 - `cfdrs-bin`: binary entrypoint, runtime composition, QUIC tunnel shell, Pingora seam, deployment/performance/failure evidence
 - `cfdrs-cli`: CLI parsing for all 40+ baseline command paths, 40+ global flags, help, dispatch (stubs for most commands), and CLI-facing error/output types
 - `cfdrs-cdc`: registration and stream contract types
-- `cfdrs-his`: filesystem config discovery IO, credential lookup, service install/uninstall trait contracts, systemd/SysV template generation, metrics server and readiness stubs, diagnostics collection stubs, file watcher and config reload trait contracts, signal handling, logging configuration types, updater stubs, ICMP proxy stubs, hello server stub, environment/privilege detection
+- `cfdrs-his`: filesystem config discovery IO, credential lookup, service install/uninstall trait contracts, systemd/SysV template generation, metrics/readiness contracts backing a runtime-owned local listener, diagnostics collection stubs, file watcher and config reload trait contracts, signal handling, logging configuration types, updater stubs, ICMP proxy stubs, hello server stub, environment/privilege detection
 - `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion
 - live parity ledgers, feature docs, and source routing under [`docs/parity/`](docs/parity/)
 - frozen Go baseline in [`baseline-2026.2.0/`](baseline-2026.2.0/)
@@ -32,10 +32,10 @@ What does not exist yet:
 - Cap'n Proto registration RPC and full stream round-trip through origin
 - management service, log streaming, Cloudflare REST API client, and management-token workflows
 - broad CLI behavioral parity: root service-mode runtime, tunnel/access/tail/service/update behavioral implementations behind parsed stubs
-- service install/uninstall: `CommandRunner` trait integration is structurally complete and parity-tested; real host `systemctl` execution not yet verified end-to-end
-- local HTTP endpoints: metrics, readiness, diagnostics trait contracts and response types exist; HTTP server binding pending
+- service install/uninstall: `CommandRunner` trait integration and command dispatch are wired and parity-tested; real host `systemctl` execution not yet verified end-to-end
+- local HTTP endpoints: runtime now binds local `/ready`, `/healthcheck`, and `/metrics`; diagnostics, quicktunnel, config, and pprof endpoints remain pending
 - config reload and file watcher: trait contracts exist; `notify`/`inotify` integration pending
-- logging sinks: file rotation, journald/systemd output, upstream management log streaming config types exist; actual sink implementations pending
+- logging sinks: runtime now honors `--logfile`, `--log-directory`, `--log-format-output`, and global log level wiring; rolling rotation, journald/systemd output, and upstream management log streaming remain pending
 - ICMP proxy, hello server, graceful restart: trait stubs exist; real implementations pending
 - performance-architectural overhaul of the final admitted hot paths
 
@@ -69,8 +69,8 @@ Tier 1 lane-blocking rows, in implementation order:
 2. `CDC-011`, `CDC-012`, `CDC-018` — stream schema, framing, and round-trip
 3. `CLI-001`, `CLI-002`, `CLI-003` — root invocation, help text, global flags
 4. `CLI-008`, `CLI-010`, `CLI-012` — tunnel root behavior, create, run
-5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service install/uninstall and systemd templates (parity-backed; `CommandRunner` end-to-end pending)
-6. `HIS-024`, `HIS-025`, `HIS-027` — local metrics, readiness, and Prometheus exposure (trait contracts exist; server binding pending)
+5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service install/uninstall and systemd templates (command path wired; real host `CommandRunner` execution still needs end-to-end verification)
+6. `HIS-024`, `HIS-025`, `HIS-027` — local metrics, readiness, and Prometheus exposure (runtime binding landed; remaining gaps are endpoint breadth and exact parity semantics)
 7. `HIS-041`, `HIS-042`, `HIS-044` — file watcher, reload loop, remote config update (trait contracts exist; integration pending)
 8. logging blocker set — `CLI-003`, `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`, `HIS-068`
 9. `CDC-033`, `CDC-034` — Cloudflare REST API client and response envelope
