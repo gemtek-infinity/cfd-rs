@@ -24,6 +24,17 @@ Use this file as a short operating guide, not as a document index dump.
 - use [`Justfile`](Justfile) for normal execution instead of open-coded local command chains
 - if you touch `tools/mcp-cfd-rs*` or MCP-facing routing docs, rebuild and smoke the debtmap-enabled MCP target before relying on MCP again
 
+## Tooling defaults
+
+- prefer repo-owned tooling over hand-crafted shell sequences whenever a matching Just recipe, MCP tool, or checked-in helper exists
+- use MCP routing tools before broad file scans: `status_summary`, `phase5_priority`, `crate_dependency_graph`, `domain_gaps_ranked`, `parity_row_details`, `baseline_source_mapping`
+- use `just validate-pr` as the default full validation command; do not reconstruct it with separate `cargo fmt`, `cargo clippy`, or `cargo test` invocations unless a narrower failure-isolation pass is explicitly needed
+- use `just fmt` for formatting-only work
+- use focused Just recipes when you need only one slice: `just validate-governance`, `just validate-app`, `just validate-tools`, `just validate-debtmap`, `just mcp-smoke`, `just mcp-smoke-maintenance`
+- use `just shared-behavior-capture` and `just shared-behavior-compare` for parity artifact workflows instead of running the Python helper entrypoints ad hoc
+- do not hand-edit generated artifacts such as [`docs/parity/source-map.csv`](docs/parity/source-map.csv); regenerate or validate them through the checked-in tooling
+- if a Just recipe already exists for the task, treat raw `cargo`, `python3 tools/...`, or `cargo run --manifest-path ...` chains as an exception path that needs justification
+
 ## MCP-first routing
 
 When MCP is available, prefer the startup/routing MCP tools before opening larger docs.

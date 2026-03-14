@@ -228,18 +228,21 @@ Platform-specific files:
 - runtime shutdown grace period defaulting to 30s via cfdrs-his and accepting parsed `--grace-period` overrides
 - pidfile helpers wired on runtime service-ready and cleanup through
         [crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs](../../../crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs)
+- reload recovery strategy and action handling in [crates/cfdrs-his/src/watcher.rs](../../../crates/cfdrs-his/src/watcher.rs):
+    `ReloadActionLoop` keeps the previous config on nonfatal update errors and stops on invariant failures
+- in-memory config update seam in [crates/cfdrs-his/src/watcher.rs](../../../crates/cfdrs-his/src/watcher.rs):
+    `InMemoryConfigOrchestrator` owns update/read JSON swapping until CDC-backed remote config lands
 
 ### What is missing
 
 - file watcher (no fsnotify equivalent)
-- config reload action loop
+- config reload action loop runtime wiring
 - service lifecycle manager (overwatch)
-- remote config update handling (orchestrator)
+- remote config update ordering and proxy swap semantics
 - auto-update mechanism
 - update CLI command
 - update check HTTP client
-- terminal detection (`isatty`)
-- UID detection for privilege checks
+- file watcher (no fsnotify equivalent)
 - graceful process restart (fork/exec)
 - package manager detection (`.installedFromPackageManager`)
 - double-signal immediate shutdown (second signal bypass grace period)
@@ -289,7 +292,10 @@ in a background goroutine via `writePidFile()`.
 
 ### Rust State
 
-Not implemented. No `--pidfile` flag or PID file creation.
+Runtime service-ready now writes the configured pidfile and removes it during
+shutdown using [crates/cfdrs-his/src/signal.rs](../../../crates/cfdrs-his/src/signal.rs)
+and [crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs](../../../crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs).
+Exact `connectedSignal` timing parity is still open.
 
 ## Token Lock Files
 
@@ -306,7 +312,8 @@ Purpose: prevent concurrent token fetch races (AUTH-1736).
 
 ### Rust State
 
-Not implemented. No file-based locking for token operations.
+Implemented in [crates/cfdrs-his/src/signal.rs](../../../crates/cfdrs-his/src/signal.rs)
+with O_EXCL lock creation, signal-safe cleanup helpers, and local tests.
 
 ## Process Restart (Gracenet)
 

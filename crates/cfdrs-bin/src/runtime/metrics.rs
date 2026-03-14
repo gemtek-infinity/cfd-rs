@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::net::{Shutdown, SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -6,17 +7,24 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use cfdrs_his::metrics_server::{
-    self, BuildInfo, HEALTHCHECK_RESPONSE, READ_TIMEOUT_SECS, ReadinessResponse, WRITE_TIMEOUT_SECS,
+    self, BuildInfo, ConfigResponse, HEALTHCHECK_RESPONSE, PPROF_DEFERRED, READ_TIMEOUT_SECS,
+    ReadinessResponse, WRITE_TIMEOUT_SECS,
 };
+use serde_json::json;
 
 use super::RuntimeConfig;
 use super::state::{ReadinessState, RuntimeStatus};
+
+/// Maximum HTTP request buffer size for the metrics server.
+const HTTP_REQUEST_BUFFER_SIZE: usize = 2048;
 
 #[derive(Debug)]
 struct MetricsSnapshot {
     connector_id: uuid::Uuid,
     ready_connections: u32,
     build_info: BuildInfo,
+    config_response: ConfigResponse,
+    diagnostic_configuration: BTreeMap<String, String>,
 }
 
 pub(super) struct RuntimeMetricsHandle {
@@ -41,6 +49,8 @@ impl RuntimeMetricsHandle {
             connector_id: config.connector_id(),
             ready_connections: 0,
             build_info: runtime_build_info(),
+            config_response: runtime_config_response(config),
+            diagnostic_configuration: config.diagnostic_configuration().clone(),
         }));
         let shutdown = Arc::new(AtomicBool::new(false));
         let thread_snapshot = Arc::clone(&snapshot);
@@ -130,7 +140,7 @@ fn handle_connection(mut stream: TcpStream, snapshot: &Arc<Mutex<MetricsSnapshot
     let _ = stream.set_read_timeout(Some(Duration::from_secs(READ_TIMEOUT_SECS)));
     let _ = stream.set_write_timeout(Some(Duration::from_secs(WRITE_TIMEOUT_SECS)));
 
-    let mut buffer = [0_u8; 2048];
+    let mut buffer = [0_u8; HTTP_REQUEST_BUFFER_SIZE];
     let bytes_read = match stream.read(&mut buffer) {
         Ok(bytes_read) if bytes_read > 0 => bytes_read,
         _ => return,
@@ -171,15 +181,22 @@ struct HttpResponse {
 }
 
 fn build_response(path: &str, snapshot: &Arc<Mutex<MetricsSnapshot>>) -> HttpResponse {
-    let snapshot = snapshot.lock().expect("metrics snapshot should be lockable");
+    let snapshot = match snapshot.lock() {
+        Ok(guard) => guard,
+        Err(_) => return internal_error("metrics snapshot lock poisoned"),
+    };
 
     match path {
         "/ready" => {
             let response = ReadinessResponse::new(snapshot.connector_id, snapshot.ready_connections);
-            HttpResponse {
-                status: response.http_status(),
-                content_type: "application/json",
-                body: serde_json::to_string(&response).expect("readiness response should serialize"),
+
+            match serde_json::to_string(&response) {
+                Ok(body) => HttpResponse {
+                    status: response.http_status(),
+                    content_type: "application/json",
+                    body,
+                },
+                Err(_) => internal_error("readiness response serialization failed"),
             }
         }
         "/healthcheck" => HttpResponse {
@@ -192,11 +209,40 @@ fn build_response(path: &str, snapshot: &Arc<Mutex<MetricsSnapshot>>) -> HttpRes
             content_type: "text/plain; version=0.0.4",
             body: prometheus_body(&snapshot),
         },
+        "/config" => match serde_json::to_string(&snapshot.config_response) {
+            Ok(body) => HttpResponse {
+                status: 200,
+                content_type: "application/json",
+                body,
+            },
+            Err(_) => internal_error("config response serialization failed"),
+        },
+        "/diag/configuration" => match serde_json::to_string(&snapshot.diagnostic_configuration) {
+            Ok(body) => HttpResponse {
+                status: 200,
+                content_type: "application/json",
+                body,
+            },
+            Err(_) => internal_error("diagnostic configuration serialization failed"),
+        },
+        path if path.starts_with("/debug/pprof") && PPROF_DEFERRED => HttpResponse {
+            status: 501,
+            content_type: "text/plain; charset=utf-8",
+            body: "pprof deferred\n".to_owned(),
+        },
         _ => HttpResponse {
             status: 404,
             content_type: "text/plain; charset=utf-8",
             body: "not found\n".to_owned(),
         },
+    }
+}
+
+fn internal_error(message: &str) -> HttpResponse {
+    HttpResponse {
+        status: 500,
+        content_type: "text/plain; charset=utf-8",
+        body: format!("{message}\n"),
     }
 }
 
@@ -211,6 +257,8 @@ fn write_response(
         200 => "OK",
         400 => "Bad Request",
         404 => "Not Found",
+        500 => "Internal Server Error",
+        501 => "Not Implemented",
         503 => "Service Unavailable",
         _ => "OK",
     };
@@ -257,6 +305,17 @@ fn runtime_build_info() -> BuildInfo {
     }
 }
 
+fn runtime_config_response(config: &RuntimeConfig) -> ConfigResponse {
+    ConfigResponse {
+        version: 1,
+        config: json!({
+            "ingress": config.normalized().ingress,
+            "warp-routing": config.normalized().warp_routing,
+            "originRequest": config.normalized().origin_request,
+        }),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -274,6 +333,11 @@ mod tests {
             connector_id: uuid::Uuid::nil(),
             ready_connections: 1,
             build_info: runtime_build_info(),
+            config_response: ConfigResponse {
+                version: 1,
+                config: json!({}),
+            },
+            diagnostic_configuration: BTreeMap::new(),
         }));
 
         let response = build_response("/ready", &snapshot);
@@ -288,6 +352,11 @@ mod tests {
             connector_id: uuid::Uuid::nil(),
             ready_connections: 0,
             build_info: runtime_build_info(),
+            config_response: ConfigResponse {
+                version: 1,
+                config: json!({}),
+            },
+            diagnostic_configuration: BTreeMap::new(),
         }));
 
         let response = build_response("/metrics", &snapshot);
@@ -295,5 +364,71 @@ mod tests {
         assert_eq!(response.status, 200);
         assert!(response.body.contains("build_info{"));
         assert!(response.body.contains("cfdrs_ready_connections 0"));
+    }
+
+    #[test]
+    fn config_endpoint_serializes_runtime_shape() {
+        let snapshot = Arc::new(Mutex::new(MetricsSnapshot {
+            connector_id: uuid::Uuid::nil(),
+            ready_connections: 0,
+            build_info: runtime_build_info(),
+            config_response: ConfigResponse {
+                version: 7,
+                config: json!({"ingress": [], "warp-routing": {}, "originRequest": {}}),
+            },
+            diagnostic_configuration: BTreeMap::new(),
+        }));
+
+        let response = build_response("/config", &snapshot);
+
+        assert_eq!(response.status, 200);
+        assert!(response.body.contains("\"version\":7"));
+        assert!(response.body.contains("\"originRequest\""));
+    }
+
+    #[test]
+    fn diagnostic_configuration_endpoint_serializes_uid_and_logs() {
+        let snapshot = Arc::new(Mutex::new(MetricsSnapshot {
+            connector_id: uuid::Uuid::nil(),
+            ready_connections: 0,
+            build_info: runtime_build_info(),
+            config_response: ConfigResponse {
+                version: 1,
+                config: json!({}),
+            },
+            diagnostic_configuration: BTreeMap::from([
+                ("uid".to_owned(), "1000".to_owned()),
+                ("log_directory".to_owned(), "/var/log/cloudflared".to_owned()),
+            ]),
+        }));
+
+        let response = build_response("/diag/configuration", &snapshot);
+
+        assert_eq!(response.status, 200);
+        assert!(response.body.contains("\"uid\":\"1000\""));
+        assert!(
+            response
+                .body
+                .contains("\"log_directory\":\"/var/log/cloudflared\"")
+        );
+    }
+
+    #[test]
+    fn pprof_routes_report_deferred_boundary() {
+        let snapshot = Arc::new(Mutex::new(MetricsSnapshot {
+            connector_id: uuid::Uuid::nil(),
+            ready_connections: 0,
+            build_info: runtime_build_info(),
+            config_response: ConfigResponse {
+                version: 1,
+                config: json!({}),
+            },
+            diagnostic_configuration: BTreeMap::new(),
+        }));
+
+        let response = build_response("/debug/pprof/goroutine", &snapshot);
+
+        assert_eq!(response.status, 501);
+        assert_eq!(response.body, "pprof deferred\n");
     }
 }

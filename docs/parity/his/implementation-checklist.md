@@ -108,7 +108,7 @@ interactions are absent.
 | HIS-012 | `service install` command (config-based) | `cmd/cloudflared/linux_service.go` `installLinuxService()` | read user config, validate `tunnel` + `credentials-file` keys, copy config to `/etc/cloudflared/config.yml`, build service args | cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | command tests, config validation tests, file copy tests | critical | `install_linux_service()` with config args and `CommandRunner` trait |
 | HIS-013 | `service install` command (token-based) | `cmd/cloudflared/linux_service.go`, `common_service.go` | parse token, validate, build args `["tunnel", "run", "--token", token]` | cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | command tests, token validation tests | critical | same function handles token path |
 | HIS-014 | systemd unit file generation | `cmd/cloudflared/linux_service.go` `installSystemd()` | write `cloudflared.service`, `cloudflared-update.service`, `cloudflared-update.timer` from Go templates to `/etc/systemd/system/` | cfdrs-his `service/systemd.rs` | audited, parity-backed | local tests | none recorded | template generation tests, file write tests | critical | `render_service_unit()` and `install()` with templates matching Go exactly |
-| HIS-015 | systemd service enablement | `cmd/cloudflared/linux_service.go` | `systemctl enable`, `daemon-reload`, `start cloudflared.service`, optionally start update timer | cfdrs-his `service/systemd.rs` | audited, parity-backed | local tests | none recorded | systemctl command tests | critical | systemd enablement via `CommandRunner` trait |
+| HIS-015 | systemd service enablement | `cmd/cloudflared/linux_service.go` | `systemctl enable cloudflared.service`, optionally `systemctl start cloudflared-update.timer`, then `daemon-reload`, then `start cloudflared.service` | cfdrs-his `service/systemd.rs` | audited, parity-backed | local tests | none recorded | systemctl command tests | critical | systemd enablement via `CommandRunner` trait; Rust follows the exact Go sequence |
 | HIS-016 | SysV init script generation | `cmd/cloudflared/linux_service.go` `installSysv()` | write init script to `/etc/init.d/cloudflared`, create start/stop symlinks in `/etc/rc*.d/` | cfdrs-his `service/sysv.rs` | audited, partial | local tests | open gap | template tests, symlink tests | high | template renders correctly; install/uninstall are deferred stubs |
 | HIS-017 | `service uninstall` command | `cmd/cloudflared/linux_service.go` `uninstallLinuxService()` | detect init system, stop + disable service, remove unit files or init script, daemon-reload; preserve config and credentials | cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | uninstall tests, file removal tests, preservation tests | critical | `uninstall_linux_service()` full implementation |
 | HIS-018 | `--no-update-service` flag | `cmd/cloudflared/linux_service.go` | skip generation of `cloudflared-update.service` and timer during install | cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | flag tests | medium | `auto_update` parameter controls update service/timer generation |
@@ -132,8 +132,8 @@ interactions are absent.
 | HIS-026 | `/healthcheck` endpoint | `metrics/metrics.go` | return `OK\n` as text/plain | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | liveness probe tests | high | runtime serves `/healthcheck` as text/plain with `OK\n`; broader diagnostic route coverage is still pending |
 | HIS-027 | `/metrics` Prometheus endpoint | `metrics/metrics.go` `promhttp.Handler()` | Prometheus text format, `build_info` gauge with goversion/type/revision/version labels | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | metrics format tests, build_info label tests | critical | runtime serves Prometheus text with `build_info` and readiness gauges; parity for the full baseline registry remains open |
 | HIS-028 | `/quicktunnel` endpoint | `metrics/metrics.go` | JSON `{"hostname":"..."}` with quick tunnel URL | cfdrs-his `metrics_server.rs` | audited, partial | minimal | blocked | quicktunnel response tests | medium | `QuickTunnelResponse` type with serialization tests; no HTTP endpoint |
-| HIS-029 | `/config` endpoint | orchestrator serving versioned config | JSON `{"version":N,"config":{ingress, warp-routing, originRequest}}` | cfdrs-his `metrics_server.rs` | audited, partial | minimal | blocked | config endpoint tests | medium | `ConfigResponse` type defined; no HTTP endpoint |
-| HIS-030 | `/debug/pprof/*` endpoints | `http.DefaultServeMux` pprof | binary pprof format, auth disabled (`trace.AuthRequest` returns true) | cfdrs-his `metrics_server.rs` | audited, partial | minimal | blocked | pprof endpoint tests | low | trait-level pprof contract; no HTTP endpoint |
+| HIS-029 | `/config` endpoint | orchestrator serving versioned config | JSON `{"version":N,"config":{ingress, warp-routing, originRequest}}` | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | config endpoint tests | medium | runtime now serves `/config` with versioned JSON derived from the current normalized config; CDC-backed orchestrator semantics and remote-update parity remain open |
+| HIS-030 | `/debug/pprof/*` endpoints | `http.DefaultServeMux` pprof | binary pprof format, auth disabled (`trace.AuthRequest` returns true) | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | pprof endpoint tests | low | runtime now exposes an explicit deferred `501` boundary for `/debug/pprof/*`; real profiling payloads remain open |
 | HIS-031 | metrics bind address config | `metrics/metrics.go`, `--metrics` flag | `--metrics ADDRESS` flag overrides default | cfdrs-his `metrics_server.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | flag tests | high | `--metrics` now binds the runtime listener and accepts baseline-style `localhost:PORT` and `:PORT` forms; container/runtime-class routing remains open |
 
 ### Diagnostics Collection
@@ -143,7 +143,7 @@ interactions are absent.
 | HIS-032 | `tunnel diag` CLI command | `diagnostic/` package, `tunnel/subcommands.go` | collect diagnostics bundle as ZIP with 11 jobs, toggleable via `--no-diag-*` flags | cfdrs-his `diagnostics.rs` | audited, partial | minimal | open gap | command tests, ZIP output tests | high | `DiagnosticHandler` trait + `StubDiagnosticHandler`; types defined, no runtime collection |
 | HIS-033 | system information collector | `diagnostic/system_collector_linux.go` | collect memory, file descriptors, OS info, disk volumes; return `SystemInformationResponse` JSON | cfdrs-his `diagnostics.rs` | audited, partial | minimal | open gap | system info tests, JSON shape tests | high | `SystemInformation` type defined; no runtime collection |
 | HIS-034 | tunnel state collector | `diagnostic/` and `/diag/tunnel` | collect tunnel ID, connector ID, active connections, ICMP sources; return `TunnelState` JSON | cfdrs-his `diagnostics.rs` | audited, partial | minimal | open gap | tunnel state tests | high | `TunnelState` type defined; no runtime state collection |
-| HIS-035 | CLI configuration collector | `diagnostic/handlers.go` `/diag/configuration` | return `map[string]string` with `uid`, `log_file`, `log_directory`; exclude secrets | cfdrs-his `diagnostics.rs` | audited, partial | minimal | open gap | handler tests, secret exclusion tests | medium | `ConfigDiagnostics` type defined; no handler |
+| HIS-035 | CLI configuration collector | `diagnostic/handlers.go` `/diag/configuration` | return `map[string]string` with `uid`, `log_file`, `log_directory`; exclude secrets | cfdrs-his `diagnostics.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | handler tests, secret exclusion tests | medium | runtime now serves `/diag/configuration` with UID and active local log file/directory hints; broader CLI-flag coverage and secret filtering parity remain open |
 | HIS-036 | host log collector | `diagnostic/log_collector_host.go` | UID==0 and systemd: `journalctl -u cloudflared.service --since "2 weeks ago"`; otherwise: user log path; fallback `/var/log/cloudflared.err` | cfdrs-his `diagnostics.rs` | audited, partial | minimal | open gap | log collection tests, privilege-based behavior tests | medium | types defined; no journalctl or log-file collection |
 | HIS-037 | network traceroute collector | `diagnostic/` network collector | traceroute to `region{1,2}.v2.argotunnel.com` (IPv4/IPv6), default 5 hops, 5s timeout | cfdrs-his `diagnostics.rs` | audited, partial | minimal | open gap | traceroute tests | medium | types defined; no traceroute collection |
 | HIS-038 | diagnostic instance discovery | `diagnostic/` metric port scanning | scan known ports 20241-20245 to find running instance | cfdrs-his `diagnostics.rs` | audited, partial | minimal | open gap | port scan tests | medium | types defined; no port scanning |
@@ -155,10 +155,10 @@ interactions are absent.
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-041 | file watcher (inotify) | `watcher/file.go` | fsnotify watcher, triggers on Write events only, shutdown channel | cfdrs-his `watcher.rs` | audited, partial | minimal | blocked | watch event tests, shutdown tests | critical | `FileWatcher` trait defined; no inotify runtime (needs notify crate) |
-| HIS-042 | config reload action loop | `cmd/cloudflared/app_service.go` `actionLoop()` | receive config updates on channel, create/update/remove services by hash comparison | cfdrs-his `watcher.rs` | audited, partial | minimal | blocked | reload integration tests, hash comparison tests | critical | `ReloadHandler` trait defined; no action loop runtime |
+| HIS-042 | config reload action loop | `cmd/cloudflared/app_service.go` `actionLoop()` | receive config updates on channel, create/update/remove services by hash comparison | cfdrs-his `watcher.rs` | audited, partial | local tests | open gap | reload integration tests, hash comparison tests | critical | `ReloadActionLoop` now models update/remove/shutdown handling with restart-or-keep-previous recovery; `notify` wiring and service-hash comparison remain open |
 | HIS-043 | service lifecycle manager | `overwatch/app_manager.go` `AppManager` | add/remove services with hash-based change detection, shutdown old before starting new | cfdrs-his `watcher.rs` | audited, partial | minimal | blocked | service lifecycle tests | high | `AppManager` trait defined; no lifecycle runtime |
-| HIS-044 | remote config update | `orchestration/orchestrator.go` `UpdateConfig()` | version-monotonic update, start new origins before closing old, atomic proxy swap via `atomic.Value` | cfdrs-his `watcher.rs` | audited, partial | minimal | blocked | version ordering tests, atomic swap tests | critical | `ConfigOrchestrator` trait defined; no atomic swap runtime |
-| HIS-045 | reload error recovery | watcher and orchestrator error paths | parse errors leave old service running, watch errors logged and continue, version downgrades rejected | cfdrs-his `watcher.rs` | audited, partial | local tests | open gap | failure mode tests | high | `reload_recovery_strategy()` implemented with tests; runtime watcher deferred |
+| HIS-044 | remote config update | `orchestration/orchestrator.go` `UpdateConfig()` | version-monotonic update, start new origins before closing old, atomic proxy swap via `atomic.Value` | cfdrs-his `watcher.rs` | audited, partial | local tests | open gap | version ordering tests, atomic swap tests | critical | `InMemoryConfigOrchestrator` now provides an owned update/read seam for config JSON; version monotonicity, proxy swap ordering, and CDC-backed remote flow remain open |
+| HIS-045 | reload error recovery | watcher and orchestrator error paths | parse errors leave old service running, watch errors logged and continue, version downgrades rejected | cfdrs-his `watcher.rs` | audited, partial | local tests | open gap | failure mode tests | high | `reload_recovery_strategy()` plus `ReloadActionLoop` now preserve the previous config on nonfatal errors and stop on invariant failures; runtime watcher integration remains deferred |
 
 ### Updater
 
@@ -198,7 +198,7 @@ interactions are absent.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-058 | SIGTERM/SIGINT shutdown | `signal/safe_signal.go`, `cmd/cloudflared/tunnel/signal.go` | `signal.Notify()` listens for SIGTERM and SIGINT, closes `graceShutdownC` channel, triggers graceful shutdown | cfdrs-bin `runtime/tasks/bridges.rs` | audited, parity-backed | local tests | none recorded | signal handling tests | high | Rust uses tokio::signal::unix with ShutdownRequested command; functional parity |
 | HIS-059 | `--grace-period` flag | `cmd/cloudflared/tunnel/cmd.go` | default 30 seconds; waits for in-progress requests before shutdown; controls `GracefulShutdown()` RPC on HTTP/2 connections | cfdrs-his `signal.rs`, cfdrs-bin `runtime/types.rs` | audited, partial | local tests | open gap | grace period flag tests, shutdown timing tests | critical | `DEFAULT_GRACE_PERIOD = 30s` and CLI/runtime wiring now use parsed grace-period values; connection-level graceful-shutdown behavior remains open |
-| HIS-060 | double-signal immediate shutdown | `cmd/cloudflared/tunnel/signal.go` | second SIGTERM/SIGINT interrupts grace period wait, forces immediate exit | cfdrs-his `signal.rs` | audited, partial | minimal | open gap | double-signal tests | medium | `ShutdownSignal` type with AtomicBool; no double-signal immediate-exit handling yet |
+| HIS-060 | double-signal immediate shutdown | `cmd/cloudflared/tunnel/signal.go` | Go help text claims second SIGTERM/SIGINT forces immediate exit, but `waitForSignal()` handles only one signal then calls `signal.Stop()`; double-signal is documented-but-unimplemented in Go baseline | cfdrs-his `signal.rs` | audited, partial | minimal | intentional-gap | double-signal tests | medium | `ShutdownSignal` type with AtomicBool; Go baseline does not implement double-signal either; if added, it would be a behavioral extension |
 | HIS-061 | `--pidfile` flag | `cmd/cloudflared/tunnel/cmd.go` | optional; writes PID after tunnel connects (not on startup); triggered by `connectedSignal` in background goroutine | cfdrs-his `signal.rs`, cfdrs-bin `runtime/command_dispatch/handlers.rs` | audited, partial | local tests | open gap | pidfile creation tests, timing tests | medium | pidfile helpers are wired on runtime service-ready and cleanup; exact `connectedSignal` timing still needs parity proof |
 | HIS-062 | token lock file | `token/token.go` | create `<token-path>.lock` with mode 0600 during token fetch; delete on release or SIGINT/SIGTERM; exponential backoff polling if lock exists (up to 7 iterations) | cfdrs-his `signal.rs` | audited, parity-backed | local tests | none recorded | lock file tests, signal cleanup tests, concurrency tests | high | `acquire_token_lock()` and `release_token_lock()` with O_EXCL |
 
@@ -208,7 +208,7 @@ interactions are absent.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-063 | log file creation (`--logfile`) | `logger/create.go` | `--logfile` flag creates log file at specified path; `LogFile` config key | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | log file creation tests | high | runtime now opens an append sink for `--logfile` and continues duplicating output to stderr; rotation and journald/systemd remain separate gaps |
 | HIS-064 | log directory (`--log-directory`) | `logger/create.go`, `config/configuration.go` | `--log-directory` flag; auto-created by config discovery; default `/var/log/cloudflared` | cfdrs-his `logging.rs`, cfdrs-his `discovery.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | log directory tests | high | runtime now respects `--log-directory` and config `logDirectory` by writing `cloudflared.log` under the selected directory; rotation parity is still open |
-| HIS-065 | rolling log rotation | `logger/create.go`, lumberjack.v2 | automatic rotation when size exceeded: MaxSize=1MB, MaxBackups=5, MaxAge=0 (forever) | cfdrs-his `logging.rs` | audited, partial | local tests | blocked | rotation tests, size limit tests | high | `RollingConfig` with matching constants; no runtime rotation (needs tracing-appender) |
+| HIS-065 | rolling log rotation | `logger/create.go`, lumberjack.v2 | automatic rotation when size exceeded: MaxSize=1MB, MaxBackups=5, MaxAge=0 (forever) | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | rotation tests, size limit tests | high | runtime now rotates local log files using the admitted max-size/max-backups/max-age surface; exact lumberjack naming, journald/systemd parity, and host-collection integration remain open |
 | HIS-066 | log file permissions | `logger/create.go` | files created with mode 0644, directories with mode 0744 | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | minimal | open gap | permission assertion tests | medium | runtime now applies 0644 file mode and 0744 directory mode when it creates local log sinks; dedicated permission evidence is still thin |
 | HIS-067 | `--log-format-output` flag | `logger/configuration.go` | JSON or text log format output selection | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | format output tests | medium | runtime now switches between text and JSON subscriber output using the parsed flag/config surface; parity for every baseline field remains open |
 | HIS-068 | `--loglevel` and `--transport-loglevel` | `logger/configuration.go` | default `info`; separate `--transport-loglevel` for transport layer | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | log level filter tests | high | runtime now applies global log filtering from `--loglevel` and uses `--transport-loglevel` to widen verbosity when transport logging requests more detail; strict per-sink transport separation remains open |
@@ -292,13 +292,13 @@ path detection (HIS-054), glibc marker detection (HIS-055).
 Partial with runtime-backed seams: credential search-by-ID (HIS-008, run-path
 integration landed but wider evidence remains open), SysV init script (HIS-016,
 HIS-023, template only), local HTTP metrics server (HIS-024 through HIS-031,
-runtime listener plus partial endpoints), all diagnostics
+runtime listener plus partial endpoints including `/config`), all diagnostics
 (HIS-032 through HIS-040, types + stub), watcher/reload (HIS-041 through
-HIS-045, traits + recovery strategy), updater (HIS-046 through HIS-049,
+HIS-045, concrete reload/orchestrator seams plus deferred watcher wiring), updater (HIS-046 through HIS-049,
 traits + constants), grace period (HIS-059, 30s default plus CLI/runtime
 wiring, but connection-level graceful shutdown still open), double-signal
 (HIS-060, type only), logging (HIS-063 through HIS-068,
-runtime sink wiring plus config builder/types), ICMP (HIS-069, HIS-071, traits + constants),
+runtime sink wiring plus config builder/types and bounded rotation), ICMP (HIS-069, HIS-071, traits + constants),
 `hello_world` (HIS-072, trait only), process restart (HIS-073, HIS-074,
 trait only), deployment evidence (HIS-053, intentional divergence).
 
@@ -324,9 +324,8 @@ Note: HIS-053 is the only true `intentional divergence` status. HIS-059 is
 
 Blocked items use owned seams to define the API surface while keeping the
 remaining runtime gaps explicit (diagnostic HTTP breadth, inotify/notify,
-raw sockets, rolling rotation). These include HIS-028 through HIS-030
-(additional metrics routes), HIS-041 through HIS-044 (watcher/reload), and
-HIS-065 (rolling rotation).
+raw sockets). These include HIS-028, HIS-039, HIS-040 (remaining diagnostics
+routes) and HIS-041 through HIS-044 (watcher/reload runtime wiring).
 
 ### Gap ranking by priority
 
@@ -336,8 +335,8 @@ Critical gaps (runtime exists, parity breadth still open):
 - HIS-025: `/ready` JSON endpoint (full connection-tracker semantics still open)
 - HIS-027: `/metrics` Prometheus endpoint (full baseline registry still open)
 - HIS-041: file watcher (needs notify crate)
-- HIS-042: config reload action loop (needs async runtime)
-- HIS-044: remote config update handling (needs CDC orchestrator)
+- HIS-042: config reload action loop (runtime wiring and service-hash parity still open)
+- HIS-044: remote config update handling (needs CDC-backed version ordering and proxy swap)
 - HIS-059: `--grace-period` (default and CLI/runtime wiring landed; connection-level graceful shutdown still open)
 
 High gaps (runtime-backed but incomplete):
@@ -349,12 +348,12 @@ High gaps (runtime-backed but incomplete):
 - HIS-032 through HIS-034: diagnostic command and collectors (stub)
 - HIS-039, HIS-040: diagnostic HTTP endpoints (stub)
 - HIS-043: service lifecycle manager (trait only)
-- HIS-045: reload error recovery (strategy implemented, runtime deferred)
+- HIS-045: reload error recovery (strategy and action loop implemented, watcher integration deferred)
 - HIS-046, HIS-047: update command and auto-update (stub)
 - HIS-062: token lock file (implemented)
 - HIS-063: log file creation (runtime file sink landed; journald and rotation still open)
-- HIS-064: log directory (runtime file sink landed; rotation and host-collection parity still open)
-- HIS-065: rolling log rotation (config exists, needs tracing-appender)
+- HIS-064: log directory (runtime file sink landed; host-collection parity still open)
+- HIS-065: rolling log rotation (runtime rotation landed; exact lumberjack parity still open)
 - HIS-068: `--loglevel` and `--transport-loglevel` (global filtering landed; exact transport separation still open)
 - HIS-069, HIS-070: ICMP raw socket and ping group check (stub + check)
 

@@ -58,6 +58,7 @@ pub fn can_create_icmp_socket() -> bool {
     };
 
     // Read GID from /proc to avoid unsafe libc call.
+    // Falls back to u32::MAX so the range check safely returns false.
     let gid = std::fs::read_to_string("/proc/self/status")
         .ok()
         .and_then(|s| {

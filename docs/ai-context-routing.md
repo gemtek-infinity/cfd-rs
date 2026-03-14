@@ -13,6 +13,20 @@ command-entry rule for the rewrite.
 6. use frozen Go baseline code/tests first for behavior truth
 7. use [`Justfile`](../Justfile) as the normal command entry surface for local execution, CI, and agent-directed commands
 
+## Command-entry defaults
+
+Prefer the repo-owned command surface over hand-crafted local ops.
+
+- full validation: `just validate-pr`
+- formatting only: `just fmt`
+- focused validation: `just validate-governance`, `just validate-app`, `just validate-tools`, `just validate-debtmap`
+- MCP smoke: `just mcp-smoke`, `just mcp-smoke-maintenance`
+- parity artifact workflows: `just shared-behavior-capture`, `just shared-behavior-compare`
+
+If a matching Just recipe exists, do not replace it with an ad hoc `cargo`, `python3 tools/...`, or `cargo run --manifest-path ...` command chain unless you are explicitly debugging the recipe or isolating a failure inside it.
+
+Prefer checked-in generators and validators for derived artifacts. Do not hand-edit generated files such as [`docs/parity/source-map.csv`](parity/source-map.csv).
+
 ## Minimum Context
 
 ### Status Or Current Priority

@@ -20,7 +20,7 @@ What exists now:
 - `cfdrs-bin`: binary entrypoint, runtime composition, QUIC tunnel shell, Pingora seam, deployment/performance/failure evidence
 - `cfdrs-cli`: CLI parsing for all 40+ baseline command paths, 40+ global flags, help, dispatch (stubs for most commands), and CLI-facing error/output types
 - `cfdrs-cdc`: registration and stream contract types
-- `cfdrs-his`: filesystem config discovery IO, credential lookup, service install/uninstall trait contracts, systemd/SysV template generation, metrics/readiness contracts backing a runtime-owned local listener, diagnostics collection stubs, file watcher and config reload trait contracts, signal handling, logging configuration types, updater stubs, ICMP proxy stubs, hello server stub, environment/privilege detection
+- `cfdrs-his`: filesystem config discovery IO, credential lookup, service install/uninstall trait contracts, systemd/SysV template generation, metrics/readiness contracts backing a runtime-owned local listener, diagnostics collection types and handlers, file watcher and config reload seams, signal handling, logging configuration types, updater stubs, ICMP proxy stubs, hello server stub, environment/privilege detection
 - `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion
 - live parity ledgers, feature docs, and source routing under [`docs/parity/`](docs/parity/)
 - frozen Go baseline in [`baseline-2026.2.0/`](baseline-2026.2.0/)
@@ -33,9 +33,9 @@ What does not exist yet:
 - management service, log streaming, Cloudflare REST API client, and management-token workflows
 - broad CLI behavioral parity: root service-mode runtime, tunnel/access/tail/service/update behavioral implementations behind parsed stubs
 - service install/uninstall: `CommandRunner` trait integration and command dispatch are wired and parity-tested; real host `systemctl` execution not yet verified end-to-end
-- local HTTP endpoints: runtime now binds local `/ready`, `/healthcheck`, and `/metrics`; diagnostics, quicktunnel, config, and pprof endpoints remain pending
-- config reload and file watcher: trait contracts exist; `notify`/`inotify` integration pending
-- logging sinks: runtime now honors `--logfile`, `--log-directory`, `--log-format-output`, and global log level wiring; rolling rotation, journald/systemd output, and upstream management log streaming remain pending
+- local HTTP endpoints: runtime now binds local `/ready`, `/healthcheck`, `/metrics`, `/config`, and `/diag/configuration`; quicktunnel, `/diag/system`, `/diag/tunnel`, and real pprof endpoints remain pending
+- config reload and file watcher: reload action loop and in-memory orchestrator seams now exist; `notify`/`inotify` integration and runtime watcher wiring remain pending
+- logging sinks: runtime now honors `--logfile`, `--log-directory`, `--log-format-output`, global log level wiring, and bounded file rotation; journald/systemd output and upstream management log streaming remain pending
 - ICMP proxy, hello server, graceful restart: trait stubs exist; real implementations pending
 - performance-architectural overhaul of the final admitted hot paths
 

@@ -10,6 +10,10 @@ use cfdrs_shared::{ConfigError, Result};
 
 /// Get the current effective user ID.
 ///
+/// Returns `u32::MAX` when `/proc/self/status` is unreadable or the
+/// `Uid:` line cannot be parsed, which ensures `is_root()` returns
+/// `false` under constrained environments.
+///
 /// Go: `os.Getuid()` in `diagnostic/handlers.go`.
 pub fn current_uid() -> u32 {
     // std::os::unix does not expose getuid(); use /proc instead.
@@ -32,6 +36,9 @@ pub fn is_root() -> bool {
 // --- HIS-051: terminal detection ---
 
 /// Check if stdout is a terminal.
+///
+/// Returns `false` if the `/proc/self/fd/<N>` symlink cannot be read,
+/// which is the safe default for non-interactive contexts.
 ///
 /// Go: `term.IsTerminal(os.Stdout.Fd())` in `updater/update.go`.
 pub fn is_terminal() -> bool {

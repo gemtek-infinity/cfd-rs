@@ -137,9 +137,10 @@ records, see [docs/parity/his/implementation-checklist.md](parity/his/implementa
 - **No container image**: container deployment is not part of the alpha
   contract
 - **No updater**: no automatic update mechanism exists (HIS-046, HIS-047)
-- **No log rotation**: runtime logging can now write to stderr, `--logfile`,
-  and `--log-directory`, but no rotation or journal integration is implemented
-  (HIS-063 through HIS-065)
+- **No journal integration**: runtime logging now supports stderr,
+  `--logfile`, `--log-directory`, and bounded local rotation, but journald
+  and other host-collection integrations are still missing (HIS-063 through
+  HIS-065)
 - **No firewall rules**: no network policy or firewall configuration is
   shipped
 - **No user/group management**: the binary runs as the invoking user; no

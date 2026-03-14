@@ -433,7 +433,6 @@ fn try_parse_bool_flag(arg: &OsStr, state: &mut ParseState) -> bool {
         "--no-chunked-encoding" => state.flags.no_chunked_encoding = true,
         "--http2-origin" => state.flags.http2_origin = true,
         "--post-quantum" | "-pq" => state.flags.post_quantum = Some(true),
-        "--quiet" | "-q" => state.flags.quiet = true,
         "--is-autoupdated" => state.flags.is_autoupdated = true,
         "--bastion" => state.flags.bastion = true,
         "--socks5" => state.flags.socks5 = true,
@@ -941,12 +940,6 @@ mod tests {
     fn region_flag() {
         let cli = parse(&[surface_contract::TUNNEL_COMMAND, "--region", "us"]);
         assert_eq!(cli.flags.region, Some("us".to_owned()));
-    }
-
-    #[test]
-    fn quiet_flag() {
-        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "-q"]);
-        assert!(cli.flags.quiet);
     }
 
     #[test]

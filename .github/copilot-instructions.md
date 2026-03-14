@@ -24,6 +24,17 @@ Do not load broad top-level docs by default.
 - format Rust with `cargo +nightly fmt`, not plain `cargo fmt`
 - use [`Justfile`](../Justfile) for normal execution, not ad hoc local command chains
 
+## Preferred repo tooling
+
+- prefer repo-owned tooling over hand-crafted local command sequences when a Just recipe, MCP tool, or checked-in helper already exists
+- for startup and routing, prefer MCP tools first: `status_summary`, `phase5_priority`, `crate_dependency_graph`, `domain_gaps_ranked`, `parity_row_details`, and `baseline_source_mapping`
+- for validation, prefer `just validate-pr` as the default full gate instead of open-coded `cargo fmt`/`cargo clippy`/`cargo test` chains
+- for formatting only, prefer `just fmt`
+- for narrower validation, prefer the existing Just recipes: `just validate-governance`, `just validate-app`, `just validate-tools`, `just validate-debtmap`, `just mcp-smoke`, and `just mcp-smoke-maintenance`
+- for shared behavior parity, prefer `just shared-behavior-capture` and `just shared-behavior-compare` instead of reconstructing those Python entrypoints by hand
+- when source-map drift is suspected, prefer the checked-in generator and validator flow rather than hand-editing [`docs/parity/source-map.csv`](../docs/parity/source-map.csv)
+- do not run raw `cargo run --manifest-path tools/mcp-cfd-rs/...` or bespoke validation chains when the matching Just recipe already exists, unless the task is explicitly debugging the recipe itself
+
 ## MCP-first rule
 
 If MCP is available, use the startup/routing MCP tools first.

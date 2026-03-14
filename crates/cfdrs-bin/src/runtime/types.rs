@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -21,6 +22,7 @@ pub(crate) struct RuntimeConfig {
     shutdown_grace_period: Option<Duration>,
     pidfile_path: Option<PathBuf>,
     metrics_bind_address: Option<SocketAddr>,
+    diagnostic_configuration: BTreeMap<String, String>,
 }
 
 impl RuntimeConfig {
@@ -32,6 +34,7 @@ impl RuntimeConfig {
             shutdown_grace_period: None,
             pidfile_path: None,
             metrics_bind_address: None,
+            diagnostic_configuration: BTreeMap::new(),
         }
     }
 
@@ -47,6 +50,14 @@ impl RuntimeConfig {
 
     pub(crate) fn with_metrics_bind_address(mut self, metrics_bind_address: SocketAddr) -> Self {
         self.metrics_bind_address = Some(metrics_bind_address);
+        self
+    }
+
+    pub(crate) fn with_diagnostic_configuration(
+        mut self,
+        diagnostic_configuration: BTreeMap<String, String>,
+    ) -> Self {
+        self.diagnostic_configuration = diagnostic_configuration;
         self
     }
 
@@ -76,6 +87,10 @@ impl RuntimeConfig {
 
     pub(super) fn metrics_bind_address(&self) -> Option<SocketAddr> {
         self.metrics_bind_address
+    }
+
+    pub(crate) fn diagnostic_configuration(&self) -> &BTreeMap<String, String> {
+        &self.diagnostic_configuration
     }
 }
 
@@ -318,6 +333,7 @@ mod tests {
         )
         .with_shutdown_grace_period(Duration::from_secs(45))
         .with_pidfile_path(PathBuf::from("/tmp/cloudflared.pid"))
+        .with_diagnostic_configuration(BTreeMap::from([("uid".to_owned(), "1000".to_owned())]))
         .with_metrics_bind_address("127.0.0.1:8080".parse().expect("socket address"));
 
         assert_eq!(config.shutdown_grace_period(), Some(Duration::from_secs(45)));
@@ -328,6 +344,10 @@ mod tests {
         assert_eq!(
             config.metrics_bind_address(),
             Some("127.0.0.1:8080".parse().expect("socket address"))
+        );
+        assert_eq!(
+            config.diagnostic_configuration().get("uid"),
+            Some(&"1000".to_owned())
         );
     }
 }
