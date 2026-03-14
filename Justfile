@@ -136,7 +136,7 @@ preview-smoke lane:
         echo 'preview binary missing; run just preview-build {{lane}} first' >&2; \
         exit 1; \
     fi; \
-    config="$$(mktemp)"; \
+    config="$(mktemp)"; \
     printf 'tunnel: 00000000-0000-0000-0000-000000000000\ningress:\n  - service: http_status:503\n' >"${config}"; \
     "${BINARY}" --config "${config}" validate | tee /tmp/cfdrs-validate-output.txt; \
     grep -q 'OK: admitted alpha startup surface validated' /tmp/cfdrs-validate-output.txt; \
@@ -157,7 +157,7 @@ preview-package lane:
         echo 'preview binary missing; run just preview-build {{lane}} first' >&2; \
         exit 1; \
     fi; \
-    artifact_base="cloudflared-$${GITHUB_SHA:-$$(git rev-parse HEAD)}-linux-x86_64-gnu-{{lane}}"; \
+    artifact_base="cloudflared-${GITHUB_SHA:-$(git rev-parse HEAD)}-linux-x86_64-gnu-{{lane}}"; \
     rm -rf dist; \
     mkdir -p dist; \
     install -Dm755 "${binary}" 'dist/cloudflared'; \
