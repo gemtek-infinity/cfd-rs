@@ -1,6 +1,9 @@
+mod value_flags;
+
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
+use self::value_flags::try_parse_value_flag;
 use super::types::{GlobalFlags, TunnelSubcommand};
 use super::{Cli, Command, surface_contract};
 
@@ -221,48 +224,60 @@ fn handle_argument(
     let token = arg.to_string_lossy();
     let token_str = token.as_ref();
 
-    // Help and version flags always take priority.
-    if surface_contract::is_help_token(token_str) {
-        state.help_requested = true;
+    if handle_priority_flag(token_str, state) {
         return Ok(());
     }
 
-    if surface_contract::is_version_token(token_str) {
-        state.version_requested = true;
-        return Ok(());
-    }
-
-    if surface_contract::is_short_version_token(token_str) {
-        state.short_version = true;
-        return Ok(());
-    }
-
-    // Try known flags.
     if try_parse_flag(arg.as_os_str(), args, state)? {
         return Ok(());
     }
 
-    // If we're already inside a command that expects subcommands,
-    // try to resolve this token as a subcommand.
-    if state.awaiting_subcommand.is_some() {
-        return resolve_subcommand(token_str, state);
-    }
-
-    // Try top-level command word.
-    if let Some(command) = surface_contract::parse_command_token(token_str) {
-        apply_top_level_command(command, state)?;
+    if dispatch_command_token(token_str, state)? {
         return Ok(());
     }
 
-    // After a command has been set, collect unknown args for forward
-    // compatibility with subcommand-level flags we have not yet parsed.
+    handle_unrecognized_token(token_str, state)
+}
+
+fn handle_priority_flag(token_str: &str, state: &mut ParseState) -> bool {
+    if surface_contract::is_help_token(token_str) {
+        state.help_requested = true;
+        return true;
+    }
+
+    if surface_contract::is_version_token(token_str) {
+        state.version_requested = true;
+        return true;
+    }
+
+    if surface_contract::is_short_version_token(token_str) {
+        state.short_version = true;
+        return true;
+    }
+
+    false
+}
+
+fn dispatch_command_token(token_str: &str, state: &mut ParseState) -> Result<bool, String> {
+    if state.awaiting_subcommand.is_some() {
+        resolve_subcommand(token_str, state)?;
+        return Ok(true);
+    }
+
+    if let Some(command) = surface_contract::parse_command_token(token_str) {
+        apply_top_level_command(command, state)?;
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+fn handle_unrecognized_token(token_str: &str, state: &mut ParseState) -> Result<(), String> {
     if state.command.is_some() {
         state.flags.rest_args.push(token_str.to_owned());
         return Ok(());
     }
 
-    // At the top level with no command word set, unknown flags and
-    // positional args are errors — matching Go urfave/cli behavior.
     if token_str.starts_with('-') {
         return Err(surface_contract::unknown_flag_message(token_str));
     }
@@ -404,105 +419,6 @@ fn try_parse_flag(
     }
 
     Ok(false)
-}
-
-/// Try to consume the argument as a flag that takes a value
-/// (`--flag VALUE` or `--flag=VALUE`).  Returns `true` if matched.
-fn try_parse_value_flag(
-    arg: &OsStr,
-    args: &mut impl Iterator<Item = OsString>,
-    state: &mut ParseState,
-) -> Result<bool, String> {
-    let m = &mut FlagMatcher::new(arg, args, &mut state.flags);
-
-    // Config and credential flags
-    m.path(surface_contract::CONFIG_FLAG, |f| &mut f.config_path)?
-        .path_alias("--credentials-file", "--cred-file", |f| &mut f.credentials_file)?
-        .string("--credentials-contents", |f| &mut f.credentials_contents)?
-        .string("--token", |f| &mut f.token)?
-        .path("--token-file", |f| &mut f.token_file)?
-        .path("--origincert", |f| &mut f.origincert)?;
-
-    // Logging flags
-    m.string("--loglevel", |f| &mut f.loglevel)?
-        .string("--transport-loglevel", |f| &mut f.transport_loglevel)?
-        .path("--logfile", |f| &mut f.logfile)?
-        .path("--log-directory", |f| &mut f.log_directory)?
-        .string("--output", |f| &mut f.log_format_output)?;
-
-    // Metrics, pidfile, and grace
-    m.string("--metrics", |f| &mut f.metrics)?
-        .path("--pidfile", |f| &mut f.pidfile)?
-        .string("--grace-period", |f| &mut f.grace_period)?;
-
-    // Tunnel identity and protocol
-    m.string("--url", |f| &mut f.url)?
-        .string_alias("--name", "-n", |f| &mut f.tunnel_name)?
-        .string_alias("--protocol", "-p", |f| &mut f.protocol)?
-        .push("--edge", |f| &mut f.edge)?
-        .string("--region", |f| &mut f.region)?
-        .string("--edge-ip-version", |f| &mut f.edge_ip_version)?
-        .string("--edge-bind-address", |f| &mut f.edge_bind_address)?
-        .string("--hostname", |f| &mut f.hostname)?
-        .string("--id", |f| &mut f.tunnel_id)?
-        .string("--lb-pool", |f| &mut f.lb_pool)?
-        .push("--tag", |f| &mut f.tag)?
-        .push_alias("--features", "-F", |f| &mut f.features)?
-        .string("--label", |f| &mut f.label)?;
-
-    // Timing and connection tuning
-    m.string("--autoupdate-freq", |f| &mut f.autoupdate_freq)?
-        .string("--metrics-update-freq", |f| &mut f.metrics_update_freq)?
-        .u32_val("--retries", |f| &mut f.retries)?
-        .u32_val("--ha-connections", |f| &mut f.ha_connections)?
-        .u32_val("--max-edge-addr-retries", |f| &mut f.max_edge_addr_retries)?
-        .string("--rpc-timeout", |f| &mut f.rpc_timeout)?
-        .string("--heartbeat-interval", |f| &mut f.heartbeat_interval)?
-        .u32_val("--heartbeat-count", |f| &mut f.heartbeat_count)?
-        .string("--write-stream-timeout", |f| &mut f.write_stream_timeout)?
-        .u64_val("--max-active-flows", |f| &mut f.max_active_flows)?;
-
-    // Management and API
-    m.string("--management-hostname", |f| &mut f.management_hostname)?
-        .string("--api-url", |f| &mut f.api_url)?
-        .string("--trace-output", |f| &mut f.trace_output)?;
-
-    // Origin and proxy
-    m.string("--unix-socket", |f| &mut f.unix_socket)?
-        .string("--http-host-header", |f| &mut f.http_host_header)?
-        .string("--origin-server-name", |f| &mut f.origin_server_name)?
-        .string_alias("--origin-ca-pool", "--cacert", |f| &mut f.origin_ca_pool)?
-        .string("--icmpv4-src", |f| &mut f.icmpv4_src)?
-        .string("--icmpv6-src", |f| &mut f.icmpv6_src)?
-        .string("--proxy-address", |f| &mut f.proxy_address)?
-        .u16_val("--proxy-port", |f| &mut f.proxy_port)?
-        .string("--proxy-connect-timeout", |f| &mut f.proxy_connect_timeout)?
-        .string("--proxy-tls-timeout", |f| &mut f.proxy_tls_timeout)?
-        .string("--proxy-tcp-keepalive", |f| &mut f.proxy_tcp_keepalive)?
-        .u32_val("--proxy-keepalive-connections", |f| {
-            &mut f.proxy_keepalive_connections
-        })?
-        .string("--proxy-keepalive-timeout", |f| &mut f.proxy_keepalive_timeout)?
-        .string("--service-op-ip", |f| &mut f.service_op_ip)?;
-
-    // QUIC flow control
-    m.u64_val("--quic-connection-level-flow-control-limit", |f| {
-        &mut f.quic_conn_flow_control
-    })?
-    .u64_val("--quic-stream-level-flow-control-limit", |f| {
-        &mut f.quic_stream_flow_control
-    })?;
-
-    // Deprecated credential flags
-    m.string("--api-key", |f| &mut f.api_key)?
-        .string("--api-email", |f| &mut f.api_email)?
-        .string("--api-ca-key", |f| &mut f.api_ca_key)?;
-
-    if m.matched() {
-        state.any_flag_set = true;
-    }
-
-    Ok(m.matched())
 }
 
 /// Try to consume the argument as a boolean flag (no value).
