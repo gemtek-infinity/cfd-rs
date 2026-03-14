@@ -1,25 +1,25 @@
 row_id,domain,feature_doc,baseline_paths,symbol_hints
-CLI-001,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go,action();/cloudflared/main.go;handleServiceMode();FileManager;AppManager;AppService;help
+CLI-001,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go,action();/cloudflared/main.go;handleServiceMode();FileManager;AppManager;AppService;ServiceMode
 CLI-002,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go;baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go;baseline-2026.2.0/logger/configuration.go,--help;update;version;tunnel;login;proxy-dns;access;forward;tail;management
 CLI-003,CLI,docs/parity/logging-compatibility.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,Flags();/cloudflared/tunnel/cmd.go;--config;--credentials-file;-cred-file;TUNNEL_CRED_FILE;--credentials-contents;TUNNEL_CRED_CONTENTS;--token;TUNNEL_TOKEN
 CLI-004,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go;baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go;baseline-2026.2.0/logger/configuration.go,help;--help;-h;/cli
-CLI-005,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go,/cloudflared/main.go;{Version} (built {BuildTime}{BuildTypeMsg});--short;-s;--version;-v;-V;cloudflared 2026.2.0-alpha.202603
+CLI-005,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go,/cloudflared/main.go;{Version} (built {BuildTime}{BuildTypeMsg});--short;-s;--version;-v;-V
 CLI-006,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,/cloudflared/updater/update.go;update;--beta;--force;--staging;--version
-CLI-007,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,/cloudflared/linux_service.go;service;install;uninstall;--no-update-service;/etc/systemd/system/cloudflared.service;/etc/systemd/system/cloudflared-update.service;/etc/systemd/system/cloudflared-update.timer;/etc/init.d/cloudflared
-CLI-008,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,/cloudflared/tunnel/cmd.go;tunnel;tunnel.TunnelCommand();Tunnel
+CLI-007,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,/cloudflared/linux_service.go;service;install;uninstall;--no-update-service;/etc/systemd/system/cloudflared.service;/etc/systemd/system/cloudflared-update.service;/etc/systemd/system/cloudflared-update.timer;/etc/init.d/cloudflared;service install/uninstall
+CLI-008,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,/cloudflared/tunnel/cmd.go;tunnel;tunnel.TunnelCommand();Tunnel;/run
 CLI-009,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/login.go,/cloudflared/tunnel/login.go;tunnel login;login;--fedramp;-f
-CLI-010,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel create NAME
+CLI-010,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel create NAME;tunnel create
 CLI-011,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel list
-CLI-012,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel run [TUNNEL];run
-CLI-013,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel delete TUNNEL
-CLI-014,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel cleanup TUNNEL;--connector-id
-CLI-015,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel token TUNNEL
-CLI-016,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel info TUNNEL
+CLI-012,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel run [TUNNEL];tunnel run
+CLI-013,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel delete TUNNEL;tunnel delete
+CLI-014,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel cleanup TUNNEL;--connector-id;tunnel cleanup
+CLI-015,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel token TUNNEL;tunnel token
+CLI-016,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel info TUNNEL;tunnel info
 CLI-017,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel ready;/ready;--metrics
 CLI-018,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel diag
 CLI-019,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel route;dns;lb;ip;add;show;list;delete;get
 CLI-020,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/vnets_subcommands.go,/cloudflared/tunnel/vnets_subcommands.go;tunnel vnet;add;--default;list;delete;--force;update;--name;--comment
-CLI-021,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/ingress_subcommands.go,/cloudflared/tunnel/ingress_subcommands.go;tunnel ingress;validate;rule;rule URL
+CLI-021,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/ingress_subcommands.go,/cloudflared/tunnel/ingress_subcommands.go;tunnel ingress;validate;rule;rule URL;/rule
 CLI-022,CLI,docs/parity/cli/access-subtree.md,baseline-2026.2.0/cmd/cloudflared/access/cmd.go,/cloudflared/access/cmd.go;access;forward;login;curl;token;tcp;rdp;ssh;smb
 CLI-023,CLI,docs/parity/logging-compatibility.md,baseline-2026.2.0/cmd/cloudflared/tail/cmd.go,/cloudflared/tail/cmd.go;tail [TUNNEL-ID];--connector-id;--event;--level;debug;--sample;--token;TUNNEL_MANAGEMENT_TOKEN;--management-hostname
 CLI-024,CLI,docs/parity/logging-compatibility.md,baseline-2026.2.0/cmd/cloudflared/management/cmd.go,/cloudflared/management/cmd.go;management;Management;token;--resource;logs;admin;host_details;--origincert;--loglevel

@@ -11,8 +11,10 @@ use std::ffi::OsString;
 use std::process::ExitCode;
 
 use cfdrs_cli::{
-    Cli, CliError, CliOutput, Command, DB_CONNECT_REMOVED_MSG, PROGRAM_NAME, PROXY_DNS_REMOVED_MSG,
-    TunnelSubcommand, parse_args, render_help, render_version_output, stub_not_implemented,
+    AccessSubcommand, Cli, CliError, CliOutput, Command, DB_CONNECT_REMOVED_MSG, IngressSubcommand,
+    IpRouteSubcommand, ManagementSubcommand, PROGRAM_NAME, PROXY_DNS_REMOVED_MSG, RouteSubcommand,
+    TailSubcommand, TunnelSubcommand, VnetSubcommand, parse_args, render_help, render_short_version,
+    render_version_output, stub_not_implemented,
 };
 use mimalloc::MiMalloc;
 
@@ -45,7 +47,8 @@ fn execute(args: impl IntoIterator<Item = OsString>) -> CliOutput {
 fn execute_command(cli: Cli) -> CliOutput {
     match &cli.command {
         Command::Help => CliOutput::success(render_help(PROGRAM_NAME)),
-        Command::Version => CliOutput::success(render_version_output(PROGRAM_NAME)),
+        Command::Version { short: true } => CliOutput::success(render_short_version()),
+        Command::Version { short: false } => CliOutput::success(render_version_output(PROGRAM_NAME)),
         Command::Validate => execute_startup_command(&cli, CliMode::Validate),
 
         Command::Tunnel(TunnelSubcommand::Run) => execute_startup_command(&cli, CliMode::Run),
@@ -63,9 +66,38 @@ fn execute_command(cli: Cli) -> CliOutput {
         // callers know the command is recognized but deferred.
         Command::Update => CliOutput::failure(String::new(), stub_not_implemented("update"), 1),
         Command::Login => CliOutput::failure(String::new(), stub_not_implemented("login"), 1),
-        Command::Access => CliOutput::failure(String::new(), stub_not_implemented("access"), 1),
-        Command::Tail => CliOutput::failure(String::new(), stub_not_implemented("tail"), 1),
-        Command::Management => CliOutput::failure(String::new(), stub_not_implemented("management"), 1),
+
+        // Access sub-tree stubs.
+        Command::Access(sub) => {
+            let label = match sub {
+                AccessSubcommand::Login => "access login",
+                AccessSubcommand::Curl => "access curl",
+                AccessSubcommand::Token => "access token",
+                AccessSubcommand::Tcp => "access tcp",
+                AccessSubcommand::SshConfig => "access ssh-config",
+                AccessSubcommand::SshGen => "access ssh-gen",
+                AccessSubcommand::Bare => "access",
+            };
+            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
+        }
+
+        // Tail sub-tree stubs.
+        Command::Tail(sub) => {
+            let label = match sub {
+                TailSubcommand::Token => "tail token",
+                TailSubcommand::Bare => "tail",
+            };
+            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
+        }
+
+        // Management sub-tree stubs.
+        Command::Management(sub) => {
+            let label = match sub {
+                ManagementSubcommand::Token => "management token",
+                ManagementSubcommand::Bare => "management",
+            };
+            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
+        }
 
         Command::Service(_) => CliOutput::failure(String::new(), stub_not_implemented("service"), 1),
 
@@ -73,6 +105,48 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::ProxyDns => CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1),
         Command::Tunnel(TunnelSubcommand::DbConnect) => {
             CliOutput::failure(String::new(), DB_CONNECT_REMOVED_MSG.to_owned(), 1)
+        }
+        Command::Tunnel(TunnelSubcommand::ProxyDns) => {
+            CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1)
+        }
+
+        // Route sub-tree stubs.
+        Command::Tunnel(TunnelSubcommand::Route(sub)) => {
+            let label = match sub {
+                RouteSubcommand::Dns => "tunnel route dns",
+                RouteSubcommand::Lb => "tunnel route lb",
+                RouteSubcommand::Ip(ip) => match ip {
+                    IpRouteSubcommand::Add => "tunnel route ip add",
+                    IpRouteSubcommand::Show => "tunnel route ip show",
+                    IpRouteSubcommand::Delete => "tunnel route ip delete",
+                    IpRouteSubcommand::Get => "tunnel route ip get",
+                    IpRouteSubcommand::Bare => "tunnel route ip",
+                },
+                RouteSubcommand::Bare => "tunnel route",
+            };
+            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
+        }
+
+        // Vnet sub-tree stubs.
+        Command::Tunnel(TunnelSubcommand::Vnet(sub)) => {
+            let label = match sub {
+                VnetSubcommand::Add => "tunnel vnet add",
+                VnetSubcommand::List => "tunnel vnet list",
+                VnetSubcommand::Delete => "tunnel vnet delete",
+                VnetSubcommand::Update => "tunnel vnet update",
+                VnetSubcommand::Bare => "tunnel vnet",
+            };
+            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
+        }
+
+        // Ingress sub-tree stubs.
+        Command::Tunnel(TunnelSubcommand::Ingress(sub)) => {
+            let label = match sub {
+                IngressSubcommand::Validate => "tunnel ingress validate",
+                IngressSubcommand::Rule => "tunnel ingress rule",
+                IngressSubcommand::Bare => "tunnel ingress",
+            };
+            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
         }
 
         // Tunnel subcommands not yet implemented.

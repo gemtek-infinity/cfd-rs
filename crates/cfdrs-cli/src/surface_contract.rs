@@ -44,6 +44,52 @@ pub const TUNNEL_DB_CONNECT: &str = "db-connect";
 pub const SERVICE_INSTALL: &str = "install";
 pub const SERVICE_UNINSTALL: &str = "uninstall";
 
+// --- Access subcommand names ---
+
+pub const ACCESS_LOGIN: &str = "login";
+pub const ACCESS_CURL: &str = "curl";
+pub const ACCESS_TOKEN: &str = "token";
+pub const ACCESS_TCP: &str = "tcp";
+pub const ACCESS_RDP: &str = "rdp";
+pub const ACCESS_SSH: &str = "ssh";
+pub const ACCESS_SMB: &str = "smb";
+pub const ACCESS_SSH_CONFIG: &str = "ssh-config";
+pub const ACCESS_SSH_GEN: &str = "ssh-gen";
+
+// --- Tail subcommand names ---
+
+pub const TAIL_TOKEN: &str = "token";
+
+// --- Management subcommand names ---
+
+pub const MANAGEMENT_TOKEN: &str = "token";
+
+// --- Route sub-subcommand names ---
+
+pub const ROUTE_DNS: &str = "dns";
+pub const ROUTE_LB: &str = "lb";
+pub const ROUTE_IP: &str = "ip";
+
+// --- Route IP sub-sub-subcommand names ---
+
+pub const IP_ADD: &str = "add";
+pub const IP_SHOW: &str = "show";
+pub const IP_LIST: &str = "list";
+pub const IP_DELETE: &str = "delete";
+pub const IP_GET: &str = "get";
+
+// --- Vnet sub-subcommand names ---
+
+pub const VNET_ADD: &str = "add";
+pub const VNET_LIST: &str = "list";
+pub const VNET_DELETE: &str = "delete";
+pub const VNET_UPDATE: &str = "update";
+
+// --- Ingress sub-subcommand names ---
+
+pub const INGRESS_VALIDATE: &str = "validate";
+pub const INGRESS_RULE: &str = "rule";
+
 // --- Flag names ---
 
 pub const CONFIG_FLAG: &str = "--config";
@@ -52,6 +98,8 @@ pub const HELP_FLAG_SHORT: &str = "-h";
 pub const VERSION_FLAG: &str = "--version";
 pub const VERSION_FLAG_SHORT_LOWER: &str = "-v";
 pub const VERSION_FLAG_SHORT_UPPER: &str = "-V";
+pub const SHORT_FLAG: &str = "--short";
+pub const SHORT_FLAG_SHORT: &str = "-s";
 
 // --- Help text fragments (matching Go baseline urfave/cli output) ---
 
@@ -116,14 +164,14 @@ pub fn command_label(command: &Command) -> &'static str {
     match command {
         Command::ServiceMode => SERVICE_MODE_LABEL,
         Command::Help => HELP_COMMAND,
-        Command::Version => VERSION_COMMAND,
+        Command::Version { .. } => VERSION_COMMAND,
         Command::Update => UPDATE_COMMAND,
         Command::Tunnel(_) => TUNNEL_COMMAND,
         Command::Login => LOGIN_COMMAND,
         Command::ProxyDns => PROXY_DNS_COMMAND,
-        Command::Access => ACCESS_COMMAND,
-        Command::Tail => TAIL_COMMAND,
-        Command::Management => MANAGEMENT_COMMAND,
+        Command::Access(_) => ACCESS_COMMAND,
+        Command::Tail(_) => TAIL_COMMAND,
+        Command::Management(_) => MANAGEMENT_COMMAND,
         Command::Service(_) => SERVICE_COMMAND,
         Command::Validate => VALIDATE_COMMAND,
     }
@@ -142,24 +190,25 @@ pub fn is_version_token(token: &str) -> bool {
 
 /// Recognize all top-level command words from the frozen Go baseline.
 pub fn parse_command_token(token: &str) -> Option<Command> {
+    use super::types::*;
     match token {
         UPDATE_COMMAND => Some(Command::Update),
-        TUNNEL_COMMAND => Some(Command::Tunnel(super::types::TunnelSubcommand::Bare)),
+        TUNNEL_COMMAND => Some(Command::Tunnel(TunnelSubcommand::Bare)),
         LOGIN_COMMAND => Some(Command::Login),
         PROXY_DNS_COMMAND => Some(Command::ProxyDns),
-        ACCESS_COMMAND | FORWARD_COMMAND => Some(Command::Access),
-        TAIL_COMMAND => Some(Command::Tail),
-        MANAGEMENT_COMMAND => Some(Command::Management),
-        SERVICE_COMMAND => Some(Command::Service(super::types::ServiceAction::Install)),
+        ACCESS_COMMAND | FORWARD_COMMAND => Some(Command::Access(AccessSubcommand::Bare)),
+        TAIL_COMMAND => Some(Command::Tail(TailSubcommand::Bare)),
+        MANAGEMENT_COMMAND => Some(Command::Management(ManagementSubcommand::Bare)),
+        SERVICE_COMMAND => Some(Command::Service(ServiceAction::Install)),
         VALIDATE_COMMAND => Some(Command::Validate),
-        RUN_COMMAND => Some(Command::Tunnel(super::types::TunnelSubcommand::Run)),
+        RUN_COMMAND => Some(Command::Tunnel(TunnelSubcommand::Run)),
         _ => None,
     }
 }
 
 /// Parse a tunnel subcommand word.
 pub fn parse_tunnel_subcommand(token: &str) -> Option<super::types::TunnelSubcommand> {
-    use super::types::TunnelSubcommand;
+    use super::types::*;
     match token {
         TUNNEL_RUN => Some(TunnelSubcommand::Run),
         TUNNEL_CREATE => Some(TunnelSubcommand::Create),
@@ -170,12 +219,89 @@ pub fn parse_tunnel_subcommand(token: &str) -> Option<super::types::TunnelSubcom
         TUNNEL_INFO => Some(TunnelSubcommand::Info),
         TUNNEL_READY => Some(TunnelSubcommand::Ready),
         TUNNEL_DIAG => Some(TunnelSubcommand::Diag),
-        TUNNEL_ROUTE => Some(TunnelSubcommand::Route),
-        TUNNEL_VNET => Some(TunnelSubcommand::Vnet),
-        TUNNEL_INGRESS => Some(TunnelSubcommand::Ingress),
+        TUNNEL_ROUTE => Some(TunnelSubcommand::Route(RouteSubcommand::Bare)),
+        TUNNEL_VNET => Some(TunnelSubcommand::Vnet(VnetSubcommand::Bare)),
+        TUNNEL_INGRESS => Some(TunnelSubcommand::Ingress(IngressSubcommand::Bare)),
         TUNNEL_LOGIN => Some(TunnelSubcommand::Login),
         TUNNEL_PROXY_DNS => Some(TunnelSubcommand::ProxyDns),
         TUNNEL_DB_CONNECT => Some(TunnelSubcommand::DbConnect),
+        _ => None,
+    }
+}
+
+/// Parse an access subcommand word.
+pub fn parse_access_subcommand(token: &str) -> Option<super::types::AccessSubcommand> {
+    use super::types::AccessSubcommand;
+    match token {
+        ACCESS_LOGIN => Some(AccessSubcommand::Login),
+        ACCESS_CURL => Some(AccessSubcommand::Curl),
+        ACCESS_TOKEN => Some(AccessSubcommand::Token),
+        ACCESS_TCP | ACCESS_RDP | ACCESS_SSH | ACCESS_SMB => Some(AccessSubcommand::Tcp),
+        ACCESS_SSH_CONFIG => Some(AccessSubcommand::SshConfig),
+        ACCESS_SSH_GEN => Some(AccessSubcommand::SshGen),
+        _ => None,
+    }
+}
+
+/// Parse a tail subcommand word.
+pub fn parse_tail_subcommand(token: &str) -> Option<super::types::TailSubcommand> {
+    use super::types::TailSubcommand;
+    match token {
+        TAIL_TOKEN => Some(TailSubcommand::Token),
+        _ => None,
+    }
+}
+
+/// Parse a management subcommand word.
+pub fn parse_management_subcommand(token: &str) -> Option<super::types::ManagementSubcommand> {
+    use super::types::ManagementSubcommand;
+    match token {
+        MANAGEMENT_TOKEN => Some(ManagementSubcommand::Token),
+        _ => None,
+    }
+}
+
+/// Parse a route sub-subcommand word.
+pub fn parse_route_subcommand(token: &str) -> Option<super::types::RouteSubcommand> {
+    use super::types::RouteSubcommand;
+    match token {
+        ROUTE_DNS => Some(RouteSubcommand::Dns),
+        ROUTE_LB => Some(RouteSubcommand::Lb),
+        ROUTE_IP => Some(RouteSubcommand::Ip(super::types::IpRouteSubcommand::Bare)),
+        _ => None,
+    }
+}
+
+/// Parse a route-ip sub-sub-subcommand word.
+pub fn parse_ip_route_subcommand(token: &str) -> Option<super::types::IpRouteSubcommand> {
+    use super::types::IpRouteSubcommand;
+    match token {
+        IP_ADD => Some(IpRouteSubcommand::Add),
+        IP_SHOW | IP_LIST => Some(IpRouteSubcommand::Show),
+        IP_DELETE => Some(IpRouteSubcommand::Delete),
+        IP_GET => Some(IpRouteSubcommand::Get),
+        _ => None,
+    }
+}
+
+/// Parse a vnet sub-subcommand word.
+pub fn parse_vnet_subcommand(token: &str) -> Option<super::types::VnetSubcommand> {
+    use super::types::VnetSubcommand;
+    match token {
+        VNET_ADD => Some(VnetSubcommand::Add),
+        VNET_LIST => Some(VnetSubcommand::List),
+        VNET_DELETE => Some(VnetSubcommand::Delete),
+        VNET_UPDATE => Some(VnetSubcommand::Update),
+        _ => None,
+    }
+}
+
+/// Parse an ingress sub-subcommand word.
+pub fn parse_ingress_subcommand(token: &str) -> Option<super::types::IngressSubcommand> {
+    use super::types::IngressSubcommand;
+    match token {
+        INGRESS_VALIDATE => Some(IngressSubcommand::Validate),
+        INGRESS_RULE => Some(IngressSubcommand::Rule),
         _ => None,
     }
 }
@@ -226,6 +352,14 @@ pub fn render_version_output(program_name: &str) -> String {
     VERSION_OUTPUT_TEMPLATE
         .replace("{program}", program_name)
         .replace("{version}", env!("CARGO_PKG_VERSION"))
+}
+
+pub fn render_short_version() -> String {
+    format!("{}\n", env!("CARGO_PKG_VERSION"))
+}
+
+pub fn is_short_version_token(token: &str) -> bool {
+    matches!(token, SHORT_FLAG | SHORT_FLAG_SHORT)
 }
 
 pub fn stub_not_implemented(command: &str) -> String {

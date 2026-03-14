@@ -18,7 +18,7 @@ This repository is a real but partial Rust rewrite of `cloudflared`.
 What exists now:
 
 - `cfdrs-bin`: binary entrypoint, runtime composition, QUIC tunnel shell, Pingora seam, deployment/performance/failure evidence
-- `cfdrs-cli`: current alpha CLI parsing, help, dispatch, and CLI-facing error/output types
+- `cfdrs-cli`: CLI parsing for all 40+ baseline command paths, 40+ global flags, help, dispatch (stubs for most commands), and CLI-facing error/output types
 - `cfdrs-cdc`: registration and stream contract types
 - `cfdrs-his`: filesystem config discovery IO
 - `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion
@@ -31,7 +31,7 @@ What does not exist yet:
 
 - Cap'n Proto registration RPC and full stream round-trip through origin
 - management service, log streaming, Cloudflare REST API client, and management-token workflows
-- broad CLI parity: root invocation, help surface, global flags, tunnel/access/tail/service/update parity
+- broad CLI behavioral parity: root service-mode runtime, tunnel/access/tail/service/update behavioral implementations behind parsed stubs
 - Linux service install/uninstall and systemd integration
 - local HTTP endpoints: metrics, readiness, diagnostics
 - config reload and file watcher

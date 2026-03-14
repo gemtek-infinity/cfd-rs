@@ -17,6 +17,10 @@ pub use self::help::render_help;
 pub use self::output::CliOutput;
 pub use self::parse::parse_args;
 pub use self::surface_contract::{
-    DB_CONNECT_REMOVED_MSG, PROGRAM_NAME, PROXY_DNS_REMOVED_MSG, render_version_output, stub_not_implemented,
+    DB_CONNECT_REMOVED_MSG, PROGRAM_NAME, PROXY_DNS_REMOVED_MSG, render_short_version, render_version_output,
+    stub_not_implemented,
 };
-pub use self::types::{Cli, Command, GlobalFlags, ServiceAction, TunnelSubcommand};
+pub use self::types::{
+    AccessSubcommand, Cli, Command, GlobalFlags, IngressSubcommand, IpRouteSubcommand, ManagementSubcommand,
+    RouteSubcommand, ServiceAction, TailSubcommand, TunnelSubcommand, VnetSubcommand,
+};

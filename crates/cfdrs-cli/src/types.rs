@@ -19,7 +19,8 @@ pub enum Command {
     Help,
 
     /// `cloudflared version` or `--version` / `-v` / `-V`
-    Version,
+    /// When `short` is true, output version number only (`--short` / `-s`).
+    Version { short: bool },
 
     /// `cloudflared update [--beta] [--force] [--staging] [--version VER]`
     Update,
@@ -34,13 +35,13 @@ pub enum Command {
     ProxyDns,
 
     /// `cloudflared access <subcmd>` (alias `cloudflared forward`)
-    Access,
+    Access(AccessSubcommand),
 
     /// `cloudflared tail [TUNNEL-ID]`
-    Tail,
+    Tail(TailSubcommand),
 
     /// `cloudflared management`
-    Management,
+    Management(ManagementSubcommand),
 
     /// `cloudflared service install|uninstall`
     Service(ServiceAction),
@@ -71,11 +72,11 @@ pub enum TunnelSubcommand {
     /// `tunnel diag`
     Diag,
     /// `tunnel route dns|lb|ip ...`
-    Route,
+    Route(RouteSubcommand),
     /// `tunnel vnet add|list|delete|update ...`
-    Vnet,
+    Vnet(VnetSubcommand),
     /// `tunnel ingress validate|rule [URL]`
-    Ingress,
+    Ingress(IngressSubcommand),
     /// `tunnel login [--fedramp]`
     Login,
     /// `tunnel proxy-dns` — removed feature
@@ -83,6 +84,79 @@ pub enum TunnelSubcommand {
     /// `tunnel db-connect` — removed feature
     DbConnect,
     /// Bare `tunnel` invocation (no subcommand, flags only)
+    Bare,
+}
+
+/// `tunnel route` sub-subcommands.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RouteSubcommand {
+    Dns,
+    Lb,
+    Ip(IpRouteSubcommand),
+    /// Bare `tunnel route` with no sub-subcommand.
+    Bare,
+}
+
+/// `tunnel route ip` sub-sub-subcommands.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IpRouteSubcommand {
+    Add,
+    Show,
+    Delete,
+    Get,
+    /// Bare `tunnel route ip` with no action.
+    Bare,
+}
+
+/// `tunnel vnet` sub-subcommands.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VnetSubcommand {
+    Add,
+    List,
+    Delete,
+    Update,
+    /// Bare `tunnel vnet` with no sub-subcommand.
+    Bare,
+}
+
+/// `tunnel ingress` sub-subcommands (hidden command).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IngressSubcommand {
+    Validate,
+    Rule,
+    /// Bare `tunnel ingress` with no sub-subcommand.
+    Bare,
+}
+
+/// `access` subcommands from `access/cmd.go`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AccessSubcommand {
+    Login,
+    Curl,
+    Token,
+    /// `access tcp` (aliases: `rdp`, `ssh`, `smb`)
+    Tcp,
+    SshConfig,
+    SshGen,
+    /// Bare `access` with no subcommand.
+    Bare,
+}
+
+/// `tail` subcommands from `tail/cmd.go`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TailSubcommand {
+    /// Hidden `tail token` subcommand.
+    Token,
+    /// Bare `tail [TUNNEL-ID]` — the normal streaming invocation.
+    Bare,
+}
+
+/// `management` subcommands from `management/cmd.go` (entirely hidden).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ManagementSubcommand {
+    /// Hidden `management token` subcommand.
+    Token,
+    /// Bare `management` invocation.
     Bare,
 }
 
@@ -111,9 +185,9 @@ impl fmt::Display for TunnelSubcommand {
             Self::Info => surface_contract::TUNNEL_INFO,
             Self::Ready => surface_contract::TUNNEL_READY,
             Self::Diag => surface_contract::TUNNEL_DIAG,
-            Self::Route => surface_contract::TUNNEL_ROUTE,
-            Self::Vnet => surface_contract::TUNNEL_VNET,
-            Self::Ingress => surface_contract::TUNNEL_INGRESS,
+            Self::Route(_) => surface_contract::TUNNEL_ROUTE,
+            Self::Vnet(_) => surface_contract::TUNNEL_VNET,
+            Self::Ingress(_) => surface_contract::TUNNEL_INGRESS,
             Self::Login => surface_contract::TUNNEL_LOGIN,
             Self::ProxyDns => surface_contract::TUNNEL_PROXY_DNS,
             Self::DbConnect => surface_contract::TUNNEL_DB_CONNECT,
@@ -154,6 +228,9 @@ pub struct GlobalFlags {
     // --- Tunnel identity ---
     pub tunnel_name: Option<String>,
     pub hostname: Option<String>,
+    pub tunnel_id: Option<String>,
+    pub lb_pool: Option<String>,
+    pub tag: Vec<String>,
 
     // --- Logging ---
     pub loglevel: Option<String>,
@@ -161,6 +238,7 @@ pub struct GlobalFlags {
     pub logfile: Option<PathBuf>,
     pub log_directory: Option<PathBuf>,
     pub log_format_output: Option<String>,
+    pub trace_output: Option<String>,
 
     // --- Tunnel behavior ---
     pub grace_period: Option<String>,
@@ -174,6 +252,18 @@ pub struct GlobalFlags {
     pub management_diagnostics: Option<bool>,
     pub management_hostname: Option<String>,
     pub api_url: Option<String>,
+    pub features: Vec<String>,
+    pub quiet: bool,
+    pub is_autoupdated: bool,
+    pub metrics_update_freq: Option<String>,
+    pub max_edge_addr_retries: Option<u32>,
+    pub rpc_timeout: Option<String>,
+    pub heartbeat_interval: Option<String>,
+    pub heartbeat_count: Option<u32>,
+    pub write_stream_timeout: Option<String>,
+    pub quic_disable_pmtu: bool,
+    pub quic_conn_flow_control: Option<u64>,
+    pub quic_stream_flow_control: Option<u64>,
 
     // --- Proxy/origin ---
     pub unix_socket: Option<String>,
@@ -183,11 +273,33 @@ pub struct GlobalFlags {
     pub no_tls_verify: bool,
     pub no_chunked_encoding: bool,
     pub http2_origin: bool,
+    pub bastion: bool,
+    pub socks5: bool,
+    pub proxy_address: Option<String>,
+    pub proxy_port: Option<u16>,
+    pub proxy_connect_timeout: Option<String>,
+    pub proxy_tls_timeout: Option<String>,
+    pub proxy_tcp_keepalive: Option<String>,
+    pub proxy_no_happy_eyeballs: bool,
+    pub proxy_keepalive_connections: Option<u32>,
+    pub proxy_keepalive_timeout: Option<String>,
+    pub service_op_ip: Option<String>,
 
     // --- ICMP ---
     pub icmpv4_src: Option<String>,
     pub icmpv6_src: Option<String>,
     pub max_active_flows: Option<u64>,
+
+    // --- Deprecated (kept for compat) ---
+    pub api_key: Option<String>,
+    pub api_email: Option<String>,
+    pub api_ca_key: Option<String>,
+
+    // --- Service install ---
+    pub no_update_service: bool,
+
+    // --- Proxy DNS (removed) ---
+    pub proxy_dns: bool,
 
     // --- Unrecognized but forwarded ---
     /// Flags and arguments not yet handled by the parser.
@@ -210,7 +322,10 @@ mod tests {
     #[test]
     fn command_display_top_level() {
         assert_eq!(Command::Help.to_string(), surface_contract::HELP_COMMAND);
-        assert_eq!(Command::Version.to_string(), surface_contract::VERSION_COMMAND);
+        assert_eq!(
+            Command::Version { short: false }.to_string(),
+            surface_contract::VERSION_COMMAND
+        );
         assert_eq!(Command::Validate.to_string(), surface_contract::VALIDATE_COMMAND);
         assert_eq!(Command::Update.to_string(), surface_contract::UPDATE_COMMAND);
         assert_eq!(
@@ -219,10 +334,16 @@ mod tests {
         );
         assert_eq!(Command::Login.to_string(), surface_contract::LOGIN_COMMAND);
         assert_eq!(Command::ProxyDns.to_string(), surface_contract::PROXY_DNS_COMMAND);
-        assert_eq!(Command::Access.to_string(), surface_contract::ACCESS_COMMAND);
-        assert_eq!(Command::Tail.to_string(), surface_contract::TAIL_COMMAND);
         assert_eq!(
-            Command::Management.to_string(),
+            Command::Access(AccessSubcommand::Bare).to_string(),
+            surface_contract::ACCESS_COMMAND
+        );
+        assert_eq!(
+            Command::Tail(TailSubcommand::Bare).to_string(),
+            surface_contract::TAIL_COMMAND
+        );
+        assert_eq!(
+            Command::Management(ManagementSubcommand::Bare).to_string(),
             surface_contract::MANAGEMENT_COMMAND
         );
         assert_eq!(
