@@ -14,7 +14,7 @@ Use this file as a short operating guide, not as a document index dump.
 ## Working rules
 
 - do not treat this repository as a blank-slate Rust project
-- do not edit frozen inputs under [`baseline-2026.2.0/old-impl/`](baseline-2026.2.0/old-impl/)
+- do not edit frozen inputs under [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - do not claim parity from Rust code shape alone
 - keep patches narrow and source-grounded
 - update the relevant parity ledger for parity work

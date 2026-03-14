@@ -3,7 +3,7 @@
 ## Active Snapshot
 
 - lane: Linux only, `x86_64-unknown-linux-gnu`, quiche + BoringSSL, 0-RTT required
-- compatibility baseline: frozen Go `2026.2.0` in [`baseline-2026.2.0/old-impl/`](baseline-2026.2.0/old-impl/)
+- compatibility baseline: frozen Go `2026.2.0` in [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - parity routing baseline: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - workspace version: `2026.2.0-alpha.202603`
 - roadmap state: `Program Reset` complete; active implementation milestone: `CDC Contract Foundation`
@@ -23,7 +23,7 @@ What exists now:
 - `cfdrs-his`: filesystem config discovery IO
 - `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion
 - live parity ledgers, feature docs, and source routing under [`docs/parity/`](docs/parity/)
-- frozen Go baseline in [`baseline-2026.2.0/old-impl/`](baseline-2026.2.0/old-impl/)
+- frozen Go baseline in [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - debtmap-enabled MCP server surface for bounded repo truth and routing
 - repo-wide task entry through [`Justfile`](Justfile)
 

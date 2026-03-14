@@ -61,7 +61,7 @@ Load first:
 
 Load first:
 
-- [`baseline-2026.2.0/old-impl/`](../baseline-2026.2.0/old-impl/)
+- [`baseline-2026.2.0/`](../baseline-2026.2.0/)
 - [`docs/parity/source-map.csv`](parity/source-map.csv)
 
 Never claim parity from Rust code shape alone.

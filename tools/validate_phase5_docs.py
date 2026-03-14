@@ -4,7 +4,6 @@ from __future__ import annotations
 import csv
 import json
 import re
-import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -59,6 +58,7 @@ LEGACY_PATTERNS = {
     "fixtures/first-slice": "legacy fixture path is still referenced",
     "phase_1": "stage-named test artifact is still referenced",
     "baseline-2026.2.0/design-audit/": "historical audit tree is still referenced",
+    "baseline-2026.2.0/old-impl": "stale baseline subdirectory path is still referenced",
     "ADR-0006-standard-format-and-workspace-dependency-admission.md": "stale ADR path is still referenced",
 }
 TEXT_FILE_NAMES = {
@@ -238,7 +238,7 @@ def validate_source_map(errors: list[str]) -> None:
             errors.append(f"source-map row {row_id} has no baseline_paths")
         for baseline_path in baseline_paths:
             resolved = REPO_ROOT / baseline_path
-            if not baseline_path.startswith("baseline-2026.2.0/old-impl/"):
+            if not baseline_path.startswith("baseline-2026.2.0/"):
                 errors.append(f"source-map row {row_id} has non-baseline path: {baseline_path}")
             elif not resolved.exists() or not resolved.is_file():
                 errors.append(f"source-map row {row_id} points to missing baseline file: {baseline_path}")
@@ -446,7 +446,6 @@ def validate_cloudflare_rs_gate(errors: list[str]) -> None:
 
 
 def validate_markdown_repo_links(errors: list[str]) -> None:
-    tracked_files, tracked_dirs = tracked_repo_paths()
     for path in markdown_paths():
         for line_number, line in enumerate(iter_markdown_non_fence_lines(path), start=1):
             for match in re.finditer(r"`([^`]+)`", line):
@@ -454,7 +453,7 @@ def validate_markdown_repo_links(errors: list[str]) -> None:
                 if start > 0 and line[start - 1] == "[" and line[end : end + 2] == "](":
                     continue
                 candidate = match.group(1)
-                target = resolve_linkable_repo_target(path, candidate, tracked_files, tracked_dirs)
+                target = resolve_linkable_repo_target(path, candidate)
                 if target is None:
                     continue
                 errors.append(
@@ -463,7 +462,6 @@ def validate_markdown_repo_links(errors: list[str]) -> None:
 
 
 def validate_markdown_link_targets(errors: list[str]) -> None:
-    tracked_files, tracked_dirs = tracked_repo_paths()
     link_pattern = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     for path in markdown_paths():
         for line_number, line in enumerate(iter_markdown_non_fence_lines(path), start=1):
@@ -473,7 +471,7 @@ def validate_markdown_link_targets(errors: list[str]) -> None:
                     continue
                 href_path = href.split("#", 1)[0]
                 target = (path.parent / href_path).resolve()
-                if target in tracked_files or target in tracked_dirs:
+                if is_repo_path(target):
                     continue
                 errors.append(
                     f"{path.relative_to(REPO_ROOT)}:{line_number} links to non-repo path: {href}"
@@ -509,26 +507,8 @@ def markdown_paths() -> list[Path]:
     return sorted(
         path
         for path in REPO_ROOT.rglob("*.md")
-        if "baseline-2026.2.0/old-impl" not in str(path)
+        if "baseline-2026.2.0" not in str(path)
     )
-
-
-def tracked_repo_paths() -> tuple[set[Path], set[Path]]:
-    tracked_files: set[Path] = set()
-    tracked_dirs: set[Path] = {REPO_ROOT}
-    output = subprocess.check_output(["git", "ls-files", "-z"], cwd=REPO_ROOT)
-    for entry in output.split(b"\0"):
-        if not entry:
-            continue
-        file_path = (REPO_ROOT / entry.decode("utf-8")).resolve()
-        tracked_files.add(file_path)
-        current = file_path.parent
-        while True:
-            tracked_dirs.add(current)
-            if current == REPO_ROOT:
-                break
-            current = current.parent
-    return tracked_files, tracked_dirs
 
 
 def iter_markdown_non_fence_lines(path: Path) -> list[str]:
@@ -547,15 +527,25 @@ def iter_markdown_non_fence_lines(path: Path) -> list[str]:
 def resolve_linkable_repo_target(
     path: Path,
     candidate: str,
-    tracked_files: set[Path],
-    tracked_dirs: set[Path],
 ) -> Path | None:
     if not is_linkable_repo_candidate(candidate):
         return None
     for target in ((path.parent / candidate).resolve(), (REPO_ROOT / candidate).resolve()):
-        if target in tracked_files or target in tracked_dirs:
+        if is_repo_path(target):
             return target
     return None
+
+
+def is_repo_path(target: Path) -> bool:
+    try:
+        target.relative_to(REPO_ROOT)
+    except ValueError:
+        return False
+
+    if any(part in {".git", "target"} for part in target.parts):
+        return False
+
+    return target.exists()
 
 
 def is_linkable_repo_candidate(candidate: str) -> bool:

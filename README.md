@@ -4,7 +4,7 @@ This repository contains the Rust rewrite of Cloudflare's tunnel client,
 `cloudflared`.
 
 The rewrite targets behavioral parity with the frozen Go baseline release
-`2026.2.0`. The frozen Go source lives in [`baseline-2026.2.0/old-impl/`](baseline-2026.2.0/old-impl/) and
+`2026.2.0`. The frozen Go source lives in [`baseline-2026.2.0/`](baseline-2026.2.0/) and
 is the primary behavior reference.
 
 ## Current state

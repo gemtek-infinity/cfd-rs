@@ -1,7 +1,7 @@
 # Root And Global Flags — CLI Parity Audit
 
 This document inventories every global and root-level flag from the frozen Go
-baseline ([baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/cmd.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/cmd.go)) and
+baseline ([baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go](../../../baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go)) and
 records current Rust coverage.
 
 Authoritative checklist rows: CLI-001, CLI-002, CLI-003, CLI-004, CLI-005,

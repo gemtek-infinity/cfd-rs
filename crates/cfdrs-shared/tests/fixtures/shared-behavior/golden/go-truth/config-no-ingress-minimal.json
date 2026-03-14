@@ -5,8 +5,8 @@
   "report_kind": "normalized-config.v1",
   "comparison": "semantic",
   "source_refs": [
-    "baseline-2026.2.0/old-impl/config/configuration.go §4.4",
-    "baseline-2026.2.0/old-impl/component-tests/test_tunnel.py::test_tunnel_no_ingress"
+    "baseline-2026.2.0/config/configuration.go §4.4",
+    "baseline-2026.2.0/component-tests/test_tunnel.py::test_tunnel_no_ingress"
   ],
   "payload": {
     "source_kind": "discovered-path",

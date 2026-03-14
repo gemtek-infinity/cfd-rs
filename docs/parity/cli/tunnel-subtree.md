@@ -1,7 +1,7 @@
 # Tunnel Subtree — CLI Parity Audit
 
 This document inventories the `tunnel` command family from the frozen Go
-baseline ([baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/)) and records
+baseline ([baseline-2026.2.0/cmd/cloudflared/tunnel/](../../../baseline-2026.2.0/cmd/cloudflared/tunnel/)) and records
 current Rust coverage.
 
 Authoritative checklist rows: CLI-008 through CLI-021, CLI-032.

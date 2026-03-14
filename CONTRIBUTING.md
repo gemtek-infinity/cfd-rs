@@ -45,7 +45,7 @@ just mcp-smoke
 ## Parity evidence
 
 Do not claim parity from Rust code shape alone.
-Evidence must come from the frozen Go baseline in [`baseline-2026.2.0/old-impl/`](baseline-2026.2.0/old-impl/).
+Evidence must come from the frozen Go baseline in [`baseline-2026.2.0/`](baseline-2026.2.0/).
 Typical evidence includes:
 
 - blackbox output comparison

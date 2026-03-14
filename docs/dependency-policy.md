@@ -8,7 +8,7 @@ slice, not to predeclare the full future dependency graph.
 
 ## Non-Negotiable Constraints
 
-- [baseline-2026.2.0/old-impl/](../baseline-2026.2.0/old-impl/) is frozen input
+- [baseline-2026.2.0/](../baseline-2026.2.0/) is frozen input
 - [docs/parity/source-map.csv](parity/source-map.csv) is the derived row-to-baseline routing surface
 - the Rust workspace version remains `2026.2.0-alpha.202603` until changed by
   explicit baseline/versioning policy

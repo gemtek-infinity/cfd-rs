@@ -6,7 +6,7 @@
 ## Context
 
 The Rust rewrite must preserve the externally visible behavior of the frozen Go
-reference in [baseline-2026.2.0/old-impl/](../../baseline-2026.2.0/old-impl/) while avoiding a naive one-goroutine-to-one-task
+reference in [baseline-2026.2.0/](../../baseline-2026.2.0/) while avoiding a naive one-goroutine-to-one-task
 translation.
 
 The repository already has a scaffold, not a blank-slate rewrite.

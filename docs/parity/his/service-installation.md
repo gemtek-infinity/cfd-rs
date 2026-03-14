@@ -3,21 +3,21 @@
 ## Purpose
 
 This document audits Linux service installation and uninstall behavior
-against the frozen Go baseline in [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/).
+against the frozen Go baseline in [baseline-2026.2.0/](../../../baseline-2026.2.0/).
 
 This is a host-interaction surface (HIS) — it creates, modifies, and removes
 files on the local filesystem and interacts with the init system.
 
 ## Frozen Baseline Source
 
-Primary file: [cmd/cloudflared/linux_service.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/linux_service.go)
+Primary file: [cmd/cloudflared/linux_service.go](../../../baseline-2026.2.0/cmd/cloudflared/linux_service.go)
 
 Supporting files:
 
-- [cmd/cloudflared/common_service.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/common_service.go) — token-based install args
-- [postinst.sh](../../../baseline-2026.2.0/old-impl/postinst.sh) — package manager post-install script
-- [postrm.sh](../../../baseline-2026.2.0/old-impl/postrm.sh) — package manager post-remove script
-- [cmd/cloudflared/tunnel/subcommands.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/subcommands.go) — token parsing
+- [cmd/cloudflared/common_service.go](../../../baseline-2026.2.0/cmd/cloudflared/common_service.go) — token-based install args
+- [postinst.sh](../../../baseline-2026.2.0/postinst.sh) — package manager post-install script
+- [postrm.sh](../../../baseline-2026.2.0/postrm.sh) — package manager post-remove script
+- [cmd/cloudflared/tunnel/subcommands.go](../../../baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go) — token parsing
 
 ## CLI Entry Points
 

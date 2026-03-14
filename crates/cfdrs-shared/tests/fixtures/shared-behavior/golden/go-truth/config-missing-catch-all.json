@@ -5,7 +5,7 @@
   "report_kind": "error-report.v1",
   "comparison": "error-category",
   "source_refs": [
-    "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Last rule isn't catchall"
+    "baseline-2026.2.0/ingress/ingress_test.go::TestParseIngress/Last rule isn't catchall"
   ],
   "payload": {
     "category": "ingress-last-rule-not-catch-all",

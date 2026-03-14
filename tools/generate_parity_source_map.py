@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-OLD_IMPL_ROOT = REPO_ROOT / "baseline-2026.2.0" / "old-impl"
+BASELINE_ROOT = REPO_ROOT / "baseline-2026.2.0"
 OUTPUT_PATH = REPO_ROOT / "docs" / "parity" / "source-map.csv"
 
 LEDGERS = {
@@ -367,7 +367,7 @@ def resolve_baseline_paths(row: LedgerRow) -> list[str]:
 
     if not candidates:
         for fallback in ROW_FALLBACKS.get(row.row_id, SECTION_FALLBACKS[row.domain].get(row.section, [])):
-            if (OLD_IMPL_ROOT / fallback).exists():
+            if (BASELINE_ROOT / fallback).exists():
                 candidates.append(fallback)
 
     unique = []
@@ -378,7 +378,7 @@ def resolve_baseline_paths(row: LedgerRow) -> list[str]:
     if not unique:
         raise ValueError(f"no baseline paths resolved for {row.row_id}")
 
-    return [f"baseline-2026.2.0/old-impl/{candidate}" for candidate in unique]
+    return [f"baseline-2026.2.0/{candidate}" for candidate in unique]
 
 
 def find_path_tokens(text: str) -> list[str]:
@@ -398,23 +398,23 @@ def resolve_token(token: str, last_dir: str | None) -> str | None:
     if not cleaned or cleaned.startswith("http://") or cleaned.startswith("https://"):
         return None
 
-    if cleaned.startswith("baseline-2026.2.0/old-impl/"):
-        cleaned = cleaned.removeprefix("baseline-2026.2.0/old-impl/")
+    if cleaned.startswith("baseline-2026.2.0/"):
+        cleaned = cleaned.removeprefix("baseline-2026.2.0/")
 
-    direct = OLD_IMPL_ROOT / cleaned
+    direct = BASELINE_ROOT / cleaned
     if direct.exists() and direct.is_file():
         return cleaned
 
     if last_dir and "/" not in cleaned:
         sibling = Path(last_dir) / cleaned
-        sibling_path = OLD_IMPL_ROOT / sibling
+        sibling_path = BASELINE_ROOT / sibling
         if sibling_path.exists() and sibling_path.is_file():
             return sibling.as_posix()
 
     if "/" not in cleaned:
         matches = sorted(
-            path.relative_to(OLD_IMPL_ROOT).as_posix()
-            for path in OLD_IMPL_ROOT.rglob(cleaned)
+            path.relative_to(BASELINE_ROOT).as_posix()
+            for path in BASELINE_ROOT.rglob(cleaned)
             if path.is_file()
         )
         if len(matches) == 1:

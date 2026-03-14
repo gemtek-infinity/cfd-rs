@@ -9,7 +9,7 @@ transport headers.
 
 ## Frozen Baseline Schema
 
-Source: [baseline-2026.2.0/old-impl/tunnelrpc/proto/quic_metadata_protocol.capnp](../../../baseline-2026.2.0/old-impl/tunnelrpc/proto/quic_metadata_protocol.capnp)
+Source: [baseline-2026.2.0/tunnelrpc/proto/quic_metadata_protocol.capnp](../../../baseline-2026.2.0/tunnelrpc/proto/quic_metadata_protocol.capnp)
 
 ### ConnectRequest (`@0xc47116a1045e4061`)
 
@@ -43,7 +43,7 @@ Source: [baseline-2026.2.0/old-impl/tunnelrpc/proto/quic_metadata_protocol.capnp
 
 ## Wire Framing
 
-Source: [baseline-2026.2.0/old-impl/tunnelrpc/pogs/quic_metadata_protocol.go](../../../baseline-2026.2.0/old-impl/tunnelrpc/pogs/quic_metadata_protocol.go)
+Source: [baseline-2026.2.0/tunnelrpc/pogs/quic_metadata_protocol.go](../../../baseline-2026.2.0/tunnelrpc/pogs/quic_metadata_protocol.go)
 
 ### Go Serialization
 
@@ -76,7 +76,7 @@ origin proxy. Key patterns:
 
 ## Transport Header Contracts
 
-Source: [baseline-2026.2.0/old-impl/connection/header.go](../../../baseline-2026.2.0/old-impl/connection/header.go) and design audit
+Source: [baseline-2026.2.0/connection/header.go](../../../baseline-2026.2.0/connection/header.go) and design audit
 
 ### Internal Headers (Wire-Visible)
 
@@ -206,8 +206,8 @@ Not yet wired into the response path. A test helper
 
 ## Incoming Stream Round-Trip Path
 
-Source: [baseline-2026.2.0/old-impl/connection/quic_connection.go](../../../baseline-2026.2.0/old-impl/connection/quic_connection.go) and
-[baseline-2026.2.0/old-impl/proxy/proxy.go](../../../baseline-2026.2.0/old-impl/proxy/proxy.go)
+Source: [baseline-2026.2.0/connection/quic_connection.go](../../../baseline-2026.2.0/connection/quic_connection.go) and
+[baseline-2026.2.0/proxy/proxy.go](../../../baseline-2026.2.0/proxy/proxy.go)
 
 ### Go Frozen Baseline Dispatch Flow
 
@@ -270,8 +270,8 @@ Source: [crates/cfdrs-bin/src/proxy/origin.rs](../../../crates/cfdrs-bin/src/pro
 
 ## Protocol Event Model
 
-Source: [baseline-2026.2.0/old-impl/connection/event.go](../../../baseline-2026.2.0/old-impl/connection/event.go) and
-[baseline-2026.2.0/old-impl/connection/protocol.go](../../../baseline-2026.2.0/old-impl/connection/protocol.go)
+Source: [baseline-2026.2.0/connection/event.go](../../../baseline-2026.2.0/connection/event.go) and
+[baseline-2026.2.0/connection/protocol.go](../../../baseline-2026.2.0/connection/protocol.go)
 
 ### Go Event Struct
 

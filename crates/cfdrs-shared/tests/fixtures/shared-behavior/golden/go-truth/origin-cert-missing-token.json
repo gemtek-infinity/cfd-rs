@@ -5,7 +5,7 @@
   "report_kind": "error-report.v1",
   "comparison": "error-category",
   "source_refs": [
-    "baseline-2026.2.0/old-impl/credentials/origin_cert_test.go::TestJSONArgoTunnelTokenEmpty"
+    "baseline-2026.2.0/credentials/origin_cert_test.go::TestJSONArgoTunnelTokenEmpty"
   ],
   "payload": {
     "category": "origin-cert-missing-token",

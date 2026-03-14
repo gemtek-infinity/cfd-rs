@@ -1,7 +1,7 @@
 # Access Subtree — CLI Parity Audit
 
 This document inventories the `access` command family from the frozen Go
-baseline ([baseline-2026.2.0/old-impl/cmd/cloudflared/access/cmd.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/access/cmd.go)) and
+baseline ([baseline-2026.2.0/cmd/cloudflared/access/cmd.go](../../../baseline-2026.2.0/cmd/cloudflared/access/cmd.go)) and
 records current Rust coverage.
 
 Authoritative checklist row: CLI-022.

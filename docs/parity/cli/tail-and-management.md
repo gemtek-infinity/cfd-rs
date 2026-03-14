@@ -7,7 +7,7 @@ Authoritative checklist rows: CLI-023, CLI-024.
 
 ## Tail command (CLI-023)
 
-Source: [baseline-2026.2.0/old-impl/cmd/cloudflared/tail/cmd.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tail/cmd.go)
+Source: [baseline-2026.2.0/cmd/cloudflared/tail/cmd.go](../../../baseline-2026.2.0/cmd/cloudflared/tail/cmd.go)
 
 Streams remote logs from a running tunnel connector.
 
@@ -44,7 +44,7 @@ flag parsing, and command-level help.
 
 ## Management command (CLI-024)
 
-Source: [baseline-2026.2.0/old-impl/cmd/cloudflared/management/cmd.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/management/cmd.go)
+Source: [baseline-2026.2.0/cmd/cloudflared/management/cmd.go](../../../baseline-2026.2.0/cmd/cloudflared/management/cmd.go)
 
 Hidden top-level command for management operations.
 

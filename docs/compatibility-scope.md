@@ -9,7 +9,7 @@ production-alpha gate expectations from being blurred together.
 
 The rewrite target is the behavior of the frozen Go snapshot in:
 
-- [`baseline-2026.2.0/old-impl/`](../baseline-2026.2.0/old-impl/)
+- [`baseline-2026.2.0/`](../baseline-2026.2.0/)
 
 The target release baseline is:
 
@@ -24,7 +24,7 @@ The derived parity routing layer is:
 
 Use the right source for the right question:
 
-- behavior truth: [`baseline-2026.2.0/old-impl/`](../baseline-2026.2.0/old-impl/)
+- behavior truth: [`baseline-2026.2.0/`](../baseline-2026.2.0/)
 - derived parity routing: [`docs/parity/README.md`](parity/README.md), [`docs/parity/source-map.csv`](parity/source-map.csv), and the relevant parity doc
 - current repository state: [`STATUS.md`](../STATUS.md)
 - scope and lane boundary: [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md)
@@ -35,7 +35,7 @@ Do not claim compatibility from Rust code shape alone.
 
 ## Frozen Inputs
 
-[`baseline-2026.2.0/old-impl/`](../baseline-2026.2.0/old-impl/) is a frozen input.
+[`baseline-2026.2.0/`](../baseline-2026.2.0/) is a frozen input.
 
 Do not modify it during normal rewrite work.
 

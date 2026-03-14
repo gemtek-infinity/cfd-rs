@@ -15,7 +15,7 @@ contracts are CDC-owned because they are consumed by external systems
 
 ## Readiness Contract
 
-Source: [baseline-2026.2.0/old-impl/metrics/readiness.go](../../../baseline-2026.2.0/old-impl/metrics/readiness.go)
+Source: [baseline-2026.2.0/metrics/readiness.go](../../../baseline-2026.2.0/metrics/readiness.go)
 
 ### Endpoint
 
@@ -46,7 +46,7 @@ Intended for Kubernetes readiness probes and external health-check systems.
 
 ## Metrics Contract
 
-Source: [baseline-2026.2.0/old-impl/metrics/metrics.go](../../../baseline-2026.2.0/old-impl/metrics/metrics.go)
+Source: [baseline-2026.2.0/metrics/metrics.go](../../../baseline-2026.2.0/metrics/metrics.go)
 
 ### Endpoint
 
@@ -79,7 +79,7 @@ surface.
 
 ## Cloudflare REST API Client Contracts
 
-Source: [baseline-2026.2.0/old-impl/cfapi/](../../../baseline-2026.2.0/old-impl/cfapi/)
+Source: [baseline-2026.2.0/cfapi/](../../../baseline-2026.2.0/cfapi/)
 
 ### Client Interface
 

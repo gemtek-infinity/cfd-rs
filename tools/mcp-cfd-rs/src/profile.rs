@@ -33,10 +33,7 @@ pub fn governance_roots(repo_root: &Path) -> Vec<PathBuf> {
 }
 
 pub fn behavior_truth_roots(repo_root: &Path) -> Vec<PathBuf> {
-    vec![
-        repo_root.join("baseline-2026.2.0/old-impl"),
-        repo_root.join("docs/parity"),
-    ]
+    vec![repo_root.join("baseline-2026.2.0"), repo_root.join("docs/parity")]
 }
 
 pub fn supported_bundle_names() -> Vec<&'static str> {
@@ -209,7 +206,7 @@ fn behavior_baseline_bundle() -> ContextBundle {
                 reason: "Parity index and feature-document map.",
             },
             BundleEntry {
-                path: "baseline-2026.2.0/old-impl".to_string(),
+                path: "baseline-2026.2.0".to_string(),
                 reason: "Frozen Go implementation tree.",
             },
         ],
@@ -280,8 +277,8 @@ fn governing_files_snapshot() -> ContextSnapshot {
             },
             SnapshotFact {
                 label: "behavior_truth",
-                value: "Use baseline-2026.2.0/old-impl for frozen behavior truth and \
-                        docs/parity/source-map.csv for bounded row-to-source routing.",
+                value: "Use baseline-2026.2.0 for frozen behavior truth and docs/parity/source-map.csv for \
+                        bounded row-to-source routing.",
             },
         ],
         source_paths: vec![
@@ -411,7 +408,7 @@ fn behavior_baseline_snapshot() -> ContextSnapshot {
         facts: vec![
             SnapshotFact {
                 label: "first_truth_source",
-                value: "Use baseline-2026.2.0/old-impl code and tests for behavior truth.",
+                value: "Use baseline-2026.2.0 code and tests for behavior truth.",
             },
             SnapshotFact {
                 label: "routing_source",
@@ -424,7 +421,7 @@ fn behavior_baseline_snapshot() -> ContextSnapshot {
             },
         ],
         source_paths: vec![
-            "baseline-2026.2.0/old-impl".to_string(),
+            "baseline-2026.2.0".to_string(),
             "docs/parity/source-map.csv".to_string(),
             "docs/parity/README.md".to_string(),
         ],
@@ -563,11 +560,7 @@ mod tests {
         let snapshot = snapshot("behavior-baseline").expect("snapshot should exist");
 
         assert_eq!(snapshot.snapshot, "behavior-baseline");
-        assert!(
-            snapshot
-                .source_paths
-                .contains(&"baseline-2026.2.0/old-impl".to_string())
-        );
+        assert!(snapshot.source_paths.contains(&"baseline-2026.2.0".to_string()));
     }
 
     #[test]

@@ -4,7 +4,7 @@
 
 This document audits the local diagnostics collection surface, local HTTP
 endpoint exposure, and metrics/readiness behavior against the frozen Go
-baseline in [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/).
+baseline in [baseline-2026.2.0/](../../../baseline-2026.2.0/).
 
 These are host-facing because they expose data on local network interfaces,
 collect host system information, and interact with local filesystem and
@@ -14,11 +14,11 @@ process state.
 
 Primary files:
 
-- [diagnostic/](../../../baseline-2026.2.0/old-impl/diagnostic/) package — collectors, handlers, CLI command
-- [metrics/readiness.go](../../../baseline-2026.2.0/old-impl/metrics/readiness.go) — readiness endpoint
-- [metrics/metrics.go](../../../baseline-2026.2.0/old-impl/metrics/metrics.go) — metrics server lifecycle and route registration
-- [cmd/cloudflared/tunnel/cmd.go](../../../baseline-2026.2.0/old-impl/cmd/cloudflared/tunnel/cmd.go) — metrics server setup
-- [tunnelstate/conntracker.go](../../../baseline-2026.2.0/old-impl/tunnelstate/conntracker.go) — connection state tracking
+- [diagnostic/](../../../baseline-2026.2.0/diagnostic/) package — collectors, handlers, CLI command
+- [metrics/readiness.go](../../../baseline-2026.2.0/metrics/readiness.go) — readiness endpoint
+- [metrics/metrics.go](../../../baseline-2026.2.0/metrics/metrics.go) — metrics server lifecycle and route registration
+- [cmd/cloudflared/tunnel/cmd.go](../../../baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go) — metrics server setup
+- [tunnelstate/conntracker.go](../../../baseline-2026.2.0/tunnelstate/conntracker.go) — connection state tracking
 
 ## Local HTTP Server
 

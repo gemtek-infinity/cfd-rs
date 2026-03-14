@@ -54,7 +54,7 @@ Exit evidence:
 
 - [`STATUS.md`](../../STATUS.md) is the only tracked status file
 - the historical audit tree is gone
-- [`docs/parity/source-map.csv`](../parity/source-map.csv) routes every parity row back to [`baseline-2026.2.0/old-impl/`](../../baseline-2026.2.0/old-impl/)
+- [`docs/parity/source-map.csv`](../parity/source-map.csv) routes every parity row back to [`baseline-2026.2.0/`](../../baseline-2026.2.0/)
 - [`Justfile`](../../Justfile) is the normal command surface for humans, agents, and CI
 - debtmap-enabled MCP starts as the required operational surface
 - the `--no-default-features` surface remains buildable only as a maintenance check

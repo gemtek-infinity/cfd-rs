@@ -62,7 +62,7 @@ plus [`docs/phase-5/roadmap-index.csv`](../phase-5/roadmap-index.csv) for implem
 
 ## Source Of Truth
 
-- behavior truth: [`baseline-2026.2.0/old-impl/`](../../baseline-2026.2.0/old-impl/)
+- behavior truth: [`baseline-2026.2.0/`](../../baseline-2026.2.0/)
 - derived parity routing: [`docs/parity/source-map.csv`](source-map.csv)
 - status truth: [`STATUS.md`](../../STATUS.md)
 - roadmap truth: [`docs/phase-5/roadmap.md`](../phase-5/roadmap.md)

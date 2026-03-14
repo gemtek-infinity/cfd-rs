@@ -6,8 +6,8 @@
 //! `http_status`-only path.
 //!
 //! Each origin service type mirrors the Go baseline's dispatch from
-//! `baseline-2026.2.0/old-impl/proxy/proxy.go` and
-//! `baseline-2026.2.0/old-impl/ingress/origin_proxy.go`.
+//! `baseline-2026.2.0/proxy/proxy.go` and
+//! `baseline-2026.2.0/ingress/origin_proxy.go`.
 
 use cfdrs_cdc::stream::ConnectRequest;
 use cfdrs_shared::IngressService;

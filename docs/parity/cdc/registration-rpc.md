@@ -11,7 +11,7 @@ connection with the edge.
 
 ## Frozen Baseline Schema
 
-Source: [baseline-2026.2.0/old-impl/tunnelrpc/proto/tunnelrpc.capnp](../../../baseline-2026.2.0/old-impl/tunnelrpc/proto/tunnelrpc.capnp)
+Source: [baseline-2026.2.0/tunnelrpc/proto/tunnelrpc.capnp](../../../baseline-2026.2.0/tunnelrpc/proto/tunnelrpc.capnp)
 
 ### Active Interfaces
 
@@ -140,7 +140,7 @@ Deprecated features (filtered before sending):
 
 ## Frozen Go Registration Client Behavior
 
-Source: [baseline-2026.2.0/old-impl/tunnelrpc/registration_client.go](../../../baseline-2026.2.0/old-impl/tunnelrpc/registration_client.go)
+Source: [baseline-2026.2.0/tunnelrpc/registration_client.go](../../../baseline-2026.2.0/tunnelrpc/registration_client.go)
 
 ### RegisterConnection Flow
 
@@ -171,8 +171,8 @@ Source: [baseline-2026.2.0/old-impl/tunnelrpc/registration_client.go](../../../b
 
 ## Control Stream Lifecycle
 
-Source: [baseline-2026.2.0/old-impl/connection/control.go](../../../baseline-2026.2.0/old-impl/connection/control.go) (lines 78-147)
-and [baseline-2026.2.0/old-impl/connection/quic_connection.go](../../../baseline-2026.2.0/old-impl/connection/quic_connection.go) (line 89)
+Source: [baseline-2026.2.0/connection/control.go](../../../baseline-2026.2.0/connection/control.go) (lines 78-147)
+and [baseline-2026.2.0/connection/quic_connection.go](../../../baseline-2026.2.0/connection/quic_connection.go) (line 89)
 
 ### Control Stream Opening
 

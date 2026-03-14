@@ -67,7 +67,7 @@ Preferred values:
 ## Audited Checklist
 
 This checklist was produced by source-level audit of the frozen Go baseline
-in [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/) and comparison against the current Rust CDC
+in [baseline-2026.2.0/](../../../baseline-2026.2.0/) and comparison against the current Rust CDC
 surface in [crates/cfdrs-cdc/](../../../crates/cfdrs-cdc/) and [crates/cfdrs-bin/](../../../crates/cfdrs-bin/).
 
 The frozen Go CDC surface uses Cap'n Proto for registration and stream

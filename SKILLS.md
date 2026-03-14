@@ -28,7 +28,7 @@ For the full domain and document index, see [docs/parity/README.md](docs/parity/
 
 ## Source order for subsystem work
 
-1. [baseline-2026.2.0/old-impl/](baseline-2026.2.0/old-impl/) code and tests
+1. [baseline-2026.2.0/](baseline-2026.2.0/) code and tests
 2. [docs/parity/source-map.csv](docs/parity/source-map.csv) and the relevant parity doc
 3. [REWRITE_CHARTER.md](REWRITE_CHARTER.md)
 4. [STATUS.md](STATUS.md)

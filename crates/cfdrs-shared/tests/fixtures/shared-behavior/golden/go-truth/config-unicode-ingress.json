@@ -5,8 +5,8 @@
   "report_kind": "normalized-config.v1",
   "comparison": "exact-json",
   "source_refs": [
-    "baseline-2026.2.0/old-impl/config/configuration.go §4.2",
-    "baseline-2026.2.0/old-impl/ingress/ingress_test.go::TestParseIngress/Unicode domain"
+    "baseline-2026.2.0/config/configuration.go §4.2",
+    "baseline-2026.2.0/ingress/ingress_test.go::TestParseIngress/Unicode domain"
   ],
   "payload": {
     "source_kind": "discovered-path",

@@ -70,7 +70,7 @@ Preferred values:
 ## Audited Checklist
 
 This checklist was produced by source-level audit of the frozen Go baseline
-in [baseline-2026.2.0/old-impl/](../../../baseline-2026.2.0/old-impl/) and comparison against the current Rust HIS
+in [baseline-2026.2.0/](../../../baseline-2026.2.0/) and comparison against the current Rust HIS
 surface in [crates/cfdrs-cli/](../../../crates/cfdrs-cli/), [crates/cfdrs-shared/](../../../crates/cfdrs-shared/), and [crates/cfdrs-his/](../../../crates/cfdrs-his/).
 
 The frozen Go HIS surface uses direct syscalls, `os/exec` for systemd/SysV,
