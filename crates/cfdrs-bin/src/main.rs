@@ -15,8 +15,9 @@ use cfdrs_cli::{
     AccessSubcommand, CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command,
     DB_CONNECT_REMOVED_MSG, GlobalFlags, IngressSubcommand, IpRouteSubcommand, ManagementSubcommand,
     PROGRAM_NAME, PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG, RouteSubcommand, ServiceAction,
-    TUNNEL_CMD_ERROR_MSG, TailSubcommand, TunnelSubcommand, VnetSubcommand, parse_args, render_help,
-    render_short_version, render_version_output, stub_not_implemented,
+    TUNNEL_CMD_ERROR_MSG, TUNNEL_RUN_HOSTNAME_WARNING_MSG, TUNNEL_RUN_NARG_ERROR_MSG, TailSubcommand,
+    TunnelSubcommand, VnetSubcommand, parse_args, render_help, render_short_version, render_version_output,
+    stub_not_implemented, tunnel_run_usage_error,
 };
 use cfdrs_his::environment::current_executable;
 use cfdrs_his::service::{
@@ -69,7 +70,7 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::Service(ServiceAction::Install) => execute_service_install(&cli),
         Command::Service(ServiceAction::Uninstall) => execute_service_uninstall(),
 
-        Command::Tunnel(TunnelSubcommand::Run) => execute_startup_command(&cli, CliMode::Run),
+        Command::Tunnel(TunnelSubcommand::Run) => execute_tunnel_run(cli),
 
         // Go baseline: TunnelCommand() dispatch tree in cmd/cloudflared/tunnel/cmd.go
         Command::Tunnel(TunnelSubcommand::Bare) => execute_tunnel_bare(&cli),
@@ -168,6 +169,33 @@ fn execute_startup_command(cli: &Cli, mode: CliMode) -> CliOutput {
     }
 }
 
+/// Go baseline: `runCommand()` in subcommands.go lines 748–788.
+///
+/// Validation order (matching Go exactly):
+///   1. NArg > 1 → UsageError
+///   2. `--hostname` set → warning log (non-fatal)
+///   3. `--token` → `--token-file` → positional arg → config tunnel ID
+///   4. missing identity → UsageError
+fn execute_tunnel_run(cli: Cli) -> CliOutput {
+    let flags = &cli.flags;
+
+    // Step 1: NArg validation — Go rejects more than one positional arg.
+    if flags.rest_args.len() > 1 {
+        return CliOutput::failure(
+            String::new(),
+            tunnel_run_usage_error(TUNNEL_RUN_NARG_ERROR_MSG),
+            255,
+        );
+    }
+
+    // Steps 2–4: token resolution and identity check happen after config
+    // loading in execute_runtime_command / prepare_runtime_startup.
+    // Token-only mode (bypassing config entirely) requires startup path
+    // restructuring and is tracked as a remaining CLI-032 gap.
+
+    execute_startup_command(&cli, CliMode::Run)
+}
+
 /// Go baseline: TunnelCommand() dispatch tree in cmd/cloudflared/tunnel/cmd.go.
 ///
 /// Priority order:
@@ -228,6 +256,12 @@ fn execute_runtime_command(startup: StartupSurface, flags: &GlobalFlags) -> CliO
                 tracing::warn!("Your configuration file has unknown top-level keys: {:?}", keys,);
             }
         }
+    }
+
+    // Go baseline: runCommand() in subcommands.go line 757 — warn when
+    // --hostname is set but a Named Tunnel is configured.  Non-fatal.
+    if flags.hostname.is_some() {
+        tracing::warn!("{TUNNEL_RUN_HOSTNAME_WARNING_MSG}");
     }
 
     let report = runtime::run(runtime_config);
@@ -414,5 +448,67 @@ mod tests {
     fn runtime_command_label_for_service_install_stays_stable() {
         let label = full_command_label(&Command::Service(ServiceAction::Install));
         assert_eq!(label, "service install");
+    }
+
+    // --- CLI-032: tunnel run NArg validation ---
+
+    #[test]
+    fn tunnel_run_rejects_multiple_positional_args() {
+        // Go baseline: c.NArg() > 1 → UsageError (exit -1 = 255)
+        let output = execute(
+            ["cloudflared", "tunnel", "run", "arg1", "arg2"]
+                .into_iter()
+                .map(OsString::from),
+        );
+
+        assert_eq!(
+            output.exit_code, 255,
+            "Go baseline exit code is -1 (255 unsigned)"
+        );
+        assert!(
+            output.stderr.contains("accepts only one argument"),
+            "stderr must contain NArg error: {:?}",
+            output.stderr
+        );
+        assert!(
+            output.stderr.contains("See 'cloudflared tunnel run --help'."),
+            "stderr must contain help suffix: {:?}",
+            output.stderr
+        );
+    }
+
+    #[test]
+    fn tunnel_run_allows_single_positional_arg() {
+        // Go baseline: c.NArg() == 1 is the tunnel name/ID — valid
+        let output = execute(
+            ["cloudflared", "tunnel", "run", "my-tunnel"]
+                .into_iter()
+                .map(OsString::from),
+        );
+
+        // Should NOT get the NArg error (may get config discovery error, that's fine)
+        assert_ne!(
+            output.exit_code, 255,
+            "single positional arg must not trigger NArg rejection"
+        );
+        assert!(
+            !output.stderr.contains("accepts only one argument"),
+            "single positional arg must not trigger NArg error"
+        );
+    }
+
+    #[test]
+    fn tunnel_run_allows_zero_positional_args() {
+        // Go baseline: c.NArg() == 0 is valid (uses config tunnel ID or token)
+        let output = execute(["cloudflared", "tunnel", "run"].into_iter().map(OsString::from));
+
+        assert_ne!(
+            output.exit_code, 255,
+            "zero positional args must not trigger NArg rejection"
+        );
+        assert!(
+            !output.stderr.contains("accepts only one argument"),
+            "zero positional args must not trigger NArg error"
+        );
     }
 }

@@ -194,6 +194,43 @@ pub const CLASSIC_TUNNEL_DEPRECATED_MSG: &str =
     "Classic tunnels have been deprecated, please use Named Tunnels. \
      (https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/)\n";
 
+// --- Tunnel run validation messages (CLI-032) ---
+
+/// Go baseline: `cliutil.UsageError(...)` in runCommand(), subcommands.go line
+/// 754. NArg() > 1 → "accepts only one argument".
+pub const TUNNEL_RUN_NARG_ERROR_MSG: &str =
+    "\"cloudflared tunnel run\" accepts only one argument, the ID or name of the tunnel to run.";
+
+/// Go baseline: `cliutil.UsageError(...)` in runCommand(), subcommands.go line
+/// 778. ParseToken(tokenStr) fails → "Provided Tunnel token is not valid."
+pub const TUNNEL_TOKEN_INVALID_MSG: &str = "Provided Tunnel token is not valid.";
+
+/// Go baseline: `cliutil.UsageError(...)` in runCommand(), subcommands.go line
+/// 769. os.ReadFile(tokenFile) fails → "Failed to read token file: <err>".
+pub const TUNNEL_TOKEN_FILE_READ_ERROR_PREFIX: &str = "Failed to read token file: ";
+
+/// Go baseline: `cliutil.UsageError(...)` in runCommand(), subcommands.go line
+/// 786. No token, no positional arg, no config tunnel ID.
+pub const TUNNEL_RUN_IDENTITY_ERROR_MSG: &str = "\"cloudflared tunnel run\" requires the ID or name of the \
+                                                 tunnel to run as the last command line argument or in the \
+                                                 configuration file.";
+
+// --- Tunnel run hostname warning (CLI-027) ---
+
+/// Go baseline: `sc.log.Warn().Msg(...)` in runCommand(), subcommands.go line
+/// 757. Hostname set but Named Tunnel is configured.
+pub const TUNNEL_RUN_HOSTNAME_WARNING_MSG: &str =
+    "The property `hostname` in your configuration is ignored because you configured a Named Tunnel in the \
+     property `tunnel` to run. Make sure to provision the routing (e.g. via `cloudflared tunnel route \
+     dns/lb`) or else your origin will not be reachable. You should remove the `hostname` property to avoid \
+     this warning.";
+
+/// Go baseline: WithErrorHandler in cliutil/errors.go appends
+/// `\nSee 'cloudflared <command> --help'.` to every UsageError message.
+pub fn tunnel_run_usage_error(message: &str) -> String {
+    format!("{message}\nSee 'cloudflared tunnel run --help'.\n")
+}
+
 /// Go baseline: `tunnelCmdErrorMessage` in cmd/cloudflared/tunnel/cmd.go
 pub const TUNNEL_CMD_ERROR_MSG: &str = "\
 You did not specify any valid additional argument to the cloudflared tunnel command.
@@ -855,5 +892,49 @@ COMMANDS:\n\
         assert!(TUNNEL_CMD_ERROR_MSG.contains("--url"));
         assert!(TUNNEL_CMD_ERROR_MSG.contains("Quick Tunnels"));
         assert!(TUNNEL_CMD_ERROR_MSG.contains("Named Tunnels"));
+    }
+
+    // --- CLI-032: tunnel run validation messages ---
+
+    #[test]
+    fn tunnel_run_narg_error_matches_go_baseline() {
+        // Go: cliutil.UsageError(`"cloudflared tunnel run" accepts only one argument,
+        // ...`)
+        assert!(TUNNEL_RUN_NARG_ERROR_MSG.contains("accepts only one argument"));
+        assert!(TUNNEL_RUN_NARG_ERROR_MSG.contains("ID or name"));
+    }
+
+    #[test]
+    fn tunnel_token_invalid_matches_go_baseline() {
+        // Go: cliutil.UsageError("Provided Tunnel token is not valid.")
+        assert_eq!(TUNNEL_TOKEN_INVALID_MSG, "Provided Tunnel token is not valid.");
+    }
+
+    #[test]
+    fn tunnel_run_identity_error_matches_go_baseline() {
+        // Go: cliutil.UsageError(`"cloudflared tunnel run" requires the ID or name
+        // ...`)
+        assert!(TUNNEL_RUN_IDENTITY_ERROR_MSG.contains("requires the ID or name"));
+        assert!(TUNNEL_RUN_IDENTITY_ERROR_MSG.contains("last command line argument"));
+        assert!(TUNNEL_RUN_IDENTITY_ERROR_MSG.contains("configuration file"));
+    }
+
+    #[test]
+    fn tunnel_run_usage_error_appends_help_suffix() {
+        // Go: WithErrorHandler appends "\nSee 'cloudflared tunnel run --help'."
+        let msg = tunnel_run_usage_error("test error");
+        assert!(msg.contains("test error"));
+        assert!(msg.contains("See 'cloudflared tunnel run --help'."));
+    }
+
+    // --- CLI-027: tunnel run hostname warning ---
+
+    #[test]
+    fn tunnel_run_hostname_warning_matches_go_baseline() {
+        // Go: sc.log.Warn().Msg("The property `hostname` in your configuration is
+        // ignored ...")
+        assert!(TUNNEL_RUN_HOSTNAME_WARNING_MSG.contains("hostname"));
+        assert!(TUNNEL_RUN_HOSTNAME_WARNING_MSG.contains("Named Tunnel"));
+        assert!(TUNNEL_RUN_HOSTNAME_WARNING_MSG.contains("provision the routing"));
     }
 }
