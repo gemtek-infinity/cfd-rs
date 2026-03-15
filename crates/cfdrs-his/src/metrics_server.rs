@@ -145,6 +145,70 @@ pub fn parse_metrics_address(addr: &str) -> Option<SocketAddr> {
 /// Rust equivalent would be `pprof-rs` or a custom profiling endpoint.
 pub const PPROF_DEFERRED: bool = true;
 
+// --- HIS-027: Go baseline Prometheus metric name inventory ---
+//
+// 19 metrics total across 5 Go source files. Listed here so parity
+// tests can assert the expected registry surface without inspecting
+// the Go baseline repeatedly.
+
+/// Prometheus metric names from Go `metrics/metrics.go`.
+pub mod baseline_metrics {
+    // metrics/metrics.go (1)
+    pub const BUILD_INFO: &str = "build_info";
+
+    // connection/metrics.go (8)
+    pub const TUNNEL_MAX_CONCURRENT_REQUESTS: &str = "cloudflared_tunnel_max_concurrent_requests_per_tunnel";
+    pub const TUNNEL_SERVER_LOCATIONS: &str = "cloudflared_tunnel_server_locations";
+    pub const TUNNEL_RPC_FAIL: &str = "cloudflared_tunnel_tunnel_rpc_fail";
+    pub const TUNNEL_REGISTER_FAIL: &str = "cloudflared_tunnel_tunnel_register_fail";
+    pub const TUNNEL_USER_HOSTNAMES: &str = "cloudflared_tunnel_user_hostnames_counts";
+    pub const TUNNEL_REGISTER_SUCCESS: &str = "cloudflared_tunnel_tunnel_register_success";
+    pub const CONFIG_LOCAL_PUSHES: &str = "cloudflared_config_local_config_pushes";
+    pub const CONFIG_LOCAL_PUSHES_ERRORS: &str = "cloudflared_config_local_config_pushes_errors";
+
+    // connection/tunnelsforha.go (1)
+    pub const TUNNEL_IDS: &str = "tunnel_ids";
+
+    // supervisor/metrics.go (1)
+    pub const TUNNEL_HA_CONNECTIONS: &str = "cloudflared_tunnel_ha_connections";
+
+    // proxy/metrics.go (8)
+    pub const TUNNEL_TOTAL_REQUESTS: &str = "cloudflared_tunnel_total_requests";
+    pub const TUNNEL_CONCURRENT_REQUESTS: &str = "cloudflared_tunnel_concurrent_requests_per_tunnel";
+    pub const TUNNEL_RESPONSE_BY_CODE: &str = "cloudflared_tunnel_response_by_code";
+    pub const TUNNEL_REQUEST_ERRORS: &str = "cloudflared_tunnel_request_errors";
+    pub const TCP_ACTIVE_SESSIONS: &str = "cloudflared_tcp_active_sessions";
+    pub const TCP_TOTAL_SESSIONS: &str = "cloudflared_tcp_total_sessions";
+    pub const PROXY_CONNECT_LATENCY: &str = "cloudflared_proxy_connect_latency";
+    pub const PROXY_CONNECT_STREAMS_ERRORS: &str = "cloudflared_proxy_connect_streams_errors";
+
+    /// Total number of Go baseline Prometheus metrics.
+    pub const BASELINE_METRIC_COUNT: usize = 19;
+
+    /// All 19 Go baseline metric names for inventory assertion.
+    pub const ALL: [&str; BASELINE_METRIC_COUNT] = [
+        BUILD_INFO,
+        TUNNEL_MAX_CONCURRENT_REQUESTS,
+        TUNNEL_SERVER_LOCATIONS,
+        TUNNEL_RPC_FAIL,
+        TUNNEL_REGISTER_FAIL,
+        TUNNEL_USER_HOSTNAMES,
+        TUNNEL_REGISTER_SUCCESS,
+        CONFIG_LOCAL_PUSHES,
+        CONFIG_LOCAL_PUSHES_ERRORS,
+        TUNNEL_IDS,
+        TUNNEL_HA_CONNECTIONS,
+        TUNNEL_TOTAL_REQUESTS,
+        TUNNEL_CONCURRENT_REQUESTS,
+        TUNNEL_RESPONSE_BY_CODE,
+        TUNNEL_REQUEST_ERRORS,
+        TCP_ACTIVE_SESSIONS,
+        TCP_TOTAL_SESSIONS,
+        PROXY_CONNECT_LATENCY,
+        PROXY_CONNECT_STREAMS_ERRORS,
+    ];
+}
+
 // --- Trait-based server contract ---
 
 /// Trait that an HTTP metrics server must implement.
@@ -340,5 +404,66 @@ mod tests {
         assert!(config.get("ingress").is_some());
         assert!(config.get("warp-routing").is_some());
         assert!(config.get("originRequest").is_some());
+    }
+
+    // --- HIS-027: Go baseline Prometheus metric name inventory ---
+
+    #[test]
+    fn baseline_metric_inventory_has_19_entries() {
+        use super::baseline_metrics;
+
+        assert_eq!(baseline_metrics::ALL.len(), 19);
+        assert_eq!(baseline_metrics::BASELINE_METRIC_COUNT, 19);
+    }
+
+    #[test]
+    fn baseline_metric_names_are_unique() {
+        use super::baseline_metrics;
+        use std::collections::HashSet;
+
+        let set: HashSet<&str> = baseline_metrics::ALL.iter().copied().collect();
+        assert_eq!(
+            set.len(),
+            baseline_metrics::ALL.len(),
+            "duplicate metric name in inventory"
+        );
+    }
+
+    #[test]
+    fn baseline_build_info_has_no_namespace() {
+        // Go registers `build_info` without the `cloudflared_` namespace prefix.
+        use super::baseline_metrics;
+
+        assert_eq!(baseline_metrics::BUILD_INFO, "build_info");
+        assert!(!baseline_metrics::BUILD_INFO.starts_with("cloudflared_"));
+    }
+
+    #[test]
+    fn baseline_tunnel_ids_has_no_namespace() {
+        // Go registers `tunnel_ids` without a namespace prefix.
+        use super::baseline_metrics;
+
+        assert_eq!(baseline_metrics::TUNNEL_IDS, "tunnel_ids");
+        assert!(!baseline_metrics::TUNNEL_IDS.starts_with("cloudflared_"));
+    }
+
+    #[test]
+    fn baseline_namespaced_metrics_all_start_with_cloudflared() {
+        use super::baseline_metrics;
+
+        let namespaced: Vec<&str> = baseline_metrics::ALL
+            .iter()
+            .copied()
+            .filter(|name| *name != baseline_metrics::BUILD_INFO && *name != baseline_metrics::TUNNEL_IDS)
+            .collect();
+
+        assert_eq!(namespaced.len(), 17);
+
+        for name in &namespaced {
+            assert!(
+                name.starts_with("cloudflared_"),
+                "expected cloudflared_ prefix on {name}"
+            );
+        }
     }
 }

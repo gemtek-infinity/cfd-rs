@@ -2,6 +2,7 @@ use tokio::sync::mpsc;
 use tokio::time;
 use tokio_util::sync::CancellationToken;
 
+use super::datagram::{DatagramSessionManager, dispatch_datagram};
 use super::edge::QuicEdgeTarget;
 use super::identity::TransportIdentity;
 use super::session::{QuicSessionState, flush_egress};
@@ -43,8 +44,10 @@ impl QuicTunnelService {
         // Phase 5.1: Enter the stream-serving loop. Accept incoming QUIC
         // data streams from the edge, parse ConnectRequest metadata, and
         // forward them to the proxy layer through the protocol bridge.
+        // CDC-040/041: Also handle V3 QUIC datagrams for UDP session proxying.
+        let datagram_manager = DatagramSessionManager::new();
         let exit = self
-            .serve_streams(&mut session, &target, command_tx, shutdown)
+            .serve_streams(&mut session, &target, command_tx, shutdown, &datagram_manager)
             .await;
 
         // CDC-019: Signal Unregistering on graceful shutdown before teardown.
@@ -404,6 +407,7 @@ impl QuicTunnelService {
         target: &QuicEdgeTarget,
         command_tx: &mpsc::Sender<RuntimeCommand>,
         shutdown: CancellationToken,
+        datagram_manager: &DatagramSessionManager,
     ) -> ServiceExit {
         super::send_transport_stage(
             command_tx,
@@ -436,6 +440,12 @@ impl QuicTunnelService {
             streams_accepted += self
                 .process_readable_streams(session, &mut stream_buf, streams_accepted, command_tx)
                 .await;
+
+            // CDC-040/041: Drain pending QUIC datagrams and dispatch them
+            // through the session manager. Matches Go's
+            // `datagramConn.Serve()` receive loop in `quic/v3/muxer.go`.
+            let conn_index = u8::try_from(self.attempt).unwrap_or(u8::MAX);
+            self.drain_datagrams(session, conn_index, datagram_manager);
 
             self.drain_pending_responses(session);
 
@@ -488,6 +498,40 @@ impl QuicTunnelService {
         }
 
         accepted
+    }
+
+    /// Drain all pending QUIC datagrams from the connection and dispatch
+    /// them through the V3 session manager.
+    ///
+    /// Matches Go's `datagramConn.Serve()` receive → dispatch loop in
+    /// `quic/v3/muxer.go`. Response datagrams (session registration acks)
+    /// are sent back through the same QUIC connection.
+    fn drain_datagrams(
+        &self,
+        session: &mut QuicSessionState,
+        conn_index: u8,
+        datagram_manager: &DatagramSessionManager,
+    ) {
+        let mut dgram_buf = [0u8; cfdrs_cdc::datagram::MAX_DATAGRAM_PAYLOAD_LEN];
+
+        loop {
+            match session.connection.dgram_recv(&mut dgram_buf) {
+                Ok(len) => {
+                    if let Some(response) = dispatch_datagram(&dgram_buf[..len], conn_index, datagram_manager)
+                    {
+                        // Best-effort: if the send fails the response is lost,
+                        // matching Go's behavior where send errors are logged
+                        // but do not stop the muxer loop.
+                        let _ = session.connection.dgram_send(&response);
+                    }
+                }
+                Err(quiche::Error::Done) => break,
+                Err(error) => {
+                    tracing::warn!(%error, "error receiving QUIC datagram");
+                    break;
+                }
+            }
+        }
     }
 
     /// Try to read and parse a ConnectRequest from a single QUIC stream.
@@ -728,7 +772,7 @@ fn build_registration_request(
     let mut options =
         ConnectionOptions::for_current_platform(identity.tunnel_id, u8::try_from(attempt).unwrap_or(u8::MAX));
     options.origin_local_ip = Some(local_addr.ip());
-    options.client.features = cfdrs_cdc::features::dedup_and_filter(&options.client.features);
+    options.client.features = cfdrs_cdc::features::build_feature_list(true, false);
 
     Some(RegisterConnectionRequest {
         auth: TunnelAuth {

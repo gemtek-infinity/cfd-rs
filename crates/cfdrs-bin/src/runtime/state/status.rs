@@ -82,6 +82,12 @@ pub(in crate::runtime) struct RuntimeStatus {
     pub(in crate::runtime) proxy_state: Option<ProxySeamState>,
     pub(in crate::runtime) proxy_admissions: u32,
     pub(in crate::runtime) protocol_registrations: u32,
+    /// Number of currently active tunnel connections.
+    ///
+    /// Matches Go `ConnTracker.CountActiveConns()` semantics:
+    /// incremented on `RegistrationObserved`, decremented on
+    /// `Reconnecting`, `Unregistering`, or `BridgeClosed`.
+    pub(in crate::runtime) active_connections: u32,
     pub(in crate::runtime) transport_failures: u32,
     pub(in crate::runtime) failure_events: u32,
     pub(in crate::runtime) restart_budget_max: u32,
@@ -113,6 +119,7 @@ impl RuntimeStatus {
             proxy_state: None,
             proxy_admissions: 0,
             protocol_registrations: 0,
+            active_connections: 0,
             transport_failures: 0,
             failure_events: 0,
             restart_budget_max: 0,
@@ -235,8 +242,18 @@ impl RuntimeStatus {
         state: ProtocolBridgeState,
         detail: impl Into<String>,
     ) {
+        let was_connected = self.protocol_state == ProtocolBridgeState::RegistrationObserved;
+        let is_connected = state == ProtocolBridgeState::RegistrationObserved;
+
         self.protocol_state = state;
-        self.protocol_registrations += u32::from(state == ProtocolBridgeState::RegistrationObserved);
+        self.protocol_registrations += u32::from(is_connected);
+
+        // Track active connection count matching Go ConnTracker semantics.
+        if !was_connected && is_connected {
+            self.active_connections = self.active_connections.saturating_add(1);
+        } else if was_connected && !is_connected {
+            self.active_connections = self.active_connections.saturating_sub(1);
+        }
 
         let detail = detail.into();
         self.summary_lines.push(format!("protocol-state: {state}"));
@@ -276,5 +293,85 @@ fn initial_protocol_state(protocol_bridge_present: bool) -> ProtocolBridgeState 
         ProtocolBridgeState::BridgeCreated
     } else {
         ProtocolBridgeState::BridgeUnavailable
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- HIS-025: active_connections tracks Go ConnTracker semantics ---
+
+    #[test]
+    fn active_connections_increments_on_registration() {
+        let mut status = RuntimeStatus::new(true);
+
+        assert_eq!(status.active_connections, 0);
+
+        status.record_protocol_state(ProtocolBridgeState::RegistrationSent, "sent");
+        assert_eq!(status.active_connections, 0);
+
+        status.record_protocol_state(ProtocolBridgeState::RegistrationObserved, "registered");
+        assert_eq!(status.active_connections, 1);
+    }
+
+    #[test]
+    fn active_connections_decrements_on_disconnect() {
+        let mut status = RuntimeStatus::new(true);
+
+        status.record_protocol_state(ProtocolBridgeState::RegistrationObserved, "registered");
+        assert_eq!(status.active_connections, 1);
+
+        status.record_protocol_state(ProtocolBridgeState::Reconnecting, "reconnecting");
+        assert_eq!(status.active_connections, 0);
+    }
+
+    #[test]
+    fn active_connections_decrements_on_unregistering() {
+        let mut status = RuntimeStatus::new(true);
+
+        status.record_protocol_state(ProtocolBridgeState::RegistrationObserved, "registered");
+        assert_eq!(status.active_connections, 1);
+
+        status.record_protocol_state(ProtocolBridgeState::Unregistering, "unregistering");
+        assert_eq!(status.active_connections, 0);
+    }
+
+    #[test]
+    fn active_connections_decrements_on_bridge_closed() {
+        let mut status = RuntimeStatus::new(true);
+
+        status.record_protocol_state(ProtocolBridgeState::RegistrationObserved, "registered");
+        assert_eq!(status.active_connections, 1);
+
+        status.record_protocol_state(ProtocolBridgeState::BridgeClosed, "closed");
+        assert_eq!(status.active_connections, 0);
+    }
+
+    #[test]
+    fn active_connections_does_not_underflow() {
+        let mut status = RuntimeStatus::new(true);
+
+        // Double disconnect should saturate at 0, not underflow.
+        status.record_protocol_state(ProtocolBridgeState::RegistrationObserved, "registered");
+        status.record_protocol_state(ProtocolBridgeState::Reconnecting, "reconnecting");
+        status.record_protocol_state(ProtocolBridgeState::Reconnecting, "already disconnected");
+        assert_eq!(status.active_connections, 0);
+    }
+
+    #[test]
+    fn active_connections_register_disconnect_cycle() {
+        let mut status = RuntimeStatus::new(true);
+
+        // Register → disconnect → re-register matches Go's event cycle.
+        status.record_protocol_state(ProtocolBridgeState::RegistrationObserved, "first");
+        assert_eq!(status.active_connections, 1);
+
+        status.record_protocol_state(ProtocolBridgeState::Reconnecting, "reconnect");
+        assert_eq!(status.active_connections, 0);
+
+        status.record_protocol_state(ProtocolBridgeState::RegistrationObserved, "second");
+        assert_eq!(status.active_connections, 1);
+        assert_eq!(status.protocol_registrations, 2);
     }
 }

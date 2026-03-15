@@ -13,7 +13,7 @@ use cfdrs_his::metrics_server::{
 use serde_json::json;
 
 use super::RuntimeConfig;
-use super::state::{ReadinessState, RuntimeStatus};
+use super::state::RuntimeStatus;
 
 /// Maximum HTTP request buffer size for the metrics server.
 const HTTP_REQUEST_BUFFER_SIZE: usize = 2048;
@@ -36,7 +36,7 @@ pub(super) struct RuntimeMetricsHandle {
 
 impl RuntimeMetricsHandle {
     pub(super) fn start(config: &RuntimeConfig) -> Result<Self, String> {
-        let listener = bind_metrics_listener(config.metrics_bind_address())?;
+        let listener = bind_metrics_listener(config.metrics_bind_address(), config.is_container_runtime())?;
         let actual_address = listener
             .local_addr()
             .map_err(|error| format!("metrics listener local address unavailable: {error}"))?;
@@ -71,7 +71,10 @@ impl RuntimeMetricsHandle {
     }
 
     pub(super) fn sync_from_status(&self, status: &RuntimeStatus) {
-        let ready_connections = u32::from(status.readiness_state == ReadinessState::Ready);
+        // Use active_connections to match Go ConnTracker.CountActiveConns()
+        // semantics: report the number of currently registered tunnel
+        // connections, not a binary ready/not-ready flag.
+        let ready_connections = status.active_connections;
 
         if let Ok(mut snapshot) = self.snapshot.lock() {
             snapshot.ready_connections = ready_connections;
@@ -89,10 +92,13 @@ impl RuntimeMetricsHandle {
     }
 }
 
-fn bind_metrics_listener(explicit_bind: Option<SocketAddr>) -> Result<TcpListener, String> {
+fn bind_metrics_listener(
+    explicit_bind: Option<SocketAddr>,
+    is_container: bool,
+) -> Result<TcpListener, String> {
     let mut last_error = None;
 
-    for candidate in metrics_candidates(explicit_bind) {
+    for candidate in metrics_candidates(explicit_bind, is_container) {
         match TcpListener::bind(candidate) {
             Ok(listener) => return Ok(listener),
             Err(error) => last_error = Some(format!("{candidate}: {error}")),
@@ -105,18 +111,18 @@ fn bind_metrics_listener(explicit_bind: Option<SocketAddr>) -> Result<TcpListene
     ))
 }
 
-fn metrics_candidates(explicit_bind: Option<SocketAddr>) -> Vec<SocketAddr> {
+fn metrics_candidates(explicit_bind: Option<SocketAddr>, is_container: bool) -> Vec<SocketAddr> {
     if let Some(address) = explicit_bind {
         return vec![address];
     }
 
     let mut candidates = Vec::with_capacity(1 + metrics_server::KNOWN_METRICS_PORTS.len());
     let default_address =
-        metrics_server::parse_metrics_address(metrics_server::default_metrics_address(false))
+        metrics_server::parse_metrics_address(metrics_server::default_metrics_address(is_container))
             .expect("default metrics address should parse");
 
     candidates.push(default_address);
-    candidates.extend(metrics_server::known_metrics_addresses(false));
+    candidates.extend(metrics_server::known_metrics_addresses(is_container));
     candidates
 }
 
@@ -322,9 +328,23 @@ mod tests {
 
     #[test]
     fn default_metrics_candidates_include_known_ports() {
-        let candidates = metrics_candidates(None);
+        let candidates = metrics_candidates(None, false);
         assert!(candidates.iter().any(|candidate| candidate.port() == 0));
         assert!(candidates.iter().any(|candidate| candidate.port() == 20241));
+    }
+
+    #[test]
+    fn container_metrics_candidates_bind_to_all_interfaces() {
+        let candidates = metrics_candidates(None, true);
+
+        assert!(candidates.iter().any(|candidate| candidate.port() == 0));
+
+        for candidate in &candidates {
+            assert!(
+                candidate.ip().is_unspecified(),
+                "container mode should bind to 0.0.0.0, got {candidate}"
+            );
+        }
     }
 
     #[test]
@@ -411,6 +431,26 @@ mod tests {
                 .body
                 .contains("\"log_directory\":\"/var/log/cloudflared\"")
         );
+    }
+
+    #[test]
+    fn healthcheck_endpoint_returns_ok_text_plain() {
+        let snapshot = Arc::new(Mutex::new(MetricsSnapshot {
+            connector_id: uuid::Uuid::nil(),
+            ready_connections: 0,
+            build_info: runtime_build_info(),
+            config_response: ConfigResponse {
+                version: 1,
+                config: json!({}),
+            },
+            diagnostic_configuration: BTreeMap::new(),
+        }));
+
+        let response = build_response("/healthcheck", &snapshot);
+
+        assert_eq!(response.status, 200);
+        assert_eq!(response.content_type, "text/plain; charset=utf-8");
+        assert_eq!(response.body, "OK\n");
     }
 
     #[test]

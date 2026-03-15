@@ -89,7 +89,7 @@ dispatch via `reqwest` performs real round-trips. All six lifecycle events
 | CDC-003 | registration response contract | `ConnectionResponse` union: `error(ConnectionError)` or `connectionDetails(ConnectionDetails)`. `ConnectionError` has `cause`, `retryAfter` (Int64 ns), `shouldRetry` (Bool). `ConnectionDetails` has `uuid`, `locationName`, `tunnelIsRemotelyManaged` | success returns `ConnectionDetails`; error returns structured `ConnectionError` with retry semantics | cfdrs-cdc `registration.rs`, `registration_codec.rs` | audited, parity-backed | local tests | closed | response golden tests, error retry-semantics tests, ConnectionError field tests | high | `ConnectionResponse` is union enum (Success/Error). `ConnectionError` has `retry_after_ns` (i64) and `should_retry` (bool). Cap'n Proto codec with `marshal_capnp`/`unmarshal_capnp` and round-trip tests. Runtime wired: `await_registration_response` in `lifecycle.rs` decodes `ConnectionResponse` and handles both Success and Error variants with retry logic. |
 | CDC-004 | ClientInfo nesting and fields | `ClientInfo` struct: `clientId` (Data, 16-byte UUID), `features` (List(Text)), `version` (Text), `arch` (Text). Nested inside `ConnectionOptions.client` | registration sends client identity with UUID and capability list | cfdrs-cdc `registration.rs`, `registration_codec.rs` | audited, parity-backed | local tests | closed | clientId UUID tests, features list tests, nesting shape tests | high | `ClientInfo` has `client_id` (UUID), `features` (Vec), `version`, `arch`; nested in `ConnectionOptions.client`. `for_current_platform()` constructor. Cap'n Proto codec with `marshal_capnp`/`unmarshal_capnp` and round-trip tests. Runtime wired: `build_registration_request` in `lifecycle.rs` uses `ConnectionOptions::for_current_platform()`. |
 | CDC-005 | ConnectionOptions full field set | `ConnectionOptions`: `client` (ClientInfo), `originLocalIp` (Data), `replaceExisting` (Bool), `compressionQuality` (UInt8), `numPreviousAttempts` (UInt8) | all fields sent to edge during registration | cfdrs-cdc `registration.rs`, `registration_codec.rs` | audited, parity-backed | local tests | closed | field-level tests, default-value tests | high | Full field set: `client` (ClientInfo), `origin_local_ip`, `replace_existing`, `compression_quality`, `num_previous_attempts`. `for_current_platform()` constructor. Cap'n Proto codec with `marshal_capnp`/`unmarshal_capnp` and round-trip tests including IPv4/IPv6. Runtime wired: `build_registration_request` in `lifecycle.rs` uses `ConnectionOptions::for_current_platform()` and sets `origin_local_ip`. |
-| CDC-006 | feature flags sent during registration | `ConnectionOptions.Client.Features`: default set `allow_remote_config`, `serialized_headers`, `support_datagram_v2`, `support_quic_eof`, `management_logs`; selector-added: `support_datagram_v3_2`, `postquantum`; CLI-passthrough only: `quick_reconnects`; deprecated (filtered before send): `support_datagram_v3`, `support_datagram_v3_1` | capability list negotiates edge behavior at registration time | cfdrs-cdc `features.rs` | audited, parity-backed | local tests | none recorded | feature list tests, deprecated-feature filtering tests, selector logic tests | high | All feature flag constants match baseline. `default_feature_list()` returns 5 always-on features. `dedup_and_filter()` removes deprecated features and deduplicates. 3 tests. Feature selector integration with datagram version selection pending (depends on CDC-040/041). |
+| CDC-006 | feature flags sent during registration | `ConnectionOptions.Client.Features`: default set `allow_remote_config`, `serialized_headers`, `support_datagram_v2`, `support_quic_eof`, `management_logs`; selector-added: `support_datagram_v3_2`, `postquantum`; CLI-passthrough only: `quick_reconnects`; deprecated (filtered before send): `support_datagram_v3`, `support_datagram_v3_1` | capability list negotiates edge behavior at registration time | cfdrs-cdc `features.rs` | audited, parity-backed | local tests | closed | feature list tests, deprecated-feature filtering tests, selector logic tests | high | All feature flag constants match baseline. `default_feature_list()` returns 5 always-on features. `dedup_and_filter()` removes deprecated features and deduplicates. `build_feature_list(datagram_v3, post_quantum)` selector function matches Go `FeatureSnapshot.FeaturesList` construction: starts from defaults, conditionally adds `support_datagram_v3_2` and `postquantum`, then dedup-filters. 8 tests. Runtime wired: `build_registration_request` in `lifecycle.rs` calls `build_feature_list(true, false)`. |
 | CDC-007 | unregisterConnection RPC | `RegistrationServer.unregisterConnection()` | graceful shutdown over control stream with configurable grace period | cfdrs-cdc `registration.rs`, `rpc_dispatch.rs` | audited, partial | local tests | open gap | graceful shutdown tests, grace period tests | medium | `UnregisterConnectionRequest` type, `RegistrationClient::unregister_connection()` capnp-rpc client wrapper with local-dispatch test. RPC dispatch layer complete. Runtime call-site requires capnp-rpc transport on the control stream (current control stream uses raw `capnp::serialize` without an `RpcSystem`). Closure path: refactor control stream to use `capnp_rpc::RpcSystem` with quiche-backed two-party transport, then call `RegistrationClient::unregister_connection()` during graceful shutdown. |
 | CDC-008 | updateLocalConfiguration RPC | `RegistrationServer.updateLocalConfiguration(config: Data)` | pushes tunnel config to edge on connIndex==0 when not remotely managed | cfdrs-cdc `registration.rs`, `registration_codec.rs`, `rpc_dispatch.rs` | audited, parity-backed | local tests | closed | config push tests, connIndex==0 guard tests | medium | `UpdateLocalConfigurationRequest` type with `from_config_bytes()` and `to_capnp_bytes()` codec helpers, `RegistrationClient::update_local_configuration()` capnp-rpc client wrapper with local-dispatch test, 3 codec tests. Runtime wired: `send_local_configuration` in `lifecycle.rs` creates the request, calls `to_capnp_bytes()`, writes to control stream with `fin=false`, and emits `ConfigPushed`. connIndex==0 and `!is_remotely_managed` guards enforced at call-site in `await_registration_response` (L315). Current wire path uses raw `capnp::serialize`; capnp-rpc transport path available in `RegistrationClient` for future upgrade. |
 | CDC-009 | SessionManager interface | `SessionManager.registerUdpSession()` and `unregisterUdpSession()` | UDP session lifecycle over Cap'n Proto RPC | cfdrs-cdc `registration.rs`, `registration_codec.rs`, `rpc_dispatch.rs` | audited, parity-backed | local tests | closed | session registration tests, session cleanup tests | high | `SessionManagerHandler` trait with `register_udp_session`/`unregister_udp_session` methods. `CloudflaredServerDispatch` implements the generated `session_manager::Server` with capnp→domain param translation, handler invocation, and `marshal_capnp` response encoding. 5 codec tests + 2 capnp-rpc local-dispatch tests (register, unregister). Full RPC interface contract closed. |
@@ -153,8 +153,8 @@ dispatch via `reqwest` performs real round-trips. All six lifecycle events
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-040 | datagram V2 wire contract | `datagramsession/` and `SessionManager` RPC | session registration via Cap'n Proto RPC, payload via `DatagramMuxerV2` | `cfdrs-cdc/src/datagram.rs` | audited, partial | local tests | open gap | session lifecycle tests, muxer tests | high | V2 session types, constants, and `format_session_id()` implemented with baseline-matching parity tests; session lifecycle runtime remains open |
-| CDC-041 | datagram V3 wire contract | `quic/v3/` and inline registration | inline binary datagram registration (type 0x0=register, 0x1=payload, 0x2=ICMP, 0x3=response); response codes: OK, DestinationUnreachable, UnableToBindSocket, TooManyActiveFlows, ErrorWithMsg | `cfdrs-cdc/src/datagram.rs` | audited, partial | local tests | open gap | datagram type tests, response code tests, inline registration tests | medium | `RequestId`, `DatagramType`, all four datagram structs with binary wire marshal/unmarshal, `SessionRegistrationResp`, `SessionError`, and `SessionIdleErr` implemented with 26 parity tests; session manager runtime remains open |
+| CDC-040 | datagram V2 wire contract | `datagramsession/` and `SessionManager` RPC | session registration via Cap'n Proto RPC, payload via `DatagramMuxerV2` | `cfdrs-cdc/src/datagram.rs`, `cfdrs-bin/src/transport/quic/datagram.rs` | audited, parity-backed | local tests | closed | session lifecycle tests, muxer tests | high | V2 session types, constants, and `format_session_id()` implemented with baseline-matching parity tests. Runtime wired: `DatagramSessionManager` in `cfdrs-bin` implements CDC `SessionManager` trait with `register_session`/`get_session`/`unregister_session`. `dispatch_datagram()` routes by `DatagramType`. `drain_datagrams()` in `lifecycle.rs` loops `dgram_recv`/`dgram_send` in the `serve_streams` loop. Datagrams enabled in quiche config via `enable_dgram(true, 16, 16)`. 12 runtime tests. |
+| CDC-041 | datagram V3 wire contract | `quic/v3/` and inline registration | inline binary datagram registration (type 0x0=register, 0x1=payload, 0x2=ICMP, 0x3=response); response codes: OK, DestinationUnreachable, UnableToBindSocket, TooManyActiveFlows, ErrorWithMsg | `cfdrs-cdc/src/datagram.rs`, `cfdrs-bin/src/transport/quic/datagram.rs` | audited, parity-backed | local tests | closed | datagram type tests, response code tests, inline registration tests | medium | `RequestId`, `DatagramType`, all four datagram structs with binary wire marshal/unmarshal, `SessionRegistrationResp`, `SessionError`, and `SessionIdleErr` implemented with 26 CDC parity tests. Runtime wired: `DatagramSessionManager` dispatches registration/payload/ICMP/unknown types matching Go `datagramConn.Serve()` switch. Registration responses are sent back via `dgram_send`. 12 runtime tests. Session manager runtime closed; real UDP forwarding deferred to HIS. |
 
 ### Token And Credential Encoding
 
@@ -301,13 +301,14 @@ Previously noted structural divergences and their current state:
 
 ### Gap ranking by priority
 
-Closed rows (24 of 44):
+Closed rows (27 of 44):
 
 - CDC-001: registration schema — closed
 - CDC-002: registration wire encoding — closed
 - CDC-003: registration response — closed
 - CDC-004: ClientInfo nesting — closed
 - CDC-005: ConnectionOptions full field set — closed
+- CDC-006: feature flags — closed
 - CDC-008: updateLocalConfiguration RPC — closed
 - CDC-009: SessionManager — closed
 - CDC-010: ConfigurationManager — closed
@@ -327,6 +328,8 @@ Closed rows (24 of 44):
 - CDC-042: tunnel token encoding — closed
 - CDC-043: origin cert encoding — closed
 - CDC-044: QUIC ALPN protocol — closed
+- CDC-040: datagram V2 — closed
+- CDC-041: datagram V3 — closed
 
 Open critical (5):
 
@@ -336,17 +339,14 @@ Open critical (5):
 - CDC-033: tunnel CRUD API (partial — resource types with Go JSON matching; HTTP client absent)
 - CDC-034: API response envelope (partial — envelope types with 8 tests; HTTP client absent)
 
-Open high (9):
+Open high (6):
 
-- CDC-006: feature flags (partial — constants and filtering done; selector integration pending CDC-040/041)
 - CDC-007: unregisterConnection RPC (partial — RPC dispatch layer complete; runtime call-site requires capnp-rpc transport on control stream)
 - CDC-025: host details contract (partial — `HostDetailsResponse` type and 4 tests; endpoint handler absent)
 - CDC-029: readiness endpoint (partial — runtime serves `/ready`; CDC column defers to HIS+runtime)
 - CDC-035: API auth and headers (partial — constants defined; HTTP client with auth injection absent)
 - CDC-036: IP route API (partial — resource types; HTTP client absent)
 - CDC-038: management token API (partial — `ManagementResource` enum; HTTP client absent)
-- CDC-040: datagram V2 (partial — V2 wire types and tests; session lifecycle runtime open)
-- CDC-041: datagram V3 (partial — all datagram structs with 26 tests; session manager runtime open)
 
 Open medium (6):
 

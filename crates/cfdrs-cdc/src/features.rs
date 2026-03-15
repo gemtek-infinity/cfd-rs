@@ -81,6 +81,29 @@ pub fn dedup_and_filter(features: &[String]) -> Vec<String> {
     result
 }
 
+/// Build a registration feature list based on runtime capabilities.
+///
+/// Starts from the always-on defaults, adds `support_datagram_v3_2`
+/// when V3 datagram support is active, adds `postquantum` when
+/// post-quantum mode is requested, and then deduplicates / filters
+/// deprecated entries.
+///
+/// Matches Go's `FeatureSnapshot.FeaturesList` construction in
+/// `features/features.go`.
+pub fn build_feature_list(datagram_v3: bool, post_quantum: bool) -> Vec<String> {
+    let mut features = default_feature_list();
+
+    if datagram_v3 {
+        features.push(DATAGRAM_V3_2.to_owned());
+    }
+
+    if post_quantum {
+        features.push(POST_QUANTUM.to_owned());
+    }
+
+    dedup_and_filter(&features)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -121,5 +144,38 @@ mod tests {
         let filtered = dedup_and_filter(&input);
 
         assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn build_feature_list_defaults_only() {
+        let features = build_feature_list(false, false);
+        assert_eq!(features.len(), 5);
+        assert!(features.contains(&DATAGRAM_V2.to_owned()));
+        assert!(!features.contains(&DATAGRAM_V3_2.to_owned()));
+        assert!(!features.contains(&POST_QUANTUM.to_owned()));
+    }
+
+    #[test]
+    fn build_feature_list_with_datagram_v3() {
+        let features = build_feature_list(true, false);
+        assert!(features.contains(&DATAGRAM_V3_2.to_owned()));
+        assert!(features.contains(&DATAGRAM_V2.to_owned()));
+        assert_eq!(features.len(), 6);
+    }
+
+    #[test]
+    fn build_feature_list_with_post_quantum() {
+        let features = build_feature_list(false, true);
+        assert!(features.contains(&POST_QUANTUM.to_owned()));
+        assert!(!features.contains(&DATAGRAM_V3_2.to_owned()));
+        assert_eq!(features.len(), 6);
+    }
+
+    #[test]
+    fn build_feature_list_with_all_selectors() {
+        let features = build_feature_list(true, true);
+        assert!(features.contains(&DATAGRAM_V3_2.to_owned()));
+        assert!(features.contains(&POST_QUANTUM.to_owned()));
+        assert_eq!(features.len(), 7);
     }
 }

@@ -22,6 +22,11 @@ pub(crate) struct RuntimeConfig {
     shutdown_grace_period: Option<Duration>,
     pidfile_path: Option<PathBuf>,
     metrics_bind_address: Option<SocketAddr>,
+    /// Whether this binary runs in a container ("virtual") runtime.
+    ///
+    /// Matches Go compile-time `metrics.Runtime` variable. When true,
+    /// the metrics server binds to `0.0.0.0` instead of `localhost`.
+    is_container_runtime: bool,
     diagnostic_configuration: BTreeMap<String, String>,
 }
 
@@ -34,6 +39,7 @@ impl RuntimeConfig {
             shutdown_grace_period: None,
             pidfile_path: None,
             metrics_bind_address: None,
+            is_container_runtime: false,
             diagnostic_configuration: BTreeMap::new(),
         }
     }
@@ -87,6 +93,10 @@ impl RuntimeConfig {
 
     pub(super) fn metrics_bind_address(&self) -> Option<SocketAddr> {
         self.metrics_bind_address
+    }
+
+    pub(super) fn is_container_runtime(&self) -> bool {
+        self.is_container_runtime
     }
 
     pub(crate) fn diagnostic_configuration(&self) -> &BTreeMap<String, String> {

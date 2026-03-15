@@ -11,6 +11,7 @@ use crate::runtime::{
     ChildTask, RuntimeCommand, RuntimeConfig, RuntimeService, RuntimeServiceFactory, ServiceExit,
 };
 
+mod datagram;
 mod edge;
 mod identity;
 mod lifecycle;

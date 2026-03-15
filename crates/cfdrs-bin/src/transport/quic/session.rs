@@ -10,6 +10,14 @@ use super::edge::{PeerVerification, QuicEdgeTarget, wildcard_bind_addr};
 const EDGE_QUIC_ALPN: &[&[u8]] = &[cfdrs_cdc::protocol::EDGE_QUIC_ALPN.as_bytes()];
 const QUIC_IDLE_TIMEOUT_MS: u64 = 30_000;
 
+/// Datagram receive queue capacity.
+///
+/// Matches Go's `demuxChanCapacity` (16) in `quic/v3/muxer.go`.
+const DGRAM_RECV_QUEUE_LEN: usize = 16;
+
+/// Datagram send queue capacity.
+const DGRAM_SEND_QUEUE_LEN: usize = 16;
+
 pub(super) struct QuicSessionState {
     pub(super) socket: UdpSocket,
     pub(super) local_addr: SocketAddr,
@@ -85,6 +93,7 @@ pub(super) fn build_quiche_config(target: &QuicEdgeTarget) -> Result<quiche::Con
     config.set_initial_max_streams_bidi(32);
     config.set_initial_max_streams_uni(32);
     config.set_disable_active_migration(true);
+    config.enable_dgram(true, DGRAM_RECV_QUEUE_LEN, DGRAM_SEND_QUEUE_LEN);
 
     Ok(config)
 }
