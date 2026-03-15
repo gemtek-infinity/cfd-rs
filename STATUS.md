@@ -29,7 +29,7 @@ What exists now:
 
 What does not exist yet:
 
-- Cap'n Proto RPC dispatch (capnp-rpc crate not yet admitted) for unregisterConnection, registerUdpSession/unregisterUdpSession, and updateConfiguration
+- Cap'n Proto RPC dispatch (capnp-rpc admitted, dispatch not yet wired) for unregisterConnection, registerUdpSession/unregisterUdpSession, and updateConfiguration
 - management service, log streaming, Cloudflare REST API client, and management-token workflows
 - broad CLI behavioral parity: root service-mode runtime, tunnel/access/tail/service/update behavioral implementations behind parsed stubs
 - service install/uninstall: `CommandRunner` trait integration and command dispatch are wired and parity-tested; real host `systemctl` execution not yet verified end-to-end

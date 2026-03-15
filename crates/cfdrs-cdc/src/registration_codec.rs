@@ -291,7 +291,7 @@ impl RegisterUdpSessionResponse {
 //   registerUdpSession(sessionId: Data, dstIp: Data, dstPort: UInt16,
 //                      closeAfterIdleHint: Int64, traceContext: Text)
 // We provide encode/decode over a raw capnp message for testing and
-// downstream codec reuse when capnp-rpc is admitted.
+// downstream codec reuse now that capnp-rpc is admitted.
 // ---------------------------------------------------------------------------
 
 impl RegisterUdpSessionRequest {
