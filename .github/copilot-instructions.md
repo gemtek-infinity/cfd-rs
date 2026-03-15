@@ -20,8 +20,8 @@ Do not load broad top-level docs by default.
 - do not claim parity from Rust code shape alone
 - use frozen baseline code/tests first for behavior truth
 - keep scope bounded to one owning domain when possible
-- `GCFGR.md` is optional local handoff state only; [`STATUS.md`](../STATUS.md) wins
-- format Rust with `cargo +nightly fmt`, not plain `cargo fmt`
+- always reconcile [`STATUS.md`](../STATUS.md) after session work, as it is the source of truth for blockers and priority
+- format Rust code with `just fmt` (which uses `cargo +nightly fmt`), not plain `cargo fmt`
 - use [`Justfile`](../Justfile) for normal execution, not ad hoc local command chains
 
 ## Preferred repo tooling

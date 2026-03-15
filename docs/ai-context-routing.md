@@ -237,6 +237,4 @@ During maintenance mode:
 
 ## Local Handoff
 
-`GCFGR.md` is optional local overflow state for long or fragile sessions.
-It is not canonical repository truth.
-Use it only when handoff fidelity matters or context compaction is near.
+[`GCFGR.md`](../GCFGR.md) is becoming mandatory for local overflow state when long or fragile sessions is predicted. It is not canonical repository truth. Use it only when handoff fidelity matters or context compaction is near.
