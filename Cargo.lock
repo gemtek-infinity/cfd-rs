@@ -281,6 +281,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "capnp-futures"
+version = "0.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73b69dfddccc57844f9a90f9d72b44b97c326914851ea94fb7da40ef9cad6e8d"
+dependencies = [
+ "capnp",
+ "futures-channel",
+ "futures-util",
+]
+
+[[package]]
+name = "capnp-rpc"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07ccca6d26009f4d6c12b741994f33b421da613b5dcf461508e236b53ef862f1"
+dependencies = [
+ "capnp",
+ "capnp-futures",
+ "futures",
+]
+
+[[package]]
 name = "capnpc"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -359,6 +381,8 @@ version = "2026.2.0-alpha.202603"
 dependencies = [
  "base64",
  "capnp",
+ "capnp-futures",
+ "capnp-rpc",
  "capnpc",
  "serde",
  "serde_json",

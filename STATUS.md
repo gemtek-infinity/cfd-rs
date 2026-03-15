@@ -7,7 +7,7 @@
 - parity routing baseline: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - workspace version: `2026.2.0-alpha.202603`
 - roadmap state: `Program Reset` complete; active implementation milestone: `CDC Contract Foundation`
-- highest-risk blockers: `CDC-001`, `CDC-002`, `CDC-011`, `CDC-012`, `CDC-018`, `CLI-001`, `CLI-002`, `CLI-003`, `HIS-012` through `HIS-017`, `HIS-024`, `HIS-025`, `HIS-041`, `HIS-042`
+- highest-risk blockers: `CDC-001`, `CDC-002`, `CDC-011`, `CDC-012`, `CLI-001`, `CLI-002`, `CLI-003`, `HIS-012` through `HIS-017`, `HIS-024`, `HIS-025`, `HIS-041`, `HIS-042`
 - production-alpha logging blocker set: `CLI-003`, `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-050`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`, `HIS-068`
 - status rule: this file is the only tracked status source for both humans and AI
 
@@ -66,7 +66,7 @@ Next milestone after CDC closure:
 Tier 1 lane-blocking rows, in implementation order:
 
 1. `CDC-001`, `CDC-002` — registration schema and wire encoding
-2. `CDC-011`, `CDC-012`, `CDC-018` — stream schema, framing, and round-trip
+2. `CDC-011`, `CDC-012` — stream schema and framing
 3. `CLI-001`, `CLI-002`, `CLI-003` — root invocation, help text, global flags
 4. `CLI-008`, `CLI-010`, `CLI-012` — tunnel root behavior, create, run
 5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service install/uninstall and systemd templates (command path wired; real host `CommandRunner` execution still needs end-to-end verification)

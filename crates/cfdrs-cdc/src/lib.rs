@@ -12,6 +12,11 @@
 //! `baseline-2026.2.0/tunnelrpc/pogs/` and
 //! `baseline-2026.2.0/connection/`.
 
+// capnp-rpc and capnp-futures are admitted for CDC-007 through CDC-010
+// (RPC dispatch). No code uses them yet; suppress the unused-dep warning.
+use capnp_futures as _;
+use capnp_rpc as _;
+
 // Cap'n Proto generated bindings from frozen baseline schemas.
 // Built at compile time from baseline-2026.2.0/tunnelrpc/proto/*.capnp via
 // build.rs. These are the exact wire-format types the Cloudflare edge expects.
