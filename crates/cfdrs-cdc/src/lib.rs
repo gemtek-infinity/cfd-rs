@@ -12,10 +12,11 @@
 //! `baseline-2026.2.0/tunnelrpc/pogs/` and
 //! `baseline-2026.2.0/connection/`.
 
-// capnp-rpc and capnp-futures are admitted for CDC-007 through CDC-010
-// (RPC dispatch). No code uses them yet; suppress the unused-dep warning.
+// capnp-rpc provides the RPC dispatch and local client infrastructure
+// used by rpc_dispatch.rs for CDC-007 through CDC-010.
+// capnp-futures is a transitive requirement of capnp-rpc; suppress the
+// unused-dep lint since it is not referenced directly in crate code.
 use capnp_futures as _;
-use capnp_rpc as _;
 
 // Cap'n Proto generated bindings from frozen baseline schemas.
 // Built at compile time from baseline-2026.2.0/tunnelrpc/proto/*.capnp via
@@ -39,6 +40,7 @@ pub mod management;
 pub mod protocol;
 pub mod registration;
 pub mod registration_codec;
+pub mod rpc_dispatch;
 pub mod stream;
 pub mod stream_codec;
 pub mod stream_contract;
@@ -49,6 +51,7 @@ pub use registration::{
     UnregisterUdpSessionRequest, UpdateConfigurationRequest, UpdateConfigurationResponse,
     UpdateLocalConfigurationRequest,
 };
+pub use rpc_dispatch::{ConfigurationManagerHandler, RegistrationClient, SessionManagerHandler};
 pub use stream::{ConnectRequest, ConnectResponse, ConnectionType, Metadata};
 
 pub use protocol::{

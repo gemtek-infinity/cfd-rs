@@ -386,6 +386,7 @@ dependencies = [
  "capnpc",
  "serde",
  "serde_json",
+ "tokio",
  "uuid",
 ]
 

@@ -343,9 +343,6 @@ QUIC connection ALPN `argotunnel` is correctly set in Rust
 
 | Gap | Severity | Detail |
 | --- | --- | --- |
-| runtime wire integration | critical | Cap'n Proto codec exists; runtime still sends JSON via `lifecycle.rs` |
-| missing `unregisterConnection` | medium | Rust has no graceful shutdown RPC |
-| missing `updateLocalConfiguration` | medium | Rust has no config push RPC dispatch |
-| missing `SessionManager` RPC dispatch | high | types exist; RPC wiring pending |
-| missing `ConfigurationManager` RPC dispatch | medium | types exist; RPC wiring pending |
-| feature flags runtime wiring | high | feature list built by `features.rs`; not sent in live registration yet |
+| missing `unregisterConnection` runtime call-site | medium | `RegistrationClient::unregister_connection()` exists; runtime call during graceful shutdown pending |
+| missing `updateLocalConfiguration` connIndex guard | medium | `RegistrationClient::update_local_configuration()` exists; connIndex==0 enforcement at call-site pending |
+| feature flags runtime wiring | high | feature list built by `features.rs`; selector integration pending CDC-040/041 |
