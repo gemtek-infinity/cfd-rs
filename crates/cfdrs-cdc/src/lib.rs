@@ -13,14 +13,15 @@
 //! `baseline-2026.2.0/connection/`.
 
 // Cap'n Proto generated bindings from frozen baseline schemas.
-// These are the exact wire-format types the Cloudflare edge expects.
-#[allow(clippy::all, clippy::unwrap_used, clippy::dbg_macro, clippy::todo, unused)]
-pub mod tunnelrpc_capnp {
-    include!(concat!(env!("OUT_DIR"), "/tunnelrpc_capnp.rs"));
-}
+// Built at compile time from baseline-2026.2.0/tunnelrpc/proto/*.capnp via
+// build.rs. These are the exact wire-format types the Cloudflare edge expects.
 #[allow(clippy::all, clippy::unwrap_used, clippy::dbg_macro, clippy::todo, unused)]
 pub mod quic_metadata_protocol_capnp {
     include!(concat!(env!("OUT_DIR"), "/quic_metadata_protocol_capnp.rs"));
+}
+#[allow(clippy::all, clippy::unwrap_used, clippy::dbg_macro, clippy::todo, unused)]
+pub mod tunnelrpc_capnp {
+    include!(concat!(env!("OUT_DIR"), "/tunnelrpc_capnp.rs"));
 }
 
 pub mod features;
