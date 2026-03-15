@@ -13,7 +13,7 @@ default = ["debtmap"]
 [dependencies]
 debtmap = { version = "0.15.1", default-features = false, optional = true }
 mimalloc.workspace = true
-openssl = { version = "0.10.76", features = ["vendored"] }
+openssl.workspace = true
 regex = "1.11"
 rmcp = { version = "1.2.0", features = ["schemars", "server", "transport-io"] }
 schemars = "1.2.1"

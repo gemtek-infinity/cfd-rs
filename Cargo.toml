@@ -32,6 +32,7 @@ mimalloc = { version = "0.1.48", default-features = false, features = [
   "no_thp",
   "override",
 ] }
+openssl = { version = "0.10.76", features = ["vendored"] }
 pem = "3.0.6"
 pingora-http = "0.8"
 quiche = { version = "0.26.1", default-features = false, features = ["boringssl-vendored"] }
