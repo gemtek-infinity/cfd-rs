@@ -181,28 +181,27 @@ pub const CONTENT_LENGTH_KEY: &str = "HttpHeader:Content-Length";
 
 **Status:** matches Go metadata key conventions.
 
-### Rust Wire Framing (ConnectRequest Parse)
+### Rust Wire Framing (ConnectRequest/ConnectResponse)
 
-Source: [crates/cfdrs-bin/src/transport/quic/lifecycle.rs](../../../crates/cfdrs-bin/src/transport/quic/lifecycle.rs)
+Source: [crates/cfdrs-cdc/src/stream_codec.rs](../../../crates/cfdrs-cdc/src/stream_codec.rs)
 
-The Rust binary format for `ConnectRequest` on data streams:
+The Rust wire codec now uses Cap'n Proto binary encoding matching the Go
+baseline (`ToPogs()`/`FromPogs()` in `quic_metadata_protocol.go`).
 
-```text
-[2 bytes: connection_type as u16 big-endian]
-[2 bytes: dest length as u16 big-endian]
-[N bytes: dest UTF-8]
-[2 bytes: metadata count as u16 big-endian]
-for each metadata:
-  [2 bytes: key length as u16 big-endian]
-  [N bytes: key UTF-8]
-  [2 bytes: val length as u16 big-endian]
-  [N bytes: val UTF-8]
-```
+- `ConnectRequest::marshal_capnp()` / `ConnectRequest::unmarshal_capnp()` —
+  builder/reader-level codec matching `quic_metadata_protocol.capnp` schema
+- `encode_connect_request()` / `decode_connect_request()` — wire-level
+  serialization producing Cap'n Proto binary byte buffer
+- `ConnectResponse::marshal_capnp()` / `ConnectResponse::unmarshal_capnp()` —
+  builder/reader-level codec for response path
+- `encode_connect_response()` / `decode_connect_response()` — wire-level
+  serialization for response path
+- `Metadata::marshal_capnp()` / `Metadata::unmarshal_capnp()` — metadata
+  entry codec shared by both request and response
 
-### ConnectResponse Wire Encoding
-
-Not yet wired into the response path. A test helper
-(`serialize_connect_request`) exists for roundtrip testing.
+10 tests: 7 wire roundtrip tests + 3 builder→reader marshal/unmarshal tests.
+Runtime integration to wire the Cap'n Proto codec into `lifecycle.rs` (replacing
+the custom binary format) is pending.
 
 ## Incoming Stream Round-Trip Path
 
@@ -247,7 +246,8 @@ Source: [crates/cfdrs-bin/src/proxy/origin.rs](../../../crates/cfdrs-bin/src/pro
 [crates/cfdrs-bin/src/transport/quic/lifecycle.rs](../../../crates/cfdrs-bin/src/transport/quic/lifecycle.rs)
 
 1. stream accepted from QUIC connection
-2. `parse_connect_request(data)` reads from custom big-endian binary format
+2. `parse_connect_request(data)` reads from CDC-owned `stream_codec.rs`
+   (Cap'n Proto binary codec via `decode_connect_request`)
 3. `dispatch_to_origin(request, config)` matches ingress rules and dispatches:
    - `HttpStatus(code)` → returns status code response (**wired**)
    - `HelloWorld` → returns 200 with HTML body (**wired**)
@@ -266,7 +266,8 @@ Source: [crates/cfdrs-bin/src/proxy/origin.rs](../../../crates/cfdrs-bin/src/pro
   connection
 - Go: response metadata flows back via Cap'n Proto
   (`WriteConnectResponseData`)
-- Rust: `ConnectResponse` type exists but is not wired into the response path
+- Rust: `ConnectResponse` type and Cap'n Proto codec exist in `stream_codec.rs`
+  but are not yet wired into the response path in `lifecycle.rs`
 
 ## Protocol Event Model
 
@@ -308,15 +309,19 @@ Fallback order: QUIC → HTTP/2 (on QUIC failure)
 
 ### Current Rust Equivalents
 
-**ProtocolBridgeState** ([crates/cfdrs-bin/src/protocol.rs](../../../crates/cfdrs-bin/src/protocol.rs)):
+**CDC-owned types** ([crates/cfdrs-cdc/src/protocol.rs](../../../crates/cfdrs-cdc/src/protocol.rs)):
 
-| Variant | Approximate Go equivalent |
-| --- | --- |
-| `BridgeUnavailable` | `Disconnected` |
-| `BridgeCreated` | (no direct equivalent — between connect and register) |
-| `RegistrationSent` | `RegisteringTunnel` |
-| `RegistrationObserved` | `Connected` |
-| `BridgeClosed` | `Disconnected` |
+- `Protocol` enum: `Http2`, `Quic` — matches Go iota order
+- `Protocol::tls_settings()` → `TlsSettings { server_name, next_protos }` — matches Go `TLSSettings`
+- `Protocol::fallback()` → `Option<Protocol>` — QUIC→Http2, Http2→None
+- `ProtocolSelector` trait and `StaticProtocolSelector` — matches Go `ProtocolSelector` interface
+- `PROTOCOL_LIST` constant: `[Quic, Http2]` — matches Go `ProtocolList`
+- `ConnectionStatus` enum: 6 variants matching Go `Status` iota (Disconnected through Unregistering)
+- `ConnectionEvent` struct: `index`, `event_type`, `location`, `protocol`, `url`, `edge_address`
+
+**Runtime-internal types** ([crates/cfdrs-bin/src/protocol.rs](../../../crates/cfdrs-bin/src/protocol.rs)):
+
+`ProtocolBridgeState` is a separate runtime-internal concern tracking bridge lifecycle (BridgeUnavailable, BridgeCreated, RegistrationSent, RegistrationObserved, BridgeClosed). It does not replace CDC-owned `ConnectionStatus`.
 
 **ProtocolEvent** ([crates/cfdrs-bin/src/protocol.rs](../../../crates/cfdrs-bin/src/protocol.rs)):
 
@@ -328,40 +333,38 @@ Fallback order: QUIC → HTTP/2 (on QUIC failure)
 
 ### Key Differences
 
-- Go has 6 status values; Rust has 5 bridge states with different granularity
-- Go `Reconnecting` has no Rust equivalent (no reconnection logic)
-- Go `SetURL` has no Rust equivalent (no quick tunnel URL tracking)
-- Go `Unregistering` has no Rust equivalent (no graceful shutdown)
-- Rust `IncomingStream` event has no Go equivalent (Go dispatches inline
-  without raising an event)
-- Go events carry `Protocol`, `URL`, `EdgeAddress` fields; Rust events do not
+- Go events carry `Protocol`, `URL`, `EdgeAddress` fields; runtime `ProtocolEvent` does not yet consume CDC-owned `ConnectionEvent`
+- Runtime does not yet emit CDC-owned `ConnectionEvent` for observer consumption
+- `Reconnecting`, `SetURL` status transitions exist in CDC types but are not yet wired in runtime
+- Rust `IncomingStream` event has no Go equivalent (Go dispatches inline without raising an event)
 
 ## Gap Summary
 
 | Gap | Severity | Detail |
 | --- | --- | --- |
-| wire encoding mismatch (ConnectRequest) | critical | Rust uses custom big-endian binary; Go uses Cap'n Proto binary |
-| ConnectResponse not wired | high | response path not integrated |
-| transport header serialization absent | high | base64 header encoding/decoding not implemented |
+| ~~wire encoding mismatch (ConnectRequest)~~ | ~~critical~~ resolved | Cap'n Proto binary codec implemented in CDC-owned `stream_codec.rs`; runtime integration pending |
+| ConnectResponse not wired | high | Cap'n Proto codec exists in `stream_codec.rs`; response path integration pending |
+| ~~transport header serialization absent~~ | ~~high~~ resolved | `serialize_headers()` / `deserialize_headers()` implemented in `stream_contract.rs` with base64 STANDARD_NO_PAD; 7 tests |
 | origin HTTP round-trip absent | critical | `Http(url)` dispatch returns 502; actual origin connection not implemented |
 | TCP/WebSocket/Unix dispatch absent | high | all non-HTTP connection types return `Unimplemented` |
-| ResponseMeta not implemented | medium | pre-generated JSON response metadata missing |
-| control header stripping absent | medium | `IsControlResponseHeader` equivalent missing |
+| ~~ResponseMeta not implemented~~ | ~~medium~~ resolved | `RESPONSE_META_ORIGIN`, `RESPONSE_META_CLOUDFLARED`, `RESPONSE_META_CLOUDFLARED_FLOW_LIMITED` constants match baseline; JSON-validated by tests |
+| ~~control header stripping absent~~ | ~~medium~~ resolved | `is_control_response_header()` + `is_websocket_client_header()` implemented in `stream_contract.rs`; 3 tests |
 | HTTP/2 stream type dispatch absent | medium | HTTP/2 transport not implemented |
 | header round-trip tests absent | high | no frozen-baseline wire fixture tests |
-| protocol event model incomplete | medium | missing `Reconnecting`, `SetURL`, `Unregistering` equivalents |
+| ~~protocol event model incomplete~~ | ~~medium~~ resolved | CDC-owned `Protocol` enum, `ConnectionStatus` (6 variants), `ConnectionEvent` struct, `ProtocolSelector` trait, and `StaticProtocolSelector` implemented; runtime wiring pending |
 | QUIC ALPN `argotunnel` | parity-backed | Rust sets ALPN correctly in [crates/cfdrs-bin/src/transport/quic/session.rs](../../../crates/cfdrs-bin/src/transport/quic/session.rs) |
 
 ## Wire Encoding Assessment
 
-The Rust `ConnectRequest` binary format and the Go `ConnectRequest` Cap'n
-Proto binary format are **different wire encodings** of the same logical
-schema. This is the most significant CDC gap at the stream level.
+The Rust `ConnectRequest` and `ConnectResponse` wire codecs now use Cap'n Proto
+binary encoding via CDC-owned `stream_codec.rs`, matching the Go baseline's
+`ToPogs()`/`FromPogs()` codec in `quic_metadata_protocol.go`.
 
-The Rust encoding may be deliberately simplified for the initial QUIC-only
-transport, but wire compatibility with the edge requires matching the exact
-Cap'n Proto binary framing that the edge expects.
+The custom big-endian binary format that was previously used has been replaced.
+10 round-trip tests verify schema-level marshaling and wire-level
+serialization. The codec uses the generated Cap'n Proto bindings from the
+frozen baseline `quic_metadata_protocol.capnp` schema.
 
-**Evidence needed:** confirmation from edge behavior whether the edge accepts
-the Rust binary format, or whether Cap'n Proto framing is strictly required.
-Until proven, this is treated as a critical open gap.
+**Remaining gap:** Runtime integration in `lifecycle.rs` to wire the CDC codec
+into the actual stream accept/dispatch path. The codec itself is
+schema-correct; what remains is plumbing it into the live QUIC stream handler.

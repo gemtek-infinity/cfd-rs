@@ -130,10 +130,6 @@ const CMD_MANAGEMENT_USAGE: &str = "Monitor cloudflared tunnels via management A
 const CMD_SERVICE_USAGE: &str = "Manages the cloudflared system service";
 const CMD_HELP_USAGE: &str = "Shows a list of commands or help for one command";
 
-// --- Transitional alpha ---
-
-const CMD_VALIDATE_USAGE: &str = "Validate ingress configuration and report startup readiness";
-
 // --- Error message templates ---
 
 const USAGE_GUIDANCE_TEMPLATE: &str =
@@ -144,19 +140,61 @@ const REPEATED_FLAG_TEMPLATE: &str = "{flag} may only be provided once";
 const UNKNOWN_FLAG_TEMPLATE: &str = "unknown flag: {flag}";
 const UNKNOWN_ARGUMENT_TEMPLATE: &str = "unknown command or argument: {value}";
 const MULTIPLE_COMMANDS_TEMPLATE: &str = "multiple commands were provided: {existing} and {next}";
-const VERSION_OUTPUT_TEMPLATE: &str = "{program} {version}\n";
 const STUB_NOT_IMPLEMENTED_TEMPLATE: &str = "error: `cloudflared {command}` is not yet implemented in the \
                                              Rust rewrite.\nThis command exists in the Go baseline and will \
                                              be implemented in a future milestone.\n";
 
+/// Build time injected at compile time via `CFDRS_BUILD_TIME`, or `"unknown"`
+/// when not set.
+///
+/// Go baseline uses linker `-ldflags` to set `BuildTime`; the default is
+/// `"unknown"`.
+const BUILD_TIME: &str = match option_env!("CFDRS_BUILD_TIME") {
+    Some(t) => t,
+    None => "unknown",
+};
+
+/// Build type injected at compile time via `CFDRS_BUILD_TYPE`, or `""` when
+/// not set.
+///
+/// Go baseline: `BuildType` defaults to `""`.  When non-empty,
+/// `GetBuildTypeMsg()` returns `" with {BuildType}"` (e.g. `" with FIPS"`).
+const BUILD_TYPE: &str = match option_env!("CFDRS_BUILD_TYPE") {
+    Some(t) => t,
+    None => "",
+};
+
+/// Returns Go-baseline `GetBuildTypeMsg()` equivalent: empty when
+/// `BUILD_TYPE` is empty, `" with {BUILD_TYPE}"` otherwise.
+fn build_type_msg() -> String {
+    if BUILD_TYPE.is_empty() {
+        String::new()
+    } else {
+        format!(" with {BUILD_TYPE}")
+    }
+}
+
 // --- Removed feature messages ---
 
 pub const PROXY_DNS_REMOVED_MSG: &str = "dns-proxy feature is no longer supported\n";
-pub const DB_CONNECT_REMOVED_MSG: &str = "error: the db-connect command has been removed.\n";
-#[allow(dead_code)] // Used when classic tunnel detection is wired up.
+pub const DB_CONNECT_REMOVED_MSG: &str = "db-connect command is no longer supported by cloudflared. Consult \
+                                          Cloudflare Tunnel documentation for possible alternative \
+                                          solutions.\n";
 pub const CLASSIC_TUNNEL_DEPRECATED_MSG: &str =
     "Classic tunnels have been deprecated, please use Named Tunnels. \
      (https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/)\n";
+
+/// Go baseline: `tunnelCmdErrorMessage` in cmd/cloudflared/tunnel/cmd.go
+pub const TUNNEL_CMD_ERROR_MSG: &str = "\
+You did not specify any valid additional argument to the cloudflared tunnel command.
+
+If you are trying to run a Quick Tunnel then you need to explicitly pass the --url flag.
+Eg. cloudflared tunnel --url localhost:8080/.
+
+Please note that Quick Tunnels are meant to be ephemeral and should only be used for testing purposes.
+For production usage, we recommend creating Named Tunnels. \
+(https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/)
+";
 
 // --- Public helpers ---
 
@@ -349,9 +387,12 @@ pub fn config_error_message(category: &str, error: &str) -> String {
 }
 
 pub fn render_version_output(program_name: &str) -> String {
-    VERSION_OUTPUT_TEMPLATE
-        .replace("{program}", program_name)
-        .replace("{version}", env!("CARGO_PKG_VERSION"))
+    // Go baseline: `{Version} (built {BuildTime}{GetBuildTypeMsg()})`
+    format!(
+        "{program_name} version {} (built {BUILD_TIME}{})\n",
+        env!("CARGO_PKG_VERSION"),
+        build_type_msg(),
+    )
 }
 
 pub fn render_short_version() -> String {
@@ -378,25 +419,38 @@ pub fn render_help_text(program_name: &str) -> String {
     text.push_str("USAGE:\n");
     text.push_str(&format!("   {APP_USAGE_TEXT}\n\n"));
 
-    // VERSION section
+    // VERSION section — Go baseline includes build time and build type here too
     text.push_str("VERSION:\n");
-    text.push_str(&format!("   {}\n\n", env!("CARGO_PKG_VERSION")));
+    text.push_str(&format!(
+        "   {} (built {}{})\n\n",
+        env!("CARGO_PKG_VERSION"),
+        BUILD_TIME,
+        build_type_msg(),
+    ));
 
     // DESCRIPTION section
     text.push_str("DESCRIPTION:\n");
     text.push_str(&format!("   {APP_DESCRIPTION}\n\n"));
 
-    // COMMANDS section
+    // COMMANDS section — Go baseline groups commands with category headings
+    // via urfave/cli VisibleCategories.  Uncategorized commands first (in
+    // insertion order), then named categories sorted alphabetically.
+    // Column alignment: all usage text starts at the same column.
+    // Uncategorized (3-space indent): name padded to 19 chars → col 22.
+    // Categorized   (5-space indent): name padded to 17 chars → col 22.
     text.push_str("COMMANDS:\n");
-    text.push_str(&format!("   {UPDATE_COMMAND:<14}{CMD_UPDATE_USAGE}\n"));
-    text.push_str(&format!("   {VERSION_COMMAND:<14}{CMD_VERSION_USAGE}\n"));
-    text.push_str(&format!("   {TUNNEL_COMMAND:<14}{CMD_TUNNEL_USAGE}\n"));
-    text.push_str(&format!("   {PROXY_DNS_COMMAND:<14}{CMD_PROXY_DNS_USAGE}\n"));
-    text.push_str(&format!("   {ACCESS_COMMAND:<14}{CMD_ACCESS_USAGE}\n"));
-    text.push_str(&format!("   {TAIL_COMMAND:<14}{CMD_TAIL_USAGE}\n"));
-    text.push_str(&format!("   {SERVICE_COMMAND:<14}{CMD_SERVICE_USAGE}\n"));
-    text.push_str(&format!("   {VALIDATE_COMMAND:<14}{CMD_VALIDATE_USAGE}\n"));
-    text.push_str(&format!("   {HELP_COMMAND}, h{:<8}{CMD_HELP_USAGE}\n\n", ""));
+    text.push_str(&format!("   {UPDATE_COMMAND:<19}{CMD_UPDATE_USAGE}\n"));
+    text.push_str(&format!("   {VERSION_COMMAND:<19}{CMD_VERSION_USAGE}\n"));
+    text.push_str(&format!("   {PROXY_DNS_COMMAND:<19}{CMD_PROXY_DNS_USAGE}\n"));
+    text.push_str(&format!("   {TAIL_COMMAND:<19}{CMD_TAIL_USAGE}\n"));
+    text.push_str(&format!("   {SERVICE_COMMAND:<19}{CMD_SERVICE_USAGE}\n"));
+    let help_name = format!("{HELP_COMMAND}, h");
+    text.push_str(&format!("   {help_name:<19}{CMD_HELP_USAGE}\n"));
+    text.push_str("   Access:\n");
+    let access_name = format!("{ACCESS_COMMAND}, {FORWARD_COMMAND}");
+    text.push_str(&format!("     {access_name:<17}{CMD_ACCESS_USAGE}\n"));
+    text.push_str("   Tunnel:\n");
+    text.push_str(&format!("     {TUNNEL_COMMAND:<17}{CMD_TUNNEL_USAGE}\n\n"));
 
     // GLOBAL OPTIONS section
     text.push_str("GLOBAL OPTIONS:\n");
@@ -404,27 +458,381 @@ pub fn render_help_text(program_name: &str) -> String {
         "   {CONFIG_FLAG} value          Path to a configuration file (default: search standard paths)\n"
     ));
     text.push_str(
-        "   --credentials-file value   Filepath at which to read/write the tunnel credentials (env: \
-         TUNNEL_CRED_FILE)\n",
+        "   --credentials-file value, --cred-file value  Filepath at which to read/write the tunnel \
+         credentials [$TUNNEL_CRED_FILE]\n",
     );
     text.push_str(
         "   --token value              Token provided to associate this connector to a specific tunnel \
-         (env: TUNNEL_TOKEN)\n",
+         [$TUNNEL_TOKEN]\n",
     );
     text.push_str(
-        "   --origincert value         Path to the certificate for authenticating with Cloudflare (env: \
-         TUNNEL_ORIGIN_CERT)\n",
+        "   --origincert value         Path to the certificate for authenticating with Cloudflare \
+         [$TUNNEL_ORIGIN_CERT]\n",
     );
-    text.push_str("   --loglevel value           Application log level (env: TUNNEL_LOGLEVEL)\n");
-    text.push_str("   --logfile value            Save application log to this file\n");
-    text.push_str("   --log-directory value      Save application logs to this directory\n");
+    text.push_str("   --loglevel value           Application log level [$TUNNEL_LOGLEVEL]\n");
+    text.push_str("   --logfile value            Save application log to this file [$TUNNEL_LOGFILE]\n");
+    text.push_str(
+        "   --log-directory value      Save application logs to this directory [$TUNNEL_LOGDIRECTORY]\n",
+    );
     text.push_str(&format!(
         "   {HELP_FLAG}, {HELP_FLAG_SHORT}                 show help\n"
     ));
     text.push_str(&format!(
         "   {VERSION_FLAG}, {VERSION_FLAG_SHORT_LOWER}, {VERSION_FLAG_SHORT_UPPER}          \
-         {CMD_VERSION_USAGE}\n"
+         {CMD_VERSION_USAGE}\n\n"
     ));
 
+    // COPYRIGHT section — matches Go baseline
+    text.push_str("COPYRIGHT:\n");
+    text.push_str(
+        "   (c) 2026 Cloudflare Inc.\n   \
+         Your installation of cloudflared software constitutes a symbol of your signature indicating that \
+         you accept\n   \
+         the terms of the Apache License Version 2.0 \
+         (https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/license),\n   \
+         Terms (https://www.cloudflare.com/terms/) and Privacy Policy \
+         (https://www.cloudflare.com/privacypolicy/).\n",
+    );
+
     text
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- CLI-005: version command format parity ---
+
+    #[test]
+    fn version_output_matches_go_baseline_format() {
+        let output = render_version_output(PROGRAM_NAME);
+
+        // Go baseline: `cloudflared version DEV (built unknown)`
+        // urfave/cli prints: `{app.Name} version {app.Version}`
+        // where app.Version = `{Version} (built {BuildTime}{BuildTypeMsg})`
+        assert!(
+            output.starts_with("cloudflared version "),
+            "must start with 'cloudflared version ': {output:?}"
+        );
+        assert!(output.contains("(built "), "must contain '(built ': {output:?}");
+        assert!(output.ends_with(")\n"), "must end with ')\\n': {output:?}");
+    }
+
+    #[test]
+    fn version_output_contains_cargo_pkg_version() {
+        let output = render_version_output(PROGRAM_NAME);
+        let version = env!("CARGO_PKG_VERSION");
+
+        assert!(
+            output.contains(version),
+            "must contain CARGO_PKG_VERSION '{version}': {output:?}"
+        );
+    }
+
+    #[test]
+    fn version_output_default_build_time_is_unknown() {
+        // When CFDRS_BUILD_TIME is not set (default), BUILD_TIME is "unknown"
+        // matching Go's `BuildTime = "unknown"` default.
+        let output = render_version_output(PROGRAM_NAME);
+
+        assert!(
+            output.contains("(built unknown)"),
+            "default build time must be 'unknown': {output:?}"
+        );
+    }
+
+    #[test]
+    fn build_type_msg_empty_when_not_set() {
+        // Go baseline: `GetBuildTypeMsg()` returns "" when BuildType=="".
+        // CFDRS_BUILD_TYPE is not set during tests, so build_type_msg() returns "".
+        assert_eq!(build_type_msg(), "");
+    }
+
+    #[test]
+    fn build_type_constant_matches_go_default() {
+        // Go baseline: `BuildType = ""` — empty by default, set to "FIPS"
+        // by the build system for FIPS builds.  Rust equivalent: CFDRS_BUILD_TYPE
+        // env var at compile time.
+        assert!(
+            BUILD_TYPE.is_empty(),
+            "BUILD_TYPE must be empty in default test builds"
+        );
+    }
+
+    #[test]
+    fn short_version_outputs_version_number_only() {
+        let output = render_short_version();
+        let version = env!("CARGO_PKG_VERSION");
+
+        assert_eq!(output, format!("{version}\n"));
+    }
+
+    #[test]
+    fn short_version_tokens_match_go_baseline() {
+        assert!(is_short_version_token("--short"));
+        assert!(is_short_version_token("-s"));
+        assert!(!is_short_version_token("--version"));
+        assert!(!is_short_version_token("-v"));
+    }
+
+    #[test]
+    fn version_flag_constants_match_go_baseline() {
+        // Go: `cli.VersionFlag` has Name:"version", Aliases:["v","V"]
+        assert_eq!(VERSION_FLAG, "--version");
+        assert_eq!(VERSION_FLAG_SHORT_LOWER, "-v");
+        assert_eq!(VERSION_FLAG_SHORT_UPPER, "-V");
+    }
+
+    // --- CLI-002: help text format parity ---
+
+    #[test]
+    fn help_text_contains_all_go_baseline_sections() {
+        let help = render_help_text(PROGRAM_NAME);
+
+        assert!(help.contains("NAME:"), "missing NAME section");
+        assert!(help.contains("USAGE:"), "missing USAGE section");
+        assert!(help.contains("VERSION:"), "missing VERSION section");
+        assert!(help.contains("DESCRIPTION:"), "missing DESCRIPTION section");
+        assert!(help.contains("COMMANDS:"), "missing COMMANDS section");
+        assert!(help.contains("GLOBAL OPTIONS:"), "missing GLOBAL OPTIONS section");
+        assert!(help.contains("COPYRIGHT:"), "missing COPYRIGHT section");
+    }
+
+    #[test]
+    fn help_text_has_category_headings() {
+        let help = render_help_text(PROGRAM_NAME);
+
+        assert!(help.contains("   Access:\n"), "missing Access: category heading");
+        assert!(help.contains("   Tunnel:\n"), "missing Tunnel: category heading");
+    }
+
+    #[test]
+    fn help_text_lists_forward_alias() {
+        let help = render_help_text(PROGRAM_NAME);
+
+        // Go baseline: `access, forward  access <subcommand>`
+        assert!(
+            help.contains("access, forward"),
+            "missing forward alias next to access"
+        );
+    }
+
+    #[test]
+    fn help_text_version_section_includes_build_time() {
+        let help = render_help_text(PROGRAM_NAME);
+
+        assert!(
+            help.contains("(built "),
+            "VERSION section should include build time"
+        );
+    }
+
+    #[test]
+    fn help_text_copyright_section_matches_go_baseline() {
+        let help = render_help_text(PROGRAM_NAME);
+
+        assert!(
+            help.contains("Cloudflare Inc."),
+            "missing Cloudflare Inc. in COPYRIGHT"
+        );
+        assert!(
+            help.contains("Apache License Version 2.0"),
+            "missing license name in COPYRIGHT"
+        );
+    }
+
+    #[test]
+    fn help_text_credentials_file_shows_alias() {
+        let help = render_help_text(PROGRAM_NAME);
+
+        // Go baseline: `--credentials-file value, --cred-file value`
+        assert!(help.contains("--cred-file"), "help should show --cred-file alias");
+    }
+
+    #[test]
+    fn help_text_lists_all_go_baseline_commands() {
+        let help = render_help_text(PROGRAM_NAME);
+
+        assert!(help.contains(UPDATE_COMMAND), "missing update");
+        assert!(help.contains(VERSION_COMMAND), "missing version");
+        assert!(help.contains(TUNNEL_COMMAND), "missing tunnel");
+        assert!(help.contains(PROXY_DNS_COMMAND), "missing proxy-dns");
+        assert!(help.contains(ACCESS_COMMAND), "missing access");
+        assert!(help.contains(TAIL_COMMAND), "missing tail");
+        assert!(help.contains(SERVICE_COMMAND), "missing service");
+        assert!(help.contains(HELP_COMMAND), "missing help");
+    }
+
+    #[test]
+    fn help_text_contains_go_baseline_global_flags() {
+        let help = render_help_text(PROGRAM_NAME);
+
+        assert!(help.contains("--config"), "missing --config");
+        assert!(help.contains("--credentials-file"), "missing --credentials-file");
+        assert!(help.contains("--token"), "missing --token");
+        assert!(help.contains("--origincert"), "missing --origincert");
+        assert!(help.contains("--loglevel"), "missing --loglevel");
+        assert!(help.contains("--logfile"), "missing --logfile");
+        assert!(help.contains("--log-directory"), "missing --log-directory");
+        assert!(help.contains("--help"), "missing --help");
+        assert!(help.contains("--version"), "missing --version");
+    }
+
+    #[test]
+    fn help_text_contains_env_var_annotations() {
+        let help = render_help_text(PROGRAM_NAME);
+
+        assert!(
+            help.contains("TUNNEL_CRED_FILE"),
+            "missing TUNNEL_CRED_FILE env annotation"
+        );
+        assert!(
+            help.contains("TUNNEL_TOKEN"),
+            "missing TUNNEL_TOKEN env annotation"
+        );
+        assert!(
+            help.contains("TUNNEL_ORIGIN_CERT"),
+            "missing TUNNEL_ORIGIN_CERT env annotation"
+        );
+        assert!(
+            help.contains("TUNNEL_LOGLEVEL"),
+            "missing TUNNEL_LOGLEVEL env annotation"
+        );
+        assert!(
+            help.contains("TUNNEL_LOGFILE"),
+            "missing TUNNEL_LOGFILE env annotation"
+        );
+        assert!(
+            help.contains("TUNNEL_LOGDIRECTORY"),
+            "missing TUNNEL_LOGDIRECTORY env annotation"
+        );
+    }
+
+    #[test]
+    fn program_name_matches_go_baseline() {
+        assert_eq!(PROGRAM_NAME, "cloudflared");
+    }
+
+    // --- CLI-029: help formatting contract ---
+
+    #[test]
+    fn help_text_commands_section_snapshot() {
+        // Full snapshot of the COMMANDS section matching Go urfave/cli
+        // VisibleCategories ordering: uncategorized first (insertion order),
+        // then named categories sorted alphabetically (Access, Tunnel).
+        // management is Hidden (Go: `Hidden: true`), not shown in root help.
+        let help = render_help_text(PROGRAM_NAME);
+
+        let commands_start = help.find("COMMANDS:\n").expect("missing COMMANDS section");
+        let commands_end = help
+            .find("\nGLOBAL OPTIONS:\n")
+            .expect("missing GLOBAL OPTIONS section");
+        let commands_section = &help[commands_start..commands_end + 1];
+
+        let expected = "\
+COMMANDS:\n\
+\x20\x20\x20update             Update the agent if a new version exists\n\
+\x20\x20\x20version            Print the version\n\
+\x20\x20\x20proxy-dns          dns-proxy feature is no longer supported\n\
+\x20\x20\x20tail               Stream logs from a remote cloudflared\n\
+\x20\x20\x20service            Manages the cloudflared system service\n\
+\x20\x20\x20help, h            Shows a list of commands or help for one command\n\
+\x20\x20\x20Access:\n\
+\x20\x20\x20\x20\x20access, forward  access <subcommand>\n\
+\x20\x20\x20Tunnel:\n\
+\x20\x20\x20\x20\x20tunnel           Use Cloudflare Tunnel to expose private services to the Internet or to Cloudflare connected private users.\n\
+\n";
+
+        assert_eq!(
+            commands_section, expected,
+            "COMMANDS section snapshot mismatch.\nGot:\n{commands_section}\nExpected:\n{expected}"
+        );
+    }
+
+    #[test]
+    fn help_text_management_not_shown() {
+        // Go baseline: management command has `Hidden: true`, not visible
+        // in root help output.
+        let help = render_help_text(PROGRAM_NAME);
+
+        assert!(
+            !help.contains("management"),
+            "management must not appear in root help (Hidden in Go baseline)"
+        );
+    }
+
+    #[test]
+    fn help_text_commands_column_alignment() {
+        // All command names (with indent) must produce usage text starting
+        // at the same column position.
+        let help = render_help_text(PROGRAM_NAME);
+
+        let commands_start = help.find("COMMANDS:\n").expect("COMMANDS section");
+        let commands_end = help.find("\nGLOBAL OPTIONS:\n").expect("GLOBAL OPTIONS section");
+        let commands_section = &help[commands_start..commands_end];
+
+        // Collect the column where usage text starts for each command line
+        // (skip section headers like "COMMANDS:", "   Access:", "   Tunnel:")
+        let mut usage_columns = Vec::new();
+        for line in commands_section.lines() {
+            // Skip heading lines and category headers
+            if line.starts_with("COMMANDS:") || line.trim().ends_with(':') || line.is_empty() {
+                continue;
+            }
+            // Find the position of the first non-space character after the
+            // name portion. Command names end where trailing spaces begin
+            // before the usage text.
+            let trimmed = line.trim_start();
+            if trimmed.is_empty() {
+                continue;
+            }
+            // Find the column where usage text starts by looking for 2+ spaces
+            // after the command name
+            if trimmed.contains("  ") {
+                let indent = line.len() - trimmed.len();
+                let after_name_gap = trimmed.find("  ").expect("multi-space gap");
+                let usage_col = indent
+                    + after_name_gap
+                    + (trimmed[after_name_gap..].len() - trimmed[after_name_gap..].trim_start().len());
+                usage_columns.push(usage_col);
+            }
+        }
+
+        assert!(!usage_columns.is_empty(), "should have found command lines");
+        let first = usage_columns[0];
+        for (i, col) in usage_columns.iter().enumerate() {
+            assert_eq!(
+                *col, first,
+                "command line {i} usage starts at column {col}, expected {first}"
+            );
+        }
+    }
+
+    // --- Removed feature messages ---
+
+    #[test]
+    fn proxy_dns_removed_message_matches_go_baseline() {
+        assert!(PROXY_DNS_REMOVED_MSG.contains("dns-proxy feature is no longer supported"));
+    }
+
+    #[test]
+    fn db_connect_removed_message_matches_go_baseline() {
+        // Go: cliutil.RemovedCommand("db-connect") produces exact text
+        assert!(DB_CONNECT_REMOVED_MSG.contains("db-connect command is no longer supported"));
+        assert!(DB_CONNECT_REMOVED_MSG.contains("Consult Cloudflare Tunnel documentation"));
+    }
+
+    #[test]
+    fn classic_tunnel_deprecated_message_matches_go_baseline() {
+        assert!(CLASSIC_TUNNEL_DEPRECATED_MSG.contains("Classic tunnels have been deprecated"));
+        assert!(CLASSIC_TUNNEL_DEPRECATED_MSG.contains("Named Tunnels"));
+    }
+
+    #[test]
+    fn tunnel_cmd_error_message_matches_go_baseline() {
+        assert!(TUNNEL_CMD_ERROR_MSG.contains("You did not specify any valid additional argument"));
+        assert!(TUNNEL_CMD_ERROR_MSG.contains("--url"));
+        assert!(TUNNEL_CMD_ERROR_MSG.contains("Quick Tunnels"));
+        assert!(TUNNEL_CMD_ERROR_MSG.contains("Named Tunnels"));
+    }
 }

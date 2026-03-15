@@ -1,6 +1,10 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{FED_ENDPOINT, OriginCertToken, OriginCertUser, TunnelCredentialsFile, TunnelSecret};
+use uuid::Uuid;
+
+use super::{
+    FED_ENDPOINT, OriginCertToken, OriginCertUser, TunnelCredentialsFile, TunnelSecret, TunnelToken,
+};
 
 fn ok<T, E: std::fmt::Display>(result: std::result::Result<T, E>) -> T {
     match result {
@@ -133,4 +137,76 @@ fn origin_cert_user_requires_account_id() {
     assert_eq!(error.category().to_string(), "origin-cert-needs-refresh");
 
     let _ = std::fs::remove_file(path);
+}
+
+// --- CDC-042: tunnel token encoding parity ---
+
+#[test]
+fn tunnel_token_uses_single_letter_json_keys() {
+    let token = TunnelToken {
+        account_tag: "acct".to_owned(),
+        tunnel_secret: TunnelSecret::from_bytes(b"secret".to_vec()),
+        tunnel_id: Uuid::nil(),
+        endpoint: None,
+    };
+    let json = serde_json::to_string(&token).expect("token should serialize");
+
+    assert!(json.contains(r#""a":"acct"#));
+    assert!(json.contains(r#""s":"#));
+    assert!(json.contains(r#""t":"00000000-0000-0000-0000-000000000000"#));
+    assert!(!json.contains("endpoint"), "omitted field should not appear");
+}
+
+#[test]
+fn tunnel_token_encode_decode_round_trips() {
+    let token = TunnelToken {
+        account_tag: "account-tag".to_owned(),
+        tunnel_secret: TunnelSecret::from_bytes(b"tunnel-secret".to_vec()),
+        tunnel_id: Uuid::parse_str("22222222-2222-2222-2222-222222222222").expect("uuid should parse"),
+        endpoint: Some("https://example.com".to_owned()),
+    };
+
+    let encoded = ok(token.encode());
+    let decoded = ok(TunnelToken::decode(&encoded));
+
+    assert_eq!(decoded.account_tag, "account-tag");
+    assert_eq!(decoded.tunnel_secret.as_bytes(), b"tunnel-secret");
+    assert_eq!(
+        decoded.tunnel_id.to_string(),
+        "22222222-2222-2222-2222-222222222222"
+    );
+    assert_eq!(decoded.endpoint.as_deref(), Some("https://example.com"));
+}
+
+#[test]
+fn tunnel_token_credentials_file_conversion_round_trips() {
+    let token = TunnelToken {
+        account_tag: "acct".to_owned(),
+        tunnel_secret: TunnelSecret::from_bytes(b"sec".to_vec()),
+        tunnel_id: Uuid::nil(),
+        endpoint: None,
+    };
+
+    let creds = token.to_credentials_file();
+    let back = TunnelToken::from_credentials_file(&creds);
+
+    assert_eq!(back, token);
+}
+
+// --- CDC-043: origin cert JSON field names match baseline ---
+
+#[test]
+fn origin_cert_json_field_names_match_baseline() {
+    let token = OriginCertToken {
+        zone_id: "z".to_owned(),
+        account_id: "a".to_owned(),
+        api_token: "t".to_owned(),
+        endpoint: Some("e".to_owned()),
+    };
+    let json = serde_json::to_string(&token).expect("token should serialize");
+
+    assert!(json.contains(r#""zoneID":"z"#));
+    assert!(json.contains(r#""accountID":"a"#));
+    assert!(json.contains(r#""apiToken":"t"#));
+    assert!(json.contains(r#""endpoint":"e"#));
 }

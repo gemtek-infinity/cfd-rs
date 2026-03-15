@@ -2,6 +2,8 @@
 // Per-stream metadata keys (CDC-014)
 // ---------------------------------------------------------------------------
 
+use base64::Engine as _;
+
 pub(crate) const HTTP_METHOD_KEY: &str = "HttpMethod";
 pub(crate) const HTTP_HOST_KEY: &str = "HttpHost";
 pub(crate) const HTTP_HEADER_KEY: &str = "HttpHeader";
@@ -86,6 +88,96 @@ pub(crate) fn is_control_response_header(header_name: &str) -> bool {
         .any(|prefix| lower.starts_with(prefix))
 }
 
+/// WebSocket client header names that are handled by the upgrade handshake
+/// and should not be forwarded as user headers.
+///
+/// Matches Go's `IsWebsocketClientHeader` from `connection/header.go`.
+#[allow(dead_code)]
+pub(crate) fn is_websocket_client_header(header_name: &str) -> bool {
+    let lower = header_name.to_ascii_lowercase();
+    lower == "sec-websocket-accept" || lower == "connection" || lower == "upgrade"
+}
+
+// ---------------------------------------------------------------------------
+// Transport header serialization (CDC-015)
+// ---------------------------------------------------------------------------
+
+/// The base64 engine matching Go's `base64.RawStdEncoding`:
+/// standard alphabet (A-Za-z0-9+/), no padding.
+fn header_b64_engine() -> base64::engine::GeneralPurpose {
+    base64::engine::general_purpose::STANDARD_NO_PAD
+}
+
+const PAIR_SEPARATOR: char = ';';
+const NAME_VALUE_SEPARATOR: char = ':';
+
+/// A single deserialized HTTP header (name + value pair).
+///
+/// Matches Go's `HTTPHeader` in `connection/header.go`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct HttpHeader {
+    pub name: String,
+    pub value: String,
+}
+
+/// Serialize HTTP headers into the baseline wire format.
+///
+/// Format: `base64(name):base64(value)` pairs joined by `;`.
+/// Uses base64 standard alphabet with no padding, matching
+/// Go's `base64.RawStdEncoding`.
+///
+/// Matches Go's `SerializeHeaders` in `connection/header.go`.
+#[allow(dead_code)]
+pub(crate) fn serialize_headers(headers: &[HttpHeader]) -> String {
+    let engine = header_b64_engine();
+    let mut buf = String::new();
+
+    for header in headers {
+        if !buf.is_empty() {
+            buf.push(PAIR_SEPARATOR);
+        }
+        buf.push_str(&engine.encode(&header.name));
+        buf.push(NAME_VALUE_SEPARATOR);
+        buf.push_str(&engine.encode(&header.value));
+    }
+
+    buf
+}
+
+/// Deserialize HTTP headers from the baseline wire format.
+///
+/// Inverse of [`serialize_headers`]. Returns `None` if the format is
+/// malformed (wrong number of `:` separators) or base64 decoding fails.
+///
+/// Matches Go's `DeserializeHeaders` in `connection/header.go`.
+#[allow(dead_code)]
+pub(crate) fn deserialize_headers(serialized: &str) -> Option<Vec<HttpHeader>> {
+    let engine = header_b64_engine();
+    let mut headers = Vec::new();
+
+    for pair in serialized.split(PAIR_SEPARATOR) {
+        if pair.is_empty() {
+            continue;
+        }
+
+        // Go requires exactly 2 parts when splitting on ':'
+        let parts: Vec<&str> = pair.split(NAME_VALUE_SEPARATOR).collect();
+        if parts.len() != 2 {
+            return None;
+        }
+
+        let name_bytes = engine.decode(parts[0]).ok()?;
+        let value_bytes = engine.decode(parts[1]).ok()?;
+
+        headers.push(HttpHeader {
+            name: String::from_utf8(name_bytes).ok()?,
+            value: String::from_utf8(value_bytes).ok()?,
+        });
+    }
+
+    Some(headers)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,5 +223,103 @@ mod tests {
     fn header_metadata_key_format() {
         assert_eq!(header_metadata_key("Content-Type"), "HttpHeader:Content-Type");
         assert_eq!(header_metadata_prefix(), "HttpHeader:");
+    }
+
+    #[test]
+    fn websocket_client_header_detection() {
+        assert!(is_websocket_client_header("sec-websocket-accept"));
+        assert!(is_websocket_client_header("Sec-Websocket-Accept"));
+        assert!(is_websocket_client_header("connection"));
+        assert!(is_websocket_client_header("Connection"));
+        assert!(is_websocket_client_header("upgrade"));
+        assert!(is_websocket_client_header("Upgrade"));
+
+        assert!(!is_websocket_client_header("sec-websocket-key"));
+        assert!(!is_websocket_client_header("content-type"));
+        assert!(!is_websocket_client_header(""));
+    }
+
+    #[test]
+    fn header_serialization_roundtrip() {
+        let original = vec![
+            HttpHeader {
+                name: "Content-Type".into(),
+                value: "application/json".into(),
+            },
+            HttpHeader {
+                name: "Authorization".into(),
+                value: "Bearer token123".into(),
+            },
+        ];
+
+        let serialized = serialize_headers(&original);
+        let deserialized = deserialize_headers(&serialized).expect("should deserialize");
+
+        assert_eq!(deserialized, original);
+    }
+
+    #[test]
+    fn header_serialization_empty() {
+        let serialized = serialize_headers(&[]);
+        assert_eq!(serialized, "");
+
+        let deserialized = deserialize_headers("").expect("empty should parse");
+        assert!(deserialized.is_empty());
+    }
+
+    #[test]
+    fn header_serialization_single() {
+        let original = vec![HttpHeader {
+            name: "Host".into(),
+            value: "example.com".into(),
+        }];
+
+        let serialized = serialize_headers(&original);
+        assert!(
+            !serialized.contains(';'),
+            "single header should have no separator"
+        );
+
+        let deserialized = deserialize_headers(&serialized).expect("should parse");
+        assert_eq!(deserialized, original);
+    }
+
+    #[test]
+    fn header_serialization_no_padding() {
+        // Verify base64 output has no '=' padding characters
+        let headers = vec![HttpHeader {
+            name: "X".into(),
+            value: "Y".into(),
+        }];
+
+        let serialized = serialize_headers(&headers);
+        assert!(
+            !serialized.contains('='),
+            "serialized headers must not contain base64 padding: {serialized}"
+        );
+    }
+
+    #[test]
+    fn header_deserialization_rejects_malformed() {
+        // No colon separator
+        assert!(deserialize_headers("abc").is_none());
+
+        // Too many colons in one pair
+        assert!(deserialize_headers("abc:def:ghi").is_none());
+
+        // Invalid base64
+        assert!(deserialize_headers("!!!:???").is_none());
+    }
+
+    #[test]
+    fn header_serialization_special_characters() {
+        let original = vec![HttpHeader {
+            name: "X-Custom-Header".into(),
+            value: "value with spaces & special=chars".into(),
+        }];
+
+        let serialized = serialize_headers(&original);
+        let deserialized = deserialize_headers(&serialized).expect("should roundtrip");
+        assert_eq!(deserialized, original);
     }
 }

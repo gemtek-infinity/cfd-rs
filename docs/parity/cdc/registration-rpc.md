@@ -211,7 +211,8 @@ Source: [crates/cfdrs-bin/src/transport/quic/lifecycle.rs](../../../crates/cfdrs
 The Rust control stream follows a simplified version of this lifecycle:
 
 - opens first QUIC stream (bidirectional)
-- sends registration request as JSON
+- sends registration request as JSON (Cap'n Proto codec exists in
+  `registration_codec.rs` but is not yet wired into the runtime path)
 - reads registration response as JSON
 - emits `ProtocolEvent::Registered` and `ProtocolEvent::RegistrationComplete`
 - then enters the stream-accept loop
@@ -225,6 +226,7 @@ Missing lifecycle stages in Rust:
 ## Current Rust Registration Surface
 
 Source: [crates/cfdrs-cdc/src/registration.rs](../../../crates/cfdrs-cdc/src/registration.rs)
+and [crates/cfdrs-cdc/src/registration_codec.rs](../../../crates/cfdrs-cdc/src/registration_codec.rs)
 
 ### TunnelAuth
 
@@ -232,35 +234,42 @@ Source: [crates/cfdrs-cdc/src/registration.rs](../../../crates/cfdrs-cdc/src/reg
 pub struct TunnelAuth {
     pub account_tag: String,
     pub tunnel_secret: Vec<u8>,
-    pub tunnel_id: Uuid,    // extra field vs Go
 }
 ```
 
-**Divergence:** Rust adds `tunnel_id` into `TunnelAuth`. Go passes
-`tunnelId` as a separate `registerConnection` parameter.
+**Status:** field-level match with baseline schema. `tunnel_id` is a separate
+parameter on `RegisterConnectionRequest`, matching the Go
+`registerConnection(auth, tunnelId, ...)` signature.
+
+### ClientInfo
+
+```rust
+pub struct ClientInfo {
+    pub client_id: Vec<u8>,
+    pub features: Vec<String>,
+    pub version: String,
+    pub arch: String,
+}
+```
+
+**Status:** field-level match. `client_id` is 16-byte UUID bytes.
+`for_current_platform()` constructor builds default values.
 
 ### ConnectionOptions
 
 ```rust
 pub struct ConnectionOptions {
-    pub client: String,
-    pub version: String,
-    pub os: String,
-    pub arch: String,
-    pub conn_index: u8,
-    pub edge_addr: SocketAddr,
-    pub num_previous_attempts: u8,
+    pub client: ClientInfo,
     pub origin_local_ip: Option<IpAddr>,
+    pub replace_existing: bool,
+    pub compression_quality: u8,
+    pub num_previous_attempts: u8,
 }
 ```
 
-#### Divergences from Go
-
-- Go nests `ClientInfo` (with `clientId`, `features`, `version`, `arch`)
-  inside `ConnectionOptions`; Rust flattens these fields
-- Missing from Rust: `clientId` (UUID), `features` (capability list),
-  `replaceExisting`, `compressionQuality`
-- Extra in Rust: `edge_addr` (not a Cap'n Proto field; used locally)
+**Status:** field-level match with `ClientInfo` properly nested. All five
+Cap'n Proto schema fields present. `for_current_platform()` constructor
+available.
 
 ### ConnectionDetails
 
@@ -273,49 +282,70 @@ pub struct ConnectionDetails {
 ```
 
 **Status:** field-level match (naming differs: Go `locationName` vs Rust
-`location`, Go `tunnelIsRemotelyManaged` vs Rust `is_remotely_managed`)
+`location`, Go `tunnelIsRemotelyManaged` vs Rust `is_remotely_managed`).
 
-### RegisterConnectionRequest / RegisterConnectionResponse
+### ConnectionError
+
+```rust
+pub struct ConnectionError {
+    pub cause: String,
+    pub retry_after_ns: i64,
+    pub should_retry: bool,
+}
+```
+
+**Status:** field-level match with retry semantics. `retry_after()` method
+converts nanoseconds to `Duration`, clamping negatives to zero.
+
+### ConnectionResponse
+
+```rust
+pub enum ConnectionResponse {
+    Success(ConnectionDetails),
+    Error(ConnectionError),
+}
+```
+
+**Status:** proper union enum matching the `ConnectionResponse` union in the
+Cap'n Proto schema (`error @0 :ConnectionError | connectionDetails @1 :ConnectionDetails`).
+
+### RegisterConnectionRequest
 
 ```rust
 pub struct RegisterConnectionRequest {
     pub auth: TunnelAuth,
+    pub tunnel_id: Uuid,
+    pub conn_index: u8,
     pub options: ConnectionOptions,
-}
-
-pub struct RegisterConnectionResponse {
-    pub error: String,
-    pub details: Option<ConnectionDetails>,
 }
 ```
 
-**Divergence:** Go uses a `ConnectionResponse` union
-(`error | connectionDetails`); Rust uses a flat struct with optional details.
-Go also has `ConnectionError` with `retryAfter` and `shouldRetry`; Rust has
-only `error: String`.
+**Status:** maps all four `registerConnection` RPC parameters. `tunnel_id`
+is a separate field, matching the Go registration client signature.
 
 ### Wire Encoding
 
-- Rust serializes registration request as **JSON** via `serde_json`
-- Go serializes registration as **Cap'n Proto binary**
-- This is the primary wire encoding divergence for the registration path
-- QUIC connection ALPN `argotunnel` is correctly set in Rust ([crates/cfdrs-bin/src/transport/quic/session.rs](../../../crates/cfdrs-bin/src/transport/quic/session.rs)
-  `EDGE_QUIC_ALPN`) — matches Go
+Cap'n Proto binary codec implemented in `registration_codec.rs` with
+`marshal_capnp` / `unmarshal_capnp` methods for all six schema types:
+`TunnelAuth`, `ClientInfo`, `ConnectionOptions`, `ConnectionDetails`,
+`ConnectionError`, `ConnectionResponse`. 17 round-trip tests including
+wire serialization pass. Codec matches Go `pogs` field mapping.
+
+Runtime integration to replace the JSON path in `lifecycle.rs` remains
+pending. The QUIC control stream currently sends JSON for registration;
+the Cap'n Proto codec exists but is not yet wired into the runtime path.
+
+QUIC connection ALPN `argotunnel` is correctly set in Rust
+([crates/cfdrs-bin/src/transport/quic/session.rs](../../../crates/cfdrs-bin/src/transport/quic/session.rs)
+`EDGE_QUIC_ALPN`) — matches Go.
 
 ## Gap Summary
 
 | Gap | Severity | Detail |
 | --- | --- | --- |
-| wire encoding mismatch | critical | Rust uses JSON; Go uses Cap'n Proto binary |
-| missing `ClientInfo` nesting | high | Rust flattens; Go nests with separate struct |
-| missing `clientId` field | high | Go sends 16-byte UUID; Rust omits |
-| missing `features` field | high | Go sends capability list; Rust omits |
-| missing `replaceExisting` field | medium | Go boolean for connection eviction |
-| missing `compressionQuality` field | medium | Go UInt8 for stream compression |
-| missing `ConnectionError` richness | high | Go has `retryAfter` + `shouldRetry`; Rust has string only |
+| runtime wire integration | critical | Cap'n Proto codec exists; runtime still sends JSON via `lifecycle.rs` |
 | missing `unregisterConnection` | medium | Rust has no graceful shutdown RPC |
-| missing `updateLocalConfiguration` | medium | Rust has no config push RPC |
-| missing `SessionManager` interface | high | UDP session lifecycle missing |
-| missing `ConfigurationManager` interface | medium | remote config update missing |
-| missing feature flags | high | no capability list sent to edge |
-| `tunnel_id` placement | low | Rust includes in TunnelAuth; Go passes separately |
+| missing `updateLocalConfiguration` | medium | Rust has no config push RPC dispatch |
+| missing `SessionManager` RPC dispatch | high | types exist; RPC wiring pending |
+| missing `ConfigurationManager` RPC dispatch | medium | types exist; RPC wiring pending |
+| feature flags runtime wiring | high | feature list built by `features.rs`; not sent in live registration yet |

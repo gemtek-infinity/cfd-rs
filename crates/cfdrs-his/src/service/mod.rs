@@ -140,4 +140,32 @@ mod tests {
         let args = build_args_for_token("eyJhIjoiYWNjdCJ9");
         assert_eq!(args, ["tunnel", "run", "--token", "eyJhIjoiYWNjdCJ9"]);
     }
+
+    // --- HIS-021: is_systemd detection ---
+
+    #[test]
+    fn is_systemd_checks_run_systemd_system() {
+        // Go: isSystemd() checks for `/run/systemd/system` directory.
+        // We just verify the function is callable and returns a bool
+        // consistent with the presence of that path.
+        let expected = Path::new("/run/systemd/system").exists();
+        assert_eq!(is_systemd(), expected);
+    }
+
+    /// HIS-019: `SERVICE_CONFIG_DIR` and `SERVICE_CONFIG_PATH` constants
+    /// match the Go baseline's hardcoded paths.
+    #[test]
+    fn service_config_paths_match_go() {
+        assert_eq!(SERVICE_CONFIG_DIR, "/etc/cloudflared");
+        assert_eq!(SERVICE_CONFIG_PATH, "/etc/cloudflared/config.yml");
+    }
+
+    /// HIS-020/013: token-based args never include `--config`.
+    #[test]
+    fn build_args_for_token_does_not_include_config() {
+        let args = build_args_for_token("tok_abc");
+        assert!(!args.contains(&"--config".to_string()));
+        assert!(args.contains(&"--token".to_string()));
+        assert!(args.contains(&"tok_abc".to_string()));
+    }
 }

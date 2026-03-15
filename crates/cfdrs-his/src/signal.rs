@@ -163,11 +163,14 @@ pub fn remove_pidfile(path: &Path) {
 /// Go: creates `<token-path>.lock` with mode 0600.
 /// Uses creation as the lock mechanism (O_CREATE | O_EXCL).
 pub fn acquire_token_lock(token_path: &Path) -> Result<PathBuf> {
+    use std::os::unix::fs::OpenOptionsExt;
+
     let lock_path = token_path.with_extension("lock");
 
     std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
+        .mode(0o600)
         .open(&lock_path)
         .map_err(|e| {
             ConfigError::invariant(format!(
@@ -249,6 +252,24 @@ mod tests {
     }
 
     #[test]
+    fn token_lock_file_has_mode_0600() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock")
+            .as_nanos();
+        let token_path = std::env::temp_dir().join(format!("cfdrs-his-token-perm-{unique}.json"));
+
+        let lock_path = acquire_token_lock(&token_path).expect("acquire lock");
+        let metadata = std::fs::metadata(&lock_path).expect("metadata");
+        let mode = metadata.permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "lock file should have mode 0600, got {mode:o}");
+
+        release_token_lock(&lock_path);
+    }
+
+    #[test]
     fn default_grace_period_is_30s() {
         assert_eq!(DEFAULT_GRACE_PERIOD, Duration::from_secs(30));
     }
@@ -281,5 +302,54 @@ mod tests {
                 .to_string()
                 .contains("grace-period must be equal or less than")
         );
+    }
+
+    // --- HIS-059: additional grace-period parity tests ---
+
+    #[test]
+    fn parse_grace_period_empty_string_returns_default() {
+        let duration = parse_grace_period(Some("")).expect("empty should return default");
+        assert_eq!(duration, DEFAULT_GRACE_PERIOD);
+    }
+
+    #[test]
+    fn parse_grace_period_whitespace_returns_default() {
+        let duration = parse_grace_period(Some("   ")).expect("whitespace should return default");
+        assert_eq!(duration, DEFAULT_GRACE_PERIOD);
+    }
+
+    #[test]
+    fn parse_grace_period_accepts_pure_seconds() {
+        let duration = parse_grace_period(Some("45s")).expect("45s should parse");
+        assert_eq!(duration, Duration::from_secs(45));
+    }
+
+    #[test]
+    fn parse_grace_period_accepts_zero() {
+        let duration = parse_grace_period(Some("0")).expect("zero should parse");
+        assert_eq!(duration, Duration::ZERO);
+    }
+
+    #[test]
+    fn parse_grace_period_boundary_at_max() {
+        // Exactly 3m (180s) should be accepted.
+        let duration = parse_grace_period(Some("3m")).expect("3m should parse");
+        assert_eq!(duration, Duration::from_secs(180));
+    }
+
+    #[test]
+    fn parse_grace_period_rejects_invalid_unit() {
+        assert!(parse_grace_period(Some("10x")).is_err());
+    }
+
+    #[test]
+    fn parse_grace_period_rejects_bare_number() {
+        assert!(parse_grace_period(Some("30")).is_err());
+    }
+
+    #[test]
+    fn parse_grace_period_accepts_hours() {
+        let duration = parse_grace_period(Some("0h1m")).expect("0h1m should parse");
+        assert_eq!(duration, Duration::from_secs(60));
     }
 }

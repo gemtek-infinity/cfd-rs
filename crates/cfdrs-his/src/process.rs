@@ -33,4 +33,12 @@ mod tests {
         let restart = StubGracefulRestart;
         assert!(restart.restart().is_err());
     }
+
+    /// HIS-054: `std::env::current_exe()` does not panic in the test
+    /// environment, matching Go's `os.Executable()` availability.
+    #[test]
+    fn current_executable_does_not_panic() {
+        let exe = std::env::current_exe().expect("current_exe should succeed in test env");
+        assert!(exe.exists());
+    }
 }

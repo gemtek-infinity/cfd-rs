@@ -7,7 +7,7 @@ use uuid::Uuid;
 use super::MAX_DATAGRAM_SIZE;
 use super::edge::{PeerVerification, QuicEdgeTarget, wildcard_bind_addr};
 
-const EDGE_QUIC_ALPN: &[&[u8]] = &[b"argotunnel"];
+const EDGE_QUIC_ALPN: &[&[u8]] = &[cfdrs_cdc::protocol::EDGE_QUIC_ALPN.as_bytes()];
 const QUIC_IDLE_TIMEOUT_MS: u64 = 30_000;
 
 pub(super) struct QuicSessionState {

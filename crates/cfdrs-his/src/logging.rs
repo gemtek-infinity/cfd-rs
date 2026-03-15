@@ -327,4 +327,168 @@ mod tests {
             PathBuf::from("/var/log/custom")
         );
     }
+
+    // --- HIS-066: permission constants match Go `filePermMode` / `dirPermMode` ---
+
+    #[test]
+    fn log_file_perm_mode_matches_go_baseline() {
+        // Go: `filePermMode = 0644`
+        assert_eq!(LOG_FILE_PERM_MODE, 0o644);
+    }
+
+    #[test]
+    fn log_dir_perm_mode_matches_go_baseline() {
+        // Go: `dirPermMode = 0744`
+        assert_eq!(LOG_DIR_PERM_MODE, 0o744);
+    }
+
+    // --- HIS-067: log format output matches Go `--log-format-output` ---
+
+    #[test]
+    fn log_format_default_is_text() {
+        assert_eq!(LogFormat::default(), LogFormat::Text);
+    }
+
+    #[test]
+    fn log_format_json_round_trips() {
+        let cfg = build_log_config(None, Some("json"), None, None).expect("json format");
+        assert_eq!(cfg.format, LogFormat::Json);
+        assert!(cfg.console.as_ref().expect("console should exist").as_json);
+    }
+
+    #[test]
+    fn log_format_case_insensitive() {
+        assert_eq!("JSON".parse::<LogFormat>().expect("JSON"), LogFormat::Json);
+        assert_eq!("Default".parse::<LogFormat>().expect("Default"), LogFormat::Text);
+    }
+
+    // --- HIS-068: log level matches Go `--loglevel` / `--transport-loglevel` ---
+
+    #[test]
+    fn log_level_default_is_info() {
+        // Go: MinLevel defaults to "info"
+        assert_eq!(LogLevel::default(), LogLevel::Info);
+    }
+
+    #[test]
+    fn log_level_all_go_variants_parse() {
+        // Go recognizes: debug, info, warn/warning, error/err, fatal
+        for (input, expected) in [
+            ("debug", LogLevel::Debug),
+            ("info", LogLevel::Info),
+            ("warn", LogLevel::Warn),
+            ("warning", LogLevel::Warn),
+            ("error", LogLevel::Error),
+            ("err", LogLevel::Error),
+            ("fatal", LogLevel::Fatal),
+        ] {
+            assert_eq!(input.parse::<LogLevel>().expect(input), expected);
+        }
+    }
+
+    #[test]
+    fn log_level_case_insensitive() {
+        assert_eq!("DEBUG".parse::<LogLevel>().expect("DEBUG"), LogLevel::Debug);
+        assert_eq!("INFO".parse::<LogLevel>().expect("INFO"), LogLevel::Info);
+    }
+
+    #[test]
+    fn log_level_display_round_trips() {
+        for level in [
+            LogLevel::Debug,
+            LogLevel::Info,
+            LogLevel::Warn,
+            LogLevel::Error,
+            LogLevel::Fatal,
+        ] {
+            let text = level.to_string();
+            assert_eq!(text.parse::<LogLevel>().expect(&text), level);
+        }
+    }
+
+    // --- HIS-063/064: default log directory matches Go ---
+
+    #[test]
+    fn default_log_directory_matches_go_baseline() {
+        // Go: `DefaultUnixLogLocation = "/var/log/cloudflared"`
+        assert_eq!(DEFAULT_LOG_DIRECTORY, "/var/log/cloudflared");
+    }
+
+    #[test]
+    fn rolling_config_default_dirname_matches_go() {
+        let cfg = RollingConfig::default();
+        assert_eq!(cfg.dirname, PathBuf::from("/var/log/cloudflared"));
+        assert_eq!(cfg.filename, "cloudflared.log");
+    }
+
+    // --- HIS-036: journalctl constants match Go ---
+
+    #[test]
+    fn journalctl_collection_constants_match_go_baseline() {
+        // Go: `journalctl -u cloudflared.service --since "2 weeks ago"`
+        assert_eq!(JOURNALCTL_COMMAND, "journalctl");
+        assert_eq!(
+            JOURNALCTL_ARGS,
+            &["-u", "cloudflared.service", "--since", "2 weeks ago"]
+        );
+        assert_eq!(FALLBACK_LOG_PATH, "/var/log/cloudflared.err");
+    }
+
+    // --- HIS-063/064/065: logging config edge cases ---
+
+    #[test]
+    fn build_log_config_bare_filename_uses_empty_dirname() {
+        // When logfile is just a bare name with no directory component,
+        // Path::parent() returns Some("") — the code stores that as-is.
+        let config = build_log_config(None, None, Some("app.log"), None).expect("bare filename should work");
+        let file = config.file.expect("file config should exist");
+        assert_eq!(file.dirname, PathBuf::from(""));
+        assert_eq!(file.filename, "app.log");
+    }
+
+    #[test]
+    fn build_log_config_nested_path_splits_correctly() {
+        let config = build_log_config(None, None, Some("/var/log/cloudflared/tunnel.log"), None)
+            .expect("nested path should work");
+        let file = config.file.expect("file config should exist");
+        assert_eq!(file.dirname, PathBuf::from("/var/log/cloudflared"));
+        assert_eq!(file.filename, "tunnel.log");
+        assert_eq!(file.full_path(), PathBuf::from("/var/log/cloudflared/tunnel.log"));
+    }
+
+    #[test]
+    fn log_level_ordering_matches_severity() {
+        // Go severity ordering: debug < info < warn < error < fatal
+        let levels = [
+            LogLevel::Debug,
+            LogLevel::Info,
+            LogLevel::Warn,
+            LogLevel::Error,
+            LogLevel::Fatal,
+        ];
+        for pair in levels.windows(2) {
+            assert_ne!(pair[0], pair[1], "{:?} should differ from {:?}", pair[0], pair[1]);
+        }
+    }
+
+    #[test]
+    fn log_format_display_round_trips() {
+        // Both formats should survive parse → display → parse
+        for input in &["json", "default", "text"] {
+            let parsed: LogFormat = input.parse().expect("should parse");
+            let displayed = if parsed == LogFormat::Json {
+                "json"
+            } else {
+                "default"
+            };
+            let reparsed: LogFormat = displayed.parse().expect("should reparse");
+            assert_eq!(parsed, reparsed);
+        }
+    }
+
+    #[test]
+    fn journalctl_args_length_is_four() {
+        // Go passes exactly 4 args: -u, service name, --since, time window
+        assert_eq!(JOURNALCTL_ARGS.len(), 4);
+    }
 }

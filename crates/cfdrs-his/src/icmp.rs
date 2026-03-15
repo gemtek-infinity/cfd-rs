@@ -98,4 +98,32 @@ mod tests {
         let proxy = StubIcmpProxy;
         assert!(proxy.start().is_err());
     }
+
+    // --- HIS-071: ICMP source-address flag and env parity ---
+    // Go: baseline-2026.2.0/cmd/cloudflared/flags/flags.go
+    //     ICMPV4Src = "icmpv4-src"
+    //     ICMPV6Src = "icmpv6-src"
+    // Go: baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go
+    //     EnvVars: []string{"TUNNEL_ICMPV4_SRC"}
+    //     EnvVars: []string{"TUNNEL_ICMPV6_SRC"}
+
+    #[test]
+    fn icmpv4_src_flag_matches_go_baseline() {
+        assert_eq!(ICMPV4_SRC_FLAG, "icmpv4-src");
+    }
+
+    #[test]
+    fn icmpv6_src_flag_matches_go_baseline() {
+        assert_eq!(ICMPV6_SRC_FLAG, "icmpv6-src");
+    }
+
+    #[test]
+    fn icmpv4_src_env_matches_go_baseline() {
+        assert_eq!(ICMPV4_SRC_ENV, "TUNNEL_ICMPV4_SRC");
+    }
+
+    #[test]
+    fn icmpv6_src_env_matches_go_baseline() {
+        assert_eq!(ICMPV6_SRC_ENV, "TUNNEL_ICMPV6_SRC");
+    }
 }

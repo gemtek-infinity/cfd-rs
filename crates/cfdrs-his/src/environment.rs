@@ -124,11 +124,38 @@ pub fn has_compatible_libc() -> bool {
 mod tests {
     use super::*;
 
+    // --- HIS-050: UID detection ---
+
     #[test]
     fn current_uid_returns_something() {
         // Just verify it doesn't panic.
         let _ = current_uid();
     }
+
+    #[test]
+    fn current_uid_reads_from_proc_self_status() {
+        // On Linux, /proc/self/status always exists and has a Uid line.
+        let uid = current_uid();
+        // In a non-root test context uid should be a real id, not the
+        // fallback value, unless running with unusual isolation.
+        assert_ne!(uid, u32::MAX, "expected a real uid from /proc/self/status");
+    }
+
+    #[test]
+    fn is_root_consistent_with_uid() {
+        assert_eq!(is_root(), current_uid() == 0);
+    }
+
+    // --- HIS-051: terminal detection ---
+
+    #[test]
+    fn is_terminal_does_not_panic() {
+        // In test context, stdout is usually not a terminal, but
+        // this depends on the runner. Just verify it returns a bool.
+        let _ = is_terminal();
+    }
+
+    // --- HIS-052: target OS/arch ---
 
     #[test]
     fn target_os_is_linux() {
@@ -140,15 +167,37 @@ mod tests {
         assert!(!TARGET_ARCH.is_empty());
     }
 
+    // --- HIS-054: current executable ---
+
     #[test]
     fn current_executable_succeeds() {
         let exe = current_executable().expect("should find exe");
         assert!(exe.exists());
     }
 
+    // --- HIS-049/056: package manager marker ---
+
     #[test]
-    fn is_terminal_does_not_panic() {
-        // In test context, stdout is usually not a terminal.
-        let _ = is_terminal();
+    fn installed_from_package_marker_matches_go() {
+        assert_eq!(
+            INSTALLED_FROM_PACKAGE_MARKER,
+            "/usr/local/etc/cloudflared/.installedFromPackageManager",
+        );
+    }
+
+    #[test]
+    fn package_install_paths_match_go() {
+        // Go postinst.sh installs to /usr/local/bin/cloudflared
+        assert_eq!(PACKAGE_INSTALL_BIN, "/usr/local/bin/cloudflared");
+        assert_eq!(PACKAGE_INSTALL_CONFIG_DIR, "/usr/local/etc/cloudflared/");
+    }
+
+    // --- HIS-055: linker paths ---
+
+    #[test]
+    fn known_linker_paths_not_empty() {
+        assert!(!KNOWN_LINKER_PATHS.is_empty());
+        // First entry must be the standard x86_64 dynamic linker.
+        assert_eq!(KNOWN_LINKER_PATHS[0], "/lib64/ld-linux-x86-64.so.2");
     }
 }

@@ -143,4 +143,16 @@ mod tests {
         assert!(script.contains("/etc/sysconfig/$name"));
         assert!(script.contains("start|stop|restart|status"));
     }
+
+    /// HIS-016/023: SysV template contains the binary path argument.
+    #[test]
+    fn sysv_template_contains_binary_path() {
+        let args = ServiceTemplateArgs {
+            path: PathBuf::from("/opt/custom/cloudflared"),
+            extra_args: vec!["--token".to_string(), "abc".to_string()],
+        };
+        let script = render_init_script(&args);
+        assert!(script.contains("/opt/custom/cloudflared"));
+        assert!(script.contains("--token abc"));
+    }
 }

@@ -12,10 +12,11 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use cfdrs_cli::{
-    AccessSubcommand, Cli, CliError, CliOutput, Command, DB_CONNECT_REMOVED_MSG, GlobalFlags,
-    IngressSubcommand, IpRouteSubcommand, ManagementSubcommand, PROGRAM_NAME, PROXY_DNS_REMOVED_MSG,
-    RouteSubcommand, ServiceAction, TailSubcommand, TunnelSubcommand, VnetSubcommand, parse_args,
-    render_help, render_short_version, render_version_output, stub_not_implemented,
+    AccessSubcommand, CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command,
+    DB_CONNECT_REMOVED_MSG, GlobalFlags, IngressSubcommand, IpRouteSubcommand, ManagementSubcommand,
+    PROGRAM_NAME, PROXY_DNS_REMOVED_MSG, RouteSubcommand, ServiceAction, TUNNEL_CMD_ERROR_MSG,
+    TailSubcommand, TunnelSubcommand, VnetSubcommand, parse_args, render_help, render_short_version,
+    render_version_output, stub_not_implemented,
 };
 use cfdrs_his::environment::current_executable;
 use cfdrs_his::service::{
@@ -64,9 +65,21 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::Service(ServiceAction::Install) => execute_service_install(&cli),
         Command::Service(ServiceAction::Uninstall) => execute_service_uninstall(),
 
-        Command::Tunnel(TunnelSubcommand::Run | TunnelSubcommand::Bare) => {
-            execute_startup_command(&cli, CliMode::Run)
-        }
+        Command::Tunnel(TunnelSubcommand::Run) => execute_startup_command(&cli, CliMode::Run),
+
+        // Go baseline: TunnelCommand() dispatch tree in cmd/cloudflared/tunnel/cmd.go
+        Command::Tunnel(TunnelSubcommand::Bare) => execute_tunnel_bare(&cli),
+
+        // Go baseline: handleServiceMode() in main.go — daemon-style
+        // config-watcher loop when invoked with zero args and zero flags.
+        // Requires HIS watcher/reload infrastructure (HIS-041 through HIS-043).
+        Command::ServiceMode => CliOutput::failure(
+            String::new(),
+            "service mode requires a configuration file; use 'cloudflared tunnel run' with --config or \
+             --token instead"
+                .to_owned(),
+            1,
+        ),
 
         // Removed features — exact error messages from Go baseline.
         Command::ProxyDns | Command::Tunnel(TunnelSubcommand::ProxyDns) => {
@@ -145,6 +158,44 @@ fn execute_startup_command(cli: &Cli, mode: CliMode) -> CliOutput {
     }
 }
 
+/// Go baseline: TunnelCommand() dispatch tree in cmd/cloudflared/tunnel/cmd.go.
+///
+/// Priority order:
+///   1. `--name` set → adhoc named tunnel (stub)
+///   2. `--url` or `--hello-world` → quick tunnel (stub)
+///   3. config has TunnelID → redirect to `tunnel run`
+///   4. `--hostname` set → classic tunnel deprecation error
+///   5. fallthrough → error with usage guidance
+fn execute_tunnel_bare(cli: &Cli) -> CliOutput {
+    let flags = &cli.flags;
+
+    // Branch 1: --name → adhoc named tunnel (not yet implemented)
+    if flags.tunnel_name.is_some() {
+        return CliOutput::failure(String::new(), stub_not_implemented("tunnel (adhoc named)"), 1);
+    }
+
+    // Branch 2: --url or --hello-world → quick tunnel (not yet implemented)
+    if flags.url.is_some() || flags.hello_world {
+        return CliOutput::failure(String::new(), stub_not_implemented("tunnel (quick tunnel)"), 1);
+    }
+
+    // Branch 3: config has TunnelID → run from config
+    match resolve_startup(flags.config_path.clone()) {
+        Ok(startup) if startup.normalized.tunnel.is_some() => {
+            return execute_runtime_command(startup, flags);
+        }
+        _ => {}
+    }
+
+    // Branch 4: --hostname → classic tunnel deprecation
+    if flags.hostname.is_some() {
+        return CliOutput::failure(String::new(), CLASSIC_TUNNEL_DEPRECATED_MSG.to_owned(), 1);
+    }
+
+    // Branch 5: no valid argument → usage error
+    CliOutput::failure(String::new(), TUNNEL_CMD_ERROR_MSG.to_owned(), 1)
+}
+
 fn execute_runtime_command(startup: StartupSurface, flags: &GlobalFlags) -> CliOutput {
     let PreparedRuntimeStartup {
         startup,
@@ -157,6 +208,17 @@ fn execute_runtime_command(startup: StartupSurface, flags: &GlobalFlags) -> CliO
     };
 
     runtime::install_runtime_logging(&log_config, transport_log_level);
+
+    // Go baseline: ReadConfigFile() double-parses the YAML and logs warnings
+    // for unknown top-level keys.  The Rust equivalent collects them during
+    // normalization; emit them here once logging is installed.
+    for warning in &startup.normalized.warnings {
+        match warning {
+            cfdrs_shared::NormalizationWarning::UnknownTopLevelKeys(keys) => {
+                tracing::warn!("Your configuration file has unknown top-level keys: {:?}", keys,);
+            }
+        }
+    }
 
     let report = runtime::run(runtime_config);
     let stdout = render_run_output(&startup, &report);
