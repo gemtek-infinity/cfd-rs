@@ -159,14 +159,14 @@ dispatch via `reqwest` performs real round-trips. All six lifecycle events
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-042 | tunnel token encoding | `connection/` tunnel token | JSON fields: `a` (accountTag), `s` (tunnelSecret), `t` (tunnelUUID), `e` (endpoint optional); then base64-encoded | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | local tests | none recorded | token encoding roundtrip tests, field mapping tests | high | `TunnelToken` struct with serde `a`/`s`/`t`/`e` renames matching Go. `encode()` uses `BASE64_STANDARD`. `decode()` round-trips correctly. `to_credentials_file()`/`from_credentials_file()` conversions. 4 parity tests: single-letter keys, encode/decode roundtrip, conversion roundtrip, omitted optional field. |
+| CDC-042 | tunnel token encoding | `connection/` tunnel token | JSON fields: `a` (accountTag), `s` (tunnelSecret), `t` (tunnelUUID), `e` (endpoint optional); then base64-encoded | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | baseline-backed tests | closed | token encoding roundtrip tests, field mapping tests | high | `TunnelToken` struct with serde `a`/`s`/`t`/`e` renames matching Go. `encode()` uses `BASE64_STANDARD`. `decode()` round-trips correctly. `to_credentials_file()`/`from_credentials_file()` conversions. 4 parity tests: single-letter keys, encode/decode roundtrip, conversion roundtrip, omitted optional field. |
 | CDC-043 | origin cert encoding | `connection/` origin cert PEM | PEM block type `ARGO TUNNEL TOKEN`; JSON fields: `zoneID`, `accountID`, `apiToken`, `endpoint` optional | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | local tests | none recorded | PEM parsing tests, field extraction tests | high | `OriginCertToken` struct with serde renames matching Go. PEM block type `ARGO TUNNEL TOKEN` matches baseline. Endpoint lowercased via `to_ascii_lowercase()`. PEM roundtrip, JSON field name, endpoint normalization, error handling tests. 10 credential tests total. |
 
 ### QUIC Transport Wire Contract
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-044 | QUIC ALPN protocol | `connection/protocol.go` | QUIC connections use ALPN `"argotunnel"` during TLS handshake | cfdrs-cdc `protocol.rs`, `session.rs` | audited, parity-backed | local tests | none recorded | ALPN negotiation tests, connection rejection tests | medium | `EDGE_QUIC_ALPN` constant in CDC `protocol.rs` is single source of truth. `session.rs` derives its `&[&[u8]]` ALPN from `cfdrs_cdc::protocol::EDGE_QUIC_ALPN.as_bytes()`. Baseline-matching test in protocol.rs. |
+| CDC-044 | QUIC ALPN protocol | `connection/protocol.go` | QUIC connections use ALPN `"argotunnel"` during TLS handshake | cfdrs-cdc `protocol.rs`, `session.rs` | audited, parity-backed | baseline-backed tests | closed | ALPN negotiation tests, connection rejection tests | medium | `EDGE_QUIC_ALPN` constant in CDC `protocol.rs` is single source of truth. `session.rs` derives its `&[&[u8]]` ALPN from `cfdrs_cdc::protocol::EDGE_QUIC_ALPN.as_bytes()`. Baseline-matching test in protocol.rs. |
 
 ## Audit Summary
 
@@ -332,7 +332,7 @@ High gaps:
 - CDC-036: IP route API (partial — `Route`, `DetailedRoute`, `NewRoute` in `api_resources.rs`)
 - CDC-038: management token API (partial — `ManagementResource` enum in `api_resources.rs`)
 - CDC-040: datagram V2 (partial — V2 wire types in `datagram.rs`)
-- CDC-042: tunnel token encoding (closing — `TunnelToken` serde `a`/`s`/`t`/`e` renames, encode/decode roundtrip, conversion roundtrip; 4 parity tests)
+- CDC-042: tunnel token encoding (closed — `TunnelToken` serde `a`/`s`/`t`/`e` renames, encode/decode roundtrip, conversion roundtrip; 4 parity tests)
 - CDC-043: origin cert encoding (closing — `OriginCertToken` serde renames, PEM block type `ARGO TUNNEL TOKEN`, endpoint normalization; parity test)
 
 ## Scope Classification

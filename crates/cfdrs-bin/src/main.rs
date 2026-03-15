@@ -14,9 +14,9 @@ use std::process::ExitCode;
 use cfdrs_cli::{
     AccessSubcommand, CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command,
     DB_CONNECT_REMOVED_MSG, GlobalFlags, IngressSubcommand, IpRouteSubcommand, ManagementSubcommand,
-    PROGRAM_NAME, PROXY_DNS_REMOVED_MSG, RouteSubcommand, ServiceAction, TUNNEL_CMD_ERROR_MSG,
-    TailSubcommand, TunnelSubcommand, VnetSubcommand, parse_args, render_help, render_short_version,
-    render_version_output, stub_not_implemented,
+    PROGRAM_NAME, PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG, RouteSubcommand, ServiceAction,
+    TUNNEL_CMD_ERROR_MSG, TailSubcommand, TunnelSubcommand, VnetSubcommand, parse_args, render_help,
+    render_short_version, render_version_output, stub_not_implemented,
 };
 use cfdrs_his::environment::current_executable;
 use cfdrs_his::service::{
@@ -83,10 +83,16 @@ fn execute_command(cli: Cli) -> CliOutput {
 
         // Removed features — exact error messages from Go baseline.
         Command::ProxyDns | Command::Tunnel(TunnelSubcommand::ProxyDns) => {
+            // Go baseline: log.Error().Msg("DNS Proxy is no longer supported since version
+            // ...") then returns errors.New(removedMessage).  urfave/cli exit
+            // code is 1.
+            eprintln!("{PROXY_DNS_REMOVED_LOG_MSG}");
             CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1)
         }
         Command::Tunnel(TunnelSubcommand::DbConnect) => {
-            CliOutput::failure(String::new(), DB_CONNECT_REMOVED_MSG.to_owned(), 1)
+            // Go baseline: cliutil.RemovedCommand("db-connect") uses cli.Exit(..., -1)
+            // which shells see as exit code 255 (unsigned byte truncation of -1).
+            CliOutput::failure(String::new(), DB_CONNECT_REMOVED_MSG.to_owned(), 255)
         }
 
         // Everything else is recognized but not yet implemented.

@@ -116,9 +116,9 @@ hand-written parser (no clap or structopt).
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CLI-025 | compatibility: proxy-dns | `cmd/cloudflared/proxydns/cmd.go`, `cmd/cloudflared/tunnel/cmd.go` | both top-level `proxy-dns` and `tunnel proxy-dns` use the same function; returned error is `dns-proxy feature is no longer supported` (no version suffix); a separate log message includes the version and deprecation URL but that is log output only, not the error value; both paths produce identical behavior | current CLI surface | audited, partial | local tests | open gap | placeholder failure tests, stderr snapshot, exit-code tests, exact error text compare | high | Rust dispatches both `proxy-dns` and `tunnel proxy-dns` to `PROXY_DNS_REMOVED_MSG` matching Go exact text; 3 parity tests verify both paths and exact error constant; Go's additional `log.Error()` with version and migration URL not yet emitted |
-| CLI-026 | compatibility: db-connect | `cmd/cloudflared/tunnel/cmd.go` | `tunnel db-connect` shows removed-command error via `cliutil.RemovedCommand("db-connect")` | current CLI surface | audited, partial | local tests | open gap | removed-command failure test, stderr snapshot, exit-code test | medium | Rust `DB_CONNECT_REMOVED_MSG` now matches Go baseline text from `cliutil.RemovedCommand()`; 2 parity tests verify exact error text and integration dispatch; Go exits -1, Rust exits 1 |
-| CLI-027 | compatibility: classic tunnels | `cmd/cloudflared/tunnel/cmd.go` | classic tunnel invocation paths produce error: `Classic tunnels have been deprecated, please use Named Tunnels. (https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/)` | current CLI surface | audited, partial | local tests | open gap | deprecation-error tests, exact error text compare | medium | `CLASSIC_TUNNEL_DEPRECATED_MSG` constant matches Go `errDeprecatedClassicTunnel` exactly; dispatch branch 4 in `execute_tunnel_bare()` returns the error when `--hostname` is set; 2 parity tests verify constant text and integration dispatch with exit code 1; only remaining gap is Go exits via `return err` (exit 1) vs Rust CliOutput exit code semantics |
+| CLI-025 | compatibility: proxy-dns | `cmd/cloudflared/proxydns/cmd.go`, `cmd/cloudflared/tunnel/cmd.go` | both top-level `proxy-dns` and `tunnel proxy-dns` use the same function; returned error is `dns-proxy feature is no longer supported` (no version suffix); a separate log message includes the version and deprecation URL but that is log output only, not the error value; both paths produce identical behavior | current CLI surface | audited, parity-backed | baseline-backed tests | closed | placeholder failure tests, stderr snapshot, exit-code tests, exact error text compare | high | Rust dispatches both `proxy-dns` and `tunnel proxy-dns` to `PROXY_DNS_REMOVED_MSG` matching Go exact text; 4 parity tests verify both paths, exact error constant, and log message; `PROXY_DNS_REMOVED_LOG_MSG` emits the Go `log.Error()` version+URL via `eprintln!` before returning the error; exit code 1 matches Go baseline |
+| CLI-026 | compatibility: db-connect | `cmd/cloudflared/tunnel/cmd.go` | `tunnel db-connect` shows removed-command error via `cliutil.RemovedCommand("db-connect")` | current CLI surface | audited, parity-backed | baseline-backed tests | closed | removed-command failure test, stderr snapshot, exit-code test | medium | Rust `DB_CONNECT_REMOVED_MSG` matches Go baseline text from `cliutil.RemovedCommand()`; exit code 255 matches Go `cli.Exit(-1)` (unsigned byte truncation); integration test verifies exact exit code and error text |
+| CLI-027 | compatibility: classic tunnels | `cmd/cloudflared/tunnel/cmd.go` | classic tunnel invocation paths produce error: `Classic tunnels have been deprecated, please use Named Tunnels. (https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/)` | current CLI surface | audited, parity-backed | baseline-backed tests | closed | deprecation-error tests, exact error text compare | medium | `CLASSIC_TUNNEL_DEPRECATED_MSG` constant matches Go `errDeprecatedClassicTunnel` exactly; dispatch branch 4 in `execute_tunnel_bare()` returns the error when `--hostname` is set; 2 parity tests verify constant text and integration dispatch; exit code 1 matches Go `return err` behavior |
 | CLI-028 | compatibility: login at root | `cmd/cloudflared/main.go` | `login` is registered as a top-level command for backward compatibility (delegates to tunnel login); hidden when built as subcommand | current CLI surface | audited, partial | partial | open gap | top-level login invocation test, help-visibility test | high | Rust parses `login` as `Command::Login` (compat alias for `tunnel login`); integration test verifies it is recognized as a valid command (not unknown-command error); dispatches to stub pending auth flow implementation |
 | CLI-029 | help formatting contract | blackbox output | urfave/cli generates help with specific spacing, wrapping, headings, command ordering, category grouping; exact text is visible contract | current CLI surface | audited, partial | local tests | open gap | exact text snapshots, width-sensitive capture, no substring-only proofs | critical | Rust help now has consistent column alignment (column 22 start for usage text, matching urfave/cli `tabwriter` output width); command ordering matches Go VisibleCategories sort (uncategorized first, then lexicographic categories); `management` correctly hidden per Go `Hidden: true`; 3 snapshot/alignment/hidden tests lock in format; remaining gap: exact whitespace parity with urfave/cli tabwriter across GLOBAL OPTIONS section |
 | CLI-030 | usage failure behavior | blackbox error output | unknown commands produce urfave/cli error text plus suggestions; bad flags produce flag-specific errors; exit code semantics from urfave/cli | current CLI surface | audited, partial | local tests | open gap | stderr/stdout capture, exit-code matrix, unknown-command tests, bad-flag tests | high | exit code 2 for usage failures, exit code 1 for config errors, exit code 0 for success; 5 parity tests verify exit codes, stderr/stdout placement; output format does not yet match urfave/cli format |
@@ -175,11 +175,11 @@ and outputs version-only string via `render_short_version()`. Full version
 format (`cloudflared version {Version} (built {BuildTime}{BuildTypeMsg})`)
 still uses alpha placeholder format. Confirmed from unit tests.
 
-**db-connect removal (CLI-026):** Go exits 255, not 1. Confirmed from blackbox.
+**db-connect removal (CLI-026):** Resolved. Rust now exits 255 matching Go `cli.Exit(-1)`. Integration test verifies exact exit code.
 
-**proxy-dns removal (CLI-025):** Error text is `"dns-proxy feature is no longer supported"` (no
-version suffix). The log message contains the version and deprecation URL but that is log
-output, not the returned error. Confirmed from baseline source.
+**proxy-dns removal (CLI-025):** Resolved. Error text matches Go exactly. `PROXY_DNS_REMOVED_LOG_MSG`
+now emits the Go `log.Error()` version+URL message via `eprintln!` before returning.
+Confirmed from baseline source and integration tests.
 
 **forward alias (CLI-022):** `forward` produces identical output to `access --help`.
 Confirmed from blackbox.
@@ -225,7 +225,7 @@ Medium gaps (all now parsed and dispatched to stubs):
 - CLI-019: tunnel route (parsed with dns/lb/ip nesting)
 - CLI-022: access subtree (all 6 subcommands + aliases parsed)
 - CLI-023: tail subtree (hidden token subcommand parsed)
-- CLI-025: proxy-dns compatibility (dispatch exists)
+- CLI-025: proxy-dns compatibility (closed)
 - CLI-028: login at root compatibility (parsed)
 - CLI-030: usage failure behavior
 
@@ -247,12 +247,12 @@ production-alpha lane.
 
 ### Compatibility-only (deprecated error stubs)
 
-- CLI-025: `proxy-dns` removal — baseline prints deprecation error with URL
-- CLI-026: `db-connect` removal — baseline shows removed-command error, exit 255
-- CLI-027: classic tunnel deprecation — baseline shows deprecation error
+- CLI-025: `proxy-dns` removal — closed; error text, log message, and exit code 1 match baseline
+- CLI-026: `db-connect` removal — closed; error text and exit code 255 match baseline
+- CLI-027: classic tunnel deprecation — closed; error text and exit code 1 match baseline
 
-These require exact error text, stderr placement, and exit code parity.
-They do not require working implementations of the removed features.
+All three compatibility stubs now have exact error text, stderr placement,
+and exit code parity with the Go baseline.
 
 ## Immediate Work Queue
 

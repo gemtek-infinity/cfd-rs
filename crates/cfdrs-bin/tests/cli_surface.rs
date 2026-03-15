@@ -267,24 +267,30 @@ fn tunnel_bare_with_config_tunnel_id_runs() {
 #[test]
 fn proxy_dns_top_level_returns_removed_error() {
     // Go baseline: top-level `proxy-dns` returns "dns-proxy feature is no longer
-    // supported"
+    // supported" with exit code 1 (errors.New → urfave/cli exit 1).
     let output = run_cloudflared(&["proxy-dns"]);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert!(!output.status.success());
+    assert_eq!(output.status.code(), Some(1));
     assert!(
         stderr.contains("dns-proxy feature is no longer supported"),
         "stderr should contain Go baseline removal message: {stderr:?}"
+    );
+    // Go baseline: log.Error().Msg("DNS Proxy is no longer supported since version
+    // 2026.2.0 ...")
+    assert!(
+        stderr.contains("DNS Proxy is no longer supported since version 2026.2.0"),
+        "stderr should contain Go baseline log.Error version message: {stderr:?}"
     );
 }
 
 #[test]
 fn tunnel_proxy_dns_returns_removed_error() {
-    // Go baseline: `tunnel proxy-dns` returns same removal message
+    // Go baseline: `tunnel proxy-dns` returns same removal message with exit 1
     let output = run_cloudflared(&["tunnel", "proxy-dns"]);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert!(!output.status.success());
+    assert_eq!(output.status.code(), Some(1));
     assert!(
         stderr.contains("dns-proxy feature is no longer supported"),
         "stderr should contain Go baseline removal message: {stderr:?}"
@@ -295,11 +301,16 @@ fn tunnel_proxy_dns_returns_removed_error() {
 
 #[test]
 fn tunnel_db_connect_returns_removed_error() {
-    // Go baseline: cliutil.RemovedCommand("db-connect") produces specific text
+    // Go baseline: cliutil.RemovedCommand("db-connect") uses cli.Exit(..., -1)
+    // which shells see as exit code 255 (unsigned byte truncation of -1).
     let output = run_cloudflared(&["tunnel", "db-connect"]);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert!(!output.status.success());
+    assert_eq!(
+        output.status.code(),
+        Some(255),
+        "Go baseline uses cli.Exit(-1) → 255"
+    );
     assert!(
         stderr.contains("db-connect command is no longer supported"),
         "stderr should contain Go baseline removed-command message: {stderr:?}"

@@ -177,6 +177,16 @@ fn build_type_msg() -> String {
 // --- Removed feature messages ---
 
 pub const PROXY_DNS_REMOVED_MSG: &str = "dns-proxy feature is no longer supported\n";
+
+/// Go baseline: `log.Error().Msg(...)` in `proxydns/cmd.go` emits this
+/// structured log line before returning the short error.  Includes version and
+/// migration URL.
+pub const PROXY_DNS_REMOVED_LOG_MSG: &str =
+    "DNS Proxy is no longer supported since version 2026.2.0 \
+     (https://developers.cloudflare.com/changelog/2025-11-11-cloudflared-proxy-dns/). \
+     As an alternative consider using \
+     https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/dns-over-https-client/";
+
 pub const DB_CONNECT_REMOVED_MSG: &str = "db-connect command is no longer supported by cloudflared. Consult \
                                           Cloudflare Tunnel documentation for possible alternative \
                                           solutions.\n";
@@ -813,6 +823,17 @@ COMMANDS:\n\
     #[test]
     fn proxy_dns_removed_message_matches_go_baseline() {
         assert!(PROXY_DNS_REMOVED_MSG.contains("dns-proxy feature is no longer supported"));
+    }
+
+    #[test]
+    fn proxy_dns_removed_log_message_matches_go_baseline() {
+        // Go: log.Error().Msg("DNS Proxy is no longer supported since version 2026.2.0
+        // ...")
+        assert!(
+            PROXY_DNS_REMOVED_LOG_MSG.contains("DNS Proxy is no longer supported since version 2026.2.0")
+        );
+        assert!(PROXY_DNS_REMOVED_LOG_MSG.contains("cloudflared-proxy-dns"));
+        assert!(PROXY_DNS_REMOVED_LOG_MSG.contains("dns-over-https-client"));
     }
 
     #[test]
