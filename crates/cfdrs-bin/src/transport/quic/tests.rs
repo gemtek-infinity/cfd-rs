@@ -5,7 +5,7 @@ use super::lifecycle::serialize_registration_response;
 use super::session::build_quiche_config;
 use crate::protocol;
 use crate::runtime::{RuntimeExit, run_with_factory};
-use cfdrs_cdc::registration::RegisterConnectionResponse;
+use cfdrs_cdc::registration::ConnectionResponse;
 use cfdrs_shared::{ConfigSource, DiscoveryAction, DiscoveryOutcome, NormalizedConfig, RawConfig};
 use std::fs;
 use std::io::ErrorKind;
@@ -258,13 +258,11 @@ fn respond_to_registration_stream(
 
                 let _request: serde_json::Value = serde_json::from_slice(&read_buf[..read])
                     .expect("registration request should be valid JSON");
-                let response =
-                    RegisterConnectionResponse::success(cfdrs_cdc::registration::ConnectionDetails {
-                        uuid: Uuid::parse_str("22222222-2222-2222-2222-222222222222")
-                            .expect("uuid should parse"),
-                        location: "TEST".to_owned(),
-                        is_remotely_managed: false,
-                    });
+                let response = ConnectionResponse::success(cfdrs_cdc::registration::ConnectionDetails {
+                    uuid: Uuid::parse_str("22222222-2222-2222-2222-222222222222").expect("uuid should parse"),
+                    location: "TEST".to_owned(),
+                    is_remotely_managed: false,
+                });
                 let payload = serialize_registration_response(&response);
                 let _ = conn.stream_send(protocol::CONTROL_STREAM_ID, &payload, true);
                 flush_test_server_egress(conn, socket, send_buf);

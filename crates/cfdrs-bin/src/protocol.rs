@@ -24,11 +24,20 @@ use uuid::Uuid;
 pub(crate) const CONTROL_STREAM_ID: u64 = 0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)] // Variants wired incrementally as lifecycle handling grows
 pub(crate) enum ProtocolBridgeState {
     BridgeUnavailable,
     BridgeCreated,
     RegistrationSent,
     RegistrationObserved,
+    /// The connection is being re-established after a failure.
+    ///
+    /// Matches Go's `Reconnecting` status in `connection/event.go`.
+    Reconnecting,
+    /// The control stream has initiated a graceful unregister sequence.
+    ///
+    /// Matches Go's `Unregistering` status in `connection/event.go`.
+    Unregistering,
     BridgeClosed,
 }
 
@@ -39,6 +48,8 @@ impl ProtocolBridgeState {
             Self::BridgeCreated => "bridge-created",
             Self::RegistrationSent => "registration-sent",
             Self::RegistrationObserved => "registration-observed",
+            Self::Reconnecting => "reconnecting",
+            Self::Unregistering => "unregistering",
             Self::BridgeClosed => "bridge-closed",
         }
     }
@@ -70,6 +81,23 @@ pub(crate) enum ProtocolEvent {
 
     /// Registration completed with connection details from the edge.
     RegistrationComplete { conn_uuid: Uuid, location: String },
+
+    /// The control stream has initiated a graceful unregister sequence.
+    ///
+    /// Matches Go's `waitForUnregister` → `GracefulShutdown` flow in
+    /// `connection/control.go`.
+    Unregistering { conn_index: u8 },
+
+    /// The connection was severed (context cancelled or transport error).
+    ///
+    /// Matches Go's `Disconnected` status in `connection/event.go`.
+    Disconnected { conn_index: u8 },
+
+    /// Local configuration was pushed to the edge on conn_index 0.
+    ///
+    /// Matches Go's `SendLocalConfiguration` call in
+    /// `connection/control.go` (conn_index == 0 && !remotely_managed).
+    ConfigPushed { conn_index: u8 },
 }
 
 /// Create the explicit protocol bridge between transport and proxy.
