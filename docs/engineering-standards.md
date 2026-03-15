@@ -188,12 +188,14 @@ Prefer:
 - modules that a reviewer can understand in one focused sitting
 - top-level flow that stays visible
 - submodules for detail, boundary-specific logic, or format-specific logic when that improves navigation
+- composable sub-routers or sub-registries for macro-driven handler surfaces when the framework supports composition
 
 Avoid:
 
 - giant files that collect everything about a feature
 - decomposition based only on line count
 - fragmentation into tiny files that add movement without adding clarity
+- monolithic macro-driven handler impls that mix unrelated domains only because the registration surface allows it
 
 Review signal:
 

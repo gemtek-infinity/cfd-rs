@@ -1,5 +1,7 @@
 use tokio::time;
 
+use cfdrs_his::signal::write_pidfile;
+
 use crate::protocol::ProtocolBridgeState;
 use crate::proxy::ProxySeamState;
 use crate::transport::TransportLifecycleStage;
@@ -14,11 +16,18 @@ where
         let is_resumed = self.status.restart_attempts() > 0;
         self.status.record_timing_service_ready(is_resumed);
 
+        if let Some(pidfile_path) = self.config.pidfile_path()
+            && let Err(error) = write_pidfile(pidfile_path)
+        {
+            self.status.push_summary(format!("pidfile-write-error: {error}"));
+        }
+
         if self.status.lifecycle_state() == LifecycleState::Starting {
             self.status
                 .record_state(LifecycleState::Running, format!("service ready: {service}"));
         }
         self.status.refresh_readiness(format!("{service} reported ready"));
+        self.sync_metrics_snapshot();
         None
     }
 
@@ -28,6 +37,7 @@ where
         detail: String,
     ) -> Option<RuntimeExit> {
         self.status.record_service_status(service, detail);
+        self.sync_metrics_snapshot();
         None
     }
 
@@ -41,6 +51,7 @@ where
         self.status.record_transport_stage(service, stage, detail);
         self.status
             .refresh_readiness(format!("transport reached {stage}"));
+        self.sync_metrics_snapshot();
         None
     }
 
@@ -55,6 +66,7 @@ where
         self.status.record_protocol_state(state, detail);
         self.status
             .refresh_readiness(format!("protocol bridge reached {state}"));
+        self.sync_metrics_snapshot();
         None
     }
 
@@ -69,6 +81,7 @@ where
         self.status.record_proxy_state(state, detail);
         self.status
             .refresh_readiness(format!("proxy seam reached {state}"));
+        self.sync_metrics_snapshot();
         None
     }
 
@@ -105,6 +118,7 @@ where
         );
         self.status
             .refresh_readiness(format!("runtime restarting {service} after retryable failure"));
+        self.sync_metrics_snapshot();
         time::sleep(self.policy.restart_backoff).await;
         self.spawn_primary_service(attempt);
         None

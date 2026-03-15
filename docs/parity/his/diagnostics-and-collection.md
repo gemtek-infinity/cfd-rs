@@ -52,6 +52,19 @@ and privileged port.
 Created in `StartServer()`, runs concurrently with tunnel via goroutine,
 shutdown via context cancellation with 15s timeout.
 
+## Current Rust Slice
+
+- `cfdrs-bin` now owns a local runtime listener that binds the host default
+  metrics address and known fallback ports using the HIS timeout constants.
+- The current Rust listener serves `/ready`, `/healthcheck`, `/metrics`, `/config`, and `/diag/configuration`.
+- `/ready` emits the baseline JSON shape and derives `readyConnections` from
+  admitted runtime readiness (`1` when ready, `0` otherwise).
+- `/metrics` emits Prometheus text with `build_info` plus a readiness gauge.
+- `/config` emits versioned JSON from the current normalized config surface.
+- `/diag/configuration` emits UID and active local log path/directory hints.
+- `/debug/pprof/*` now reports an explicit deferred `501` boundary.
+- `/quicktunnel`, `/diag/system`, and `/diag/tunnel` remain deferred.
+
 ## Readiness Endpoint (`/ready`)
 
 ### Response Shape

@@ -253,7 +253,6 @@ pub struct GlobalFlags {
     pub management_hostname: Option<String>,
     pub api_url: Option<String>,
     pub features: Vec<String>,
-    pub quiet: bool,
     pub is_autoupdated: bool,
     pub metrics_update_freq: Option<String>,
     pub max_edge_addr_retries: Option<u32>,

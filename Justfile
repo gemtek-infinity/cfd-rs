@@ -13,12 +13,15 @@ help:
     @printf '  %-28s %s\n' 'validate-governance' 'Validate docs, source-map drift, and contract-literal policy.'
     @printf '  %-28s %s\n' 'validate-app' 'Fmt-check plus app crate check/clippy/test.'
     @printf '  %-28s %s\n' 'validate-tools' 'Fmt-check plus MCP check/clippy/test/smoke.'
-    @printf '  %-28s %s\n' 'validate-pr' 'Run governance, app, and tool validation.'
+    @printf '  %-28s %s\n' 'validate-debtmap' 'Run debtmap CI gate (density and complexity thresholds).'
+    @printf '  %-28s %s\n' 'validate-pr' 'Run governance, app, tool, and debtmap validation.'
     @printf '\n\033[1;33mMCP\033[0m\n'
     @printf '  %-28s %s\n' 'mcp-run' 'Run the debtmap-enabled MCP server.'
     @printf '  %-28s %s\n' 'mcp-run-maintenance' 'Run the maintenance MCP surface without default features.'
     @printf '  %-28s %s\n' 'mcp-smoke' 'Smoke-start the operational MCP surface.'
     @printf '  %-28s %s\n' 'mcp-smoke-maintenance' 'Smoke-start the maintenance MCP surface.'
+    @printf '\n\033[1;33mDebtmap\033[0m\n'
+    @printf '  %-28s %s\n' 'debtmap-report' 'Run debtmap analysis and print the full report.'
     @printf '\n\033[1;33mShared behavior\033[0m\n'
     @printf '  %-28s %s\n' 'shared-behavior-capture' 'Refresh checked-in Go truth artifacts.'
     @printf '  %-28s %s\n' 'shared-behavior-compare' 'Emit Rust actuals and compare against Go truth.'
@@ -44,6 +47,8 @@ doctor:
     @just _doctor_check python3 python3
     @just _doctor_check go go
     @just _doctor_check timeout timeout
+    @just _doctor_check debtmap debtmap
+    @just _doctor_check jq jq
     @printf '\n'
     @rustc -Vv
     @cargo -V
@@ -78,7 +83,19 @@ validate-tools:
     cargo test --locked -p cfd-rs-memory --no-default-features
     just mcp-smoke-maintenance
 
-validate-pr: validate-governance validate-app validate-tools
+validate-debtmap:
+    debtmap analyze -q --no-tui -f json --config .debtmap.toml . > target/debtmap-report.json 2>/dev/null
+    @jq -r '[.items[] | select(.type == "Function")] | "debtmap: items=\(length) total=\(map(.score) | add)"' target/debtmap-report.json
+    @jq -e '[.items[] | select(.type == "Function" and .score > 30)] | length == 0' target/debtmap-report.json >/dev/null 2>&1 \
+        || { jq -r '.items[] | select(.type == "Function" and .score > 30) | "FAIL: \(.location.file) \(.location.function // "file") score=\(.score)"' target/debtmap-report.json >&2; false; }
+    @echo 'debtmap gate: PASS'
+
+debtmap-report:
+    debtmap analyze -q --no-tui -f json --config .debtmap.toml . > target/debtmap-report.json 2>/dev/null
+    @jq -r '[.items[] | select(.type == "Function")] | sort_by(-.score) | .[] | "\(.priority)\t\(.score)\t\(.location.file) \(.location.function)"' target/debtmap-report.json
+    @jq -r '{fn_count: [.items[] | select(.type == "Function")] | length, fn_total: ([.items[] | select(.type == "Function") | .score] | add), fn_density: (([.items[] | select(.type == "Function") | .score] | add) / (.summary.total_loc / 1000)), loc: .summary.total_loc} | "total=\(.fn_total) density=\(.fn_density)/1K items=\(.fn_count) loc=\(.loc)"' target/debtmap-report.json
+
+validate-pr: validate-governance validate-app validate-tools validate-debtmap
 
 mcp-run:
     exec cargo run --locked --quiet --release --manifest-path tools/mcp-cfd-rs/Cargo.toml --features debtmap
@@ -136,7 +153,7 @@ preview-smoke lane:
         echo 'preview binary missing; run just preview-build {{lane}} first' >&2; \
         exit 1; \
     fi; \
-    config="$$(mktemp)"; \
+    config="$(mktemp)"; \
     printf 'tunnel: 00000000-0000-0000-0000-000000000000\ningress:\n  - service: http_status:503\n' >"${config}"; \
     "${BINARY}" --config "${config}" validate | tee /tmp/cfdrs-validate-output.txt; \
     grep -q 'OK: admitted alpha startup surface validated' /tmp/cfdrs-validate-output.txt; \
@@ -157,7 +174,7 @@ preview-package lane:
         echo 'preview binary missing; run just preview-build {{lane}} first' >&2; \
         exit 1; \
     fi; \
-    artifact_base="cloudflared-$${GITHUB_SHA:-$$(git rev-parse HEAD)}-linux-x86_64-gnu-{{lane}}"; \
+    artifact_base="cloudflared-${GITHUB_SHA:-$(git rev-parse HEAD)}-linux-x86_64-gnu-{{lane}}"; \
     rm -rf dist; \
     mkdir -p dist; \
     install -Dm755 "${binary}" 'dist/cloudflared'; \

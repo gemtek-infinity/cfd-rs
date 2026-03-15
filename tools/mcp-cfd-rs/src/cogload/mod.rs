@@ -351,6 +351,8 @@ fn main() {
         let result = evaluate_ci_gate(&report);
         assert!(!result.pass);
         assert!(result.blocking.iter().any(|v| v.rule == "debt_density"));
+        assert!(result.thresholds.density_limit == 50.0);
+        assert!(result.thresholds.score_blocking == 30.0);
     }
 
     #[test]
@@ -365,7 +367,7 @@ fn main() {
             items: vec![UnifiedItem {
                 item_type: UnifiedItemType::File,
                 score: 88.5,
-                priority: UnifiedPriority::High,
+                priority: UnifiedPriority::Critical,
                 path: "src/big.rs".to_string(),
                 line: None,
                 function: None,
@@ -386,7 +388,12 @@ fn main() {
 
         let result = evaluate_ci_gate(&report);
         assert!(!result.pass);
-        assert!(result.blocking.iter().any(|v| v.rule == "god_object_blocking"));
+        let god_violation = result
+            .blocking
+            .iter()
+            .find(|v| v.rule == "god_object_blocking")
+            .expect("should have god_object_blocking");
+        assert!(!god_violation.suggestion.is_empty());
     }
 
     #[test]

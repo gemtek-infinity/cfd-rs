@@ -74,3 +74,6 @@ AI contributors should start with [`docs/ai-context-routing.md`](docs/ai-context
 When MCP is available, prefer `status_summary`, `phase5_priority`, `parity_row_details`, `domain_gaps_ranked`, `baseline_source_mapping`, `crate_surface_summary`, and `crate_dependency_graph` before loading larger docs.
 The operational MCP target is debtmap-enabled; if MCP files change, rebuild and smoke that target before trusting MCP again.
 Use [`Justfile`](Justfile) as the normal command surface rather than open-coded cargo chains.
+Prefer `just validate-pr` for the default full validation gate and `just fmt` for formatting-only work.
+When a matching Just recipe or checked-in helper exists, do not substitute bespoke `cargo`, `python3 tools/...`, or `cargo run --manifest-path ...` command chains unless you are intentionally debugging that recipe or isolating its failure.
+Do not hand-edit generated artifacts such as [`docs/parity/source-map.csv`](docs/parity/source-map.csv); regenerate or validate them through the checked-in tooling.

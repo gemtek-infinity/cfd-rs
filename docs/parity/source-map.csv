@@ -1,12 +1,12 @@
 row_id,domain,feature_doc,baseline_paths,symbol_hints
-CLI-001,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go,action();/cloudflared/main.go;handleServiceMode();FileManager;AppManager;AppService;ServiceMode
+CLI-001,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go,action();/cloudflared/main.go;handleServiceMode();FileManager;AppManager;AppService;tunnel.TunnelCommand(c);ServiceMode
 CLI-002,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go;baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go;baseline-2026.2.0/logger/configuration.go,--help;update;version;tunnel;login;proxy-dns;access;forward;tail;management
 CLI-003,CLI,docs/parity/logging-compatibility.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,Flags();/cloudflared/tunnel/cmd.go;--config;--credentials-file;-cred-file;TUNNEL_CRED_FILE;--credentials-contents;TUNNEL_CRED_CONTENTS;--token;TUNNEL_TOKEN
 CLI-004,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go;baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go;baseline-2026.2.0/logger/configuration.go,help;--help;-h;/cli
 CLI-005,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/main.go,/cloudflared/main.go;{Version} (built {BuildTime}{BuildTypeMsg});--short;-s;--version;-v;-V
 CLI-006,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,/cloudflared/updater/update.go;update;--beta;--force;--staging;--version
 CLI-007,CLI,docs/parity/cli/root-and-global-flags.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,/cloudflared/linux_service.go;service;install;uninstall;--no-update-service;/etc/systemd/system/cloudflared.service;/etc/systemd/system/cloudflared-update.service;/etc/systemd/system/cloudflared-update.timer;/etc/init.d/cloudflared;service install/uninstall
-CLI-008,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,/cloudflared/tunnel/cmd.go;tunnel;tunnel.TunnelCommand();Tunnel;/run
+CLI-008,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,/cloudflared/tunnel/cmd.go;tunnel;TunnelCommand();--name;runAdhocNamedTunnel();--url;--hello-world;--quick-service;RunQuickTunnel();TunnelID
 CLI-009,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/login.go,/cloudflared/tunnel/login.go;tunnel login;login;--fedramp;-f
 CLI-010,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel create NAME;tunnel create
 CLI-011,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;tunnel list
@@ -23,9 +23,9 @@ CLI-021,CLI,docs/parity/cli/tunnel-subtree.md,baseline-2026.2.0/cmd/cloudflared/
 CLI-022,CLI,docs/parity/cli/access-subtree.md,baseline-2026.2.0/cmd/cloudflared/access/cmd.go,/cloudflared/access/cmd.go;access;forward;login;curl;token;tcp;rdp;ssh;smb
 CLI-023,CLI,docs/parity/logging-compatibility.md,baseline-2026.2.0/cmd/cloudflared/tail/cmd.go,/cloudflared/tail/cmd.go;tail [TUNNEL-ID];--connector-id;--event;--level;debug;--sample;--token;TUNNEL_MANAGEMENT_TOKEN;--management-hostname
 CLI-024,CLI,docs/parity/logging-compatibility.md,baseline-2026.2.0/cmd/cloudflared/management/cmd.go,/cloudflared/management/cmd.go;management;Management;token;--resource;logs;admin;host_details;--origincert;--loglevel
-CLI-025,CLI,docs/parity/cli/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/proxydns/cmd.go;baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,/cloudflared/proxydns/cmd.go;/cloudflared/tunnel/cmd.go;proxy-dns;tunnel proxy-dns;dns-proxy feature is no longer supported since version 2026.2.0
+CLI-025,CLI,docs/parity/cli/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/proxydns/cmd.go;baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,/cloudflared/proxydns/cmd.go;/cloudflared/tunnel/cmd.go;proxy-dns;tunnel proxy-dns;dns-proxy feature is no longer supported
 CLI-026,CLI,docs/parity/cli/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,"/cloudflared/tunnel/cmd.go;tunnel db-connect;cliutil.RemovedCommand(""db-connect"")"
-CLI-027,CLI,docs/parity/cli/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,"/cloudflared/tunnel/cmd.go;Classic tunnels have been deprecated, please use Named Tunnels"
+CLI-027,CLI,docs/parity/cli/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,/cloudflared/tunnel/cmd.go;/developers.cloudflare.com/cloudflare-one/connections/connect-apps/install-and-setup/tunnel-guide/
 CLI-028,CLI,docs/parity/cli/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/main.go,/cloudflared/main.go;login
 CLI-029,CLI,docs/parity/cli/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/main.go;baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,/cli
 CLI-030,CLI,docs/parity/cli/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/main.go,/cli
@@ -44,7 +44,7 @@ CDC-010,CDC,docs/parity/cdc/registration-rpc.md,baseline-2026.2.0/tunnelrpc/prot
 CDC-011,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/tunnelrpc/proto/quic_metadata_protocol.capnp,ConnectRequest;dest;type;metadata;ConnectionType
 CDC-012,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/tunnelrpc/pogs/quic_metadata_protocol.go,ToPogs();/pogs/quic_metadata_protocol.go;/key/val-len/val
 CDC-013,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/tunnelrpc/proto/quic_metadata_protocol.capnp,ConnectResponse;error;metadata
-CDC-014,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/tunnelrpc/pogs/quic_metadata_protocol.go;baseline-2026.2.0/connection/header.go,/header.go;HttpMethod;HttpHost;HttpHeader:<name>;HttpStatus;FlowID;cf-trace-id;HttpHeader:Content-Length
+CDC-014,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/connection/quic_connection.go;baseline-2026.2.0/connection/header.go;baseline-2026.2.0/tracing/tracing.go,/quic_connection.go;/header.go;/tracing.go;HttpMethod;HttpHost;HttpHeader:<name>;HttpStatus;FlowID;cf-trace-id;TracerContextName
 CDC-015,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/connection/header.go,/header.go;;;cf-cloudflared-request-headers;cf-cloudflared-response-headers;cf-cloudflared-response-meta
 CDC-016,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/connection/header.go,"/header.go;{""src"":""origin""};{""src"":""cloudflared""};{""src"":""cloudflared"",""flow_rate_limited"":true}"
 CDC-017,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/connection/header.go,IsControlResponseHeader;/header.go;:;cf-int-;cf-cloudflared-;cf-proxy-
@@ -54,7 +54,7 @@ CDC-020,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/connection/eve
 CDC-021,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/connection/protocol.go,/protocol.go;h2.cftunnel.com;quic.cftunnel.com;argotunnel
 CDC-022,CDC,docs/parity/cdc/stream-contracts.md,baseline-2026.2.0/connection/control.go;baseline-2026.2.0/connection/event.go;baseline-2026.2.0/connection/protocol.go;baseline-2026.2.0/edgediscovery/allregions/discovery.go;baseline-2026.2.0/edgediscovery/allregions/region.go,edgediscovery/;_v2-origintunneld._tcp.argotunnel.com;1.1.1.1:853;cloudflare-dns.com;tokio::net::lookup_host;region1.v2.argotunnel.com;quic.cftunnel.com;/AAAA
 CDC-023,CDC,docs/parity/logging-compatibility.md,baseline-2026.2.0/management/service.go,/service.go;/ping;/logs;/host_details;/metrics;/debug/pprof/{heap or goroutine};/HEAD;/debug/pprof/;/parity/cdc/management-and-diagnostics.md
-CDC-024,CDC,docs/parity/logging-compatibility.md,baseline-2026.2.0/management/middleware.go,"/middleware.go;?access_token=<JWT>;ParseToken;{""success"":false,""errors"":[{""code"":1001,""message"":""missing access_token...""}]}"
+CDC-024,CDC,docs/parity/logging-compatibility.md,baseline-2026.2.0/management/middleware.go,"/middleware.go;?access_token=<JWT>;ParseToken;{""errors"":[{""code"":1001,""message"":""missing access_token query parameter""}]};omitempty;Success;false"
 CDC-025,CDC,docs/parity/cdc/management-and-diagnostics.md,baseline-2026.2.0/management/service.go,"getHostDetailsResponse;/service.go;{""connector_id"":""uuid"",""ip"":""10.0.0.4"",""hostname"":""custom:label""}"
 CDC-026,CDC,docs/parity/logging-compatibility.md,baseline-2026.2.0/management/events.go;baseline-2026.2.0/management/session.go,"/events.go;/logs;start_streaming;stop_streaming;logs;[{time, level, message, event, fields}];/http/tcp/udp;/info/warn/error"
 CDC-027,CDC,docs/parity/cdc/management-and-diagnostics.md,baseline-2026.2.0/management/service.go,/service.go;https://*.cloudflare.com
@@ -82,70 +82,70 @@ HIS-004,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/config/co
 HIS-005,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/config/configuration.go,homedir.Expand;/configuration.go;~/
 HIS-006,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/credentials/credentials.go;baseline-2026.2.0/connection/connection.go,/credentials.go;/connection.go;AccountTag;TunnelSecret;TunnelID;Endpoint
 HIS-007,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/credentials/origin_cert.go,/origin_cert.go;ARGO TUNNEL TOKEN;zoneID;accountID;apiToken;endpoint
-HIS-008,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/cmd/cloudflared/tunnel/credential_finder.go,searchByID;/cloudflared/tunnel/credential_finder.go;{TunnelID}.json;tunnel run;--credentials-file
-HIS-009,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/credentials/origin_cert.go,FindDefaultOriginCertPath();/origin_cert.go
-HIS-010,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/connection/connection.go,TunnelToken;/connection.go;a;s;t;e;--token
-HIS-011,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;os.O_CREATE;os.O_EXCL;tunnel create
-HIS-012,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,service install;installLinuxService();/cloudflared/linux_service.go;tunnel;credentials-file;/etc/cloudflared/config.yml
+HIS-008,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/cmd/cloudflared/tunnel/credential_finder.go,searchByID;/cloudflared/tunnel/credential_finder.go;{TunnelID}.json;search_credential_by_id();credentials-file
+HIS-009,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/credentials/origin_cert.go,FindDefaultOriginCertPath();/origin_cert.go;find_default_origin_cert_path()
+HIS-010,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/connection/connection.go,TunnelToken;/connection.go;a;s;t;e;--token;/decode/conversions
+HIS-011,HIS,docs/parity/his/filesystem-and-layout.md,baseline-2026.2.0/cmd/cloudflared/tunnel/subcommands.go,/cloudflared/tunnel/subcommands.go;os.O_CREATE;os.O_EXCL;write_credential_file()
+HIS-012,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,service install;installLinuxService();/cloudflared/linux_service.go;tunnel;credentials-file;/etc/cloudflared/config.yml;install_linux_service();CommandRunner
 HIS-013,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go;baseline-2026.2.0/cmd/cloudflared/common_service.go,"service install;/cloudflared/linux_service.go;[""tunnel"", ""run"", ""--token"", token];--token"
-HIS-014,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,installSystemd();/cloudflared/linux_service.go;cloudflared.service;cloudflared-update.service;cloudflared-update.timer;/etc/systemd/system/
-HIS-015,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,/cloudflared/linux_service.go;systemctl enable;daemon-reload;start cloudflared.service
-HIS-016,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,installSysv();/cloudflared/linux_service.go;/etc/init.d/cloudflared;/etc/rc*.d/;/stop
-HIS-017,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,service uninstall;uninstallLinuxService();/cloudflared/linux_service.go
-HIS-018,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,--no-update-service;/cloudflared/linux_service.go;cloudflared-update.service
-HIS-019,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,ensureConfigDirExists();/cloudflared/linux_service.go;/etc/cloudflared/
-HIS-020,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,buildArgsForConfig();/cloudflared/linux_service.go;/etc/cloudflared/config.yml
-HIS-021,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,isSystemd();/cloudflared/linux_service.go;/run/systemd/system
+HIS-014,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,installSystemd();/cloudflared/linux_service.go;cloudflared.service;cloudflared-update.service;cloudflared-update.timer;/etc/systemd/system/;render_service_unit();install()
+HIS-015,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,/cloudflared/linux_service.go;systemctl enable cloudflared.service;systemctl start cloudflared-update.timer;daemon-reload;start cloudflared.service;CommandRunner
+HIS-016,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,installSysv();/cloudflared/linux_service.go;/etc/init.d/cloudflared;/etc/rc*.d/;/stop;/uninstall
+HIS-017,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,service uninstall;uninstallLinuxService();/cloudflared/linux_service.go;uninstall_linux_service()
+HIS-018,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,--no-update-service;/cloudflared/linux_service.go;cloudflared-update.service;auto_update;/timer
+HIS-019,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,ensureConfigDirExists();/cloudflared/linux_service.go;/etc/cloudflared/;ensure_config_dir_exists()
+HIS-020,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,buildArgsForConfig();/cloudflared/linux_service.go;/etc/cloudflared/config.yml;build_args_for_config()
+HIS-021,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,isSystemd();/cloudflared/linux_service.go;/run/systemd/system;is_systemd()
 HIS-022,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,/cloudflared/linux_service.go;Type=notify;TimeoutStartSec=15;Restart=on-failure;RestartSec=5s;--no-autoupdate;After=network-online.target;Type;notify;RestartSec
-HIS-023,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,/cloudflared/linux_service.go;/var/run/$name.pid;/var/log/$name.log;/var/log/$name.err;/etc/sysconfig/$name;/var/run/;/var/log/;/etc/sysconfig/
-HIS-024,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,/metrics.go;localhost:0;0.0.0.0:0;ReadTimeout;WriteTimeout
+HIS-023,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,/cloudflared/linux_service.go;/var/run/$name.pid;/var/log/$name.log;/var/log/$name.err;/etc/sysconfig/$name;/var/run/;/var/log/;/etc/sysconfig/;/uninstall
+HIS-024,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,/metrics.go;localhost:0;0.0.0.0:0;ReadTimeout;WriteTimeout;/write
 HIS-025,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/readiness.go,"/ready;ReadyServer;/readiness.go;{""status"":200,""readyConnections"":N,""connectorId"":""uuid""}"
 HIS-026,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,/healthcheck;/metrics.go;OK\n;/plain
 HIS-027,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,/metrics;promhttp.Handler();/metrics.go;build_info;/type/revision/version
-HIS-028,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,"/quicktunnel;/metrics.go;{""hostname"":""...""}"
+HIS-028,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,"/quicktunnel;/metrics.go;{""hostname"":""...""};QuickTunnelResponse"
 HIS-029,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go;baseline-2026.2.0/metrics/readiness.go;baseline-2026.2.0/diagnostic/handlers.go,"/config;{""version"":N,""config"":{ingress, warp-routing, originRequest}}"
-HIS-030,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go;baseline-2026.2.0/metrics/readiness.go;baseline-2026.2.0/diagnostic/handlers.go,/debug/pprof/*;/debug/pprof/;http.DefaultServeMux;trace.AuthRequest
-HIS-031,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,--metrics;/metrics.go;--metrics ADDRESS
-HIS-032,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/diagnostic.go;baseline-2026.2.0/diagnostic/handlers.go;baseline-2026.2.0/diagnostic/log_collector_host.go;baseline-2026.2.0/diagnostic/system_collector_linux.go;baseline-2026.2.0/diagnostic/network/collector_unix.go,tunnel diag;diagnostic/;/subcommands.go;--no-diag-*;--no-diag-
-HIS-033,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/system_collector_linux.go,/system_collector_linux.go;SystemInformationResponse
+HIS-030,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go;baseline-2026.2.0/metrics/readiness.go;baseline-2026.2.0/diagnostic/handlers.go,/debug/pprof/*;/debug/pprof/;http.DefaultServeMux;trace.AuthRequest;501
+HIS-031,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,--metrics;/metrics.go;--metrics ADDRESS;localhost:PORT;:PORT;/runtime-class
+HIS-032,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/diagnostic.go;baseline-2026.2.0/diagnostic/handlers.go;baseline-2026.2.0/diagnostic/log_collector_host.go;baseline-2026.2.0/diagnostic/system_collector_linux.go;baseline-2026.2.0/diagnostic/network/collector_unix.go,tunnel diag;diagnostic/;/subcommands.go;--no-diag-*;--no-diag-;DiagnosticHandler;StubDiagnosticHandler
+HIS-033,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/system_collector_linux.go,/system_collector_linux.go;SystemInformationResponse;SystemInformation
 HIS-034,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/diagnostic.go;baseline-2026.2.0/diagnostic/handlers.go;baseline-2026.2.0/diagnostic/log_collector_host.go;baseline-2026.2.0/diagnostic/system_collector_linux.go;baseline-2026.2.0/diagnostic/network/collector_unix.go,diagnostic/;/diag/tunnel;TunnelState
-HIS-035,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/handlers.go,/diag/configuration;/handlers.go;map[string]string;uid;log_file;log_directory
+HIS-035,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/handlers.go,/diag/configuration;/handlers.go;map[string]string;uid;log_file;log_directory;/directory
 HIS-036,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/diagnostic/log_collector_host.go,"/log_collector_host.go;journalctl -u cloudflared.service --since ""2 weeks ago"";/var/log/cloudflared.err;--since"
 HIS-037,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/diagnostic.go;baseline-2026.2.0/diagnostic/handlers.go;baseline-2026.2.0/diagnostic/log_collector_host.go;baseline-2026.2.0/diagnostic/system_collector_linux.go;baseline-2026.2.0/diagnostic/network/collector_unix.go,"diagnostic/;region{1,2}.v2.argotunnel.com;/IPv6"
 HIS-038,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/diagnostic.go;baseline-2026.2.0/diagnostic/handlers.go;baseline-2026.2.0/diagnostic/log_collector_host.go;baseline-2026.2.0/diagnostic/system_collector_linux.go;baseline-2026.2.0/diagnostic/network/collector_unix.go,diagnostic/
 HIS-039,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/handlers.go,/diag/system;/handlers.go
 HIS-040,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/handlers.go,/diag/tunnel;/handlers.go
-HIS-041,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/watcher/file.go,/file.go
-HIS-042,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/app_service.go,actionLoop();/cloudflared/app_service.go;/update/remove
+HIS-041,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/watcher/file.go,/file.go;FileWatcher;notify
+HIS-042,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/app_service.go,actionLoop();/cloudflared/app_service.go;/update/remove;ReloadActionLoop;notify;/remove/shutdown
 HIS-043,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/overwatch/app_manager.go,AppManager;/app_manager.go;/remove
-HIS-044,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/orchestration/orchestrator.go,UpdateConfig();/orchestrator.go;atomic.Value
-HIS-045,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/watcher/file.go;baseline-2026.2.0/cmd/cloudflared/app_service.go;baseline-2026.2.0/overwatch/app_manager.go;baseline-2026.2.0/orchestration/orchestrator.go,reload error recovery
-HIS-046,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,update;/cloudflared/updater/update.go;--beta;--staging;--force;--version;update.argotunnel.com
-HIS-047,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,AutoUpdater;/cloudflared/updater/update.go;--autoupdate-freq;--no-autoupdate
+HIS-044,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/orchestration/orchestrator.go,UpdateConfig();/orchestrator.go;atomic.Value;InMemoryConfigOrchestrator;/read
+HIS-045,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/watcher/file.go;baseline-2026.2.0/cmd/cloudflared/app_service.go;baseline-2026.2.0/overwatch/app_manager.go;baseline-2026.2.0/orchestration/orchestrator.go,reload_recovery_strategy();ReloadActionLoop
+HIS-046,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,update;/cloudflared/updater/update.go;--beta;--staging;--force;--version;update.argotunnel.com;Updater;StubUpdater
+HIS-047,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,AutoUpdater;/cloudflared/updater/update.go;--autoupdate-freq;--no-autoupdate;StubAutoUpdater
 HIS-048,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,/cloudflared/updater/update.go
-HIS-049,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,/cloudflared/updater/update.go;.installedFromPackageManager;BuiltForPackageManager
-HIS-050,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/diagnostic/handlers.go,os.Getuid();/handlers.go
-HIS-051,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,isRunningFromTerminal();/cloudflared/updater/update.go;term.IsTerminal(os.Stdout.Fd())
-HIS-052,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/diagnostic/handlers.go;baseline-2026.2.0/ingress/icmp_linux.go;baseline-2026.2.0/cmd/cloudflared/updater/update.go,OS-specific build tags
+HIS-049,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,/cloudflared/updater/update.go;.installedFromPackageManager;BuiltForPackageManager;environment::is_package_managed()
+HIS-050,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/diagnostic/handlers.go,os.Getuid();/handlers.go;current_uid();/proc/self/status
+HIS-051,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,isRunningFromTerminal();/cloudflared/updater/update.go;term.IsTerminal(os.Stdout.Fd());is_terminal();/proc/self/fd
+HIS-052,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/diagnostic/handlers.go;baseline-2026.2.0/ingress/icmp_linux.go;baseline-2026.2.0/cmd/cloudflared/updater/update.go,target_arch();target_os()
 HIS-053,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go;baseline-2026.2.0/metrics/metrics.go,no-installer;no-systemd-unit
 HIS-054,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/main.go,std::env::current_exe()
 HIS-055,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/linux_service.go,/lib64/ld-linux-x86-64.so.2;/lib/x86_64-linux-gnu/libc.so.6;/usr/lib64/libc.so.6
 HIS-056,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/postinst.sh,/usr/local/bin/cloudflared;/usr/local/etc/cloudflared/;.installedFromPackageManager
 HIS-057,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/postrm.sh,/usr/local/bin/cloudflared;.installedFromPackageManager
 HIS-058,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/signal/safe_signal.go;baseline-2026.2.0/cmd/cloudflared/tunnel/signal.go,/SIGINT;/safe_signal.go;/cloudflared/tunnel/signal.go;signal.Notify();graceShutdownC
-HIS-059,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,--grace-period;/cloudflared/tunnel/cmd.go;GracefulShutdown()
-HIS-060,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/signal.go,/cloudflared/tunnel/signal.go;/SIGINT
+HIS-059,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,--grace-period;/cloudflared/tunnel/cmd.go;GracefulShutdown();DEFAULT_GRACE_PERIOD = 30s;/runtime
+HIS-060,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/signal.go,/cloudflared/tunnel/signal.go;waitForSignal();signal.Stop();/SIGINT;ShutdownSignal
 HIS-061,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,--pidfile;/cloudflared/tunnel/cmd.go;connectedSignal
-HIS-062,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/token/token.go,/token.go;<token-path>.lock;/SIGTERM
-HIS-063,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,--logfile;/create.go;LogFile
-HIS-064,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go;baseline-2026.2.0/config/configuration.go,--log-directory;/create.go;/configuration.go;/var/log/cloudflared
-HIS-065,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,/create.go
+HIS-062,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/token/token.go,/token.go;<token-path>.lock;/SIGTERM;acquire_token_lock();release_token_lock()
+HIS-063,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,--logfile;/create.go;LogFile;/systemd
+HIS-064,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go;baseline-2026.2.0/config/configuration.go,--log-directory;/create.go;/configuration.go;/var/log/cloudflared;logDirectory;cloudflared.log
+HIS-065,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,/create.go;/max-backups/max-age;/systemd
 HIS-066,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,/create.go
-HIS-067,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/configuration.go,--log-format-output;/configuration.go
+HIS-067,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/configuration.go,--log-format-output;/configuration.go;/config
 HIS-068,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/configuration.go,--loglevel;--transport-loglevel;/configuration.go;info
-HIS-069,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/ingress/icmp_linux.go,/icmp_linux.go;net.ListenPacket();/ICMPv6
-HIS-070,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/ingress/icmp_linux.go,/icmp_linux.go;/proc/sys/net/ipv4/ping_group_range
+HIS-069,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/ingress/icmp_linux.go,/icmp_linux.go;net.ListenPacket();/ICMPv6;IcmpProxy;StubIcmpProxy
+HIS-070,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/ingress/icmp_linux.go,/icmp_linux.go;/proc/sys/net/ipv4/ping_group_range;can_create_icmp_socket()
 HIS-071,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/tunnel/configuration.go,/cloudflared/tunnel/configuration.go;--icmpv4-src;--icmpv6-src;TUNNEL_ICMPV4_SRC;TUNNEL_ICMPV6_SRC
-HIS-072,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/hello/hello.go;baseline-2026.2.0/ingress/origin_service.go,hello_world;/hello.go;/origin_service.go;/;/uptime;/ws;/sse;/_health;shutdownC
-HIS-073,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/metrics/metrics.go;baseline-2026.2.0/vendor/github.com/facebookgo/grace/gracenet/net.go,/metrics.go;/github.com/facebookgo/grace/gracenet/net.go;gracenet.Net;os.StartProcess()
-HIS-074,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,/cloudflared/updater/update.go;gracenet.Net.StartProcess()
+HIS-072,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/hello/hello.go;baseline-2026.2.0/ingress/origin_service.go,hello_world;/hello.go;/origin_service.go;/;/uptime;/ws;/sse;/_health;shutdownC;HelloServer
+HIS-073,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/metrics/metrics.go;baseline-2026.2.0/vendor/github.com/facebookgo/grace/gracenet/net.go,/metrics.go;/github.com/facebookgo/grace/gracenet/net.go;gracenet.Net;os.StartProcess();GracefulRestart;StubGracefulRestart
+HIS-074,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cloudflared/updater/update.go,/cloudflared/updater/update.go;gracenet.Net.StartProcess();StubGracefulRestart

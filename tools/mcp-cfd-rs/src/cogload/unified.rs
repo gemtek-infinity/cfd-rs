@@ -104,6 +104,32 @@ pub struct CiGateResult {
     pub pass: bool,
     pub blocking: Vec<CiViolation>,
     pub warnings: Vec<CiViolation>,
+    pub thresholds: CiGateThresholds,
+}
+
+/// Threshold values used by the CI gate, included in every response so
+/// agents can reason about distance-to-threshold without external docs.
+#[derive(Debug, Clone, Serialize)]
+pub struct CiGateThresholds {
+    pub score_blocking: f64,
+    pub score_critical: f64,
+    pub density_limit: f64,
+    pub god_object_blocking: f64,
+    pub function_cyclomatic_blocking: u32,
+    pub function_cognitive_blocking: u32,
+}
+
+impl Default for CiGateThresholds {
+    fn default() -> Self {
+        Self {
+            score_blocking: super::scoring::FILE_REDUCE_WHEN_TOUCHED_SCORE,
+            score_critical: super::scoring::FILE_CRITICAL_HOTSPOT_SCORE,
+            density_limit: 50.0,
+            god_object_blocking: 45.0,
+            function_cyclomatic_blocking: 31,
+            function_cognitive_blocking: 25,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -111,8 +137,12 @@ pub struct CiViolation {
     pub rule: String,
     pub path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub line: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub function: Option<String>,
+    pub score: f64,
     pub detail: String,
+    pub suggestion: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -347,10 +377,10 @@ fn score_to_priority(score: f64) -> UnifiedPriority {
     if score >= 75.0 {
         return UnifiedPriority::Critical;
     }
-    if score >= 45.0 {
+    if score >= super::scoring::FILE_REDUCE_WHEN_TOUCHED_SCORE {
         return UnifiedPriority::High;
     }
-    if score >= 15.0 {
+    if score >= super::scoring::FILE_REVIEWABLE_SCORE {
         return UnifiedPriority::Medium;
     }
     UnifiedPriority::Low
@@ -383,13 +413,13 @@ fn relativize(file_path: &Path, repo_root: &Path) -> String {
 /// Evaluate CI gate rules against a unified report.
 ///
 /// Blocking rules (cause CI failure):
-/// - priority `critical` or `high`
+/// - priority `critical` or `high` (score >= 30.0)
 /// - god_object_score >= 45.0
 /// - debt_density > 50.0 per 1K LOC
 /// - function cyclomatic >= 31 or cognitive >= 25
 ///
 /// Warning rules (visible but non-blocking):
-/// - priority `medium`
+/// - priority `medium` (score 15.0..30.0)
 /// - god_object_score < 45.0 (monitor)
 /// - coupling classification `highly_coupled` or `Hub`
 /// - function cyclomatic 21-30 or cognitive 15-24
@@ -402,11 +432,16 @@ pub fn evaluate_ci_gate(report: &UnifiedReport) -> CiGateResult {
         blocking.push(CiViolation {
             rule: "debt_density".to_string(),
             path: String::new(),
+            line: None,
             function: None,
+            score: report.debt_density,
             detail: format!(
                 "debt density {:.1} per 1K LOC exceeds limit of 50.0",
                 report.debt_density
             ),
+            suggestion: "reduce overall cognitive load by extracting helpers, splitting large files, or \
+                         simplifying complex functions in the hottest files"
+                .to_string(),
         });
     }
 
@@ -420,6 +455,7 @@ pub fn evaluate_ci_gate(report: &UnifiedReport) -> CiGateResult {
         pass,
         blocking,
         warnings,
+        thresholds: CiGateThresholds::default(),
     }
 }
 
@@ -450,24 +486,40 @@ pub fn evaluate_ci_gate_filtered(report: &UnifiedReport, touched: Option<&HashSe
 
 fn evaluate_item_gates(item: &UnifiedItem, blocking: &mut Vec<CiViolation>, warnings: &mut Vec<CiViolation>) {
     let path = &item.path;
+    let line = item.line;
     let function = item.function.clone();
 
     // Priority gates
     match item.priority {
         UnifiedPriority::Critical | UnifiedPriority::High => {
+            let suggestion = if item.function.is_some() {
+                "extract helper functions, reduce nesting, or split branching logic to lower the function \
+                 score below 30.0"
+            } else {
+                "split the file into smaller modules, extract types or helpers to reduce the file score \
+                 below 30.0"
+            };
+
             blocking.push(CiViolation {
                 rule: format!("priority_{:?}", item.priority).to_lowercase(),
                 path: path.clone(),
+                line,
                 function: function.clone(),
+                score: item.score,
                 detail: format!("score {:.1}, priority {:?}", item.score, item.priority),
+                suggestion: suggestion.to_string(),
             });
         }
         UnifiedPriority::Medium => {
             warnings.push(CiViolation {
                 rule: "priority_medium".to_string(),
                 path: path.clone(),
+                line,
                 function: function.clone(),
+                score: item.score,
                 detail: format!("score {:.1}", item.score),
+                suggestion: "review when already in the file; aim to keep below 30.0 when feasible"
+                    .to_string(),
             });
         }
         UnifiedPriority::Low => {}
@@ -475,25 +527,32 @@ fn evaluate_item_gates(item: &UnifiedItem, blocking: &mut Vec<CiViolation>, warn
 
     // God object gates
     if let Some(god) = &item.god_object {
+        let detail = format!(
+            "{} with score {:.1} (methods={}, responsibilities={})",
+            god.detection_type, god.god_object_score, god.methods, god.responsibilities,
+        );
+
         if god.god_object_score >= 45.0 {
             blocking.push(CiViolation {
                 rule: "god_object_blocking".to_string(),
                 path: path.clone(),
+                line,
                 function: function.clone(),
-                detail: format!(
-                    "{} with score {:.1} (methods={}, responsibilities={})",
-                    god.detection_type, god.god_object_score, god.methods, god.responsibilities,
-                ),
+                score: god.god_object_score,
+                detail,
+                suggestion: "split into smaller structs/impl blocks with distinct responsibilities; extract \
+                             trait boundaries to reduce method count"
+                    .to_string(),
             });
         } else {
             warnings.push(CiViolation {
                 rule: "god_object_watch".to_string(),
                 path: path.clone(),
+                line,
                 function: function.clone(),
-                detail: format!(
-                    "{} with score {:.1} (methods={}, responsibilities={})",
-                    god.detection_type, god.god_object_score, god.methods, god.responsibilities,
-                ),
+                score: god.god_object_score,
+                detail,
+                suggestion: "monitor; consider splitting if method/responsibility count grows".to_string(),
             });
         }
     }
@@ -506,11 +565,16 @@ fn evaluate_item_gates(item: &UnifiedItem, blocking: &mut Vec<CiViolation>, warn
             warnings.push(CiViolation {
                 rule: "coupling_watch".to_string(),
                 path: path.clone(),
+                line,
                 function: function.clone(),
+                score: item.score,
                 detail: format!(
                     "classification={}, Ca={}, Ce={}, instability={:.2}",
                     cls, coupling.afferent, coupling.efferent, coupling.instability,
                 ),
+                suggestion: "reduce dependency fan-out; consider introducing trait boundaries or narrower \
+                             imports"
+                    .to_string(),
             });
         }
     }
@@ -538,8 +602,13 @@ fn evaluate_item_gates(item: &UnifiedItem, blocking: &mut Vec<CiViolation>, warn
         blocking.push(CiViolation {
             rule: "function_complexity_blocking".to_string(),
             path: path.clone(),
+            line,
             function: function.clone(),
+            score: item.score,
             detail: format!("cyclomatic={}, cognitive={}", cyc, cog),
+            suggestion: "extract named helper functions for independent branches; replace nested if/match \
+                         chains with early returns or guard clauses"
+                .to_string(),
         });
         return;
     }
@@ -548,8 +617,12 @@ fn evaluate_item_gates(item: &UnifiedItem, blocking: &mut Vec<CiViolation>, warn
         warnings.push(CiViolation {
             rule: "function_complexity_watch".to_string(),
             path: path.clone(),
+            line,
             function: function.clone(),
+            score: item.score,
             detail: format!("cyclomatic={}, cognitive={}", cyc, cog),
+            suggestion: "approaching complexity limits; consider simplifying before it becomes blocking"
+                .to_string(),
         });
     }
 }

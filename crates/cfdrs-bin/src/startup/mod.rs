@@ -2,9 +2,11 @@ use cfdrs_shared::{ConfigSource, DiscoveryOutcome, NormalizedConfig};
 
 mod render;
 mod resolve;
+mod runtime_overrides;
 
 pub(crate) use self::render::{render_run_output, render_validate_output};
 pub(crate) use self::resolve::resolve_startup;
+pub(crate) use self::runtime_overrides::{PreparedRuntimeStartup, prepare_runtime_startup};
 
 #[derive(Debug)]
 pub(crate) struct StartupSurface {

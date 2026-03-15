@@ -243,7 +243,10 @@ ROW_FALLBACKS = {
     "CLI-029": ["cmd/cloudflared/main.go", "cmd/cloudflared/tunnel/cmd.go"],
     "CLI-030": ["cmd/cloudflared/main.go"],
     "CLI-031": ["cmd/cloudflared/main.go"],
-    "CLI-032": ["cmd/cloudflared/tunnel/cmd.go", "cmd/cloudflared/tunnel/subcommands.go"],
+    "CLI-032": [
+        "cmd/cloudflared/tunnel/cmd.go",
+        "cmd/cloudflared/tunnel/subcommands.go",
+    ],
     "CDC-042": ["connection/connection.go"],
     "CDC-043": ["credentials/origin_cert.go"],
     "HIS-036": ["diagnostic/log_collector_host.go", "logger/create.go"],
@@ -269,8 +272,14 @@ ROW_FALLBACKS = {
     "HIS-070": ["ingress/icmp_linux.go"],
     "HIS-071": ["cmd/cloudflared/tunnel/configuration.go", "ingress/icmp_linux.go"],
     "HIS-072": ["hello/hello.go", "ingress/origin_service.go"],
-    "HIS-073": ["metrics/metrics.go", "vendor/github.com/facebookgo/grace/gracenet/net.go"],
-    "HIS-074": ["cmd/cloudflared/updater/update.go", "vendor/github.com/facebookgo/grace/gracenet/net.go"],
+    "HIS-073": [
+        "metrics/metrics.go",
+        "vendor/github.com/facebookgo/grace/gracenet/net.go",
+    ],
+    "HIS-074": [
+        "cmd/cloudflared/updater/update.go",
+        "vendor/github.com/facebookgo/grace/gracenet/net.go",
+    ],
 }
 
 PATH_TOKEN_RE = re.compile(r"[A-Za-z0-9_./-]+(?:\.(?:go|capnp|sh|pem))")
@@ -300,13 +309,23 @@ def main() -> int:
     with OUTPUT_PATH.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["row_id", "domain", "feature_doc", "baseline_paths", "symbol_hints"],
+            fieldnames=[
+                "row_id",
+                "domain",
+                "feature_doc",
+                "baseline_paths",
+                "symbol_hints",
+            ],
+            lineterminator="\n",
         )
         writer.writeheader()
         for row in rows:
             feature_doc = ROW_FEATURE_DOC_OVERRIDES.get(
                 row.row_id,
-                FEATURE_DOCS[row.domain].get(row.section, f"docs/parity/{row.domain.lower()}/implementation-checklist.md"),
+                FEATURE_DOCS[row.domain].get(
+                    row.section,
+                    f"docs/parity/{row.domain.lower()}/implementation-checklist.md",
+                ),
             )
             baseline_paths = resolve_baseline_paths(row)
             symbol_hints = extract_symbol_hints(row)
@@ -366,7 +385,9 @@ def resolve_baseline_paths(row: LedgerRow) -> list[str]:
             last_dir = str(Path(resolved).parent)
 
     if not candidates:
-        for fallback in ROW_FALLBACKS.get(row.row_id, SECTION_FALLBACKS[row.domain].get(row.section, [])):
+        for fallback in ROW_FALLBACKS.get(
+            row.row_id, SECTION_FALLBACKS[row.domain].get(row.section, [])
+        ):
             if (BASELINE_ROOT / fallback).exists():
                 candidates.append(fallback)
 
@@ -394,7 +415,7 @@ def find_path_tokens(text: str) -> list[str]:
 
 def resolve_token(token: str, last_dir: str | None) -> str | None:
     cleaned = token.strip().strip("`").strip(".,;:()")
-    cleaned = cleaned.strip('"\'')
+    cleaned = cleaned.strip("\"'")
     if not cleaned or cleaned.startswith("http://") or cleaned.startswith("https://"):
         return None
 
@@ -437,7 +458,13 @@ def extract_symbol_hints(row: LedgerRow) -> list[str]:
                 values.append(token)
 
         for token in IDENT_RE.findall(text):
-            if token.endswith("()") or token in {"Type", "notify", "RestartSec", "ReadTimeout", "WriteTimeout"}:
+            if token.endswith("()") or token in {
+                "Type",
+                "notify",
+                "RestartSec",
+                "ReadTimeout",
+                "WriteTimeout",
+            }:
                 values.append(token)
 
     unique = []

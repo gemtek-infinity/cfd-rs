@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use cfdrs_his::signal::remove_pidfile;
+
 use crate::protocol::{self, ProtocolReceiver};
 use crate::transport::QuicTunnelServiceFactory;
 
@@ -7,10 +9,11 @@ use tokio::runtime::Builder;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
-use tracing_subscriber::fmt;
 
 mod command_dispatch;
 mod deployment;
+mod logging;
+mod metrics;
 mod state;
 mod tasks;
 mod types;
@@ -18,6 +21,7 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use self::logging::install_runtime_logging;
 use self::state::{LifecycleState, ReadinessState, RuntimeStatus};
 use self::types::RuntimePolicy;
 pub(crate) use self::types::{
@@ -37,18 +41,6 @@ const GLIBC_RUNTIME_MARKERS: &[&str] = &[
 
 static RUNTIME_LOGGING: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
-pub(crate) fn install_runtime_logging() {
-    RUNTIME_LOGGING.get_or_init(|| {
-        let subscriber = fmt()
-            .with_writer(std::io::stderr)
-            .without_time()
-            .with_target(false)
-            .compact()
-            .finish();
-        let _ = tracing::subscriber::set_global_default(subscriber);
-    });
-}
-
 struct ApplicationRuntime<F> {
     config: Arc<RuntimeConfig>,
     factory: F,
@@ -60,12 +52,31 @@ struct ApplicationRuntime<F> {
     shutdown: CancellationToken,
     status: RuntimeStatus,
     protocol_receiver: Option<ProtocolReceiver>,
+    metrics: Option<metrics::RuntimeMetricsHandle>,
 }
 
 impl<F> ApplicationRuntime<F>
 where
     F: RuntimeServiceFactory,
 {
+    fn start_metrics_server(&mut self) -> Result<(), String> {
+        let handle = metrics::RuntimeMetricsHandle::start(self.config.as_ref())?;
+        let actual_address = handle.actual_address();
+
+        self.status
+            .push_summary(format!("metrics-listener: http://{actual_address}"));
+        self.metrics = Some(handle);
+        self.sync_metrics_snapshot();
+
+        Ok(())
+    }
+
+    fn sync_metrics_snapshot(&self) {
+        if let Some(metrics) = self.metrics.as_ref() {
+            metrics.sync_from_status(&self.status);
+        }
+    }
+
     fn new(
         config: RuntimeConfig,
         factory: F,
@@ -73,11 +84,16 @@ where
         protocol_receiver: Option<ProtocolReceiver>,
     ) -> Self {
         let (command_tx, command_rx) = mpsc::channel(16);
+        let mut policy = RuntimePolicy::default();
+
+        if let Some(shutdown_grace_period) = config.shutdown_grace_period() {
+            policy.shutdown_grace_period = shutdown_grace_period;
+        }
 
         Self {
             config: Arc::new(config),
             factory,
-            policy: RuntimePolicy::default(),
+            policy,
             harness,
             command_tx,
             command_rx,
@@ -85,15 +101,21 @@ where
             shutdown: CancellationToken::new(),
             status: RuntimeStatus::new(protocol_receiver.is_some()),
             protocol_receiver,
+            metrics: None,
         }
     }
 
     async fn run(mut self) -> RuntimeExecution {
+        if let Err(detail) = self.start_metrics_server() {
+            return self.finish(RuntimeExit::Failed { detail }).await;
+        }
+
         self.status.record_runtime_owner();
         self.status.record_runtime_config(self.config.as_ref());
         self.status.record_supervision_policy(&self.policy);
         self.status.restart_budget_max = self.policy.max_restart_attempts;
         self.status.record_readiness_scope();
+        self.sync_metrics_snapshot();
 
         if let Err(detail) = self.record_security_compliance_boundary() {
             return self.finish(RuntimeExit::Failed { detail }).await;
@@ -152,6 +174,14 @@ where
 
         self.shutdown.cancel();
         self.drain_child_tasks().await;
+
+        if let Some(metrics) = self.metrics.take() {
+            metrics.stop();
+        }
+
+        if let Some(pidfile_path) = self.config.pidfile_path() {
+            remove_pidfile(pidfile_path);
+        }
 
         match exit {
             RuntimeExit::Clean => {

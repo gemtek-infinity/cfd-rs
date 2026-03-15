@@ -122,7 +122,7 @@ const CMD_TUNNEL_USAGE: &str = concat!(
     "Use Cloudflare Tunnel to expose private services to the Internet ",
     "or to Cloudflare connected private users.",
 );
-const CMD_PROXY_DNS_USAGE: &str = "dns-proxy feature is no longer supported since version 2026.2.0";
+const CMD_PROXY_DNS_USAGE: &str = "dns-proxy feature is no longer supported";
 const CMD_ACCESS_USAGE: &str = "access <subcommand>";
 const CMD_TAIL_USAGE: &str = "Stream logs from a remote cloudflared";
 #[allow(dead_code)] // Used when per-command help is implemented.
@@ -151,7 +151,7 @@ const STUB_NOT_IMPLEMENTED_TEMPLATE: &str = "error: `cloudflared {command}` is n
 
 // --- Removed feature messages ---
 
-pub const PROXY_DNS_REMOVED_MSG: &str = "dns-proxy feature is no longer supported since version 2026.2.0\n";
+pub const PROXY_DNS_REMOVED_MSG: &str = "dns-proxy feature is no longer supported\n";
 pub const DB_CONNECT_REMOVED_MSG: &str = "error: the db-connect command has been removed.\n";
 #[allow(dead_code)] // Used when classic tunnel detection is wired up.
 pub const CLASSIC_TUNNEL_DEPRECATED_MSG: &str =

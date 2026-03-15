@@ -8,17 +8,27 @@ mod transport;
 
 use std::env;
 use std::ffi::OsString;
+use std::path::Path;
 use std::process::ExitCode;
 
 use cfdrs_cli::{
-    AccessSubcommand, Cli, CliError, CliOutput, Command, DB_CONNECT_REMOVED_MSG, IngressSubcommand,
-    IpRouteSubcommand, ManagementSubcommand, PROGRAM_NAME, PROXY_DNS_REMOVED_MSG, RouteSubcommand,
-    TailSubcommand, TunnelSubcommand, VnetSubcommand, parse_args, render_help, render_short_version,
-    render_version_output, stub_not_implemented,
+    AccessSubcommand, Cli, CliError, CliOutput, Command, DB_CONNECT_REMOVED_MSG, GlobalFlags,
+    IngressSubcommand, IpRouteSubcommand, ManagementSubcommand, PROGRAM_NAME, PROXY_DNS_REMOVED_MSG,
+    RouteSubcommand, ServiceAction, TailSubcommand, TunnelSubcommand, VnetSubcommand, parse_args,
+    render_help, render_short_version, render_version_output, stub_not_implemented,
 };
+use cfdrs_his::environment::current_executable;
+use cfdrs_his::service::{
+    ProcessRunner, SERVICE_CONFIG_PATH, ServiceTemplateArgs, build_args_for_config, build_args_for_token,
+    copy_file, install_linux_service, uninstall_linux_service,
+};
+use cfdrs_shared::{ConfigError, TunnelToken};
 use mimalloc::MiMalloc;
 
-use crate::startup::{StartupSurface, render_run_output, render_validate_output, resolve_startup};
+use crate::startup::{
+    PreparedRuntimeStartup, StartupSurface, prepare_runtime_startup, render_run_output,
+    render_validate_output, resolve_startup,
+};
 
 #[global_allocator]
 static GLOBAL_ALLOCATOR: MiMalloc = MiMalloc;
@@ -51,109 +61,77 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::Version { short: false } => CliOutput::success(render_version_output(PROGRAM_NAME)),
         Command::Validate => execute_startup_command(&cli, CliMode::Validate),
 
-        Command::Tunnel(TunnelSubcommand::Run) => execute_startup_command(&cli, CliMode::Run),
+        Command::Service(ServiceAction::Install) => execute_service_install(&cli),
+        Command::Service(ServiceAction::Uninstall) => execute_service_uninstall(),
 
-        // Bare tunnel invocation without subcommand — currently delegates to run.
-        // Go baseline: TunnelCommand() which starts quick tunnel or named tunnel.
-        Command::Tunnel(TunnelSubcommand::Bare) => execute_startup_command(&cli, CliMode::Run),
-
-        // Service mode — empty invocation enters daemon mode.
-        // Go baseline: handleServiceMode() in main.go.
-        Command::ServiceMode => CliOutput::failure(String::new(), stub_not_implemented("(service-mode)"), 1),
-
-        // Stubs for commands that exist in the Go baseline but are not yet
-        // implemented in the Rust rewrite. Each prints a clear message so
-        // callers know the command is recognized but deferred.
-        Command::Update => CliOutput::failure(String::new(), stub_not_implemented("update"), 1),
-        Command::Login => CliOutput::failure(String::new(), stub_not_implemented("login"), 1),
-
-        // Access sub-tree stubs.
-        Command::Access(sub) => {
-            let label = match sub {
-                AccessSubcommand::Login => "access login",
-                AccessSubcommand::Curl => "access curl",
-                AccessSubcommand::Token => "access token",
-                AccessSubcommand::Tcp => "access tcp",
-                AccessSubcommand::SshConfig => "access ssh-config",
-                AccessSubcommand::SshGen => "access ssh-gen",
-                AccessSubcommand::Bare => "access",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
+        Command::Tunnel(TunnelSubcommand::Run | TunnelSubcommand::Bare) => {
+            execute_startup_command(&cli, CliMode::Run)
         }
-
-        // Tail sub-tree stubs.
-        Command::Tail(sub) => {
-            let label = match sub {
-                TailSubcommand::Token => "tail token",
-                TailSubcommand::Bare => "tail",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
-
-        // Management sub-tree stubs.
-        Command::Management(sub) => {
-            let label = match sub {
-                ManagementSubcommand::Token => "management token",
-                ManagementSubcommand::Bare => "management",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
-
-        Command::Service(_) => CliOutput::failure(String::new(), stub_not_implemented("service"), 1),
 
         // Removed features — exact error messages from Go baseline.
-        Command::ProxyDns => CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1),
+        Command::ProxyDns | Command::Tunnel(TunnelSubcommand::ProxyDns) => {
+            CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1)
+        }
         Command::Tunnel(TunnelSubcommand::DbConnect) => {
             CliOutput::failure(String::new(), DB_CONNECT_REMOVED_MSG.to_owned(), 1)
         }
-        Command::Tunnel(TunnelSubcommand::ProxyDns) => {
-            CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1)
-        }
 
-        // Route sub-tree stubs.
-        Command::Tunnel(TunnelSubcommand::Route(sub)) => {
-            let label = match sub {
-                RouteSubcommand::Dns => "tunnel route dns",
-                RouteSubcommand::Lb => "tunnel route lb",
-                RouteSubcommand::Ip(ip) => match ip {
-                    IpRouteSubcommand::Add => "tunnel route ip add",
-                    IpRouteSubcommand::Show => "tunnel route ip show",
-                    IpRouteSubcommand::Delete => "tunnel route ip delete",
-                    IpRouteSubcommand::Get => "tunnel route ip get",
-                    IpRouteSubcommand::Bare => "tunnel route ip",
-                },
-                RouteSubcommand::Bare => "tunnel route",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
+        // Everything else is recognized but not yet implemented.
+        other => CliOutput::failure(String::new(), stub_not_implemented(&full_command_label(other)), 1),
+    }
+}
 
-        // Vnet sub-tree stubs.
-        Command::Tunnel(TunnelSubcommand::Vnet(sub)) => {
-            let label = match sub {
-                VnetSubcommand::Add => "tunnel vnet add",
-                VnetSubcommand::List => "tunnel vnet list",
-                VnetSubcommand::Delete => "tunnel vnet delete",
-                VnetSubcommand::Update => "tunnel vnet update",
-                VnetSubcommand::Bare => "tunnel vnet",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
-
-        // Ingress sub-tree stubs.
-        Command::Tunnel(TunnelSubcommand::Ingress(sub)) => {
-            let label = match sub {
-                IngressSubcommand::Validate => "tunnel ingress validate",
-                IngressSubcommand::Rule => "tunnel ingress rule",
-                IngressSubcommand::Bare => "tunnel ingress",
-            };
-            CliOutput::failure(String::new(), stub_not_implemented(label), 1)
-        }
-
-        // Tunnel subcommands not yet implemented.
-        Command::Tunnel(sub) => {
-            let label = format!("tunnel {sub}");
-            CliOutput::failure(String::new(), stub_not_implemented(&label), 1)
-        }
+/// Build a human-readable label for any command variant, including sub-tree
+/// depth.  Used for stub-not-implemented messages.
+fn full_command_label(command: &Command) -> String {
+    match command {
+        Command::Access(sub) => match sub {
+            AccessSubcommand::Login => "access login".into(),
+            AccessSubcommand::Curl => "access curl".into(),
+            AccessSubcommand::Token => "access token".into(),
+            AccessSubcommand::Tcp => "access tcp".into(),
+            AccessSubcommand::SshConfig => "access ssh-config".into(),
+            AccessSubcommand::SshGen => "access ssh-gen".into(),
+            AccessSubcommand::Bare => "access".into(),
+        },
+        Command::Tail(sub) => match sub {
+            TailSubcommand::Token => "tail token".into(),
+            TailSubcommand::Bare => "tail".into(),
+        },
+        Command::Service(action) => match action {
+            ServiceAction::Install => "service install".into(),
+            ServiceAction::Uninstall => "service uninstall".into(),
+        },
+        Command::Management(sub) => match sub {
+            ManagementSubcommand::Token => "management token".into(),
+            ManagementSubcommand::Bare => "management".into(),
+        },
+        Command::Tunnel(TunnelSubcommand::Route(sub)) => match sub {
+            RouteSubcommand::Dns => "tunnel route dns".into(),
+            RouteSubcommand::Lb => "tunnel route lb".into(),
+            RouteSubcommand::Ip(ip) => match ip {
+                IpRouteSubcommand::Add => "tunnel route ip add".into(),
+                IpRouteSubcommand::Show => "tunnel route ip show".into(),
+                IpRouteSubcommand::Delete => "tunnel route ip delete".into(),
+                IpRouteSubcommand::Get => "tunnel route ip get".into(),
+                IpRouteSubcommand::Bare => "tunnel route ip".into(),
+            },
+            RouteSubcommand::Bare => "tunnel route".into(),
+        },
+        Command::Tunnel(TunnelSubcommand::Vnet(sub)) => match sub {
+            VnetSubcommand::Add => "tunnel vnet add".into(),
+            VnetSubcommand::List => "tunnel vnet list".into(),
+            VnetSubcommand::Delete => "tunnel vnet delete".into(),
+            VnetSubcommand::Update => "tunnel vnet update".into(),
+            VnetSubcommand::Bare => "tunnel vnet".into(),
+        },
+        Command::Tunnel(TunnelSubcommand::Ingress(sub)) => match sub {
+            IngressSubcommand::Validate => "tunnel ingress validate".into(),
+            IngressSubcommand::Rule => "tunnel ingress rule".into(),
+            IngressSubcommand::Bare => "tunnel ingress".into(),
+        },
+        Command::Tunnel(sub) => format!("tunnel {sub}"),
+        _ => format!("{command}"),
     }
 }
 
@@ -161,18 +139,26 @@ fn execute_startup_command(cli: &Cli, mode: CliMode) -> CliOutput {
     match resolve_startup(cli.flags.config_path.clone()) {
         Ok(startup) => match mode {
             CliMode::Validate => CliOutput::success(render_validate_output(&startup)),
-            CliMode::Run => execute_runtime_command(startup),
+            CliMode::Run => execute_runtime_command(startup, &cli.flags),
         },
         Err(error) => CliError::config(error).into_output(),
     }
 }
 
-fn execute_runtime_command(startup: StartupSurface) -> CliOutput {
-    runtime::install_runtime_logging();
-    let report = runtime::run(runtime::RuntimeConfig::new(
-        startup.discovery.clone(),
-        startup.normalized.clone(),
-    ));
+fn execute_runtime_command(startup: StartupSurface, flags: &GlobalFlags) -> CliOutput {
+    let PreparedRuntimeStartup {
+        startup,
+        runtime_config,
+        log_config,
+        transport_log_level,
+    } = match prepare_runtime_startup(startup, flags) {
+        Ok(prepared) => prepared,
+        Err(error) => return CliError::config(error).into_output(),
+    };
+
+    runtime::install_runtime_logging(&log_config, transport_log_level);
+
+    let report = runtime::run(runtime_config);
     let stdout = render_run_output(&startup, &report);
 
     match report.exit.stderr_message() {
@@ -184,4 +170,177 @@ fn execute_runtime_command(startup: StartupSurface) -> CliOutput {
 enum CliMode {
     Validate,
     Run,
+}
+
+struct ServiceInstallRequest {
+    template_args: ServiceTemplateArgs,
+    auto_update: bool,
+}
+
+fn execute_service_install(cli: &Cli) -> CliOutput {
+    match build_service_install_request(cli).and_then(|request| {
+        let runner = ProcessRunner;
+        install_linux_service(&request.template_args, request.auto_update, &runner)
+    }) {
+        Ok(()) => CliOutput::success("Linux service for cloudflared installed successfully\n".to_owned()),
+        Err(error) => CliError::config(error).into_output(),
+    }
+}
+
+fn execute_service_uninstall() -> CliOutput {
+    let runner = ProcessRunner;
+
+    match uninstall_linux_service(&runner) {
+        Ok(()) => CliOutput::success("Linux service for cloudflared uninstalled successfully\n".to_owned()),
+        Err(error) => CliError::config(error).into_output(),
+    }
+}
+
+fn build_service_install_request(cli: &Cli) -> Result<ServiceInstallRequest, ConfigError> {
+    let executable_path = current_executable()?;
+    let extra_args = build_service_install_extra_args(cli)?;
+
+    Ok(ServiceInstallRequest {
+        template_args: ServiceTemplateArgs {
+            path: executable_path,
+            extra_args,
+        },
+        auto_update: !cli.flags.no_update_service,
+    })
+}
+
+fn build_service_install_extra_args(cli: &Cli) -> Result<Vec<String>, ConfigError> {
+    if let Some(token) = resolve_service_install_token(cli)? {
+        return Ok(build_args_for_token(&token));
+    }
+
+    let startup = resolve_startup(cli.flags.config_path.clone())?;
+    ensure_service_install_config_requirements(&startup)?;
+    copy_service_config_if_needed(&startup.discovery.path)?;
+
+    Ok(build_args_for_config())
+}
+
+fn resolve_service_install_token(cli: &Cli) -> Result<Option<String>, ConfigError> {
+    if let Some(token) = cli.flags.rest_args.first() {
+        return validate_service_install_token(token).map(Some);
+    }
+
+    if let Some(token) = cli.flags.token.as_deref() {
+        return validate_service_install_token(token).map(Some);
+    }
+
+    if let Some(token_path) = cli.flags.token_file.as_ref() {
+        let token =
+            std::fs::read_to_string(token_path).map_err(|source| ConfigError::read(token_path, source))?;
+        return validate_service_install_token(token.trim()).map(Some);
+    }
+
+    Ok(None)
+}
+
+fn validate_service_install_token(token: &str) -> Result<String, ConfigError> {
+    TunnelToken::decode(token.trim())?;
+    Ok(token.trim().to_owned())
+}
+
+fn ensure_service_install_config_requirements(startup: &StartupSurface) -> Result<(), ConfigError> {
+    if startup.normalized.tunnel.is_some() && startup.normalized.credentials.credentials_file.is_some() {
+        return Ok(());
+    }
+
+    Err(ConfigError::invariant(format!(
+        "Configuration file {} must contain entries for the tunnel to run and its associated \
+         credentials:\ntunnel: TUNNEL-UUID\ncredentials-file: CREDENTIALS-FILE\n",
+        startup.discovery.path.display()
+    )))
+}
+
+fn copy_service_config_if_needed(source_path: &Path) -> Result<(), ConfigError> {
+    let destination_path = Path::new(SERVICE_CONFIG_PATH);
+
+    if source_path == destination_path {
+        return Ok(());
+    }
+
+    if destination_path.exists() {
+        return Err(ConfigError::invariant(format!(
+            "Possible conflicting configuration in {} and {}. Either remove {} or run `cloudflared --config \
+             {} service install`",
+            source_path.display(),
+            destination_path.display(),
+            destination_path.display(),
+            destination_path.display()
+        )));
+    }
+
+    copy_file(source_path, destination_path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn encoded_tunnel_token() -> String {
+        TunnelToken {
+            account_tag: "account".to_owned(),
+            tunnel_secret: cfdrs_shared::TunnelSecret::from_bytes([1, 2, 3, 4]),
+            tunnel_id: uuid::Uuid::nil(),
+            endpoint: None,
+        }
+        .encode()
+        .expect("token should encode")
+    }
+
+    fn service_install_cli() -> Cli {
+        Cli {
+            command: Command::Service(ServiceAction::Install),
+            flags: GlobalFlags::default(),
+        }
+    }
+
+    #[test]
+    fn service_install_token_prefers_rest_args() {
+        let mut cli = service_install_cli();
+        cli.flags.rest_args.push(encoded_tunnel_token());
+        cli.flags.token = Some("ignored".to_owned());
+
+        let token = resolve_service_install_token(&cli).expect("token should resolve");
+        assert_eq!(token, Some(cli.flags.rest_args[0].clone()));
+    }
+
+    #[test]
+    fn service_install_token_can_be_loaded_from_file() {
+        let mut cli = service_install_cli();
+        let token = encoded_tunnel_token();
+        let token_path = std::env::temp_dir().join("cfdrs-service-install-token.txt");
+        std::fs::write(&token_path, format!("{token}\n")).expect("token file should be written");
+        cli.flags.token_file = Some(token_path.clone());
+
+        let resolved = resolve_service_install_token(&cli).expect("token should resolve from file");
+        assert_eq!(resolved, Some(token));
+
+        let _ = std::fs::remove_file(token_path);
+    }
+
+    #[test]
+    fn service_install_rejects_invalid_token() {
+        let mut cli = service_install_cli();
+        cli.flags.token = Some("not-a-valid-token".to_owned());
+
+        let error = resolve_service_install_token(&cli).expect_err("invalid token should fail");
+        assert_eq!(error.category().to_string(), "token-decode");
+    }
+
+    #[test]
+    fn copy_service_config_skips_service_path() {
+        let result = copy_service_config_if_needed(Path::new(SERVICE_CONFIG_PATH));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn runtime_command_label_for_service_install_stays_stable() {
+        let label = full_command_label(&Command::Service(ServiceAction::Install));
+        assert_eq!(label, "service install");
+    }
 }

@@ -43,6 +43,16 @@ Required local behavior:
 - file and directory permissions follow the baseline logging contract
 - systemd and SysV expectations remain explicit and are not approximated with ad hoc file placement
 
+Current Rust slice:
+
+- stderr remains the default runtime sink
+- `--logfile` now opens and appends to the requested file while still mirroring stderr
+- `--log-directory` and config `logDirectory` now select a local `cloudflared.log` target
+- local rolling rotation now enforces the admitted max-size/max-backups/max-age surface for file sinks
+- `--log-format-output` now switches the runtime subscriber between text and JSON output
+- `--loglevel` now drives runtime log filtering, and `--transport-loglevel` can widen the effective verbosity
+- exact lumberjack-compatible rotation semantics, journald/systemd local sinks, and management `/logs` streaming remain open gaps
+
 ## Host Collection Contract
 
 Required host-collection behavior:
