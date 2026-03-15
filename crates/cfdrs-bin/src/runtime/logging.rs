@@ -404,4 +404,92 @@ mod tests {
 
         let _ = fs::remove_dir_all(root);
     }
+
+    // --- HIS-063: --logfile takes precedence over --log-directory ---
+
+    #[test]
+    fn runtime_log_path_returns_none_when_no_file_config() {
+        let config = LogConfig::default();
+        assert!(runtime_log_path(&config).is_none());
+    }
+
+    // --- HIS-064: --log-directory defaults ---
+
+    #[test]
+    fn rolling_log_path_joins_dirname_and_filename() {
+        let config = RollingConfig {
+            dirname: PathBuf::from("/var/log/cloudflared"),
+            filename: "cloudflared.log".into(),
+            ..RollingConfig::default()
+        };
+        assert_eq!(
+            rolling_log_path(&config),
+            PathBuf::from("/var/log/cloudflared/cloudflared.log")
+        );
+    }
+
+    // --- HIS-065: rotation defaults match Go lumberjack ---
+
+    #[test]
+    fn rotation_not_needed_when_under_limit() {
+        // 512KB current + 1 byte incoming < 1MB limit
+        assert!(!rotation_needed(512 * 1024, 1, 1));
+    }
+
+    #[test]
+    fn rotation_needed_at_exact_boundary() {
+        // 1MB current + 1 byte incoming > 1MB limit
+        assert!(rotation_needed(1024 * 1024, 1, 1));
+    }
+
+    // --- HIS-066: file permissions ---
+
+    #[test]
+    fn open_log_file_creates_parent_directory() {
+        let root = std::env::temp_dir().join(format!("cfdrs-logfile-parent-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+
+        let log_path = root.join("subdir").join("cloudflared.log");
+        let _file = open_log_file(&log_path).expect("should create parent and file");
+
+        assert!(log_path.exists());
+        assert!(root.join("subdir").exists());
+
+        // Verify file permission is 0644
+        let metadata = fs::metadata(&log_path).expect("metadata");
+        let mode = metadata.permissions().mode() & 0o777;
+        assert_eq!(mode, 0o644, "file should have 0644 permissions");
+
+        // Verify parent directory permission is 0744
+        let dir_metadata = fs::metadata(root.join("subdir")).expect("dir metadata");
+        let dir_mode = dir_metadata.permissions().mode() & 0o777;
+        assert_eq!(dir_mode, 0o744, "directory should have 0744 permissions");
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    // --- HIS-068: transport level widening ---
+
+    #[test]
+    fn resolve_global_level_uses_app_level_when_transport_is_less_verbose() {
+        // App=Info, Transport=Error → use Info (more verbose)
+        assert_eq!(
+            resolve_global_level(LogLevel::Info, Some(LogLevel::Error)),
+            Level::INFO
+        );
+    }
+
+    #[test]
+    fn resolve_global_level_widens_to_transport_when_more_verbose() {
+        // App=Error, Transport=Debug → use Debug (more verbose)
+        assert_eq!(
+            resolve_global_level(LogLevel::Error, Some(LogLevel::Debug)),
+            Level::DEBUG
+        );
+    }
+
+    #[test]
+    fn resolve_global_level_uses_app_when_transport_absent() {
+        assert_eq!(resolve_global_level(LogLevel::Warn, None), Level::WARN);
+    }
 }

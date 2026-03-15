@@ -224,6 +224,22 @@ pub struct RegisterConnectionRequest {
 }
 
 // ---------------------------------------------------------------------------
+// UnregisterConnection — CDC-007
+// ---------------------------------------------------------------------------
+
+/// Marker for the `RegistrationServer.unregisterConnection()` RPC.
+///
+/// The schema defines this as `unregisterConnection @1 () -> ()` — zero
+/// parameters, void return.  The Go server handler simply ACKs the call
+/// and invokes `impl.UnregisterConnection(ctx)` to perform graceful
+/// disconnect cleanup.  No request or response payload is exchanged.
+///
+/// This type exists so the control-stream lifecycle code can name the
+/// operation explicitly rather than treating it as an anonymous void call.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UnregisterConnectionRequest;
+
+// ---------------------------------------------------------------------------
 // UpdateLocalConfiguration — CDC-008
 // ---------------------------------------------------------------------------
 
@@ -474,5 +490,71 @@ mod tests {
         };
 
         assert!(!resp.is_ok());
+    }
+
+    /// CDC-007: `unregisterConnection @1 () -> ()` — zero params, void return.
+    #[test]
+    fn unregister_connection_request_is_zero_sized() {
+        assert_eq!(
+            std::mem::size_of::<UnregisterConnectionRequest>(),
+            0,
+            "marker type for void RPC must be zero-sized"
+        );
+        // cloneable and comparable
+        let req = UnregisterConnectionRequest;
+        assert_eq!(req, req.clone());
+    }
+
+    /// CDC-009: `unregisterUdpSession(sessionId, message)` preserves both
+    /// parameters matching the Go two-parameter RPC shape.
+    #[test]
+    fn unregister_udp_session_request_preserves_message() {
+        let sid = Uuid::parse_str("44444444-4444-4444-4444-444444444444").expect("uuid");
+        let req = UnregisterUdpSessionRequest {
+            session_id: sid,
+            message: "session closed by client".into(),
+        };
+        assert_eq!(req.session_id, sid);
+        assert_eq!(req.message, "session closed by client");
+
+        // empty message is valid (Go allows it)
+        let empty = UnregisterUdpSessionRequest {
+            session_id: sid,
+            message: String::new(),
+        };
+        assert!(empty.message.is_empty());
+    }
+
+    /// CDC-003: `retryAfter @1 :Int64` — zero nanoseconds yields
+    /// `Duration::ZERO`, not an error or panic.
+    #[test]
+    fn connection_error_retry_after_zero_ns_is_zero_duration() {
+        let err = ConnectionError {
+            cause: "transient".into(),
+            retry_after_ns: 0,
+            should_retry: true,
+        };
+        assert_eq!(err.retry_after(), Duration::ZERO);
+    }
+
+    /// CDC-008: `updateLocalConfiguration(config :Data)` accepts arbitrary
+    /// byte payloads — the field is opaque Data in the schema.
+    #[test]
+    fn update_local_configuration_request_accepts_arbitrary_bytes() {
+        // Empty payload
+        let empty = UpdateLocalConfigurationRequest { config: Vec::new() };
+        assert!(empty.config.is_empty());
+
+        // JSON payload (typical case)
+        let json = UpdateLocalConfigurationRequest {
+            config: b"{\"ingress\":[]}".to_vec(),
+        };
+        assert!(!json.config.is_empty());
+
+        // Binary payload (schema allows arbitrary Data)
+        let binary = UpdateLocalConfigurationRequest {
+            config: vec![0x00, 0xff, 0xfe, 0xca],
+        };
+        assert_eq!(binary.config.len(), 4);
     }
 }

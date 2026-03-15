@@ -222,4 +222,123 @@ mod tests {
     fn parse_metrics_address_invalid() {
         assert!(parse_metrics_address("not-an-address").is_none());
     }
+
+    // --- HIS-025: readiness JSON field names match Go exactly ---
+
+    #[test]
+    fn readiness_json_field_names_match_go_baseline() {
+        // Go: `{"status":200,"readyConnections":N,"connectorId":"uuid"}`
+        let id = Uuid::nil();
+        let resp = ReadinessResponse::new(id, 4);
+        let json = serde_json::to_string(&resp).expect("serialize");
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("parse");
+
+        assert!(parsed.get("status").is_some(), "must have 'status' key");
+        assert!(
+            parsed.get("readyConnections").is_some(),
+            "must have 'readyConnections' key (camelCase)"
+        );
+        assert!(
+            parsed.get("connectorId").is_some(),
+            "must have 'connectorId' key (camelCase)"
+        );
+
+        // Exactly 3 fields, no extras.
+        assert_eq!(parsed.as_object().expect("object").len(), 3);
+    }
+
+    #[test]
+    fn readiness_deserializes_from_go_json_shape() {
+        let json =
+            r#"{"status":200,"readyConnections":2,"connectorId":"00000000-0000-0000-0000-000000000000"}"#;
+        let resp: ReadinessResponse = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(resp.status, 200);
+        assert_eq!(resp.ready_connections, 2);
+        assert_eq!(resp.connector_id, Uuid::nil());
+    }
+
+    // --- HIS-026: healthcheck response body matches Go ---
+
+    #[test]
+    fn healthcheck_response_body_matches_go_baseline() {
+        // Go: `OK\n` (text/plain)
+        assert_eq!(HEALTHCHECK_RESPONSE, "OK\n");
+    }
+
+    // --- HIS-024: metrics server constants match Go ---
+
+    #[test]
+    fn default_metrics_address_host_matches_go() {
+        // Go: `localhost:0`
+        assert_eq!(DEFAULT_METRICS_ADDRESS_HOST, "localhost:0");
+    }
+
+    #[test]
+    fn default_metrics_address_virtual_matches_go() {
+        // Go: `0.0.0.0:0`
+        assert_eq!(DEFAULT_METRICS_ADDRESS_VIRTUAL, "0.0.0.0:0");
+    }
+
+    #[test]
+    fn known_metrics_ports_match_go_fallback_range() {
+        // Go tries ports 20241-20245 in order.
+        assert_eq!(KNOWN_METRICS_PORTS, [20241, 20242, 20243, 20244, 20245]);
+    }
+
+    #[test]
+    fn read_write_timeouts_match_go_baseline() {
+        // Go: ReadTimeout=10s, WriteTimeout=10s
+        assert_eq!(READ_TIMEOUT_SECS, 10);
+        assert_eq!(WRITE_TIMEOUT_SECS, 10);
+    }
+
+    #[test]
+    fn default_metrics_address_routes_by_runtime_type() {
+        assert_eq!(default_metrics_address(false), "localhost:0");
+        assert_eq!(default_metrics_address(true), "0.0.0.0:0");
+    }
+
+    // --- HIS-031: --metrics flag address parsing ---
+
+    #[test]
+    fn parse_metrics_address_colon_port_binds_localhost() {
+        // Go: `:PORT` → binds to localhost
+        let addr = parse_metrics_address(":2000").expect("colon-port should parse");
+        assert_eq!(addr.port(), 2000);
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+    }
+
+    #[test]
+    fn parse_metrics_address_localhost_port_resolves() {
+        let addr = parse_metrics_address("localhost:9090").expect("localhost should parse");
+        assert_eq!(addr.port(), 9090);
+        assert_eq!(addr.ip().to_string(), "127.0.0.1");
+    }
+
+    #[test]
+    fn parse_metrics_address_explicit_ip() {
+        let addr = parse_metrics_address("0.0.0.0:3000").expect("explicit ip should parse");
+        assert_eq!(addr.port(), 3000);
+    }
+
+    // --- HIS-027: build info shape ---
+
+    #[test]
+    fn config_response_serializes_to_expected_shape() {
+        // Go: `{"version":N,"config":{ingress, warp-routing, originRequest}}`
+        let resp = ConfigResponse {
+            version: 1,
+            config: serde_json::json!({"ingress": [], "warp-routing": {}, "originRequest": {}}),
+        };
+        let json = serde_json::to_string(&resp).expect("serialize");
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("parse");
+
+        assert!(parsed.get("version").is_some());
+        assert!(parsed.get("config").is_some());
+
+        let config = parsed.get("config").expect("config");
+        assert!(config.get("ingress").is_some());
+        assert!(config.get("warp-routing").is_some());
+        assert!(config.get("originRequest").is_some());
+    }
 }

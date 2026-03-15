@@ -271,4 +271,86 @@ mod tests {
     fn content_length_key_remains_exact() {
         assert_eq!(CONTENT_LENGTH_KEY, header_metadata_key("Content-Length"));
     }
+
+    // --- CDC-018: strengthened stream round-trip evidence ---
+
+    #[test]
+    fn connect_request_serde_roundtrip() {
+        let request = ConnectRequest {
+            dest: "http://10.0.0.1:8080/api".into(),
+            connection_type: ConnectionType::Http,
+            metadata: vec![
+                Metadata::new(HTTP_METHOD_KEY, "POST"),
+                Metadata::new(HTTP_HOST_KEY, "example.com"),
+                Metadata::new(header_metadata_key("Content-Type"), "application/json"),
+                Metadata::new(FLOW_ID_KEY, "flow-42"),
+                Metadata::new(CF_TRACE_ID_KEY, "abc-123"),
+            ],
+        };
+        let json = serde_json::to_string(&request).expect("serialize");
+        let deserialized: ConnectRequest = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(request, deserialized);
+    }
+
+    #[test]
+    fn connect_response_serde_roundtrip() {
+        let response = ConnectResponse::http(403, vec![("X-Custom".into(), "blocked".into())]);
+        let json = serde_json::to_string(&response).expect("serialize");
+        let deserialized: ConnectResponse = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(response, deserialized);
+    }
+
+    #[test]
+    fn connection_type_from_u16_exhaustive_boundary() {
+        // Only values 0, 1, 2 are valid — matching Go's ConnectionType enum
+        for v in 0..=2u16 {
+            assert!(ConnectionType::from_u16(v).is_some(), "value {v} should parse");
+        }
+        for v in 3..=10u16 {
+            assert!(
+                ConnectionType::from_u16(v).is_none(),
+                "value {v} should not parse"
+            );
+        }
+        assert!(ConnectionType::from_u16(u16::MAX).is_none());
+    }
+
+    #[test]
+    fn websocket_request_metadata_extraction() {
+        let request = ConnectRequest {
+            dest: "ws://localhost:9000".into(),
+            connection_type: ConnectionType::WebSocket,
+            metadata: vec![
+                Metadata::new(HTTP_METHOD_KEY, DEFAULT_HTTP_METHOD),
+                Metadata::new(HTTP_HOST_KEY, "ws.example.com"),
+            ],
+        };
+        assert_eq!(request.http_method(), DEFAULT_HTTP_METHOD);
+        assert_eq!(request.http_host(), Some("ws.example.com"));
+        assert_eq!(request.flow_id(), None);
+        assert_eq!(request.trace_id(), None);
+        assert_eq!(request.http_headers().count(), 0);
+    }
+
+    #[test]
+    fn tcp_request_missing_metadata_returns_none() {
+        let request = ConnectRequest {
+            dest: "10.0.0.1:22".into(),
+            connection_type: ConnectionType::Tcp,
+            metadata: vec![],
+        };
+        assert_eq!(request.http_host(), None);
+        assert_eq!(request.flow_id(), None);
+        assert_eq!(request.trace_id(), None);
+        assert_eq!(request.http_method(), DEFAULT_HTTP_METHOD);
+    }
+
+    #[test]
+    fn connect_response_http_status_codes() {
+        for status in [200, 301, 403, 404, 500, 502, 503] {
+            let response = ConnectResponse::http(status, vec![]);
+            assert!(response.is_ok());
+            assert_eq!(response.metadata[0].val, status.to_string());
+        }
+    }
 }

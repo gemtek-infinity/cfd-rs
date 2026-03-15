@@ -107,4 +107,31 @@ mod tests {
 
         fs::remove_dir_all(root).expect("temp directory should be removable");
     }
+
+    /// HIS-003 / HIS-001: When an explicit config path is provided
+    /// and exists, discovery returns `UseExisting` with
+    /// `ConfigSource::ExplicitPath`.
+    #[test]
+    fn explicit_config_path_returns_use_existing() {
+        let root = temp_dir("explicit");
+        let config_file = root.join("my-config.yml");
+        fs::write(&config_file, "tunnel: test\n").expect("write config");
+
+        let request = DiscoveryRequest {
+            explicit_config: Some(config_file.clone()),
+            defaults: DiscoveryDefaults {
+                config_filenames: vec!["config.yml".to_owned()],
+                search_directories: vec![],
+                primary_config_path: root.join("unused/config.yml"),
+                primary_log_directory: root.join("unused/log"),
+            },
+        };
+
+        let outcome = super::find_or_create_config_path(&request).expect("explicit should succeed");
+        assert_eq!(outcome.action, DiscoveryAction::UseExisting);
+        assert_eq!(outcome.path, config_file);
+        assert!(outcome.created_paths.is_empty());
+
+        fs::remove_dir_all(root).expect("cleanup");
+    }
 }

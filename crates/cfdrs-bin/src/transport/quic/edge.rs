@@ -1,6 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::{Path, PathBuf};
 
+use cfdrs_cdc::protocol::EDGE_QUIC_TLS_SERVER_NAME;
 use cfdrs_shared::FED_ENDPOINT;
 use tokio::net::lookup_host;
 
@@ -51,7 +52,7 @@ pub(super) async fn resolve_edge_target(identity: &TransportIdentity) -> Result<
     Ok(QuicEdgeTarget {
         connect_addr,
         host_label,
-        server_name: "quic.cftunnel.com".to_owned(),
+        server_name: EDGE_QUIC_TLS_SERVER_NAME.to_owned(),
         verification: PeerVerification::Verified { ca_bundle_path },
     })
 }

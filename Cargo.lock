@@ -321,6 +321,7 @@ dependencies = [
 name = "cfdrs-cdc"
 version = "2026.2.0-alpha.202603"
 dependencies = [
+ "base64",
  "capnp",
  "capnpc",
  "serde",

@@ -396,4 +396,56 @@ mod tests {
             serde_json::json!({"version": 2, "config": {"ingress": []}})
         );
     }
+
+    // --- HIS-045: reload recovery strategy ---
+
+    #[test]
+    fn reload_recovery_keeps_previous_on_io_error() {
+        let err = ConfigError::read(
+            PathBuf::from("/etc/cloudflared/config.yml"),
+            std::io::Error::new(std::io::ErrorKind::PermissionDenied, "permission denied"),
+        );
+        assert_eq!(reload_recovery_strategy(&err), ReloadRecovery::KeepPrevious);
+    }
+
+    #[test]
+    fn action_loop_handles_remove_and_continues() {
+        let handler = RecordingReloadHandler::default();
+        let app_manager = RecordingAppManager::default();
+        let loop_state = ReloadActionLoop::new(handler, app_manager);
+
+        let report = loop_state
+            .handle_action(ReloadAction::Remove(PathBuf::from("/tmp/config.yml")))
+            .expect("remove should succeed");
+
+        assert_eq!(report.outcome, ReloadLoopOutcome::Continue);
+        assert_eq!(loop_state.handler.removals.lock().expect("lock").len(), 1);
+    }
+
+    // --- HIS-044: in-memory config orchestrator ---
+
+    #[test]
+    fn in_memory_config_orchestrator_returns_initial_config() {
+        let initial = serde_json::json!({"version": 1, "ingress": []});
+        let orchestrator = InMemoryConfigOrchestrator::new(initial.clone());
+
+        assert_eq!(orchestrator.get_config_json().expect("should load"), initial);
+    }
+
+    #[test]
+    fn in_memory_config_orchestrator_preserves_latest_update() {
+        let orchestrator = InMemoryConfigOrchestrator::new(serde_json::json!({"v": 1}));
+
+        orchestrator
+            .update_config(serde_json::json!({"v": 2}))
+            .expect("first update");
+        orchestrator
+            .update_config(serde_json::json!({"v": 3}))
+            .expect("second update");
+
+        assert_eq!(
+            orchestrator.get_config_json().expect("should load"),
+            serde_json::json!({"v": 3})
+        );
+    }
 }

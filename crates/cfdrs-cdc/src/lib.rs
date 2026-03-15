@@ -24,9 +24,15 @@ pub mod tunnelrpc_capnp {
     include!(concat!(env!("OUT_DIR"), "/tunnelrpc_capnp.rs"));
 }
 
+pub mod api;
+pub mod api_resources;
+pub mod datagram;
 pub mod features;
+pub mod log_streaming;
+pub mod management;
 pub mod protocol;
 pub mod registration;
+mod registration_codec;
 pub mod stream;
 pub mod stream_codec;
 pub(crate) mod stream_contract;
@@ -38,3 +44,8 @@ pub use registration::{
     UpdateLocalConfigurationRequest,
 };
 pub use stream::{ConnectRequest, ConnectResponse, ConnectionType, Metadata};
+
+pub use protocol::{
+    ConfigIPVersion, ConnectionEvent, ConnectionStatus, EdgeAddr, EdgeIPVersion, Protocol, ProtocolSelector,
+    StaticProtocolSelector, TlsSettings,
+};

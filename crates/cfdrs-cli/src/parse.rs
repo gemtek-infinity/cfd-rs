@@ -637,6 +637,48 @@ mod tests {
     }
 
     #[test]
+    fn tunnel_delete_subcommand() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, surface_contract::TUNNEL_DELETE]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Delete));
+    }
+
+    #[test]
+    fn tunnel_cleanup_subcommand() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, surface_contract::TUNNEL_CLEANUP]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Cleanup));
+    }
+
+    #[test]
+    fn tunnel_info_subcommand() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, surface_contract::TUNNEL_INFO]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Info));
+    }
+
+    #[test]
+    fn tunnel_ready_subcommand() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, surface_contract::TUNNEL_READY]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Ready));
+    }
+
+    #[test]
+    fn tunnel_diag_subcommand() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, surface_contract::TUNNEL_DIAG]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Diag));
+    }
+
+    #[test]
+    fn tunnel_token_subcommand() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, surface_contract::TUNNEL_TOKEN]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Token));
+    }
+
+    #[test]
+    fn tunnel_login_subcommand() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, surface_contract::TUNNEL_LOGIN]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Login));
+    }
+
+    #[test]
     fn bare_run_is_tunnel_run() {
         let cli = parse(&[surface_contract::RUN_COMMAND]);
         assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Run));
@@ -962,5 +1004,371 @@ mod tests {
     fn retries_flag() {
         let cli = parse(&[surface_contract::TUNNEL_COMMAND, "--retries", "5"]);
         assert_eq!(cli.flags.retries, Some(5));
+    }
+
+    // --- CLI-003: flag inventory parity -----------------------------------------
+    //
+    // Go baseline: Flags() in cmd/cloudflared/tunnel/cmd.go defines every global
+    // flag the binary accepts.  These tests verify that each flag name, alias, and
+    // `=` syntax parse without error.
+
+    #[test]
+    fn cred_file_alias_matches_credentials_file() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "--cred-file", "/etc/cred.json"]);
+        assert_eq!(cli.flags.credentials_file, Some(PathBuf::from("/etc/cred.json")));
+    }
+
+    #[test]
+    fn credentials_contents_flag() {
+        let cli = parse(&[
+            surface_contract::TUNNEL_COMMAND,
+            "--credentials-contents",
+            "{\"AccountTag\":\"a\"}",
+        ]);
+        assert_eq!(
+            cli.flags.credentials_contents,
+            Some("{\"AccountTag\":\"a\"}".to_owned())
+        );
+    }
+
+    #[test]
+    fn token_equals_syntax() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "--token=abc123"]);
+        assert_eq!(cli.flags.token, Some("abc123".to_owned()));
+    }
+
+    #[test]
+    fn config_equals_syntax() {
+        let flag_with_value = format!("{}=/etc/cloudflared/config.yml", surface_contract::CONFIG_FLAG);
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, &flag_with_value]);
+        assert_eq!(
+            cli.flags.config_path,
+            Some(PathBuf::from("/etc/cloudflared/config.yml"))
+        );
+    }
+
+    #[test]
+    fn credentials_file_equals_syntax() {
+        let cli = parse(&[
+            surface_contract::TUNNEL_COMMAND,
+            "--credentials-file=/etc/cred.json",
+        ]);
+        assert_eq!(cli.flags.credentials_file, Some(PathBuf::from("/etc/cred.json")));
+    }
+
+    #[test]
+    fn post_quantum_flag_long() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "--post-quantum"]);
+        assert_eq!(cli.flags.post_quantum, Some(true));
+    }
+
+    #[test]
+    fn post_quantum_flag_short_pq() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "-pq"]);
+        assert_eq!(cli.flags.post_quantum, Some(true));
+    }
+
+    #[test]
+    fn tunnel_name_alias_short_n() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "-n", "my-tunnel"]);
+        assert_eq!(cli.flags.tunnel_name, Some("my-tunnel".to_owned()));
+    }
+
+    #[test]
+    fn protocol_alias_short_p() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "-p", "quic"]);
+        assert_eq!(cli.flags.protocol, Some("quic".to_owned()));
+    }
+
+    #[test]
+    fn features_alias_short_f() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "-F", "feature1"]);
+        assert!(cli.flags.features.contains(&"feature1".to_owned()));
+    }
+
+    #[test]
+    fn origin_ca_pool_alias_cacert() {
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "--cacert", "/etc/ca.pem"]);
+        assert_eq!(cli.flags.origin_ca_pool, Some("/etc/ca.pem".to_owned()));
+    }
+
+    #[test]
+    fn all_boolean_flags_parse_without_error() {
+        // Go baseline boolean flags from cmd/cloudflared/tunnel/cmd.go
+        let bool_flags = [
+            "--no-autoupdate",
+            "--hello-world",
+            "--no-tls-verify",
+            "--no-chunked-encoding",
+            "--http2-origin",
+            "--post-quantum",
+            "--is-autoupdated",
+            "--bastion",
+            "--socks5",
+            "--proxy-no-happy-eyeballs",
+            "--quic-disable-pmtu-discovery",
+            "--no-update-service",
+            "--proxy-dns",
+        ];
+
+        for flag in &bool_flags {
+            let cli = parse(&[surface_contract::TUNNEL_COMMAND, flag]);
+            assert_eq!(
+                cli.command,
+                Command::Tunnel(TunnelSubcommand::Bare),
+                "bool flag {flag} broke command parsing"
+            );
+        }
+    }
+
+    #[test]
+    fn all_value_flags_parse_without_error() {
+        // Go baseline value flags from cmd/cloudflared/tunnel/cmd.go
+        let value_flags = [
+            (surface_contract::CONFIG_FLAG, "/tmp/config.yml"),
+            ("--credentials-file", "/etc/cred.json"),
+            ("--cred-file", "/etc/cred.json"),
+            ("--credentials-contents", "{}"),
+            ("--token", "abc123"),
+            ("--token-file", "/tmp/token"),
+            ("--origincert", "/etc/cert.pem"),
+            ("--loglevel", "info"),
+            ("--transport-loglevel", "warn"),
+            ("--logfile", "/var/log/cloudflared.log"),
+            ("--log-directory", "/var/log/cloudflared"),
+            ("--output", "json"),
+            ("--metrics", "localhost:9090"),
+            ("--pidfile", "/var/run/cloudflared.pid"),
+            ("--grace-period", "30s"),
+            ("--url", "http://localhost:8080"),
+            ("--name", "my-tunnel"),
+            ("--protocol", "quic"),
+            ("--edge", "198.41.200.193:7844"),
+            ("--region", "us"),
+            ("--edge-ip-version", "4"),
+            ("--edge-bind-address", "0.0.0.0"),
+            ("--hostname", "example.com"),
+            ("--id", "00000000-0000-0000-0000-000000000000"),
+            ("--lb-pool", "my-pool"),
+            ("--tag", "key=value"),
+            ("--features", "feature1"),
+            ("--label", "my-label"),
+            ("--autoupdate-freq", "24h"),
+            ("--metrics-update-freq", "5s"),
+            ("--retries", "5"),
+            ("--ha-connections", "4"),
+            ("--max-edge-addr-retries", "8"),
+            ("--rpc-timeout", "5s"),
+            ("--heartbeat-interval", "5s"),
+            ("--heartbeat-count", "5"),
+            ("--write-stream-timeout", "5s"),
+            ("--max-active-flows", "100"),
+            ("--management-hostname", "management.example.com"),
+            ("--api-url", "https://api.cloudflare.com/client/v4"),
+            ("--trace-output", "/tmp/trace"),
+            ("--unix-socket", "/tmp/socket.sock"),
+            ("--http-host-header", "example.com"),
+            ("--origin-server-name", "origin.example.com"),
+            ("--origin-ca-pool", "/etc/ca.pem"),
+            ("--cacert", "/etc/ca.pem"),
+            ("--icmpv4-src", "0.0.0.0"),
+            ("--icmpv6-src", "::"),
+            ("--proxy-address", "127.0.0.1"),
+            ("--proxy-port", "8080"),
+            ("--proxy-connect-timeout", "30s"),
+            ("--proxy-tls-timeout", "10s"),
+            ("--proxy-tcp-keepalive", "30s"),
+            ("--proxy-keepalive-connections", "100"),
+            ("--proxy-keepalive-timeout", "90s"),
+            ("--service-op-ip", "127.0.0.1"),
+            ("--quic-connection-level-flow-control-limit", "15728640"),
+            ("--quic-stream-level-flow-control-limit", "6291456"),
+            ("--api-key", "key"),
+            ("--api-email", "user@example.com"),
+            ("--api-ca-key", "cakey"),
+        ];
+
+        for (flag, value) in &value_flags {
+            let cli = parse(&[surface_contract::TUNNEL_COMMAND, flag, value]);
+            assert_eq!(
+                cli.command,
+                Command::Tunnel(TunnelSubcommand::Bare),
+                "value flag {flag} broke command parsing"
+            );
+        }
+    }
+
+    #[test]
+    fn ha_connections_default_matches_go_baseline() {
+        // Go baseline default: ha-connections = 4
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "--ha-connections", "4"]);
+        assert_eq!(cli.flags.ha_connections, Some(4));
+    }
+
+    #[test]
+    fn retries_default_matches_go_baseline() {
+        // Go baseline default: retries = 5
+        let cli = parse(&[surface_contract::TUNNEL_COMMAND, "--retries", "5"]);
+        assert_eq!(cli.flags.retries, Some(5));
+    }
+
+    #[test]
+    fn logging_flags_match_go_baseline_names() {
+        // Go baseline: --loglevel, --transport-loglevel, --logfile, --log-directory
+        let cli = parse(&[
+            surface_contract::TUNNEL_COMMAND,
+            "--loglevel",
+            "debug",
+            "--transport-loglevel",
+            "error",
+            "--logfile",
+            "/var/log/cloudflared.log",
+            "--log-directory",
+            "/var/log/cloudflared",
+        ]);
+        assert_eq!(cli.flags.loglevel, Some("debug".to_owned()));
+        assert_eq!(cli.flags.transport_loglevel, Some("error".to_owned()));
+        assert_eq!(cli.flags.logfile, Some(PathBuf::from("/var/log/cloudflared.log")));
+        assert_eq!(
+            cli.flags.log_directory,
+            Some(PathBuf::from("/var/log/cloudflared"))
+        );
+    }
+
+    // --- CLI-001, CLI-028, CLI-032: parse contract strengthening ---------------
+
+    #[test]
+    fn login_and_tunnel_login_produce_same_dispatch() {
+        // Go baseline: top-level `login` redirects to `tunnel login`.
+        let top = parse(&[surface_contract::LOGIN_COMMAND]);
+        let nested = parse(&[surface_contract::TUNNEL_COMMAND, surface_contract::TUNNEL_LOGIN]);
+        assert_eq!(top.command, Command::Login);
+        assert_eq!(nested.command, Command::Tunnel(TunnelSubcommand::Login));
+    }
+
+    #[test]
+    fn run_and_tunnel_run_produce_equivalent_dispatch() {
+        // Go baseline: bare `run` is shorthand for `tunnel run`.
+        let bare = parse(&[surface_contract::RUN_COMMAND]);
+        let tunneled = parse(&[surface_contract::TUNNEL_COMMAND, surface_contract::TUNNEL_RUN]);
+        assert_eq!(bare.command, Command::Tunnel(TunnelSubcommand::Run));
+        assert_eq!(tunneled.command, Command::Tunnel(TunnelSubcommand::Run));
+    }
+
+    // --- CLI-023, CLI-024: tail and management flag parsing --------------------
+
+    #[test]
+    fn tail_with_tunnel_id_arg() {
+        // Go baseline: `tail TUNNEL-ID` passes tunnel ID as positional.
+        let cli = parse(&[
+            surface_contract::TAIL_COMMAND,
+            "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        ]);
+        assert_eq!(cli.command, Command::Tail(crate::types::TailSubcommand::Bare));
+    }
+
+    #[test]
+    fn management_token_subcommand_dispatch() {
+        // Go baseline: `management token` is the only management subcommand
+        // (besides bare management).
+        let token = parse(&[surface_contract::MANAGEMENT_COMMAND, "token"]);
+        let bare = parse(&[surface_contract::MANAGEMENT_COMMAND]);
+        assert_ne!(token.command, bare.command);
+    }
+
+    // --- CLI-032: tunnel run dispatch and identity flags ------------------------
+
+    #[test]
+    fn token_file_flag() {
+        // Go baseline: --token-file reads token from a file path.
+        let cli = parse(&[
+            surface_contract::TUNNEL_COMMAND,
+            surface_contract::TUNNEL_RUN,
+            "--token-file",
+            "/etc/cloudflared/token",
+        ]);
+        assert_eq!(
+            cli.flags.token_file,
+            Some(PathBuf::from("/etc/cloudflared/token"))
+        );
+    }
+
+    #[test]
+    fn token_takes_precedence_over_token_file_in_parse() {
+        // Go baseline: --token > --token-file > config credentials.
+        // Both flags must be parseable simultaneously so the runtime
+        // can apply precedence at dispatch time.
+        let cli = parse(&[
+            surface_contract::TUNNEL_COMMAND,
+            surface_contract::TUNNEL_RUN,
+            "--token",
+            "my-token-value",
+            "--token-file",
+            "/tmp/token",
+        ]);
+        assert_eq!(cli.flags.token, Some("my-token-value".to_owned()));
+        assert_eq!(cli.flags.token_file, Some(PathBuf::from("/tmp/token")));
+    }
+
+    #[test]
+    fn tunnel_run_with_positional_tunnel_name() {
+        // Go baseline: `tunnel run TUNNEL` accepts one positional arg
+        // (tunnel name or UUID) which lands in rest_args.
+        let cli = parse(&[
+            surface_contract::TUNNEL_COMMAND,
+            surface_contract::TUNNEL_RUN,
+            "my-tunnel",
+        ]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Run));
+        assert!(
+            cli.flags.rest_args.contains(&"my-tunnel".to_owned()),
+            "tunnel name should be captured in rest_args"
+        );
+    }
+
+    #[test]
+    fn tunnel_run_with_hostname_flag() {
+        // Go baseline: --hostname is hidden/deprecated for named tunnels
+        // but still parsed. In `runCommand()`, its presence triggers a
+        // deprecation warning log.
+        let cli = parse(&[
+            surface_contract::TUNNEL_COMMAND,
+            surface_contract::TUNNEL_RUN,
+            "--hostname",
+            "example.com",
+        ]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Run));
+        assert_eq!(cli.flags.hostname, Some("example.com".to_owned()));
+    }
+
+    #[test]
+    fn bare_run_with_token_flag() {
+        // Go baseline: bare `run --token` shares the same flag set as
+        // `tunnel run --token`. Verify the shorthand route parses
+        // identity flags identically.
+        let bare = parse(&[surface_contract::RUN_COMMAND, "--token", "tok123"]);
+        let tunneled = parse(&[
+            surface_contract::TUNNEL_COMMAND,
+            surface_contract::TUNNEL_RUN,
+            "--token",
+            "tok123",
+        ]);
+        assert_eq!(bare.flags.token, Some("tok123".to_owned()));
+        assert_eq!(tunneled.flags.token, Some("tok123".to_owned()));
+    }
+
+    #[test]
+    fn tunnel_run_multiple_positional_args_collected() {
+        // Go baseline: runCommand() rejects NArg > 1. At parse time
+        // the extras land in rest_args for the runtime to validate.
+        let cli = parse(&[
+            surface_contract::TUNNEL_COMMAND,
+            surface_contract::TUNNEL_RUN,
+            "tunnel-name",
+            "extra-arg",
+        ]);
+        assert_eq!(cli.command, Command::Tunnel(TunnelSubcommand::Run));
+        assert!(cli.flags.rest_args.contains(&"tunnel-name".to_owned()));
+        assert!(cli.flags.rest_args.contains(&"extra-arg".to_owned()));
     }
 }

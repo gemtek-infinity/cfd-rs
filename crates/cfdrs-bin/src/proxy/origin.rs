@@ -9,7 +9,7 @@
 //! `baseline-2026.2.0/proxy/proxy.go` and
 //! `baseline-2026.2.0/ingress/origin_proxy.go`.
 
-use cfdrs_cdc::stream::ConnectRequest;
+use cfdrs_cdc::stream::{ConnectRequest, ConnectResponse, ConnectionType};
 use cfdrs_shared::IngressService;
 use pingora_http::ResponseHeader;
 
@@ -28,44 +28,88 @@ pub(crate) enum OriginResponse {
 
 /// Dispatch an incoming request to the matched origin service.
 ///
-/// This replaces the narrow Phase 3.4c `dispatch_origin` that only
-/// handled `HttpStatus`. Now handles:
-/// - `HttpStatus(code)` — return a fixed status code
-/// - `HelloWorld` — return a hello-world HTML page
-/// - `Http(url)` — proxy HTTP to the origin URL
-/// - `TcpOverWebsocket(url)` — establish TCP stream to the origin
-/// - Other service types — return 502 with an honest label
+/// Follows the Go baseline dispatch pattern from
+/// `baseline-2026.2.0/connection/quic_connection.go` `dispatchRequest()`:
+/// - HTTP and WebSocket go through the same HTTP dispatch path (with an
+///   `is_websocket` flag for upgrade semantics)
+/// - TCP goes through a separate stream-establishment path
+/// - All other connection types are unsupported errors
+///
+/// Within each path, the ingress service type determines the
+/// concrete origin behavior (status code, hello-world, forward, etc.).
 pub(crate) fn dispatch_to_origin(service: &IngressService, request: &ConnectRequest) -> OriginResponse {
+    match request.connection_type {
+        ConnectionType::Http | ConnectionType::WebSocket => dispatch_http_path(service, request),
+        ConnectionType::Tcp => dispatch_tcp_path(service, request),
+    }
+}
+
+/// HTTP/WebSocket dispatch path.
+///
+/// Go baseline: `case pogs.ConnectionTypeHTTP, pogs.ConnectionTypeWebsocket:`
+/// Both types route through `ProxyHTTP`, with a boolean `isWebsocket` flag
+/// to distinguish upgrade semantics.
+fn dispatch_http_path(service: &IngressService, request: &ConnectRequest) -> OriginResponse {
     match service {
         IngressService::HttpStatus(code) => OriginResponse::Http(Box::new(build_status_response(*code))),
-
         IngressService::HelloWorld => OriginResponse::Http(Box::new(build_hello_world_response())),
-
         IngressService::Http(_url) => dispatch_http_origin(request),
 
-        IngressService::TcpOverWebsocket(_url) => OriginResponse::Unimplemented {
-            service_label: "tcp-over-websocket",
+        // Services not reachable through HTTP/WS dispatch
+        IngressService::TcpOverWebsocket(_)
+        | IngressService::UnixSocket(_)
+        | IngressService::UnixSocketTls(_)
+        | IngressService::Bastion
+        | IngressService::SocksProxy
+        | IngressService::NamedToken(_) => OriginResponse::Unimplemented {
+            service_label: service_label(service),
+        },
+    }
+}
+
+/// TCP dispatch path.
+///
+/// Go baseline: `case pogs.ConnectionTypeTCP:` uses a `streamReadWriteAcker`
+/// and calls `ProxyTCP` with dest, flow ID, and trace context.
+fn dispatch_tcp_path(service: &IngressService, request: &ConnectRequest) -> OriginResponse {
+    match service {
+        // TCP-capable service types (not yet implemented)
+        IngressService::TcpOverWebsocket(_)
+        | IngressService::UnixSocket(_)
+        | IngressService::UnixSocketTls(_)
+        | IngressService::SocksProxy => OriginResponse::Unimplemented {
+            service_label: service_label(service),
         },
 
-        IngressService::UnixSocket(_path) => OriginResponse::Unimplemented {
-            service_label: "unix-socket",
-        },
+        // HTTP-only services don't make sense for TCP connections
+        IngressService::HttpStatus(_)
+        | IngressService::HelloWorld
+        | IngressService::Http(_)
+        | IngressService::Bastion
+        | IngressService::NamedToken(_) => {
+            let _ = request; // suppress unused warning while stubs remain
+            OriginResponse::Unimplemented {
+                service_label: service_label(service),
+            }
+        }
+    }
+}
 
-        IngressService::UnixSocketTls(_path) => OriginResponse::Unimplemented {
-            service_label: "unix-socket-tls",
-        },
-
-        IngressService::Bastion => OriginResponse::Unimplemented {
-            service_label: "bastion",
-        },
-
-        IngressService::SocksProxy => OriginResponse::Unimplemented {
-            service_label: "socks-proxy",
-        },
-
-        IngressService::NamedToken(_) => OriginResponse::Unimplemented {
-            service_label: "named-token",
-        },
+/// Return a stable label for an ingress service type.
+///
+/// Used in `Unimplemented` responses so tests and logging can
+/// distinguish which service was attempted.
+fn service_label(service: &IngressService) -> &'static str {
+    match service {
+        IngressService::Http(_) => "http",
+        IngressService::TcpOverWebsocket(_) => "tcp-over-websocket",
+        IngressService::UnixSocket(_) => "unix-socket",
+        IngressService::UnixSocketTls(_) => "unix-socket-tls",
+        IngressService::HttpStatus(_) => "http-status",
+        IngressService::HelloWorld => "hello-world",
+        IngressService::Bastion => "bastion",
+        IngressService::SocksProxy => "socks-proxy",
+        IngressService::NamedToken(_) => "named-token",
     }
 }
 
@@ -119,6 +163,38 @@ pub(super) fn build_status_response(code: u16) -> ResponseHeader {
         .expect("status codes from validated config or hardcoded constants are always valid")
 }
 
+/// Convert an `OriginResponse` into a CDC wire `ConnectResponse`.
+///
+/// This bridges the proxy dispatch layer with the stream framing
+/// protocol. The Go baseline constructs the connect response inside
+/// `httpResponseAdapter.WriteRespHeaders()` for HTTP/WS and
+/// `streamReadWriteAcker.AckConnection()` for TCP.
+///
+/// Mapping:
+/// - `Http(header)` → `ConnectResponse::http(status, headers)`
+/// - `StreamEstablished` → `ConnectResponse::tcp_ack(None)`
+/// - `Unimplemented { label }` → `ConnectResponse::error(message)`
+#[allow(dead_code)] // Phase 5.2: called from stream handler once lifecycle wiring is done
+pub(crate) fn to_connect_response(response: &OriginResponse) -> ConnectResponse {
+    match response {
+        OriginResponse::Http(header) => {
+            let status = header.status.as_u16();
+            let headers: Vec<(String, String)> = header
+                .headers
+                .iter()
+                .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or("").to_string()))
+                .collect();
+            ConnectResponse::http(status, headers)
+        }
+
+        OriginResponse::StreamEstablished => ConnectResponse::tcp_ack(None),
+
+        OriginResponse::Unimplemented { service_label } => {
+            ConnectResponse::error(format!("service not implemented: {service_label}"))
+        }
+    }
+}
+
 /// Map a `ConnectRequest` to a `ResponseHeader` through ingress matching.
 ///
 /// This is the main entry point from the stream handler into the proxy:
@@ -166,7 +242,7 @@ fn extract_path_from_dest(dest: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cfdrs_cdc::stream::ConnectionType;
+    use cfdrs_cdc::stream::{ConnectionType, Metadata};
     use cfdrs_shared::{IngressMatch, IngressRule, OriginRequestConfig};
 
     fn status_rule(hostname: Option<&str>, code: u16) -> IngressRule {
@@ -206,12 +282,16 @@ mod tests {
     }
 
     fn make_request(host: &str, dest: &str) -> ConnectRequest {
+        make_typed_request(host, dest, ConnectionType::Http)
+    }
+
+    fn make_typed_request(host: &str, dest: &str, connection_type: ConnectionType) -> ConnectRequest {
         ConnectRequest {
             dest: dest.into(),
-            connection_type: ConnectionType::Http,
+            connection_type,
             metadata: vec![
-                cfdrs_cdc::stream::Metadata::new("HttpMethod", "GET"),
-                cfdrs_cdc::stream::Metadata::new("HttpHost", host),
+                Metadata::new("HttpMethod", "GET"),
+                Metadata::new("HttpHost", host),
             ],
         }
     }
@@ -317,5 +397,222 @@ mod tests {
             }
             other => panic!("expected Unimplemented, got: {other:?}"),
         }
+    }
+
+    // --- CDC-018: ConnectionType-aware dispatch tests ---
+
+    /// Go baseline dispatches HTTP and WebSocket through the same
+    /// `ProxyHTTP` path. Verify both connection types reach the
+    /// HTTP dispatch arm for an Http service.
+    #[test]
+    fn http_and_websocket_share_dispatch_path() {
+        let rules = vec![status_rule(None, 200)];
+
+        let http_req = make_typed_request("example.com", "http://example.com/", ConnectionType::Http);
+        let ws_req = make_typed_request("example.com", "http://example.com/", ConnectionType::WebSocket);
+
+        match proxy_connect_request(&rules, &http_req) {
+            OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
+            other => panic!("HTTP request should dispatch to Http response, got: {other:?}"),
+        }
+
+        match proxy_connect_request(&rules, &ws_req) {
+            OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
+            other => panic!("WebSocket request should share HTTP dispatch path, got: {other:?}"),
+        }
+    }
+
+    /// Go baseline dispatches TCP through a separate `ProxyTCP` path.
+    /// HTTP-only services (HttpStatus, HelloWorld) should be
+    /// unreachable via TCP and return Unimplemented.
+    #[test]
+    fn tcp_dispatch_rejects_http_only_services() {
+        let rules = vec![status_rule(None, 200)];
+        let tcp_req = make_typed_request("example.com", "example.com:8080", ConnectionType::Tcp);
+
+        match proxy_connect_request(&rules, &tcp_req) {
+            OriginResponse::Unimplemented { service_label } => {
+                assert_eq!(service_label, "http-status");
+            }
+            other => panic!("TCP to HttpStatus should be Unimplemented, got: {other:?}"),
+        }
+    }
+
+    /// TCP-capable services dispatch through the TCP path and report
+    /// their correct label (pending real implementation).
+    #[test]
+    fn tcp_dispatch_to_tcp_service_reports_label() {
+        let service =
+            IngressService::TcpOverWebsocket(url::Url::parse("tcp://10.0.0.5:22").expect("test url"));
+        let request = ConnectRequest {
+            dest: "10.0.0.5:22".into(),
+            connection_type: ConnectionType::Tcp,
+            metadata: vec![Metadata::new("FlowID", "flow-42")],
+        };
+
+        match dispatch_to_origin(&service, &request) {
+            OriginResponse::Unimplemented { service_label } => {
+                assert_eq!(service_label, "tcp-over-websocket");
+            }
+            other => panic!("expected Unimplemented, got: {other:?}"),
+        }
+    }
+
+    /// WebSocket connection type to an Http service goes through
+    /// the HTTP dispatch path (same as Go baseline).
+    #[test]
+    fn websocket_to_http_service_dispatches_through_http_path() {
+        let rules = vec![http_rule(None, "http://localhost:8080")];
+        let ws_req = make_typed_request("example.com", "http://example.com/ws", ConnectionType::WebSocket);
+
+        match proxy_connect_request(&rules, &ws_req) {
+            OriginResponse::Http(h) => {
+                // Http forward is wired but returns 502 (origin connection not yet implemented)
+                assert_eq!(h.status.as_u16(), 502);
+            }
+            other => panic!("WebSocket to Http service should dispatch, got: {other:?}"),
+        }
+    }
+
+    // --- CDC-018: service label exhaustiveness ---
+
+    /// Every IngressService variant has a stable label accessible
+    /// through `service_label()`.
+    #[test]
+    fn service_label_covers_all_variants() {
+        let variants: Vec<(IngressService, &str)> = vec![
+            (
+                IngressService::Http(url::Url::parse("http://localhost").expect("url")),
+                "http",
+            ),
+            (
+                IngressService::TcpOverWebsocket(url::Url::parse("tcp://localhost").expect("url")),
+                "tcp-over-websocket",
+            ),
+            (IngressService::UnixSocket("/tmp/sock".into()), "unix-socket"),
+            (
+                IngressService::UnixSocketTls("/tmp/sock".into()),
+                "unix-socket-tls",
+            ),
+            (IngressService::HttpStatus(200), "http-status"),
+            (IngressService::HelloWorld, "hello-world"),
+            (IngressService::Bastion, "bastion"),
+            (IngressService::SocksProxy, "socks-proxy"),
+            (IngressService::NamedToken("token".into()), "named-token"),
+        ];
+
+        for (service, expected) in &variants {
+            assert_eq!(service_label(service), *expected, "label for {service:?}");
+        }
+    }
+
+    // --- CDC-018: OriginResponse → ConnectResponse conversion ---
+
+    /// HTTP dispatch result converts to ConnectResponse with correct
+    /// status metadata.
+    #[test]
+    fn connect_response_from_http_origin() {
+        let header = build_status_response(418);
+        let origin = OriginResponse::Http(Box::new(header));
+        let cr = to_connect_response(&origin);
+
+        assert!(cr.is_ok());
+        assert_eq!(cr.metadata[0].key, "HttpStatus");
+        assert_eq!(cr.metadata[0].val, "418");
+    }
+
+    /// TCP stream established converts to a successful TCP ack.
+    #[test]
+    fn connect_response_from_stream_established() {
+        let origin = OriginResponse::StreamEstablished;
+        let cr = to_connect_response(&origin);
+
+        assert!(cr.is_ok());
+        assert!(cr.error.is_empty());
+    }
+
+    /// Unimplemented service converts to an error ConnectResponse
+    /// with the service label in the message.
+    #[test]
+    fn connect_response_from_unimplemented() {
+        let origin = OriginResponse::Unimplemented {
+            service_label: "socks-proxy",
+        };
+        let cr = to_connect_response(&origin);
+
+        assert!(!cr.is_ok());
+        assert!(
+            cr.error.contains("socks-proxy"),
+            "error should contain service label: {}",
+            cr.error
+        );
+    }
+
+    /// Hello-world response converts to ConnectResponse with 200
+    /// and Content-Type header.
+    #[test]
+    fn connect_response_from_hello_world() {
+        let header = build_hello_world_response();
+        let origin = OriginResponse::Http(Box::new(header));
+        let cr = to_connect_response(&origin);
+
+        assert!(cr.is_ok());
+        assert_eq!(cr.metadata[0].key, "HttpStatus");
+        assert_eq!(cr.metadata[0].val, "200");
+        // Content-Type header should be in metadata.
+        // Pingora lowercases header names per HTTP/2 conventions,
+        // so the metadata key is "HttpHeader:content-type".
+        assert!(
+            cr.metadata
+                .iter()
+                .any(|m| m.key.contains("content-type") && m.val.contains("text/html")),
+            "should contain content-type header metadata, got: {:?}",
+            cr.metadata
+        );
+    }
+
+    // --- CDC-018: end-to-end dispatch → ConnectResponse ---
+
+    /// Full round-trip: ConnectRequest → ingress match → dispatch →
+    /// OriginResponse → ConnectResponse. This is the CDC-018
+    /// stream round-trip path.
+    #[test]
+    fn end_to_end_http_dispatch_to_connect_response() {
+        let rules = vec![status_rule(Some("api.example.com"), 200), status_rule(None, 404)];
+        let request = make_request("api.example.com", "http://api.example.com/health");
+
+        let origin = proxy_connect_request(&rules, &request);
+        let cr = to_connect_response(&origin);
+
+        assert!(cr.is_ok());
+        assert_eq!(cr.metadata[0].val, "200");
+    }
+
+    /// Full round-trip for a TCP request that hits an HTTP-only service.
+    #[test]
+    fn end_to_end_tcp_dispatch_to_error_connect_response() {
+        let rules = vec![status_rule(None, 200)];
+        let request = make_typed_request("example.com", "example.com:22", ConnectionType::Tcp);
+
+        let origin = proxy_connect_request(&rules, &request);
+        let cr = to_connect_response(&origin);
+
+        assert!(!cr.is_ok());
+        assert!(
+            cr.error.contains("http-status"),
+            "TCP to HttpStatus should error: {}",
+            cr.error
+        );
+    }
+
+    /// No ingress match produces a 502 ConnectResponse.
+    #[test]
+    fn end_to_end_no_match_returns_502_connect_response() {
+        let request = make_request("example.com", "http://example.com/");
+        let origin = proxy_connect_request(&[], &request);
+        let cr = to_connect_response(&origin);
+
+        assert!(cr.is_ok());
+        assert_eq!(cr.metadata[0].val, "502");
     }
 }

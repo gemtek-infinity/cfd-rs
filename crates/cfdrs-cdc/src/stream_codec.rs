@@ -1,187 +1,203 @@
-//! Binary wire codec for `ConnectRequest` and `ConnectResponse` (CDC-012).
+//! Cap'n Proto wire codec for `ConnectRequest` and `ConnectResponse` (CDC-011,
+//! CDC-012).
 //!
-//! The current interim wire format uses big-endian length-prefixed fields:
+//! Bridges between the domain types in [`stream`](crate::stream) and the
+//! generated Cap'n Proto bindings from `quic_metadata_protocol.capnp`.
 //!
-//! ```text
-//! ConnectRequest:
-//!   [2 bytes: connection-type (u16 BE)]
-//!   [2 bytes: dest-len (u16 BE)]  [dest-len bytes: dest string]
-//!   [2 bytes: metadata-count (u16 BE)]
-//!   for each metadata entry:
-//!     [2 bytes: key-len (u16 BE)]  [key-len bytes: key string]
-//!     [2 bytes: val-len (u16 BE)]  [val-len bytes: val string]
-//!
-//! ConnectResponse:
-//!   [2 bytes: error-len (u16 BE)]  [error-len bytes: error string]
-//!   [2 bytes: metadata-count (u16 BE)]
-//!   for each metadata entry:
-//!     [2 bytes: key-len (u16 BE)]  [key-len bytes: key string]
-//!     [2 bytes: val-len (u16 BE)]  [val-len bytes: val string]
-//! ```
-//!
-//! **Note:** The Go baseline uses Cap'n Proto for `ConnectRequest`/
-//! `ConnectResponse` encoding. This custom binary format is an interim
-//! interop wire format used until Cap'n Proto codec support is admitted.
+//! The Go baseline encodes these with `pogs.Insert`/`pogs.Extract` through
+//! the `ToPogs`/`FromPogs` methods in
+//! `baseline-2026.2.0/tunnelrpc/pogs/quic_metadata_protocol.go`.
 //!
 //! Schema truth:
 //! `baseline-2026.2.0/tunnelrpc/proto/quic_metadata_protocol.capnp`
 
+use crate::quic_metadata_protocol_capnp;
+use crate::registration_codec::read_capnp_text;
 use crate::stream::{ConnectRequest, ConnectResponse, ConnectionType, Metadata};
 
 // ---------------------------------------------------------------------------
-// ConnectRequest decode
+// ConnectionType mapping
 // ---------------------------------------------------------------------------
 
-/// Parse a `ConnectRequest` from the interim binary wire format.
-///
-/// Returns `None` if the data is too short, contains invalid UTF-8,
-/// or has an unknown connection type.
-pub fn decode_connect_request(data: &[u8]) -> Option<ConnectRequest> {
-    if data.len() < 6 {
-        return None;
+fn to_capnp_connection_type(ct: ConnectionType) -> quic_metadata_protocol_capnp::ConnectionType {
+    match ct {
+        ConnectionType::Http => quic_metadata_protocol_capnp::ConnectionType::Http,
+        ConnectionType::WebSocket => quic_metadata_protocol_capnp::ConnectionType::Websocket,
+        ConnectionType::Tcp => quic_metadata_protocol_capnp::ConnectionType::Tcp,
     }
+}
 
-    let mut offset = 0;
-
-    // Connection type (2 bytes, big-endian).
-    let conn_type_raw = read_u16(data, &mut offset)?;
-    let connection_type = ConnectionType::from_u16(conn_type_raw)?;
-
-    // Dest string (2-byte length prefix + string).
-    let dest = read_length_prefixed_str(data, &mut offset)?;
-
-    // Metadata entries.
-    let metadata = read_metadata_list(data, &mut offset)?;
-
-    Some(ConnectRequest {
-        dest: dest.to_owned(),
-        connection_type,
-        metadata,
-    })
+fn from_capnp_connection_type(ct: quic_metadata_protocol_capnp::ConnectionType) -> ConnectionType {
+    match ct {
+        quic_metadata_protocol_capnp::ConnectionType::Http => ConnectionType::Http,
+        quic_metadata_protocol_capnp::ConnectionType::Websocket => ConnectionType::WebSocket,
+        quic_metadata_protocol_capnp::ConnectionType::Tcp => ConnectionType::Tcp,
+    }
 }
 
 // ---------------------------------------------------------------------------
-// ConnectRequest encode
+// Metadata — @0xe1446b97bfd1cd37
 // ---------------------------------------------------------------------------
 
-/// Encode a `ConnectRequest` into the interim binary wire format.
+impl Metadata {
+    /// Write a metadata entry into a Cap'n Proto `Metadata` builder.
+    pub fn marshal_capnp(&self, mut builder: quic_metadata_protocol_capnp::metadata::Builder<'_>) {
+        builder.set_key(&self.key);
+        builder.set_val(&self.val);
+    }
+
+    /// Read a metadata entry from a Cap'n Proto `Metadata` reader.
+    pub fn unmarshal_capnp(
+        reader: quic_metadata_protocol_capnp::metadata::Reader<'_>,
+    ) -> ::capnp::Result<Self> {
+        Ok(Self {
+            key: read_capnp_text(reader.get_key()?)?,
+            val: read_capnp_text(reader.get_val()?)?,
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ConnectRequest — @0xc47116a1045e4061
+// ---------------------------------------------------------------------------
+
+impl ConnectRequest {
+    /// Write a connect request into a Cap'n Proto `ConnectRequest` builder.
+    pub fn marshal_capnp(&self, mut builder: quic_metadata_protocol_capnp::connect_request::Builder<'_>) {
+        builder.set_dest(&self.dest);
+        builder.set_type(to_capnp_connection_type(self.connection_type));
+
+        let mut metadata_list = builder.init_metadata(self.metadata.len() as u32);
+
+        for (i, entry) in self.metadata.iter().enumerate() {
+            entry.marshal_capnp(metadata_list.reborrow().get(i as u32));
+        }
+    }
+
+    /// Read a connect request from a Cap'n Proto `ConnectRequest` reader.
+    pub fn unmarshal_capnp(
+        reader: quic_metadata_protocol_capnp::connect_request::Reader<'_>,
+    ) -> ::capnp::Result<Self> {
+        let dest = read_capnp_text(reader.get_dest()?)?;
+
+        let connection_type = reader
+            .get_type()
+            .map(from_capnp_connection_type)
+            .map_err(|e| ::capnp::Error::failed(format!("unknown connection type: {e:?}")))?;
+
+        let metadata_reader = reader.get_metadata()?;
+        let mut metadata = Vec::with_capacity(metadata_reader.len() as usize);
+
+        for i in 0..metadata_reader.len() {
+            metadata.push(Metadata::unmarshal_capnp(metadata_reader.get(i))?);
+        }
+
+        Ok(Self {
+            dest,
+            connection_type,
+            metadata,
+        })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ConnectResponse — @0xb1032ec91cef8727
+// ---------------------------------------------------------------------------
+
+impl ConnectResponse {
+    /// Write a connect response into a Cap'n Proto `ConnectResponse` builder.
+    pub fn marshal_capnp(&self, mut builder: quic_metadata_protocol_capnp::connect_response::Builder<'_>) {
+        builder.set_error(&self.error);
+
+        let mut metadata_list = builder.init_metadata(self.metadata.len() as u32);
+
+        for (i, entry) in self.metadata.iter().enumerate() {
+            entry.marshal_capnp(metadata_list.reborrow().get(i as u32));
+        }
+    }
+
+    /// Read a connect response from a Cap'n Proto `ConnectResponse` reader.
+    pub fn unmarshal_capnp(
+        reader: quic_metadata_protocol_capnp::connect_response::Reader<'_>,
+    ) -> ::capnp::Result<Self> {
+        let error = read_capnp_text(reader.get_error()?)?;
+
+        let metadata_reader = reader.get_metadata()?;
+        let mut metadata = Vec::with_capacity(metadata_reader.len() as usize);
+
+        for i in 0..metadata_reader.len() {
+            metadata.push(Metadata::unmarshal_capnp(metadata_reader.get(i))?);
+        }
+
+        Ok(Self { error, metadata })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Wire-level encode / decode
+// ---------------------------------------------------------------------------
+
+/// Encode a `ConnectRequest` into Cap'n Proto wire format.
 pub fn encode_connect_request(request: &ConnectRequest) -> Vec<u8> {
+    let mut message = ::capnp::message::Builder::new_default();
+    let builder = message.init_root::<quic_metadata_protocol_capnp::connect_request::Builder<'_>>();
+    request.marshal_capnp(builder);
+
     let mut buf = Vec::new();
-
-    // Connection type (2 bytes, big-endian).
-    buf.extend_from_slice(&(request.connection_type as u16).to_be_bytes());
-
-    // Dest string.
-    write_length_prefixed_str(&mut buf, &request.dest);
-
-    // Metadata.
-    write_metadata_list(&mut buf, &request.metadata);
-
+    ::capnp::serialize::write_message(&mut buf, &message).expect("capnp write to Vec should not fail");
     buf
 }
 
-// ---------------------------------------------------------------------------
-// ConnectResponse decode
-// ---------------------------------------------------------------------------
-
-/// Parse a `ConnectResponse` from the interim binary wire format.
+/// Parse a `ConnectRequest` from Cap'n Proto wire format.
 ///
-/// Returns `None` if the data is too short or contains invalid UTF-8.
-pub fn decode_connect_response(data: &[u8]) -> Option<ConnectResponse> {
-    if data.len() < 4 {
-        return None;
-    }
+/// Returns `None` if the data is malformed or contains an unknown
+/// connection type.
+pub fn decode_connect_request(data: &[u8]) -> Option<ConnectRequest> {
+    let reader =
+        ::capnp::serialize::read_message_from_flat_slice(&mut &*data, ::capnp::message::ReaderOptions::new())
+            .ok()?;
 
-    let mut offset = 0;
+    let root = reader
+        .get_root::<quic_metadata_protocol_capnp::connect_request::Reader<'_>>()
+        .ok()?;
 
-    // Error string (2-byte length prefix + string).
-    let error = read_length_prefixed_str(data, &mut offset)?;
-
-    // Metadata entries.
-    let metadata = read_metadata_list(data, &mut offset)?;
-
-    Some(ConnectResponse {
-        error: error.to_owned(),
-        metadata,
-    })
+    ConnectRequest::unmarshal_capnp(root).ok()
 }
 
-// ---------------------------------------------------------------------------
-// ConnectResponse encode
-// ---------------------------------------------------------------------------
-
-/// Encode a `ConnectResponse` into the interim binary wire format.
+/// Encode a `ConnectResponse` into Cap'n Proto wire format.
 pub fn encode_connect_response(response: &ConnectResponse) -> Vec<u8> {
+    let mut message = ::capnp::message::Builder::new_default();
+    let builder = message.init_root::<quic_metadata_protocol_capnp::connect_response::Builder<'_>>();
+    response.marshal_capnp(builder);
+
     let mut buf = Vec::new();
-
-    // Error string.
-    write_length_prefixed_str(&mut buf, &response.error);
-
-    // Metadata.
-    write_metadata_list(&mut buf, &response.metadata);
-
+    ::capnp::serialize::write_message(&mut buf, &message).expect("capnp write to Vec should not fail");
     buf
 }
 
-// ---------------------------------------------------------------------------
-// Wire primitives
-// ---------------------------------------------------------------------------
+/// Parse a `ConnectResponse` from Cap'n Proto wire format.
+///
+/// Returns `None` if the data is malformed.
+pub fn decode_connect_response(data: &[u8]) -> Option<ConnectResponse> {
+    let reader =
+        ::capnp::serialize::read_message_from_flat_slice(&mut &*data, ::capnp::message::ReaderOptions::new())
+            .ok()?;
 
-fn read_u16(data: &[u8], offset: &mut usize) -> Option<u16> {
-    if *offset + 2 > data.len() {
-        return None;
-    }
+    let root = reader
+        .get_root::<quic_metadata_protocol_capnp::connect_response::Reader<'_>>()
+        .ok()?;
 
-    let value = u16::from_be_bytes([data[*offset], data[*offset + 1]]);
-    *offset += 2;
-    Some(value)
-}
-
-fn read_length_prefixed_str<'a>(data: &'a [u8], offset: &mut usize) -> Option<&'a str> {
-    let len = read_u16(data, offset)? as usize;
-
-    if *offset + len > data.len() {
-        return None;
-    }
-
-    let s = std::str::from_utf8(&data[*offset..*offset + len]).ok()?;
-    *offset += len;
-    Some(s)
-}
-
-fn read_metadata_list(data: &[u8], offset: &mut usize) -> Option<Vec<Metadata>> {
-    let count = read_u16(data, offset)? as usize;
-    let mut metadata = Vec::with_capacity(count);
-
-    for _ in 0..count {
-        let key = read_length_prefixed_str(data, offset)?;
-        let val = read_length_prefixed_str(data, offset)?;
-
-        metadata.push(Metadata::new(key, val));
-    }
-
-    Some(metadata)
-}
-
-fn write_length_prefixed_str(buf: &mut Vec<u8>, s: &str) {
-    let bytes = s.as_bytes();
-    buf.extend_from_slice(&(bytes.len() as u16).to_be_bytes());
-    buf.extend_from_slice(bytes);
-}
-
-fn write_metadata_list(buf: &mut Vec<u8>, metadata: &[Metadata]) {
-    buf.extend_from_slice(&(metadata.len() as u16).to_be_bytes());
-
-    for entry in metadata {
-        write_length_prefixed_str(buf, &entry.key);
-        write_length_prefixed_str(buf, &entry.val);
-    }
+    ConnectResponse::unmarshal_capnp(root).ok()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::stream_contract::{HTTP_HOST_KEY, HTTP_METHOD_KEY, HTTP_STATUS_KEY, header_metadata_key};
+
+    // -----------------------------------------------------------------------
+    // Wire-level roundtrips (encode → decode)
+    // -----------------------------------------------------------------------
 
     #[test]
     fn connect_request_roundtrip() {
@@ -251,13 +267,6 @@ mod tests {
     }
 
     #[test]
-    fn decode_rejects_unknown_connection_type() {
-        // Connection type 99 is not valid.
-        let data = [0x00, 99, 0x00, 0x00, 0x00, 0x00];
-        assert!(decode_connect_request(&data).is_none());
-    }
-
-    #[test]
     fn connect_response_with_status_and_headers() {
         let response = ConnectResponse {
             error: String::new(),
@@ -288,5 +297,64 @@ mod tests {
 
         assert_eq!(parsed.metadata.len(), 0);
         assert_eq!(parsed.dest, "/");
+    }
+
+    // -----------------------------------------------------------------------
+    // Marshal / unmarshal (builder → reader without wire serialization)
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn metadata_marshal_unmarshal() {
+        let original = Metadata::new("TestKey", "TestValue");
+
+        let mut message = ::capnp::message::Builder::new_default();
+        let builder = message.init_root::<quic_metadata_protocol_capnp::metadata::Builder<'_>>();
+        original.marshal_capnp(builder);
+
+        let reader = message
+            .get_root_as_reader::<quic_metadata_protocol_capnp::metadata::Reader<'_>>()
+            .expect("should build reader");
+        let parsed = Metadata::unmarshal_capnp(reader).expect("should unmarshal");
+
+        assert_eq!(parsed, original);
+    }
+
+    #[test]
+    fn connect_request_marshal_unmarshal() {
+        let original = ConnectRequest {
+            dest: "http://app.example.com:8080".into(),
+            connection_type: ConnectionType::WebSocket,
+            metadata: vec![
+                Metadata::new(HTTP_METHOD_KEY, "GET"),
+                Metadata::new(HTTP_HOST_KEY, "app.example.com"),
+            ],
+        };
+
+        let mut message = ::capnp::message::Builder::new_default();
+        let builder = message.init_root::<quic_metadata_protocol_capnp::connect_request::Builder<'_>>();
+        original.marshal_capnp(builder);
+
+        let reader = message
+            .get_root_as_reader::<quic_metadata_protocol_capnp::connect_request::Reader<'_>>()
+            .expect("should build reader");
+        let parsed = ConnectRequest::unmarshal_capnp(reader).expect("should unmarshal");
+
+        assert_eq!(parsed, original);
+    }
+
+    #[test]
+    fn connect_response_marshal_unmarshal() {
+        let original = ConnectResponse::error("upstream timeout");
+
+        let mut message = ::capnp::message::Builder::new_default();
+        let builder = message.init_root::<quic_metadata_protocol_capnp::connect_response::Builder<'_>>();
+        original.marshal_capnp(builder);
+
+        let reader = message
+            .get_root_as_reader::<quic_metadata_protocol_capnp::connect_response::Reader<'_>>()
+            .expect("should build reader");
+        let parsed = ConnectResponse::unmarshal_capnp(reader).expect("should unmarshal");
+
+        assert_eq!(parsed, original);
     }
 }

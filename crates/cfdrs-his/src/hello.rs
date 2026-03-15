@@ -42,4 +42,18 @@ mod tests {
         assert!(HELLO_ROUTES.contains(&"/sse"));
         assert!(HELLO_ROUTES.contains(&"/_health"));
     }
+
+    /// HIS-072: Go hello server has exactly 5 routes.
+    #[test]
+    fn hello_route_count_is_five() {
+        assert_eq!(HELLO_ROUTES.len(), 5);
+    }
+
+    /// HIS-072: Stub hello server returns a deferred error.
+    #[test]
+    fn stub_hello_server_returns_deferred() {
+        let server = StubHelloServer;
+        let addr = std::net::SocketAddr::from(([127, 0, 0, 1], 0));
+        assert!(server.serve(addr).is_err());
+    }
 }
