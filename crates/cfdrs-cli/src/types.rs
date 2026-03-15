@@ -3,6 +3,21 @@ use std::path::PathBuf;
 
 use crate::surface_contract;
 
+/// Which command context was active when help was requested.
+///
+/// Go baseline: urfave/cli auto-routes `--help` and `help` within the
+/// active command's scope, showing the subcommand help template when a
+/// command has subcommands.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HelpTarget {
+    /// Root-level help — `cloudflared --help` or `cloudflared help`.
+    Root,
+    /// `cloudflared tunnel --help` or `cloudflared help tunnel`.
+    Tunnel,
+    /// `cloudflared access --help` or `cloudflared help access`.
+    Access,
+}
+
 /// Top-level command parsed from the CLI invocation.
 ///
 /// Maps to the frozen Go baseline `commands()` registry and root `action()`:
@@ -15,8 +30,8 @@ pub enum Command {
     /// Go baseline: `handleServiceMode()` in `main.go`.
     ServiceMode,
 
-    /// `cloudflared help` or `--help` / `-h`
-    Help,
+    /// `cloudflared help` or `--help` / `-h`, optionally scoped to a command.
+    Help(HelpTarget),
 
     /// `cloudflared version` or `--version` / `-v` / `-V`
     /// When `short` is true, output version number only (`--short` / `-s`).
@@ -173,6 +188,96 @@ impl fmt::Display for Command {
     }
 }
 
+impl Command {
+    /// Build a human-readable label including sub-tree depth.
+    /// Used for stub-not-implemented messages and diagnostics.
+    pub fn full_label(&self) -> String {
+        match self {
+            Command::Access(sub) => access_full_label(sub),
+            Command::Tunnel(sub) => tunnel_full_label(sub),
+            Command::Tail(sub) => tail_full_label(sub),
+            Command::Management(sub) => management_full_label(sub),
+            Command::Service(action) => service_full_label(action),
+            other => format!("{other}"),
+        }
+    }
+}
+
+fn access_full_label(sub: &AccessSubcommand) -> String {
+    match sub {
+        AccessSubcommand::Login => "access login".into(),
+        AccessSubcommand::Curl => "access curl".into(),
+        AccessSubcommand::Token => "access token".into(),
+        AccessSubcommand::Tcp => "access tcp".into(),
+        AccessSubcommand::SshConfig => "access ssh-config".into(),
+        AccessSubcommand::SshGen => "access ssh-gen".into(),
+        AccessSubcommand::Bare => "access".into(),
+    }
+}
+
+fn tail_full_label(sub: &TailSubcommand) -> String {
+    match sub {
+        TailSubcommand::Token => "tail token".into(),
+        TailSubcommand::Bare => "tail".into(),
+    }
+}
+
+fn management_full_label(sub: &ManagementSubcommand) -> String {
+    match sub {
+        ManagementSubcommand::Token => "management token".into(),
+        ManagementSubcommand::Bare => "management".into(),
+    }
+}
+
+fn service_full_label(action: &ServiceAction) -> String {
+    match action {
+        ServiceAction::Install => "service install".into(),
+        ServiceAction::Uninstall => "service uninstall".into(),
+    }
+}
+
+fn tunnel_full_label(sub: &TunnelSubcommand) -> String {
+    match sub {
+        TunnelSubcommand::Route(r) => route_full_label(r),
+        TunnelSubcommand::Vnet(v) => vnet_full_label(v),
+        TunnelSubcommand::Ingress(i) => ingress_full_label(i),
+        other => format!("tunnel {other}"),
+    }
+}
+
+fn route_full_label(sub: &RouteSubcommand) -> String {
+    match sub {
+        RouteSubcommand::Dns => "tunnel route dns".into(),
+        RouteSubcommand::Lb => "tunnel route lb".into(),
+        RouteSubcommand::Ip(ip) => match ip {
+            IpRouteSubcommand::Add => "tunnel route ip add".into(),
+            IpRouteSubcommand::Show => "tunnel route ip show".into(),
+            IpRouteSubcommand::Delete => "tunnel route ip delete".into(),
+            IpRouteSubcommand::Get => "tunnel route ip get".into(),
+            IpRouteSubcommand::Bare => "tunnel route ip".into(),
+        },
+        RouteSubcommand::Bare => "tunnel route".into(),
+    }
+}
+
+fn vnet_full_label(sub: &VnetSubcommand) -> String {
+    match sub {
+        VnetSubcommand::Add => "tunnel vnet add".into(),
+        VnetSubcommand::List => "tunnel vnet list".into(),
+        VnetSubcommand::Delete => "tunnel vnet delete".into(),
+        VnetSubcommand::Update => "tunnel vnet update".into(),
+        VnetSubcommand::Bare => "tunnel vnet".into(),
+    }
+}
+
+fn ingress_full_label(sub: &IngressSubcommand) -> String {
+    match sub {
+        IngressSubcommand::Validate => "tunnel ingress validate".into(),
+        IngressSubcommand::Rule => "tunnel ingress rule".into(),
+        IngressSubcommand::Bare => "tunnel ingress".into(),
+    }
+}
+
 impl fmt::Display for TunnelSubcommand {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let label = match self {
@@ -320,7 +425,10 @@ mod tests {
 
     #[test]
     fn command_display_top_level() {
-        assert_eq!(Command::Help.to_string(), surface_contract::HELP_COMMAND);
+        assert_eq!(
+            Command::Help(HelpTarget::Root).to_string(),
+            surface_contract::HELP_COMMAND
+        );
         assert_eq!(
             Command::Version { short: false }.to_string(),
             surface_contract::VERSION_COMMAND

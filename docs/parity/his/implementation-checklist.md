@@ -166,8 +166,8 @@ interactions are absent.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-046 | `update` CLI command | `cmd/cloudflared/updater/update.go` | manual update with `--beta`, `--staging`, `--force`, `--version` flags; HTTP check to `update.argotunnel.com` | cfdrs-his `updater.rs` | audited, partial | local tests | open gap | command tests, HTTP mock tests | high | `Updater` trait + constants; `StubUpdater` returns deferred; 6 parity tests (`stub_updater_returns_deferred`, `update_exit_success_is_11`, `update_exit_failure_is_10`, `marker_path_matches_go_postinst`, `should_skip_update_delegates_to_package_managed`, `update_server_matches_go`) |
 | HIS-047 | auto-update timer | `cmd/cloudflared/updater/update.go` `AutoUpdater` | periodic check (default 24h), `--autoupdate-freq`, `--no-autoupdate` flags; disabled on Windows, terminal, package-managed | cfdrs-his `updater.rs` | audited, partial | local tests | open gap | timer tests, restriction tests | high | `AutoUpdater` trait + constants; `StubAutoUpdater` returns deferred; 1 parity test (`default_autoupdate_freq_is_24h`) |
-| HIS-048 | update exit codes | `cmd/cloudflared/updater/update.go` | exit 11 = success (restart), exit 10 = failure, exit 0 = no update | cfdrs-his `updater.rs` | audited, parity-backed | local tests | open gap | exit code tests | medium | `UPDATE_EXIT_SUCCESS = 11`, `UPDATE_EXIT_FAILURE = 10` constants match Go `statusSuccess.ExitCode()` / `statusError.ExitCode()` exactly; systemd update-service template maps exit 11 to `systemctl restart`; 2 parity constant tests |
-| HIS-049 | package manager detection | `cmd/cloudflared/updater/update.go` | `.installedFromPackageManager` marker file or `BuiltForPackageManager` build tag disables auto-update | cfdrs-his `updater.rs`, `environment.rs` | audited, parity-backed | local tests | open gap | marker detection tests | medium | `INSTALLED_FROM_PACKAGE_MARKER` path constant matches Go `postinst.sh`; `is_package_managed()` checks marker file existence; `should_skip_update()` delegates correctly; 2 parity tests in updater.rs, 2 in environment.rs |
+| HIS-048 | update exit codes | `cmd/cloudflared/updater/update.go` | exit 11 = success (restart), exit 10 = failure, exit 0 = no update | cfdrs-his `updater.rs` | audited, parity-backed | baseline-backed tests | closed | exit code tests | medium | `UPDATE_EXIT_SUCCESS = 11`, `UPDATE_EXIT_FAILURE = 10` constants match Go `statusSuccess.ExitCode()` / `statusError.ExitCode()` exactly; systemd update-service template maps exit 11 to `systemctl restart`; 2 parity constant tests; actual updater runtime deferred to HIS-046/047 |
+| HIS-049 | package manager detection | `cmd/cloudflared/updater/update.go` | `.installedFromPackageManager` marker file or `BuiltForPackageManager` build tag disables auto-update | cfdrs-his `updater.rs`, `environment.rs` | audited, parity-backed | baseline-backed tests | closed | marker detection tests | medium | `INSTALLED_FROM_PACKAGE_MARKER` path constant matches Go `postinst.sh`; `is_package_managed()` checks marker file existence; `should_skip_update()` delegates correctly; 2 parity tests in updater.rs, 2 in environment.rs; actual auto-update runtime deferred to HIS-046/047 |
 
 ### Environment and Privilege
 
@@ -198,7 +198,7 @@ interactions are absent.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-058 | SIGTERM/SIGINT shutdown | `signal/safe_signal.go`, `cmd/cloudflared/tunnel/signal.go` | `signal.Notify()` listens for SIGTERM and SIGINT, closes `graceShutdownC` channel, triggers graceful shutdown | cfdrs-bin `runtime/tasks/bridges.rs` | audited, parity-backed | local tests | none recorded | signal handling tests | high | Rust uses tokio::signal::unix with ShutdownRequested command; functional parity |
 | HIS-059 | `--grace-period` flag | `cmd/cloudflared/tunnel/cmd.go` | default 30 seconds; waits for in-progress requests before shutdown; controls `GracefulShutdown()` RPC on HTTP/2 connections | cfdrs-his `signal.rs`, cfdrs-bin `runtime/types.rs` | audited, partial | local tests | open gap | grace period flag tests, shutdown timing tests | critical | `DEFAULT_GRACE_PERIOD = 30s` and CLI/runtime wiring now use parsed grace-period values; parity tests verify empty/whitespace defaults, zero, max boundary (3m), invalid unit rejection, hours parsing, and bare-number rejection; connection-level graceful-shutdown behavior remains open |
-| HIS-060 | double-signal immediate shutdown | `cmd/cloudflared/tunnel/signal.go` | Go help text claims second SIGTERM/SIGINT forces immediate exit, but `waitForSignal()` handles only one signal then calls `signal.Stop()`; double-signal is documented-but-unimplemented in Go baseline | cfdrs-his `signal.rs` | audited, parity-backed | local tests | intentional-gap | double-signal tests | medium | `ShutdownSignal` type with AtomicBool idempotency parity test; Go baseline does not implement double-signal either — parity is confirmed against the actual baseline behavior, not the documented-but-unimplemented claim |
+| HIS-060 | double-signal immediate shutdown | `cmd/cloudflared/tunnel/signal.go` | Go help text claims second SIGTERM/SIGINT forces immediate exit, but `waitForSignal()` handles only one signal then calls `signal.Stop()`; double-signal is documented-but-unimplemented in Go baseline | cfdrs-his `signal.rs` | audited, parity-backed | baseline-backed tests | closed | double-signal tests | medium | `ShutdownSignal` type with AtomicBool idempotency parity test; Go baseline does not implement double-signal either — parity is confirmed against the actual baseline behavior, not the documented-but-unimplemented claim |
 | HIS-061 | `--pidfile` flag | `cmd/cloudflared/tunnel/cmd.go` | optional; writes PID after tunnel connects (not on startup); triggered by `connectedSignal` in background goroutine | cfdrs-his `signal.rs`, cfdrs-bin `runtime/command_dispatch/handlers.rs` | audited, partial | local tests | open gap | pidfile creation tests, timing tests | medium | pidfile helpers are wired on runtime service-ready and cleanup; exact `connectedSignal` timing still needs parity proof |
 | HIS-062 | token lock file | `token/token.go` | create `<token-path>.lock` with mode 0600 during token fetch; delete on release or SIGINT/SIGTERM; exponential backoff polling if lock exists (up to 7 iterations) | cfdrs-his `signal.rs` | audited, partial | local tests | open gap | lock file tests, signal cleanup tests, concurrency tests | high | `acquire_token_lock()` and `release_token_lock()` with O_EXCL; mode 0600 now enforced via `OpenOptionsExt::mode()`; parity test verifies permissions; still missing: exponential backoff retry (Go retries 7x), stale lock deletion after backoff exhaustion, and SIGINT/SIGTERM cleanup handler for lock |
 
@@ -209,9 +209,9 @@ interactions are absent.
 | HIS-063 | log file creation (`--logfile`) | `logger/create.go` | `--logfile` flag creates log file at specified path; `LogFile` config key | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | log file creation tests | high | runtime now opens an append sink for `--logfile` and continues duplicating output to stderr; parity tests verify file creation with 0644 mode and parent directory creation with 0744 mode; rotation and journald/systemd remain separate gaps |
 | HIS-064 | log directory (`--log-directory`) | `logger/create.go`, `config/configuration.go` | `--log-directory` flag; auto-created by config discovery; default `/var/log/cloudflared` | cfdrs-his `logging.rs`, cfdrs-his `discovery.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | log directory tests | high | runtime now respects `--log-directory` and config `logDirectory` by writing `cloudflared.log` under the selected directory; parity tests verify rolling path join and default directory matches Go baseline; rotation parity is still open |
 | HIS-065 | rolling log rotation | `logger/create.go`, lumberjack.v2 | automatic rotation when size exceeded: MaxSize=1MB, MaxBackups=5, MaxAge=0 (forever) | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | rotation tests, size limit tests | high | runtime now rotates local log files using the admitted max-size/max-backups/max-age surface; parity tests verify rotation threshold boundaries and default dirname matches Go; exact lumberjack naming, journald/systemd parity, and host-collection integration remain open |
-| HIS-066 | log file permissions | `logger/create.go` | files created with mode 0644, directories with mode 0744 | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, parity-backed | local tests | none recorded | permission assertion tests | medium | runtime now applies 0644 file mode and 0744 directory mode when it creates local log sinks; parity tests verify both permission constants match Go baseline exactly |
+| HIS-066 | log file permissions | `logger/create.go` | files created with mode 0644, directories with mode 0744 | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, parity-backed | baseline-backed tests | closed | permission assertion tests | medium | runtime now applies 0644 file mode and 0744 directory mode when it creates local log sinks; parity tests `log_file_perm_mode_matches_go_baseline` and `log_dir_perm_mode_matches_go_baseline` verify both permission constants match Go baseline exactly |
 | HIS-067 | `--log-format-output` flag | `logger/configuration.go` | JSON or text log format output selection | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | format output tests | medium | runtime now switches between text and JSON subscriber output using the parsed flag/config surface; parity tests verify default is text, JSON round-trips, and case-insensitive parsing matches Go; parity for every baseline field remains open |
-| HIS-068 | `--loglevel` and `--transport-loglevel` | `logger/configuration.go` | default `info`; separate `--transport-loglevel` for transport layer | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, partial | local tests | open gap | log level filter tests | high | runtime now applies global log filtering from `--loglevel` and uses `--transport-loglevel` to widen verbosity when transport logging requests more detail; parity tests verify default info, all Go level variants, display round-trips, case-insensitive parsing, and transport-level widening; strict per-sink transport separation remains open |
+| HIS-068 | `--loglevel` and `--transport-loglevel` | `logger/configuration.go` | default `info`; separate `--transport-loglevel` for transport layer | cfdrs-his `logging.rs`, cfdrs-bin `runtime/logging.rs` | audited, parity-backed | baseline-backed tests | closed | log level filter tests | high | runtime applies global log filtering from `--loglevel` and uses `--transport-loglevel` to widen verbosity when transport logging requests more detail; `LogLevel` enum with all 7 Go variants (debug/info/warn/warning/error/err/fatal), case-insensitive parsing, display round-trips; env bindings for `TUNNEL_PROTO_LOGLEVEL` and `TUNNEL_TRANSPORT_LOGLEVEL`; `resolve_global_level()` uses more-verbose-wins approach; 14 parity tests across cfdrs-his (6), cfdrs-bin (4), cfdrs-cli (4); Go baseline's `logTransport` is a dead field (stored in Observer/Supervisor but never invoked in frozen `2026.2.0`) so the "per-sink transport separation" gap is not real — Rust matches Go's actual observable behavior |
 
 ### ICMP and Raw Sockets
 
@@ -295,11 +295,11 @@ Partial with runtime-backed seams: SysV init script (HIS-016,
 HIS-023, template only), local HTTP metrics server (HIS-024 through HIS-031,
 runtime listener plus partial endpoints including `/config`), all diagnostics
 (HIS-032 through HIS-040, types + stub), watcher/reload (HIS-041 through
-HIS-045, concrete reload/orchestrator seams plus deferred watcher wiring), updater (HIS-046 through HIS-049,
-traits + constants), grace period (HIS-059, 30s default plus CLI/runtime
+HIS-045, concrete reload/orchestrator seams plus deferred watcher wiring), updater (HIS-046, HIS-047,
+traits; HIS-048 and HIS-049 exit codes and package detection now closed), grace period (HIS-059, 30s default plus CLI/runtime
 wiring, but connection-level graceful shutdown still open), double-signal
-(HIS-060, type only), logging (HIS-063 through HIS-068,
-runtime sink wiring plus config builder/types and bounded rotation), ICMP (HIS-069, HIS-071, traits + constants),
+(HIS-060, now closed — parity confirmed against actual Go behavior), logging (HIS-063 through HIS-068,
+runtime sink wiring plus config builder/types and bounded rotation; HIS-066 permissions now closed), ICMP (HIS-069, HIS-071, traits + constants),
 `hello_world` (HIS-072, trait only), process restart (HIS-073, HIS-074,
 trait only), deployment evidence (HIS-053, intentional divergence).
 
@@ -354,7 +354,6 @@ High gaps (runtime-backed but incomplete):
 - HIS-063: log file creation (runtime file sink landed; file perm parity tests verify 0644/0744; journald and rotation still open)
 - HIS-064: log directory (runtime file sink landed; rolling path tests verified; host-collection parity still open)
 - HIS-065: rolling log rotation (runtime rotation landed; threshold parity tests verify boundaries; exact lumberjack parity still open)
-- HIS-068: `--loglevel` and `--transport-loglevel` (global filtering landed; parity tests verify all Go variants and transport widening; exact transport separation still open)
 - HIS-069, HIS-070: ICMP raw socket and ping group check (stub + check)
 
 Medium gaps (trait-defined or constants only):
@@ -362,9 +361,7 @@ Medium gaps (trait-defined or constants only):
 - HIS-028, HIS-029: quicktunnel and config endpoints (needs HTTP server)
 - HIS-035 through HIS-037: diagnostic sub-collectors (stub)
 - HIS-038: diagnostic instance discovery (local tests, real HTTP pending)
-- HIS-048, HIS-049: update exit codes and package detection (constants)
-- HIS-060: double-signal immediate shutdown (type only)
-- HIS-066, HIS-067: log file permissions and format output (baseline-backed parity tests now verify constants and round-trips; runtime sink wiring landed)
+- HIS-067: log format output (JSON field names need verification)
 - HIS-071: ICMP source IP flags (constants only)
 - HIS-072: `hello_world` ingress listener (trait only)
 - HIS-073, HIS-074: gracenet socket inheritance and process restart (trait only)
@@ -410,8 +407,6 @@ Updater subsystem:
 
 - HIS-046: `update` CLI command — requires external infrastructure
 - HIS-047: auto-update timer — depends on updater
-- HIS-048: update exit codes — depends on updater
-- HIS-049: package manager detection — depends on updater
 
 Local HTTP convenience endpoints:
 

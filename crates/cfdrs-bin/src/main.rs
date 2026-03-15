@@ -12,12 +12,11 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use cfdrs_cli::{
-    AccessSubcommand, CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command,
-    DB_CONNECT_REMOVED_MSG, GlobalFlags, IngressSubcommand, IpRouteSubcommand, ManagementSubcommand,
-    PROGRAM_NAME, PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG, RouteSubcommand, ServiceAction,
-    TUNNEL_CMD_ERROR_MSG, TUNNEL_RUN_HOSTNAME_WARNING_MSG, TUNNEL_RUN_NARG_ERROR_MSG, TailSubcommand,
-    TunnelSubcommand, VnetSubcommand, parse_args, render_help, render_short_version, render_version_output,
-    stub_not_implemented, tunnel_run_usage_error,
+    CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command, DB_CONNECT_REMOVED_MSG, GlobalFlags,
+    HelpTarget, PROGRAM_NAME, PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG, ServiceAction,
+    TUNNEL_CMD_ERROR_MSG, TUNNEL_RUN_HOSTNAME_WARNING_MSG, TUNNEL_RUN_NARG_ERROR_MSG, TunnelSubcommand,
+    parse_args, render_access_help, render_help, render_short_version, render_tunnel_help,
+    render_version_output, stub_not_implemented, tunnel_run_usage_error,
 };
 use cfdrs_his::environment::current_executable;
 use cfdrs_his::service::{
@@ -62,7 +61,9 @@ fn execute(args: impl IntoIterator<Item = OsString>) -> CliOutput {
 
 fn execute_command(cli: Cli) -> CliOutput {
     match &cli.command {
-        Command::Help => CliOutput::success(render_help(PROGRAM_NAME)),
+        Command::Help(HelpTarget::Root) => CliOutput::success(render_help(PROGRAM_NAME)),
+        Command::Help(HelpTarget::Tunnel) => CliOutput::success(render_tunnel_help(PROGRAM_NAME)),
+        Command::Help(HelpTarget::Access) => CliOutput::success(render_access_help(PROGRAM_NAME)),
         Command::Version { short: true } => CliOutput::success(render_short_version()),
         Command::Version { short: false } => CliOutput::success(render_version_output(PROGRAM_NAME)),
         Command::Validate => execute_startup_command(&cli, CliMode::Validate),
@@ -108,55 +109,7 @@ fn execute_command(cli: Cli) -> CliOutput {
 /// Build a human-readable label for any command variant, including sub-tree
 /// depth.  Used for stub-not-implemented messages.
 fn full_command_label(command: &Command) -> String {
-    match command {
-        Command::Access(sub) => match sub {
-            AccessSubcommand::Login => "access login".into(),
-            AccessSubcommand::Curl => "access curl".into(),
-            AccessSubcommand::Token => "access token".into(),
-            AccessSubcommand::Tcp => "access tcp".into(),
-            AccessSubcommand::SshConfig => "access ssh-config".into(),
-            AccessSubcommand::SshGen => "access ssh-gen".into(),
-            AccessSubcommand::Bare => "access".into(),
-        },
-        Command::Tail(sub) => match sub {
-            TailSubcommand::Token => "tail token".into(),
-            TailSubcommand::Bare => "tail".into(),
-        },
-        Command::Service(action) => match action {
-            ServiceAction::Install => "service install".into(),
-            ServiceAction::Uninstall => "service uninstall".into(),
-        },
-        Command::Management(sub) => match sub {
-            ManagementSubcommand::Token => "management token".into(),
-            ManagementSubcommand::Bare => "management".into(),
-        },
-        Command::Tunnel(TunnelSubcommand::Route(sub)) => match sub {
-            RouteSubcommand::Dns => "tunnel route dns".into(),
-            RouteSubcommand::Lb => "tunnel route lb".into(),
-            RouteSubcommand::Ip(ip) => match ip {
-                IpRouteSubcommand::Add => "tunnel route ip add".into(),
-                IpRouteSubcommand::Show => "tunnel route ip show".into(),
-                IpRouteSubcommand::Delete => "tunnel route ip delete".into(),
-                IpRouteSubcommand::Get => "tunnel route ip get".into(),
-                IpRouteSubcommand::Bare => "tunnel route ip".into(),
-            },
-            RouteSubcommand::Bare => "tunnel route".into(),
-        },
-        Command::Tunnel(TunnelSubcommand::Vnet(sub)) => match sub {
-            VnetSubcommand::Add => "tunnel vnet add".into(),
-            VnetSubcommand::List => "tunnel vnet list".into(),
-            VnetSubcommand::Delete => "tunnel vnet delete".into(),
-            VnetSubcommand::Update => "tunnel vnet update".into(),
-            VnetSubcommand::Bare => "tunnel vnet".into(),
-        },
-        Command::Tunnel(TunnelSubcommand::Ingress(sub)) => match sub {
-            IngressSubcommand::Validate => "tunnel ingress validate".into(),
-            IngressSubcommand::Rule => "tunnel ingress rule".into(),
-            IngressSubcommand::Bare => "tunnel ingress".into(),
-        },
-        Command::Tunnel(sub) => format!("tunnel {sub}"),
-        _ => format!("{command}"),
-    }
+    command.full_label()
 }
 
 fn execute_startup_command(cli: &Cli, mode: CliMode) -> CliOutput {

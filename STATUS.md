@@ -7,8 +7,8 @@
 - parity routing baseline: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - workspace version: `2026.2.0-alpha.202603`
 - roadmap state: `Program Reset` complete; active implementation milestone: `CDC Contract Foundation`
-- highest-risk blockers: `CDC-007`, `CLI-001`, `CLI-002`, `CLI-003`, `HIS-016`, `HIS-041`, `HIS-042`
-- production-alpha logging blocker set: `CLI-003`, `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-050`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`, `HIS-068`
+- highest-risk blockers: `CDC-007`, `CLI-001`, `HIS-016`, `HIS-041`, `HIS-042`
+- production-alpha logging blocker set: `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-050`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`
 - status rule: this file is the only tracked status source for both humans and AI
 
 ## Current Reality
@@ -68,12 +68,12 @@ Tier 1 lane-blocking rows, in implementation order:
 
 1. `CDC-001`, `CDC-002` — registration schema and wire encoding (closed)
 2. `CDC-011`, `CDC-012` — stream schema and framing (closed)
-3. `CLI-001`, `CLI-002`, `CLI-003` — root invocation, help text, global flags
-4. `CLI-008`, `CLI-010`, `CLI-012` — tunnel root behavior, create, run
+3. `CLI-001`, `CLI-002`, `CLI-003` — root invocation, help text, global flags (CLI-002 and CLI-003 closed; CLI-001 blocked on HIS-041/042/043)
+4. `CLI-007`, `CLI-008`, `CLI-010`, `CLI-012` — service, tunnel root, create, run (CLI-007 and CLI-008 closed; CLI-010 and CLI-012 blocked on CDC)
 5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service install/uninstall and systemd templates (closed; HIS-016 SysV fallback still partial; real host `CommandRunner` execution still needs end-to-end verification)
 6. `HIS-024`, `HIS-025`, `HIS-026`, `HIS-027` — local metrics, readiness, healthcheck, and Prometheus exposure (closed; container bind mode, Go ConnTracker connection counting, exact healthcheck parity, and full 19-metric name inventory)
 7. `HIS-041`, `HIS-042`, `HIS-044` — file watcher, reload loop, remote config update (trait contracts exist; integration pending)
-8. logging blocker set — `CLI-003`, `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`, `HIS-068`
+8. logging blocker set — `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067` (CLI-003 and HIS-068 closed)
 9. `CDC-033`, `CDC-034` — Cloudflare REST API client and response envelope
 10. `cloudflare-rs` remains gate-only for `CDC-033`, `CDC-034`, `CDC-038` and dependent CLI flows; no dependency admission during prep
 11. final milestone: `Performance Architecture Overhaul` after proof closure reruns cleanly

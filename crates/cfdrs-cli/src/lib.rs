@@ -14,7 +14,7 @@ mod surface_contract;
 mod types;
 
 pub use self::error::CliError;
-pub use self::help::render_help;
+pub use self::help::{render_access_help, render_help, render_tunnel_help};
 pub use self::output::CliOutput;
 pub use self::parse::parse_args;
 pub use self::surface_contract::{
@@ -25,6 +25,6 @@ pub use self::surface_contract::{
     tunnel_run_usage_error,
 };
 pub use self::types::{
-    AccessSubcommand, Cli, Command, GlobalFlags, IngressSubcommand, IpRouteSubcommand, ManagementSubcommand,
-    RouteSubcommand, ServiceAction, TailSubcommand, TunnelSubcommand, VnetSubcommand,
+    AccessSubcommand, Cli, Command, GlobalFlags, HelpTarget, IngressSubcommand, IpRouteSubcommand,
+    ManagementSubcommand, RouteSubcommand, ServiceAction, TailSubcommand, TunnelSubcommand, VnetSubcommand,
 };
