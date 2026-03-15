@@ -27,6 +27,7 @@ pub mod tunnelrpc_capnp {
 pub mod api;
 pub mod api_resources;
 pub mod datagram;
+pub mod edge;
 pub mod features;
 pub mod log_streaming;
 pub mod management;
@@ -49,3 +50,5 @@ pub use protocol::{
     ConfigIPVersion, ConnectionEvent, ConnectionStatus, EdgeAddr, EdgeIPVersion, Protocol, ProtocolSelector,
     StaticProtocolSelector, TlsSettings,
 };
+
+pub use edge::{AddrSet, Region, Regions, UsedBy};
