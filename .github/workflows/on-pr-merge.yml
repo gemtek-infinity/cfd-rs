@@ -44,6 +44,8 @@ jobs:
                   key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
                       ${{ runner.os }}-cargo-test-
+            - name: Install Cap'n Proto compiler
+              run: sudo apt-get update && sudo apt-get install -y capnproto
             - name: Test preview gate
               run: just preview-test
 
@@ -78,6 +80,8 @@ jobs:
                   key: ${{ runner.os }}-cargo-release-${{ matrix.lane }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
                       ${{ runner.os }}-cargo-release-${{ matrix.lane }}-
+            - name: Install Cap'n Proto compiler
+              run: sudo apt-get update && sudo apt-get install -y capnproto
             - name: Build release binary (${{ matrix.lane }})
               run: just preview-build ${{ matrix.lane }}
             - name: Smoke-test deployment contract (${{ matrix.lane }})

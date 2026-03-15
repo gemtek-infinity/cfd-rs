@@ -24,6 +24,8 @@ cfdrs-his = { path = "crates/cfdrs-his" }
 cfdrs-shared = { path = "crates/cfdrs-shared" }
 # crates.io dependencies
 base64 = "0.22.1"
+capnp = "0.25.2"
+capnpc = "0.25.0"
 mimalloc = { version = "0.1.48", default-features = false, features = [
   "extended",
   "local_dynamic_tls",

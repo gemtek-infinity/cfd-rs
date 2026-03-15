@@ -8,10 +8,8 @@ use super::session::{QuicSessionState, flush_egress};
 use super::{QUIC_ESTABLISH_TIMEOUT, QuicTunnelService, TransportLifecycleStage};
 use crate::protocol::{CONTROL_STREAM_ID, ProtocolBridgeState, ProtocolEvent};
 use crate::runtime::{RuntimeCommand, RuntimeService, ServiceExit};
-use cfdrs_cdc::registration::{
-    ConnectionOptions, RegisterConnectionRequest, RegisterConnectionResponse, TunnelAuth,
-};
-use cfdrs_cdc::stream::{ConnectRequest, ConnectionType, Metadata};
+use cfdrs_cdc::registration::{ConnectionOptions, ConnectionResponse, RegisterConnectionRequest, TunnelAuth};
+use cfdrs_cdc::stream::ConnectRequest;
 
 const REGISTRATION_RESPONSE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(1);
 
@@ -283,44 +281,49 @@ impl QuicTunnelService {
                         return Ok(());
                     };
 
-                    if let Some(details) = response.details {
-                        self.protocol_sender
-                            .send(ProtocolEvent::RegistrationComplete {
-                                conn_uuid: details.uuid,
-                                location: details.location.clone(),
-                            })
-                            .await
-                            .map_err(|detail| {
+                    match response {
+                        ConnectionResponse::Success(details) => {
+                            self.protocol_sender
+                                .send(ProtocolEvent::RegistrationComplete {
+                                    conn_uuid: details.uuid,
+                                    location: details.location.clone(),
+                                })
+                                .await
+                                .map_err(|detail| {
+                                    format!(
+                                        "failed to report registration completion across protocol bridge: \
+                                         {detail}"
+                                    )
+                                })?;
+
+                            super::send_status(
+                                command_tx,
+                                self.name(),
                                 format!(
-                                    "failed to report registration completion across protocol bridge: \
-                                     {detail}"
-                                )
-                            })?;
+                                    "protocol-boundary: registration response received uuid={} location={}",
+                                    details.uuid, details.location
+                                ),
+                            )
+                            .await;
 
-                        super::send_status(
-                            command_tx,
-                            self.name(),
-                            format!(
-                                "protocol-boundary: registration response received uuid={} location={}",
-                                details.uuid, details.location
-                            ),
-                        )
-                        .await;
+                            return Ok(());
+                        }
 
-                        return Ok(());
+                        ConnectionResponse::Error(conn_err) => {
+                            super::send_status(
+                                command_tx,
+                                self.name(),
+                                format!(
+                                    "protocol-boundary: registration response reported error={} retry={} \
+                                     continuing",
+                                    conn_err.cause, conn_err.should_retry
+                                ),
+                            )
+                            .await;
+
+                            return Ok(());
+                        }
                     }
-
-                    super::send_status(
-                        command_tx,
-                        self.name(),
-                        format!(
-                            "protocol-boundary: registration response reported error={} continuing",
-                            response.error
-                        ),
-                    )
-                    .await;
-
-                    return Ok(());
                 }
                 Err(quiche::Error::Done) => {}
                 Err(error) => {
@@ -604,114 +607,31 @@ fn process_handshake_packet(
 
 /// Parse a ConnectRequest from raw stream data.
 ///
-/// The cloudflare tunnel wire protocol encodes ConnectRequest metadata
-/// at the beginning of each data stream. This parser handles the
-/// metadata encoding from the Go baseline.
+/// Decode a `ConnectRequest` from the wire format.
 ///
-/// The Go baseline uses a compact binary encoding for ConnectRequest:
-/// - 2 bytes: connection type (u16 big-endian)
-/// - 2 bytes: dest length (u16 big-endian)
-/// - N bytes: dest string
-/// - 2 bytes: metadata count (u16 big-endian)
-/// - For each metadata entry:
-///   - 2 bytes: key length (u16 big-endian)
-///   - N bytes: key string
-///   - 2 bytes: val length (u16 big-endian)
-///   - N bytes: val string
-///
-/// Returns `None` if the data is too short or malformed.
+/// Delegates to the CDC-owned codec in `cfdrs_cdc::stream_codec`.
 fn parse_connect_request(data: &[u8]) -> Option<ConnectRequest> {
-    if data.len() < 6 {
-        return None;
-    }
-
-    let mut offset = 0;
-
-    // Connection type (2 bytes, big-endian).
-    let conn_type_raw = u16::from_be_bytes([data[offset], data[offset + 1]]);
-    let connection_type = ConnectionType::from_u16(conn_type_raw)?;
-    offset += 2;
-
-    // Dest string (2-byte length prefix + string).
-    let dest_len = u16::from_be_bytes([data[offset], data[offset + 1]]) as usize;
-    offset += 2;
-
-    if offset + dest_len > data.len() {
-        return None;
-    }
-
-    let dest = std::str::from_utf8(&data[offset..offset + dest_len]).ok()?;
-    offset += dest_len;
-
-    // Metadata entries (2-byte count + key-value pairs).
-    if offset + 2 > data.len() {
-        return None;
-    }
-
-    let metadata_count = u16::from_be_bytes([data[offset], data[offset + 1]]) as usize;
-    offset += 2;
-
-    let mut metadata = Vec::with_capacity(metadata_count);
-
-    for _ in 0..metadata_count {
-        if offset + 2 > data.len() {
-            return None;
-        }
-
-        let key_len = u16::from_be_bytes([data[offset], data[offset + 1]]) as usize;
-        offset += 2;
-
-        if offset + key_len > data.len() {
-            return None;
-        }
-
-        let key = std::str::from_utf8(&data[offset..offset + key_len]).ok()?;
-        offset += key_len;
-
-        if offset + 2 > data.len() {
-            return None;
-        }
-
-        let val_len = u16::from_be_bytes([data[offset], data[offset + 1]]) as usize;
-        offset += 2;
-
-        if offset + val_len > data.len() {
-            return None;
-        }
-
-        let val = std::str::from_utf8(&data[offset..offset + val_len]).ok()?;
-        offset += val_len;
-
-        metadata.push(Metadata::new(key, val));
-    }
-
-    Some(ConnectRequest {
-        dest: dest.to_owned(),
-        connection_type,
-        metadata,
-    })
+    cfdrs_cdc::stream_codec::decode_connect_request(data)
 }
 
 fn build_registration_request(
     identity: &TransportIdentity,
-    target: &QuicEdgeTarget,
+    _target: &QuicEdgeTarget,
     attempt: u32,
     local_addr: std::net::SocketAddr,
 ) -> Option<RegisterConnectionRequest> {
     let auth = identity.registration_auth.as_ref()?;
-    let mut options = ConnectionOptions::for_current_platform(
-        u8::try_from(attempt).unwrap_or(u8::MAX),
-        u8::try_from(attempt).unwrap_or(u8::MAX),
-        target.connect_addr,
-    );
+    let mut options =
+        ConnectionOptions::for_current_platform(identity.tunnel_id, u8::try_from(attempt).unwrap_or(u8::MAX));
     options.origin_local_ip = Some(local_addr.ip());
 
     Some(RegisterConnectionRequest {
         auth: TunnelAuth {
             account_tag: auth.account_tag.clone(),
             tunnel_secret: auth.tunnel_secret.as_bytes().to_vec(),
-            tunnel_id: identity.tunnel_id,
         },
+        tunnel_id: identity.tunnel_id,
+        conn_index: u8::try_from(attempt).unwrap_or(u8::MAX),
         options,
     })
 }
@@ -720,45 +640,20 @@ fn serialize_registration_request(request: &RegisterConnectionRequest) -> Result
     serde_json::to_vec(request)
 }
 
-fn parse_registration_response(data: &[u8]) -> Option<RegisterConnectionResponse> {
+fn parse_registration_response(data: &[u8]) -> Option<ConnectionResponse> {
     serde_json::from_slice(data).ok()
 }
 
-/// Serialize a ConnectRequest into the wire format for testing.
+/// Encode a `ConnectRequest` into the wire format for testing.
 ///
-/// Inverse of `parse_connect_request` — used in tests to generate
-/// valid wire-format data for incoming stream simulation.
+/// Delegates to the CDC-owned codec in `cfdrs_cdc::stream_codec`.
 #[cfg(test)]
 pub(super) fn serialize_connect_request(request: &ConnectRequest) -> Vec<u8> {
-    let mut buf = Vec::new();
-
-    // Connection type (2 bytes, big-endian).
-    buf.extend_from_slice(&(request.connection_type as u16).to_be_bytes());
-
-    // Dest string (2-byte length prefix + string).
-    let dest_bytes = request.dest.as_bytes();
-    buf.extend_from_slice(&(dest_bytes.len() as u16).to_be_bytes());
-    buf.extend_from_slice(dest_bytes);
-
-    // Metadata count (2 bytes).
-    buf.extend_from_slice(&(request.metadata.len() as u16).to_be_bytes());
-
-    // Metadata entries.
-    for entry in &request.metadata {
-        let key_bytes = entry.key.as_bytes();
-        buf.extend_from_slice(&(key_bytes.len() as u16).to_be_bytes());
-        buf.extend_from_slice(key_bytes);
-
-        let val_bytes = entry.val.as_bytes();
-        buf.extend_from_slice(&(val_bytes.len() as u16).to_be_bytes());
-        buf.extend_from_slice(val_bytes);
-    }
-
-    buf
+    cfdrs_cdc::stream_codec::encode_connect_request(request)
 }
 
 #[cfg(test)]
-pub(super) fn serialize_registration_response(response: &RegisterConnectionResponse) -> Vec<u8> {
+pub(super) fn serialize_registration_response(response: &ConnectionResponse) -> Vec<u8> {
     serde_json::to_vec(response).expect("registration response should serialize for tests")
 }
 
@@ -766,6 +661,7 @@ pub(super) fn serialize_registration_response(response: &RegisterConnectionRespo
 mod tests {
     use super::*;
     use cfdrs_cdc::registration::ConnectionDetails;
+    use cfdrs_cdc::stream::{ConnectionType, Metadata};
     use uuid::Uuid;
 
     #[test]
@@ -832,8 +728,8 @@ mod tests {
 
         assert_eq!(request.auth.account_tag, "account");
         assert_eq!(request.auth.tunnel_secret, b"secret");
-        assert_eq!(request.auth.tunnel_id, identity.tunnel_id);
-        assert_eq!(request.options.edge_addr, target.connect_addr);
+        assert_eq!(request.tunnel_id, identity.tunnel_id);
+        assert_eq!(request.conn_index, 2);
         assert_eq!(request.options.num_previous_attempts, 2);
         assert_eq!(
             request.options.origin_local_ip,
@@ -843,7 +739,7 @@ mod tests {
 
     #[test]
     fn registration_response_roundtrip() {
-        let response = RegisterConnectionResponse::success(ConnectionDetails {
+        let response = ConnectionResponse::success(ConnectionDetails {
             uuid: Uuid::parse_str("11111111-1111-1111-1111-111111111111").expect("uuid should parse"),
             location: "SFO".to_owned(),
             is_remotely_managed: false,

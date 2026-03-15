@@ -207,6 +207,30 @@ async fn handle_protocol_bridge(
                             })
                             .await;
                     }
+                    Some(ProtocolEvent::Unregistering { conn_index }) => {
+                        let _ = command_tx
+                            .send(RuntimeCommand::ServiceStatus {
+                                service: PROXY_SEAM_NAME,
+                                detail: format!("unregistering: conn_index={conn_index}"),
+                            })
+                            .await;
+                    }
+                    Some(ProtocolEvent::Disconnected { conn_index }) => {
+                        let _ = command_tx
+                            .send(RuntimeCommand::ServiceStatus {
+                                service: PROXY_SEAM_NAME,
+                                detail: format!("disconnected: conn_index={conn_index}"),
+                            })
+                            .await;
+                    }
+                    Some(ProtocolEvent::ConfigPushed { conn_index }) => {
+                        let _ = command_tx
+                            .send(RuntimeCommand::ServiceStatus {
+                                service: PROXY_SEAM_NAME,
+                                detail: format!("config-pushed: conn_index={conn_index}"),
+                            })
+                            .await;
+                    }
                     None => {
                         send_bridge_closed(registration_observed, command_tx).await;
                         break;

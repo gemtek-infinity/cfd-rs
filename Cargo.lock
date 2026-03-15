@@ -220,6 +220,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
+name = "capnp"
+version = "0.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c982cc37b8f646c753f3b0a24d4d40ca2eac8a9c2b9ea6fff524be67ddc184cb"
+dependencies = [
+ "embedded-io 0.7.1",
+]
+
+[[package]]
+name = "capnpc"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6cdfa6b0df161a71201367910265b97180541ecdb48bd08e05ef8694c295d1f"
+dependencies = [
+ "capnp",
+]
+
+[[package]]
 name = "castaway"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -279,7 +297,10 @@ dependencies = [
 name = "cfdrs-cdc"
 version = "2026.2.0-alpha.202603"
 dependencies = [
+ "capnp",
+ "capnpc",
  "serde",
+ "serde_json",
  "uuid",
 ]
 
@@ -845,6 +866,12 @@ name = "embedded-io"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
+
+[[package]]
+name = "embedded-io"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9eb1aa714776b75c7e67e1da744b81a129b3ff919c8712b5e1b32252c1f07cc7"
 
 [[package]]
 name = "encode_unicode"
