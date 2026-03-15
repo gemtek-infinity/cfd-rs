@@ -41,9 +41,15 @@ pub(crate) enum OriginResponse {
 ///
 /// Within each path, the ingress service type determines the
 /// concrete origin behavior (status code, hello-world, forward, etc.).
-pub(crate) fn dispatch_to_origin(service: &IngressService, request: &ConnectRequest) -> OriginResponse {
+pub(crate) async fn dispatch_to_origin(
+    service: &IngressService,
+    request: &ConnectRequest,
+    client: &reqwest::Client,
+) -> OriginResponse {
     match request.connection_type {
-        ConnectionType::Http | ConnectionType::WebSocket => dispatch_http_path(service, request),
+        ConnectionType::Http | ConnectionType::WebSocket => {
+            dispatch_http_path(service, request, client).await
+        }
         ConnectionType::Tcp => dispatch_tcp_path(service, request),
     }
 }
@@ -53,11 +59,15 @@ pub(crate) fn dispatch_to_origin(service: &IngressService, request: &ConnectRequ
 /// Go baseline: `case pogs.ConnectionTypeHTTP, pogs.ConnectionTypeWebsocket:`
 /// Both types route through `ProxyHTTP`, with a boolean `isWebsocket` flag
 /// to distinguish upgrade semantics.
-fn dispatch_http_path(service: &IngressService, request: &ConnectRequest) -> OriginResponse {
+async fn dispatch_http_path(
+    service: &IngressService,
+    request: &ConnectRequest,
+    client: &reqwest::Client,
+) -> OriginResponse {
     match service {
         IngressService::HttpStatus(code) => OriginResponse::Http(Box::new(build_status_response(*code))),
         IngressService::HelloWorld => OriginResponse::Http(Box::new(build_hello_world_response())),
-        IngressService::Http(_url) => dispatch_http_origin(request),
+        IngressService::Http(origin_url) => dispatch_http_origin(origin_url.as_str(), request, client).await,
 
         // Services not reachable through HTTP/WS dispatch
         IngressService::TcpOverWebsocket(_)
@@ -119,29 +129,48 @@ fn service_label(service: &IngressService) -> &'static str {
 
 /// Dispatch an HTTP-scheme origin request.
 ///
-/// For now, returns a 502 response indicating that real HTTP origin
-/// proxying (round-trip to the origin URL) is the next surface to
-/// make operational. The dispatch path is real: ingress matching
-/// routes here, the request metadata is available, and the response
-/// path is wired.
-fn dispatch_http_origin(request: &ConnectRequest) -> OriginResponse {
-    // The request carries the full HTTP metadata from the edge.
-    // Real origin proxying will:
-    // 1. Build an HTTP request to the origin URL
-    // 2. Execute the round-trip via a connection pool
-    // 3. Return the origin's response headers and stream the body
-    //
-    // For now, acknowledge the dispatch path is wired by returning a
-    // structured 502 that carries the destination information.
-    let mut response = build_status_response(502);
+/// Builds an HTTP request to the origin URL, executes the round-trip,
+/// and returns the origin's response headers. Matches Go baseline
+/// behavior from `ingress/origin_proxy.go` `RoundTrip`.
+async fn dispatch_http_origin(
+    origin_url: &str,
+    request: &ConnectRequest,
+    client: &reqwest::Client,
+) -> OriginResponse {
+    let path = extract_path_from_dest(&request.dest);
+    let origin_base = origin_url.trim_end_matches('/');
+    let target_url = format!("{origin_base}{path}");
 
-    // Flag the response so tests and evidence can distinguish "routed
-    // to HTTP origin but origin connection not yet implemented" from
-    // "no ingress match."
-    let _ = response.insert_header("X-Cloudflared-Origin-Status", "dispatch-wired");
-    let _ = response.insert_header("X-Cloudflared-Origin-Dest", &request.dest);
+    let method =
+        reqwest::Method::from_bytes(request.http_method().as_bytes()).unwrap_or(reqwest::Method::GET);
 
-    OriginResponse::Http(Box::new(response))
+    let mut req_builder = client.request(method, &target_url);
+
+    for (name, value) in request.http_headers() {
+        req_builder = req_builder.header(name, value);
+    }
+
+    if let Some(host) = request.http_host() {
+        req_builder = req_builder.header("Host", host);
+    }
+
+    match req_builder.send().await {
+        Ok(resp) => {
+            let status = resp.status().as_u16();
+            let mut header = build_status_response(status);
+
+            for (name, value) in resp.headers() {
+                let _ = header.insert_header(name.clone(), value.clone());
+            }
+
+            OriginResponse::Http(Box::new(header))
+        }
+        Err(_) => {
+            // Origin unreachable: return 502.
+            // Matches Go error path: "Unable to reach the origin service."
+            OriginResponse::Http(Box::new(build_status_response(502)))
+        }
+    }
 }
 
 /// Build a hello-world HTML response.
@@ -235,9 +264,10 @@ pub(crate) fn to_connect_response(response: &OriginResponse) -> ConnectResponse 
 /// 1. Extract host and path from the request
 /// 2. Match against ingress rules
 /// 3. Dispatch to the matched origin service
-pub(crate) fn proxy_connect_request(
+pub(crate) async fn proxy_connect_request(
     ingress: &[cfdrs_shared::IngressRule],
     request: &ConnectRequest,
+    client: &reqwest::Client,
 ) -> OriginResponse {
     let host = request.http_host().unwrap_or("");
     let path = extract_path_from_dest(&request.dest);
@@ -246,7 +276,7 @@ pub(crate) fn proxy_connect_request(
         cfdrs_shared::find_matching_rule(ingress, host, path).map(|index| &ingress[index].service);
 
     match matched_service {
-        Some(service) => dispatch_to_origin(service, request),
+        Some(service) => dispatch_to_origin(service, request, client).await,
         None => OriginResponse::Http(Box::new(build_status_response(502))),
     }
 }
@@ -333,11 +363,20 @@ mod tests {
         }
     }
 
-    #[test]
-    fn dispatch_http_status_returns_configured_code() {
+    fn test_client() -> reqwest::Client {
+        reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_millis(500))
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .expect("test HTTP client")
+    }
+
+    #[tokio::test]
+    async fn dispatch_http_status_returns_configured_code() {
+        let client = test_client();
         let rules = vec![status_rule(None, 418)];
         let request = make_request("example.com", "http://example.com/");
-        let response = proxy_connect_request(&rules, &request);
+        let response = proxy_connect_request(&rules, &request, &client).await;
 
         match response {
             OriginResponse::Http(header) => assert_eq!(header.status.as_u16(), 418),
@@ -345,11 +384,12 @@ mod tests {
         }
     }
 
-    #[test]
-    fn dispatch_hello_world_returns_200() {
+    #[tokio::test]
+    async fn dispatch_hello_world_returns_200() {
+        let client = test_client();
         let rules = vec![hello_rule(None)];
         let request = make_request("example.com", "http://example.com/");
-        let response = proxy_connect_request(&rules, &request);
+        let response = proxy_connect_request(&rules, &request, &client).await;
 
         match response {
             OriginResponse::Http(header) => assert_eq!(header.status.as_u16(), 200),
@@ -357,11 +397,12 @@ mod tests {
         }
     }
 
-    #[test]
-    fn dispatch_http_origin_returns_502_with_dispatch_marker() {
-        let rules = vec![http_rule(None, "http://localhost:8080")];
-        let request = make_request("example.com", "http://localhost:8080/api");
-        let response = proxy_connect_request(&rules, &request);
+    #[tokio::test]
+    async fn dispatch_http_origin_unreachable_returns_502() {
+        let client = test_client();
+        let rules = vec![http_rule(None, "http://127.0.0.1:1")];
+        let request = make_request("example.com", "http://127.0.0.1:1/api");
+        let response = proxy_connect_request(&rules, &request, &client).await;
 
         match response {
             OriginResponse::Http(header) => {
@@ -372,8 +413,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn dispatch_hostname_matching() {
+    #[tokio::test]
+    async fn dispatch_hostname_matching() {
+        let client = test_client();
         let rules = vec![
             status_rule(Some("api.example.com"), 200),
             hello_rule(Some("hello.example.com")),
@@ -381,28 +423,29 @@ mod tests {
         ];
 
         let api_req = make_request("api.example.com", "http://api.example.com/");
-        match proxy_connect_request(&rules, &api_req) {
+        match proxy_connect_request(&rules, &api_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
             other => panic!("expected 200, got: {other:?}"),
         }
 
         let hello_req = make_request("hello.example.com", "http://hello.example.com/");
-        match proxy_connect_request(&rules, &hello_req) {
+        match proxy_connect_request(&rules, &hello_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
             other => panic!("expected 200, got: {other:?}"),
         }
 
         let other_req = make_request("other.example.com", "http://other.example.com/");
-        match proxy_connect_request(&rules, &other_req) {
+        match proxy_connect_request(&rules, &other_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 404),
             other => panic!("expected 404, got: {other:?}"),
         }
     }
 
-    #[test]
-    fn dispatch_empty_ingress_returns_502() {
+    #[tokio::test]
+    async fn dispatch_empty_ingress_returns_502() {
+        let client = test_client();
         let request = make_request("example.com", "http://example.com/");
-        let response = proxy_connect_request(&[], &request);
+        let response = proxy_connect_request(&[], &request, &client).await;
 
         match response {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 502),
@@ -419,8 +462,9 @@ mod tests {
         assert_eq!(extract_path_from_dest("10.0.0.1:8080"), "/");
     }
 
-    #[test]
-    fn unimplemented_services_report_label() {
+    #[tokio::test]
+    async fn unimplemented_services_report_label() {
+        let client = test_client();
         let service = IngressService::SocksProxy;
         let request = ConnectRequest {
             dest: "socks://localhost:1080".into(),
@@ -428,7 +472,7 @@ mod tests {
             metadata: vec![],
         };
 
-        match dispatch_to_origin(&service, &request) {
+        match dispatch_to_origin(&service, &request, &client).await {
             OriginResponse::Unimplemented { service_label } => {
                 assert_eq!(service_label, "socks-proxy");
             }
@@ -441,19 +485,20 @@ mod tests {
     /// Go baseline dispatches HTTP and WebSocket through the same
     /// `ProxyHTTP` path. Verify both connection types reach the
     /// HTTP dispatch arm for an Http service.
-    #[test]
-    fn http_and_websocket_share_dispatch_path() {
+    #[tokio::test]
+    async fn http_and_websocket_share_dispatch_path() {
+        let client = test_client();
         let rules = vec![status_rule(None, 200)];
 
         let http_req = make_typed_request("example.com", "http://example.com/", ConnectionType::Http);
         let ws_req = make_typed_request("example.com", "http://example.com/", ConnectionType::WebSocket);
 
-        match proxy_connect_request(&rules, &http_req) {
+        match proxy_connect_request(&rules, &http_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
             other => panic!("HTTP request should dispatch to Http response, got: {other:?}"),
         }
 
-        match proxy_connect_request(&rules, &ws_req) {
+        match proxy_connect_request(&rules, &ws_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
             other => panic!("WebSocket request should share HTTP dispatch path, got: {other:?}"),
         }
@@ -462,12 +507,13 @@ mod tests {
     /// Go baseline dispatches TCP through a separate `ProxyTCP` path.
     /// HTTP-only services (HttpStatus, HelloWorld) should be
     /// unreachable via TCP and return Unimplemented.
-    #[test]
-    fn tcp_dispatch_rejects_http_only_services() {
+    #[tokio::test]
+    async fn tcp_dispatch_rejects_http_only_services() {
+        let client = test_client();
         let rules = vec![status_rule(None, 200)];
         let tcp_req = make_typed_request("example.com", "example.com:8080", ConnectionType::Tcp);
 
-        match proxy_connect_request(&rules, &tcp_req) {
+        match proxy_connect_request(&rules, &tcp_req, &client).await {
             OriginResponse::Unimplemented { service_label } => {
                 assert_eq!(service_label, "http-status");
             }
@@ -477,8 +523,9 @@ mod tests {
 
     /// TCP-capable services dispatch through the TCP path and report
     /// their correct label (pending real implementation).
-    #[test]
-    fn tcp_dispatch_to_tcp_service_reports_label() {
+    #[tokio::test]
+    async fn tcp_dispatch_to_tcp_service_reports_label() {
+        let client = test_client();
         let service =
             IngressService::TcpOverWebsocket(url::Url::parse("tcp://10.0.0.5:22").expect("test url"));
         let request = ConnectRequest {
@@ -487,7 +534,7 @@ mod tests {
             metadata: vec![Metadata::new("FlowID", "flow-42")],
         };
 
-        match dispatch_to_origin(&service, &request) {
+        match dispatch_to_origin(&service, &request, &client).await {
             OriginResponse::Unimplemented { service_label } => {
                 assert_eq!(service_label, "tcp-over-websocket");
             }
@@ -497,12 +544,13 @@ mod tests {
 
     /// WebSocket connection type to an Http service goes through
     /// the HTTP dispatch path (same as Go baseline).
-    #[test]
-    fn websocket_to_http_service_dispatches_through_http_path() {
-        let rules = vec![http_rule(None, "http://localhost:8080")];
+    #[tokio::test]
+    async fn websocket_to_http_service_dispatches_through_http_path() {
+        let client = test_client();
+        let rules = vec![http_rule(None, "http://127.0.0.1:1")];
         let ws_req = make_typed_request("example.com", "http://example.com/ws", ConnectionType::WebSocket);
 
-        match proxy_connect_request(&rules, &ws_req) {
+        match proxy_connect_request(&rules, &ws_req, &client).await {
             OriginResponse::Http(h) => {
                 // Http forward is wired but returns 502 (origin connection not yet implemented)
                 assert_eq!(h.status.as_u16(), 502);
@@ -648,12 +696,13 @@ mod tests {
     /// Full round-trip: ConnectRequest → ingress match → dispatch →
     /// OriginResponse → ConnectResponse. This is the CDC-018
     /// stream round-trip path.
-    #[test]
-    fn end_to_end_http_dispatch_to_connect_response() {
+    #[tokio::test]
+    async fn end_to_end_http_dispatch_to_connect_response() {
+        let client = test_client();
         let rules = vec![status_rule(Some("api.example.com"), 200), status_rule(None, 404)];
         let request = make_request("api.example.com", "http://api.example.com/health");
 
-        let origin = proxy_connect_request(&rules, &request);
+        let origin = proxy_connect_request(&rules, &request, &client).await;
         let cr = to_connect_response(&origin);
 
         assert!(cr.is_ok());
@@ -661,12 +710,13 @@ mod tests {
     }
 
     /// Full round-trip for a TCP request that hits an HTTP-only service.
-    #[test]
-    fn end_to_end_tcp_dispatch_to_error_connect_response() {
+    #[tokio::test]
+    async fn end_to_end_tcp_dispatch_to_error_connect_response() {
+        let client = test_client();
         let rules = vec![status_rule(None, 200)];
         let request = make_typed_request("example.com", "example.com:22", ConnectionType::Tcp);
 
-        let origin = proxy_connect_request(&rules, &request);
+        let origin = proxy_connect_request(&rules, &request, &client).await;
         let cr = to_connect_response(&origin);
 
         assert!(!cr.is_ok());
@@ -678,10 +728,11 @@ mod tests {
     }
 
     /// No ingress match produces a 502 ConnectResponse.
-    #[test]
-    fn end_to_end_no_match_returns_502_connect_response() {
+    #[tokio::test]
+    async fn end_to_end_no_match_returns_502_connect_response() {
+        let client = test_client();
         let request = make_request("example.com", "http://example.com/");
-        let origin = proxy_connect_request(&[], &request);
+        let origin = proxy_connect_request(&[], &request, &client).await;
         let cr = to_connect_response(&origin);
 
         assert!(cr.is_ok());

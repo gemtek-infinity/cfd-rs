@@ -36,6 +36,7 @@ openssl = { version = "0.10.76", features = ["vendored"] }
 pem = "3.0.6"
 pingora-http = "0.8"
 quiche = { version = "0.26.1", default-features = false, features = ["boringssl-vendored"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.149", default-features = false, features = ["std"] }
 serde_yaml = "0.9.34-deprecated"
