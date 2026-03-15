@@ -345,10 +345,12 @@ fn runtime_crosses_wire_protocol_boundary_after_quic_establish() {
     let server_addr = spawn_test_server(&root);
     let runtime_config = runtime_config(&root, server_addr);
     let (protocol_sender, protocol_receiver) = protocol::protocol_bridge();
+    let (_, stream_response_rx) = protocol::stream_response_bridge();
     let execution = run_with_factory(
         runtime_config,
         QuicTunnelServiceFactory::with_test_target(
             protocol_sender,
+            stream_response_rx,
             QuicEdgeTarget {
                 connect_addr: server_addr,
                 host_label: "localhost".to_owned(),
@@ -360,6 +362,7 @@ fn runtime_crosses_wire_protocol_boundary_after_quic_establish() {
             .with_shutdown_after(Duration::from_secs(5))
             .build(),
         Some(protocol_receiver),
+        None,
     );
 
     // After Phase 5.1 the transport enters the stream-serving loop,

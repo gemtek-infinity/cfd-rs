@@ -36,6 +36,7 @@ fn deployment_evidence_emits_contract_line() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -58,6 +59,7 @@ fn deployment_evidence_reports_host_validation() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -77,6 +79,7 @@ fn deployment_evidence_reports_glibc_markers() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -95,6 +98,7 @@ fn deployment_evidence_reports_systemd_supervision() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -118,6 +122,7 @@ fn deployment_evidence_reports_binary_path() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -137,6 +142,7 @@ fn deployment_evidence_reports_config_path() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -155,6 +161,7 @@ fn deployment_evidence_reports_filesystem_contract() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -176,6 +183,7 @@ fn deployment_evidence_declares_known_gaps() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -200,6 +208,7 @@ fn deployment_evidence_declares_operational_caveats() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -232,6 +241,7 @@ fn deployment_evidence_declares_evidence_scope() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -253,6 +263,7 @@ fn deployment_evidence_emitted_on_fatal_exit() {
         runtime_config(),
         TestFactory::new([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -281,6 +292,7 @@ fn deployment_evidence_lines_have_structured_format() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 

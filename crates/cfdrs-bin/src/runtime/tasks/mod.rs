@@ -13,6 +13,7 @@ where
         let ingress = self.config.normalized().ingress.clone();
         let seam = PingoraProxySeam::new(ingress);
         let protocol_rx = self.protocol_receiver.take();
+        let stream_response_tx = self.stream_response_tx.take();
         self.status.push_summary(format!(
             "proxy-seam: origin-proxy admitted, ingress-rules={}",
             seam.ingress_count()
@@ -20,6 +21,7 @@ where
         seam.spawn(
             self.command_tx.clone(),
             protocol_rx,
+            stream_response_tx,
             self.shutdown.child_token(),
             &mut self.child_tasks,
         );

@@ -174,7 +174,6 @@ pub(super) fn build_status_response(code: u16) -> ResponseHeader {
 /// - `Http(header)` → `ConnectResponse::http(status, headers)`
 /// - `StreamEstablished` → `ConnectResponse::tcp_ack(None)`
 /// - `Unimplemented { label }` → `ConnectResponse::error(message)`
-#[allow(dead_code)] // Phase 5.2: called from stream handler once lifecycle wiring is done
 pub(crate) fn to_connect_response(response: &OriginResponse) -> ConnectResponse {
     match response {
         OriginResponse::Http(header) => {

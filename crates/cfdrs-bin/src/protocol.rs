@@ -14,6 +14,7 @@
 
 use cfdrs_cdc::stream::ConnectRequest;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
@@ -151,6 +152,44 @@ impl ProtocolReceiver {
     pub(crate) async fn recv(&mut self) -> Option<ProtocolEvent> {
         self.0.recv().await
     }
+}
+
+// ---------------------------------------------------------------------------
+// Stream response channel (proxy → transport)
+// ---------------------------------------------------------------------------
+
+/// An encoded stream response to be written back to a QUIC data stream.
+#[derive(Debug)]
+pub(crate) struct StreamResponse {
+    pub stream_id: u64,
+    pub data: Vec<u8>,
+}
+
+/// Proxy-owned sender for stream responses.
+#[derive(Debug, Clone)]
+pub(crate) struct StreamResponseSender(mpsc::UnboundedSender<StreamResponse>);
+
+impl StreamResponseSender {
+    pub(crate) fn send(&self, response: StreamResponse) {
+        // Best-effort: if the transport is gone the response is dropped.
+        let _ = self.0.send(response);
+    }
+}
+
+/// Transport-owned receiver for stream responses.
+///
+/// Wrapped in `Arc<std::sync::Mutex<...>>` so the factory can share
+/// it across sequential transport service instances (restarts).
+pub(crate) type SharedStreamResponseReceiver = Arc<std::sync::Mutex<mpsc::UnboundedReceiver<StreamResponse>>>;
+
+/// Create the stream response channel between proxy and transport.
+///
+/// The proxy sends encoded `ConnectResponse` bytes through the sender;
+/// the transport drains and writes them to QUIC streams through the
+/// shared receiver.
+pub(crate) fn stream_response_bridge() -> (StreamResponseSender, SharedStreamResponseReceiver) {
+    let (tx, rx) = mpsc::unbounded_channel();
+    (StreamResponseSender(tx), Arc::new(std::sync::Mutex::new(rx)))
 }
 
 #[cfg(test)]

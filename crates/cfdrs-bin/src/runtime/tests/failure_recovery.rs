@@ -29,6 +29,7 @@ fn restart_exhaustion_is_bounded_and_visible() {
         ]),
         HarnessBuilder::for_tests().build(),
         None,
+        None,
     );
 
     assert!(
@@ -56,6 +57,7 @@ fn each_retryable_failure_records_failure_visibility() {
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -82,6 +84,7 @@ fn restart_resets_lifecycle_to_starting() {
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -104,6 +107,7 @@ fn restart_budget_zero_means_no_recovery() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -128,6 +132,7 @@ fn transport_failure_counter_tracks_retryable_exits() {
             .with_shutdown_after(Duration::from_millis(75))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -150,6 +155,7 @@ fn shutdown_during_starting_state_is_clean() {
             .with_shutdown_after(Duration::from_millis(5))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -169,6 +175,7 @@ fn shutdown_records_child_task_cleanup() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -184,6 +191,7 @@ fn shutdown_after_fatal_records_failure_state() {
         runtime_config(),
         TestFactory::new([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -209,6 +217,7 @@ fn shutdown_after_restart_exhaustion_records_failure() {
         ]),
         HarnessBuilder::for_tests().build(),
         None,
+        None,
     );
 
     assert!(matches!(execution.exit, RuntimeExit::Failed { .. }));
@@ -226,6 +235,7 @@ fn deferred_service_exit_reports_boundary() {
         runtime_config(),
         TestFactory::new([TestBehavior::DeferredExit]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -254,6 +264,7 @@ fn control_plane_failure_is_visible() {
         TestFactory::new([TestBehavior::ControlPlaneFailure]),
         HarnessBuilder::for_tests().build(),
         None,
+        None,
     );
 
     assert!(matches!(execution.exit, RuntimeExit::Failed { .. }));
@@ -273,6 +284,7 @@ fn fatal_failure_records_dependency_boundary() {
         runtime_config(),
         TestFactory::new([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -296,6 +308,7 @@ fn dependency_boundary_summary_is_emitted() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -323,6 +336,7 @@ fn config_reload_is_not_supported() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -347,6 +361,7 @@ fn failure_evidence_is_emitted_at_runtime_finish() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -382,6 +397,7 @@ fn failure_evidence_scope_is_honest() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -410,6 +426,7 @@ fn failure_evidence_under_exhausted_restarts() {
         ]),
         HarnessBuilder::for_tests().build(),
         None,
+        None,
     );
 
     assert!(matches!(execution.exit, RuntimeExit::Failed { .. }));
@@ -435,6 +452,7 @@ fn failure_evidence_under_deferred_exit() {
         runtime_config(),
         TestFactory::new([TestBehavior::DeferredExit]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 

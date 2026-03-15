@@ -14,6 +14,7 @@ fn runtime_reports_security_compliance_boundary_as_bounded() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);

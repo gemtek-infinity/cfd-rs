@@ -14,6 +14,7 @@ fn runtime_admits_proxy_seam_with_origin_path() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -34,6 +35,7 @@ fn proxy_seam_survives_primary_service_restart() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 

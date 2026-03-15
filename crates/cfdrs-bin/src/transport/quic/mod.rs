@@ -6,7 +6,7 @@ use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
 use super::TransportLifecycleStage;
-use crate::protocol::ProtocolSender;
+use crate::protocol::{ProtocolSender, SharedStreamResponseReceiver};
 use crate::runtime::{
     ChildTask, RuntimeCommand, RuntimeConfig, RuntimeService, RuntimeServiceFactory, ServiceExit,
 };
@@ -30,21 +30,31 @@ const MAX_DATAGRAM_SIZE: usize = 1350;
 pub(crate) struct QuicTunnelServiceFactory {
     test_target: Option<QuicEdgeTarget>,
     protocol_sender: ProtocolSender,
+    stream_response_rx: SharedStreamResponseReceiver,
 }
 
 impl QuicTunnelServiceFactory {
-    pub(crate) fn production(protocol_sender: ProtocolSender) -> Self {
+    pub(crate) fn production(
+        protocol_sender: ProtocolSender,
+        stream_response_rx: SharedStreamResponseReceiver,
+    ) -> Self {
         Self {
             test_target: None,
             protocol_sender,
+            stream_response_rx,
         }
     }
 
     #[cfg(test)]
-    fn with_test_target(protocol_sender: ProtocolSender, target: QuicEdgeTarget) -> Self {
+    fn with_test_target(
+        protocol_sender: ProtocolSender,
+        stream_response_rx: SharedStreamResponseReceiver,
+        target: QuicEdgeTarget,
+    ) -> Self {
         Self {
             test_target: Some(target),
             protocol_sender,
+            stream_response_rx,
         }
     }
 }
@@ -56,6 +66,7 @@ impl RuntimeServiceFactory for QuicTunnelServiceFactory {
             attempt,
             test_target: self.test_target.clone(),
             protocol_sender: self.protocol_sender.clone(),
+            stream_response_rx: self.stream_response_rx.clone(),
         })
     }
 }
@@ -65,6 +76,7 @@ struct QuicTunnelService {
     attempt: u32,
     test_target: Option<QuicEdgeTarget>,
     protocol_sender: ProtocolSender,
+    stream_response_rx: SharedStreamResponseReceiver,
 }
 
 impl RuntimeService for QuicTunnelService {

@@ -415,6 +415,8 @@ impl QuicTunnelService {
                 .process_readable_streams(session, &mut stream_buf, streams_accepted, command_tx)
                 .await;
 
+            self.drain_pending_responses(session);
+
             let _ = flush_egress(
                 &session.socket,
                 &mut session.connection,
@@ -545,6 +547,20 @@ impl QuicTunnelService {
                     }
                 }
             }
+        }
+    }
+
+    /// Drain pending stream responses from the proxy and write them to
+    /// QUIC data streams so they are included in the next egress flush.
+    fn drain_pending_responses(&self, session: &mut QuicSessionState) {
+        let Ok(mut rx) = self.stream_response_rx.lock() else {
+            return;
+        };
+
+        while let Ok(response) = rx.try_recv() {
+            let _ = session
+                .connection
+                .stream_send(response.stream_id, &response.data, true);
         }
     }
 

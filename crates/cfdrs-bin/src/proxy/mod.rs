@@ -29,7 +29,9 @@ use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
-use crate::protocol::{ProtocolBridgeState, ProtocolEvent, ProtocolReceiver};
+use crate::protocol::{
+    ProtocolBridgeState, ProtocolEvent, ProtocolReceiver, StreamResponse, StreamResponseSender,
+};
 use crate::runtime::{ChildTask, RuntimeCommand};
 
 pub(crate) mod origin;
@@ -122,6 +124,7 @@ impl PingoraProxySeam {
         self,
         command_tx: mpsc::Sender<RuntimeCommand>,
         protocol_rx: Option<ProtocolReceiver>,
+        stream_response_tx: Option<StreamResponseSender>,
         shutdown: CancellationToken,
         child_tasks: &mut JoinSet<ChildTask>,
     ) {
@@ -144,7 +147,7 @@ impl PingoraProxySeam {
                 .await;
 
             if let Some(rx) = protocol_rx {
-                handle_protocol_bridge(&self, rx, &command_tx, &shutdown).await;
+                handle_protocol_bridge(&self, rx, stream_response_tx.as_ref(), &command_tx, &shutdown).await;
             } else {
                 shutdown.cancelled().await;
             }
@@ -171,6 +174,7 @@ impl PingoraProxySeam {
 async fn handle_protocol_bridge(
     seam: &PingoraProxySeam,
     mut rx: ProtocolReceiver,
+    stream_response_tx: Option<&StreamResponseSender>,
     command_tx: &mpsc::Sender<RuntimeCommand>,
     shutdown: &CancellationToken,
 ) {
@@ -188,6 +192,16 @@ async fn handle_protocol_bridge(
                     }
                     Some(ProtocolEvent::IncomingStream { stream_id, request }) => {
                         let response = seam.handle_connect_request(&request);
+
+                        if let Some(tx) = stream_response_tx {
+                            let connect_response = origin::to_connect_response(&response);
+                            let data =
+                                cfdrs_cdc::stream_codec::encode_connect_response(
+                                    &connect_response,
+                                );
+                            tx.send(StreamResponse { stream_id, data });
+                        }
+
                         streams_dispatched += 1;
                         send_stream_dispatched(
                             stream_id,

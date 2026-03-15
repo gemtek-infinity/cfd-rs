@@ -35,7 +35,7 @@ pub mod registration;
 pub mod registration_codec;
 pub mod stream;
 pub mod stream_codec;
-pub(crate) mod stream_contract;
+pub mod stream_contract;
 
 pub use registration::{
     ClientInfo, ConnectionDetails, ConnectionError, ConnectionOptions, ConnectionResponse,

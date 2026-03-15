@@ -14,6 +14,7 @@ fn runtime_owns_config_after_startup_handoff() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -35,6 +36,7 @@ fn runtime_orders_shutdown_of_ready_service() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -54,6 +56,7 @@ fn runtime_restarts_retryable_service_before_shutdown() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -75,6 +78,7 @@ fn runtime_fails_fatal_service_without_restart() {
         runtime_config(),
         TestFactory::new([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 

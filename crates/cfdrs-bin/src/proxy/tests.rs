@@ -151,7 +151,7 @@ async fn proxy_seam_reports_origin_path_and_shuts_down() {
     let mut child_tasks = JoinSet::new();
 
     let seam = PingoraProxySeam::new(vec![catch_all_rule(503)]);
-    seam.spawn(command_tx, None, shutdown.clone(), &mut child_tasks);
+    seam.spawn(command_tx, None, None, shutdown.clone(), &mut child_tasks);
 
     let msg = command_rx.recv().await.expect("should receive proxy state");
     let detail = expect_proxy_state(msg, ProxySeamState::Admitted);
@@ -206,6 +206,7 @@ async fn proxy_seam_receives_protocol_registration() {
     seam.spawn(
         command_tx,
         Some(protocol_receiver),
+        None,
         shutdown.clone(),
         &mut child_tasks,
     );
@@ -290,6 +291,7 @@ async fn proxy_seam_handles_bridge_closure_without_registration() {
     seam.spawn(
         command_tx,
         Some(protocol_receiver),
+        None,
         shutdown.clone(),
         &mut child_tasks,
     );

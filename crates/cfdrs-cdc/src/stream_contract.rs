@@ -4,26 +4,26 @@
 
 use base64::Engine as _;
 
-pub(crate) const HTTP_METHOD_KEY: &str = "HttpMethod";
-pub(crate) const HTTP_HOST_KEY: &str = "HttpHost";
-pub(crate) const HTTP_HEADER_KEY: &str = "HttpHeader";
-pub(crate) const HTTP_STATUS_KEY: &str = "HttpStatus";
-pub(crate) const FLOW_ID_KEY: &str = "FlowID";
-pub(crate) const CF_TRACE_ID_KEY: &str = "cf-trace-id";
+pub const HTTP_METHOD_KEY: &str = "HttpMethod";
+pub const HTTP_HOST_KEY: &str = "HttpHost";
+pub const HTTP_HEADER_KEY: &str = "HttpHeader";
+pub const HTTP_STATUS_KEY: &str = "HttpStatus";
+pub const FLOW_ID_KEY: &str = "FlowID";
+pub const CF_TRACE_ID_KEY: &str = "cf-trace-id";
 #[cfg(test)]
-pub(crate) const CONTENT_LENGTH_KEY: &str = "HttpHeader:Content-Length";
-pub(crate) const TRACE_CONTEXT_KEY: &str = "cf-trace-context";
-pub(crate) const DEFAULT_HTTP_METHOD: &str = "GET";
-pub(crate) const HTTP_LABEL: &str = "HTTP";
-pub(crate) const WEBSOCKET_LABEL: &str = "WebSocket";
-pub(crate) const TCP_LABEL: &str = "TCP";
+pub const CONTENT_LENGTH_KEY: &str = "HttpHeader:Content-Length";
+pub const TRACE_CONTEXT_KEY: &str = "cf-trace-context";
+pub const DEFAULT_HTTP_METHOD: &str = "GET";
+pub const HTTP_LABEL: &str = "HTTP";
+pub const WEBSOCKET_LABEL: &str = "WebSocket";
+pub const TCP_LABEL: &str = "TCP";
 const HEADER_SEPARATOR: &str = ":";
 
-pub(crate) fn header_metadata_key(name: &str) -> String {
+pub fn header_metadata_key(name: &str) -> String {
     format!("{HTTP_HEADER_KEY}{HEADER_SEPARATOR}{name}")
 }
 
-pub(crate) fn header_metadata_prefix() -> String {
+pub fn header_metadata_prefix() -> String {
     header_metadata_key("")
 }
 
@@ -35,43 +35,32 @@ pub(crate) fn header_metadata_prefix() -> String {
 // header handling is wired up.
 // ---------------------------------------------------------------------------
 
-#[allow(dead_code)]
 /// Header carrying base64-serialized request headers from cloudflared to edge.
-pub(crate) const REQUEST_USER_HEADERS: &str = "cf-cloudflared-request-headers";
+pub const REQUEST_USER_HEADERS: &str = "cf-cloudflared-request-headers";
 
-#[allow(dead_code)]
 /// Header carrying base64-serialized response headers from edge to cloudflared.
-pub(crate) const RESPONSE_USER_HEADERS: &str = "cf-cloudflared-response-headers";
+pub const RESPONSE_USER_HEADERS: &str = "cf-cloudflared-response-headers";
 
-#[allow(dead_code)]
 /// Header carrying response source metadata (JSON).
-pub(crate) const RESPONSE_META_HEADER: &str = "cf-cloudflared-response-meta";
+pub const RESPONSE_META_HEADER: &str = "cf-cloudflared-response-meta";
 
 // ---------------------------------------------------------------------------
 // Response meta header values (CDC-016)
 // ---------------------------------------------------------------------------
 
-#[allow(dead_code)]
 /// Response originated from the origin server.
-pub(crate) const RESPONSE_META_ORIGIN: &str = r#"{"src":"origin"}"#;
+pub const RESPONSE_META_ORIGIN: &str = r#"{"src":"origin"}"#;
 
-#[allow(dead_code)]
 /// Response originated from cloudflared itself.
-pub(crate) const RESPONSE_META_CLOUDFLARED: &str = r#"{"src":"cloudflared"}"#;
+pub const RESPONSE_META_CLOUDFLARED: &str = r#"{"src":"cloudflared"}"#;
 
-#[allow(dead_code)]
 /// Response originated from cloudflared with flow rate limiting active.
-pub(crate) const RESPONSE_META_CLOUDFLARED_FLOW_LIMITED: &str =
-    r#"{"src":"cloudflared","flow_rate_limited":true}"#;
+pub const RESPONSE_META_CLOUDFLARED_FLOW_LIMITED: &str = r#"{"src":"cloudflared","flow_rate_limited":true}"#;
 
 // ---------------------------------------------------------------------------
 // Control response header stripping (CDC-017)
 // ---------------------------------------------------------------------------
 
-/// Prefixes that identify internal control response headers.
-///
-/// Headers with these prefixes are stripped in the eyeball ← origin
-/// direction. Matches Go's `IsControlResponseHeader` in `header.go`.
 #[allow(dead_code)]
 const CONTROL_HEADER_PREFIXES: &[&str] = &[":", "cf-int-", "cf-cloudflared-", "cf-proxy-"];
 
@@ -79,8 +68,7 @@ const CONTROL_HEADER_PREFIXES: &[&str] = &[":", "cf-int-", "cf-cloudflared-", "c
 /// be stripped before forwarding to the eyeball.
 ///
 /// Matches Go's `IsControlResponseHeader` from `connection/header.go`.
-#[allow(dead_code)]
-pub(crate) fn is_control_response_header(header_name: &str) -> bool {
+pub fn is_control_response_header(header_name: &str) -> bool {
     let lower = header_name.to_ascii_lowercase();
 
     CONTROL_HEADER_PREFIXES
@@ -92,8 +80,7 @@ pub(crate) fn is_control_response_header(header_name: &str) -> bool {
 /// and should not be forwarded as user headers.
 ///
 /// Matches Go's `IsWebsocketClientHeader` from `connection/header.go`.
-#[allow(dead_code)]
-pub(crate) fn is_websocket_client_header(header_name: &str) -> bool {
+pub fn is_websocket_client_header(header_name: &str) -> bool {
     let lower = header_name.to_ascii_lowercase();
     lower == "sec-websocket-accept" || lower == "connection" || lower == "upgrade"
 }
@@ -115,7 +102,7 @@ const NAME_VALUE_SEPARATOR: char = ':';
 ///
 /// Matches Go's `HTTPHeader` in `connection/header.go`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct HttpHeader {
+pub struct HttpHeader {
     pub name: String,
     pub value: String,
 }
@@ -127,8 +114,7 @@ pub(crate) struct HttpHeader {
 /// Go's `base64.RawStdEncoding`.
 ///
 /// Matches Go's `SerializeHeaders` in `connection/header.go`.
-#[allow(dead_code)]
-pub(crate) fn serialize_headers(headers: &[HttpHeader]) -> String {
+pub fn serialize_headers(headers: &[HttpHeader]) -> String {
     let engine = header_b64_engine();
     let mut buf = String::new();
 
@@ -150,8 +136,7 @@ pub(crate) fn serialize_headers(headers: &[HttpHeader]) -> String {
 /// malformed (wrong number of `:` separators) or base64 decoding fails.
 ///
 /// Matches Go's `DeserializeHeaders` in `connection/header.go`.
-#[allow(dead_code)]
-pub(crate) fn deserialize_headers(serialized: &str) -> Option<Vec<HttpHeader>> {
+pub fn deserialize_headers(serialized: &str) -> Option<Vec<HttpHeader>> {
     let engine = header_b64_engine();
     let mut headers = Vec::new();
 

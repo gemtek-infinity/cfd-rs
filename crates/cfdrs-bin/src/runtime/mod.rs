@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use cfdrs_his::signal::remove_pidfile;
 
-use crate::protocol::{self, ProtocolReceiver};
+use crate::protocol::{self, ProtocolReceiver, StreamResponseSender};
 use crate::transport::QuicTunnelServiceFactory;
 
 use tokio::runtime::Builder;
@@ -52,6 +52,7 @@ struct ApplicationRuntime<F> {
     shutdown: CancellationToken,
     status: RuntimeStatus,
     protocol_receiver: Option<ProtocolReceiver>,
+    stream_response_tx: Option<StreamResponseSender>,
     metrics: Option<metrics::RuntimeMetricsHandle>,
 }
 
@@ -82,6 +83,7 @@ where
         factory: F,
         harness: RuntimeHarness,
         protocol_receiver: Option<ProtocolReceiver>,
+        stream_response_tx: Option<StreamResponseSender>,
     ) -> Self {
         let (command_tx, command_rx) = mpsc::channel(16);
         let mut policy = RuntimePolicy::default();
@@ -101,6 +103,7 @@ where
             shutdown: CancellationToken::new(),
             status: RuntimeStatus::new(protocol_receiver.is_some()),
             protocol_receiver,
+            stream_response_tx,
             metrics: None,
         }
     }
@@ -217,11 +220,13 @@ where
 
 pub(crate) fn run(config: RuntimeConfig) -> RuntimeExecution {
     let (protocol_sender, protocol_receiver) = protocol::protocol_bridge();
+    let (stream_response_tx, stream_response_rx) = protocol::stream_response_bridge();
     run_with_factory(
         config,
-        QuicTunnelServiceFactory::production(protocol_sender),
+        QuicTunnelServiceFactory::production(protocol_sender, stream_response_rx),
         HarnessBuilder::production().build(),
         Some(protocol_receiver),
+        Some(stream_response_tx),
     )
 }
 
@@ -230,6 +235,7 @@ pub(crate) fn run_with_factory<F>(
     factory: F,
     harness: RuntimeHarness,
     protocol_receiver: Option<ProtocolReceiver>,
+    stream_response_tx: Option<StreamResponseSender>,
 ) -> RuntimeExecution
 where
     F: RuntimeServiceFactory,
@@ -239,5 +245,7 @@ where
         .build()
         .expect("tokio runtime should build for the admitted production-alpha shell");
 
-    runtime.block_on(ApplicationRuntime::new(config, factory, harness, protocol_receiver).run())
+    runtime.block_on(
+        ApplicationRuntime::new(config, factory, harness, protocol_receiver, stream_response_tx).run(),
+    )
 }

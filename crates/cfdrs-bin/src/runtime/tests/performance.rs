@@ -22,6 +22,7 @@ fn cold_path_emits_performance_evidence() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -39,6 +40,7 @@ fn cold_path_passes_regression_threshold_gate() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -65,6 +67,7 @@ fn resumed_path_emits_performance_evidence_after_restart() {
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -81,6 +84,7 @@ fn resumed_path_passes_regression_threshold_gate() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -101,6 +105,7 @@ fn failed_path_emits_performance_evidence() {
         TestFactory::new([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
         None,
+        None,
     );
 
     assert!(matches!(execution.exit, RuntimeExit::Failed { .. }));
@@ -119,6 +124,7 @@ fn performance_evidence_lines_have_structured_format() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -156,6 +162,7 @@ fn stage_timing_values_are_nonnegative() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -189,6 +196,7 @@ fn zero_rtt_lane_evidence_is_emitted() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -217,6 +225,7 @@ fn evidence_scope_is_honest() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
@@ -240,6 +249,7 @@ fn pipeline_latency_is_measured_on_cold_path() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -272,6 +282,7 @@ fn cold_and_resumed_paths_are_behaviorally_distinct() {
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     // Resumed path (one retryable failure, then success).
@@ -281,6 +292,7 @@ fn cold_and_resumed_paths_are_behaviorally_distinct() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -316,6 +328,7 @@ fn regression_thresholds_are_documented_in_evidence() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
