@@ -11,6 +11,7 @@ cfdrs-cdc.workspace = true
 cfdrs-cli.workspace = true
 cfdrs-his.workspace = true
 cfdrs-shared.workspace = true
+hickory-resolver.workspace = true
 mimalloc.workspace = true
 pingora-http.workspace = true
 quiche.workspace = true

@@ -26,6 +26,11 @@ cfdrs-shared = { path = "crates/cfdrs-shared" }
 base64 = "0.22.1"
 capnp = "0.25.2"
 capnpc = "0.25.0"
+hickory-resolver = { version = "0.25.2", default-features = false, features = [
+  "system-config",
+  "tls-ring",
+  "tokio",
+] }
 mimalloc = { version = "0.1.48", default-features = false, features = [
   "extended",
   "local_dynamic_tls",
