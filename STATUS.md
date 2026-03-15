@@ -7,7 +7,7 @@
 - parity routing baseline: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - workspace version: `2026.2.0-alpha.202603`
 - roadmap state: `Program Reset` complete; active implementation milestone: `CDC Contract Foundation`
-- highest-risk blockers: `CDC-001`, `CDC-002`, `CDC-011`, `CDC-012`, `CLI-001`, `CLI-002`, `CLI-003`, `HIS-012` through `HIS-017`, `HIS-024`, `HIS-025`, `HIS-041`, `HIS-042`
+- highest-risk blockers: `CDC-007`, `CLI-001`, `CLI-002`, `CLI-003`, `HIS-016`, `HIS-024`, `HIS-025`, `HIS-041`, `HIS-042`
 - production-alpha logging blocker set: `CLI-003`, `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-050`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`, `HIS-068`
 - status rule: this file is the only tracked status source for both humans and AI
 
@@ -29,7 +29,7 @@ What exists now:
 
 What does not exist yet:
 
-- Cap'n Proto RPC dispatch (capnp-rpc admitted, dispatch not yet wired) for unregisterConnection, registerUdpSession/unregisterUdpSession, and updateConfiguration
+- Cap'n Proto RPC dispatch: CDC-008 (updateLocalConfiguration), CDC-009 (registerUdpSession/unregisterUdpSession), CDC-010 (updateConfiguration) dispatch layers closed; CDC-007 (unregisterConnection) runtime path still requires capnp-rpc transport on the control stream
 - management service, log streaming, Cloudflare REST API client, and management-token workflows
 - broad CLI behavioral parity: root service-mode runtime, tunnel/access/tail/service/update behavioral implementations behind parsed stubs
 - service install/uninstall: `CommandRunner` trait integration and command dispatch are wired and parity-tested; real host `systemctl` execution not yet verified end-to-end
@@ -52,8 +52,9 @@ Current objective:
 
 Current milestone exit requires:
 
-- registration schema and wire encoding closure for `CDC-001` through `CDC-006`
-- stream framing and round-trip closure for `CDC-011` through `CDC-018`
+- registration schema and wire encoding closure for `CDC-001` through `CDC-006` (closed)
+- stream framing and round-trip closure for `CDC-011` through `CDC-018` (closed)
+- remaining CDC Contract Foundation gaps: `CDC-007` (unregisterConnection runtime path), `CDC-040`/`CDC-041` (datagram session types and runtime wiring)
 - baseline-backed CDC ownership in `cfdrs-cdc` rather than runtime-local shortcuts
 - matching roadmap, source-map, and ledger evidence for every closed CDC row
 
@@ -65,11 +66,11 @@ Next milestone after CDC closure:
 
 Tier 1 lane-blocking rows, in implementation order:
 
-1. `CDC-001`, `CDC-002` — registration schema and wire encoding
-2. `CDC-011`, `CDC-012` — stream schema and framing
+1. `CDC-001`, `CDC-002` — registration schema and wire encoding (closed)
+2. `CDC-011`, `CDC-012` — stream schema and framing (closed)
 3. `CLI-001`, `CLI-002`, `CLI-003` — root invocation, help text, global flags
 4. `CLI-008`, `CLI-010`, `CLI-012` — tunnel root behavior, create, run
-5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service install/uninstall and systemd templates (command path wired; real host `CommandRunner` execution still needs end-to-end verification)
+5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service install/uninstall and systemd templates (closed; HIS-016 SysV fallback still partial; real host `CommandRunner` execution still needs end-to-end verification)
 6. `HIS-024`, `HIS-025`, `HIS-027` — local metrics, readiness, and Prometheus exposure (runtime binding landed; remaining gaps are endpoint breadth and exact parity semantics)
 7. `HIS-041`, `HIS-042`, `HIS-044` — file watcher, reload loop, remote config update (trait contracts exist; integration pending)
 8. logging blocker set — `CLI-003`, `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`, `HIS-068`
