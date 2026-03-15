@@ -9,7 +9,11 @@
 //! `baseline-2026.2.0/proxy/proxy.go` and
 //! `baseline-2026.2.0/ingress/origin_proxy.go`.
 
-use cfdrs_cdc::stream::{ConnectRequest, ConnectResponse, ConnectionType};
+use cfdrs_cdc::stream::{ConnectRequest, ConnectResponse, ConnectionType, Metadata};
+use cfdrs_cdc::stream_contract::{
+    HttpHeader, RESPONSE_META_CLOUDFLARED, RESPONSE_META_HEADER, RESPONSE_META_ORIGIN, RESPONSE_USER_HEADERS,
+    is_control_response_header, serialize_headers,
+};
 use cfdrs_shared::IngressService;
 use pingora_http::ResponseHeader;
 
@@ -178,15 +182,46 @@ pub(crate) fn to_connect_response(response: &OriginResponse) -> ConnectResponse 
     match response {
         OriginResponse::Http(header) => {
             let status = header.status.as_u16();
+
+            // CDC-017: strip control headers before forwarding to the edge.
             let headers: Vec<(String, String)> = header
                 .headers
                 .iter()
+                .filter(|(name, _)| !is_control_response_header(name.as_str()))
                 .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or("").to_string()))
                 .collect();
-            ConnectResponse::http(status, headers)
+
+            let mut resp = ConnectResponse::http(status, headers.clone());
+
+            // CDC-015: serialized response headers for edge reconstruction.
+            let http_headers: Vec<HttpHeader> = headers
+                .iter()
+                .map(|(name, value)| HttpHeader {
+                    name: name.clone(),
+                    value: value.clone(),
+                })
+                .collect();
+
+            resp.metadata.push(Metadata::new(
+                RESPONSE_USER_HEADERS,
+                serialize_headers(&http_headers),
+            ));
+
+            // CDC-016: response source metadata.
+            resp.metadata
+                .push(Metadata::new(RESPONSE_META_HEADER, RESPONSE_META_CLOUDFLARED));
+
+            resp
         }
 
-        OriginResponse::StreamEstablished => ConnectResponse::tcp_ack(None),
+        OriginResponse::StreamEstablished => {
+            let mut resp = ConnectResponse::tcp_ack(None);
+
+            resp.metadata
+                .push(Metadata::new(RESPONSE_META_HEADER, RESPONSE_META_ORIGIN));
+
+            resp
+        }
 
         OriginResponse::Unimplemented { service_label } => {
             ConnectResponse::error(format!("service not implemented: {service_label}"))
@@ -242,6 +277,9 @@ fn extract_path_from_dest(dest: &str) -> &str {
 mod tests {
     use super::*;
     use cfdrs_cdc::stream::{ConnectionType, Metadata};
+    use cfdrs_cdc::stream_contract::{
+        RESPONSE_META_CLOUDFLARED, RESPONSE_META_HEADER, RESPONSE_META_ORIGIN, RESPONSE_USER_HEADERS,
+    };
     use cfdrs_shared::{IngressMatch, IngressRule, OriginRequestConfig};
 
     fn status_rule(hostname: Option<&str>, code: u16) -> IngressRule {
@@ -518,6 +556,22 @@ mod tests {
         assert!(cr.is_ok());
         assert_eq!(cr.metadata[0].key, "HttpStatus");
         assert_eq!(cr.metadata[0].val, "418");
+
+        // CDC-016: response meta should be present and mark cloudflared as source.
+        assert!(
+            cr.metadata
+                .iter()
+                .any(|m| m.key == RESPONSE_META_HEADER && m.val == RESPONSE_META_CLOUDFLARED),
+            "should contain response meta metadata, got: {:?}",
+            cr.metadata
+        );
+
+        // CDC-015: serialized response headers metadata should be present.
+        assert!(
+            cr.metadata.iter().any(|m| m.key == RESPONSE_USER_HEADERS),
+            "should contain serialized response headers metadata, got: {:?}",
+            cr.metadata
+        );
     }
 
     /// TCP stream established converts to a successful TCP ack.
@@ -528,6 +582,15 @@ mod tests {
 
         assert!(cr.is_ok());
         assert!(cr.error.is_empty());
+
+        // CDC-016: TCP ack should mark origin as source.
+        assert!(
+            cr.metadata
+                .iter()
+                .any(|m| m.key == RESPONSE_META_HEADER && m.val == RESPONSE_META_ORIGIN),
+            "TCP ack should contain origin response meta, got: {:?}",
+            cr.metadata
+        );
     }
 
     /// Unimplemented service converts to an error ConnectResponse
@@ -558,6 +621,7 @@ mod tests {
         assert!(cr.is_ok());
         assert_eq!(cr.metadata[0].key, "HttpStatus");
         assert_eq!(cr.metadata[0].val, "200");
+
         // Content-Type header should be in metadata.
         // Pingora lowercases header names per HTTP/2 conventions,
         // so the metadata key is "HttpHeader:content-type".
@@ -566,6 +630,15 @@ mod tests {
                 .iter()
                 .any(|m| m.key.contains("content-type") && m.val.contains("text/html")),
             "should contain content-type header metadata, got: {:?}",
+            cr.metadata
+        );
+
+        // CDC-016: response meta should mark cloudflared as source.
+        assert!(
+            cr.metadata
+                .iter()
+                .any(|m| m.key == RESPONSE_META_HEADER && m.val == RESPONSE_META_CLOUDFLARED),
+            "hello-world should have cloudflared response meta, got: {:?}",
             cr.metadata
         );
     }
@@ -613,5 +686,88 @@ mod tests {
 
         assert!(cr.is_ok());
         assert_eq!(cr.metadata[0].val, "502");
+    }
+
+    // --- CDC-017: control header stripping ---
+
+    /// Control headers (cf-int-*, cf-cloudflared-*, cf-proxy-*, :*)
+    /// must be stripped from the ConnectResponse metadata.
+    #[test]
+    fn connect_response_strips_control_headers() {
+        let mut header = ResponseHeader::build(200, None).expect("200 is valid");
+        let _ = header.insert_header("content-type", "text/plain");
+        let _ = header.insert_header("cf-int-internal", "secret");
+        let _ = header.insert_header("cf-cloudflared-request-headers", "encoded");
+        let _ = header.insert_header("cf-proxy-worker", "worker-1");
+        let _ = header.insert_header("x-custom", "allowed");
+
+        let origin = OriginResponse::Http(Box::new(header));
+        let cr = to_connect_response(&origin);
+
+        assert!(cr.is_ok());
+
+        // User headers should be forwarded.
+        assert!(
+            cr.metadata.iter().any(|m| m.key.contains("content-type")),
+            "content-type should be forwarded"
+        );
+        assert!(
+            cr.metadata.iter().any(|m| m.key.contains("x-custom")),
+            "x-custom should be forwarded"
+        );
+
+        // Control headers should be stripped.
+        assert!(
+            !cr.metadata.iter().any(|m| m.key.contains("cf-int-internal")),
+            "cf-int-* should be stripped"
+        );
+        assert!(
+            !cr.metadata
+                .iter()
+                .any(|m| m.key.contains("cf-cloudflared-request-headers")),
+            "cf-cloudflared-* should be stripped"
+        );
+        assert!(
+            !cr.metadata.iter().any(|m| m.key.contains("cf-proxy-worker")),
+            "cf-proxy-* should be stripped"
+        );
+    }
+
+    // --- CDC-015: serialized response headers ---
+
+    /// Response serialized headers metadata should round-trip through
+    /// serialize/deserialize correctly.
+    #[test]
+    fn connect_response_serialized_headers_roundtrip() {
+        let mut header = ResponseHeader::build(200, None).expect("200 is valid");
+        let _ = header.insert_header("content-type", "application/json");
+        let _ = header.insert_header("x-request-id", "abc-123");
+
+        let origin = OriginResponse::Http(Box::new(header));
+        let cr = to_connect_response(&origin);
+
+        let serialized = cr
+            .metadata
+            .iter()
+            .find(|m| m.key == RESPONSE_USER_HEADERS)
+            .expect("should have serialized headers metadata");
+
+        let deserialized =
+            cfdrs_cdc::stream_contract::deserialize_headers(&serialized.val).expect("should deserialize");
+
+        assert!(
+            deserialized
+                .iter()
+                .any(|h| h.name == "content-type" && h.value == "application/json"),
+            "should contain content-type, got: {:?}",
+            deserialized
+        );
+        assert!(
+            deserialized
+                .iter()
+                .any(|h| h.name == "x-request-id" && h.value == "abc-123"),
+            "should contain x-request-id, got: {:?}",
+            deserialized
+        );
     }
 }
