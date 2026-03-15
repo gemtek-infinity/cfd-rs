@@ -47,6 +47,18 @@ impl QuicTunnelService {
             .serve_streams(&mut session, &target, command_tx, shutdown)
             .await;
 
+        // CDC-019: Signal Unregistering on graceful shutdown before teardown.
+        // Matches Go's waitForUnregister() → GracefulShutdown() flow in
+        // connection/control.go.
+        if matches!(exit, ServiceExit::Completed { .. }) {
+            let _ = self
+                .protocol_sender
+                .send(ProtocolEvent::Unregistering {
+                    conn_index: u8::try_from(self.attempt).unwrap_or(u8::MAX),
+                })
+                .await;
+        }
+
         self.teardown_session(&mut session, &target, command_tx).await;
 
         Ok(exit)
@@ -293,6 +305,16 @@ impl QuicTunnelService {
                                          {detail}"
                                     )
                                 })?;
+
+                            // CDC-019/CDC-008: On conn_index 0 when not remotely
+                            // managed, send local configuration to the edge.
+                            // Matches Go baseline connection/control.go:
+                            //   if connIndex == 0 && !TunnelIsRemotelyManaged {
+                            //       SendLocalConfiguration(ctx, tunnelConfig)
+                            //   }
+                            if self.attempt == 0 && !details.is_remotely_managed {
+                                self.send_local_configuration(session, command_tx).await;
+                            }
 
                             super::send_status(
                                 command_tx,
@@ -578,6 +600,16 @@ impl QuicTunnelService {
             &mut *session.send_buffer,
         )
         .await;
+
+        // CDC-019: Signal Disconnected after the connection is closed.
+        // Matches Go's Disconnected status in connection/event.go.
+        let _ = self
+            .protocol_sender
+            .send(ProtocolEvent::Disconnected {
+                conn_index: u8::try_from(self.attempt).unwrap_or(u8::MAX),
+            })
+            .await;
+
         super::send_transport_stage(
             command_tx,
             self.name(),
@@ -591,6 +623,64 @@ impl QuicTunnelService {
             "transport-session-state: teardown".to_owned(),
         )
         .await;
+    }
+
+    /// CDC-008/CDC-019: Send local configuration to the edge on conn_index 0.
+    ///
+    /// Matches Go baseline `connection/control.go`:
+    ///   `registrationClient.SendLocalConfiguration(ctx, tunnelConfig)`
+    ///
+    /// Serialises the running ingress/warp-routing/originRequest config as
+    /// JSON, writes it to the control stream, and emits `ConfigPushed`.
+    /// Errors are logged but do not abort the lifecycle (matching Go).
+    async fn send_local_configuration(
+        &self,
+        session: &mut QuicSessionState,
+        command_tx: &mpsc::Sender<RuntimeCommand>,
+    ) {
+        let config_json = match serde_json::to_vec(&serde_json::json!({
+            "ingress": self.config.normalized().ingress,
+            "warp-routing": self.config.normalized().warp_routing,
+            "originRequest": self.config.normalized().origin_request,
+        })) {
+            Ok(json) => json,
+            Err(error) => {
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!("config-push: failed to serialize local configuration: {error}"),
+                )
+                .await;
+                return;
+            }
+        };
+
+        let request = cfdrs_cdc::registration::UpdateLocalConfigurationRequest { config: config_json };
+        let payload = request.to_capnp_bytes();
+
+        match session.connection.stream_send(CONTROL_STREAM_ID, &payload, false) {
+            Ok(_) => {
+                let _ = self
+                    .protocol_sender
+                    .send(ProtocolEvent::ConfigPushed { conn_index: 0 })
+                    .await;
+
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!("config-push: sent local configuration ({} bytes)", payload.len()),
+                )
+                .await;
+            }
+            Err(error) => {
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!("config-push: failed to write to control stream: {error}"),
+                )
+                .await;
+            }
+        }
     }
 }
 

@@ -19,7 +19,7 @@ What exists now:
 
 - `cfdrs-bin`: binary entrypoint, runtime composition, QUIC tunnel shell, Pingora seam, deployment/performance/failure evidence
 - `cfdrs-cli`: CLI parsing for all 40+ baseline command paths, 40+ global flags, help, dispatch (stubs for most commands), and CLI-facing error/output types
-- `cfdrs-cdc`: full registration schema types (TunnelAuth, ClientInfo, ConnectionOptions, ConnectionDetails, ConnectionError with retry semantics, ConnectionResponse union, RPC contract types for SessionManager and ConfigurationManager), feature flag categorization and filtering, stream contract types and metadata constants, CDC-owned wire codec (request and response encode/decode), protocol constants (stream signatures, TLS server names, ALPN, edge discovery DNS), Cap'n Proto generated bindings from frozen baseline schemas (`tunnelrpc.capnp` and `quic_metadata_protocol.capnp`)
+- `cfdrs-cdc`: full registration schema types (TunnelAuth, ClientInfo, ConnectionOptions, ConnectionDetails, ConnectionError with retry semantics, ConnectionResponse union, RPC contract types for SessionManager and ConfigurationManager), feature flag categorization and filtering, stream contract types and metadata constants, CDC-owned Cap'n Proto wire codec (registration and stream request/response encode/decode, runtime-wired in lifecycle.rs and proxy), edge address management types (AddrSet, Region, Regions with two-region failover), protocol constants (stream signatures, TLS server names, ALPN, edge discovery DNS), Cap'n Proto generated bindings from frozen baseline schemas (`tunnelrpc.capnp` and `quic_metadata_protocol.capnp`)
 - `cfdrs-his`: filesystem config discovery IO, credential lookup, service install/uninstall trait contracts, systemd/SysV template generation, metrics/readiness contracts backing a runtime-owned local listener, diagnostics collection types and handlers, file watcher and config reload seams, signal handling, logging configuration types, updater stubs, ICMP proxy stubs, hello server stub, environment/privilege detection
 - `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion
 - live parity ledgers, feature docs, and source routing under [`docs/parity/`](docs/parity/)
@@ -29,7 +29,7 @@ What exists now:
 
 What does not exist yet:
 
-- Cap'n Proto registration RPC codec wrappers and full stream round-trip through origin (generated bindings available, codec wrappers pending)
+- Cap'n Proto RPC dispatch (capnp-rpc crate not yet admitted) for unregisterConnection, registerUdpSession/unregisterUdpSession, and updateConfiguration
 - management service, log streaming, Cloudflare REST API client, and management-token workflows
 - broad CLI behavioral parity: root service-mode runtime, tunnel/access/tail/service/update behavioral implementations behind parsed stubs
 - service install/uninstall: `CommandRunner` trait integration and command dispatch are wired and parity-tested; real host `systemctl` execution not yet verified end-to-end
