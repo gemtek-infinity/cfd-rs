@@ -256,8 +256,8 @@ fn respond_to_registration_stream(
                     continue;
                 }
 
-                let _request: serde_json::Value = serde_json::from_slice(&read_buf[..read])
-                    .expect("registration request should be valid JSON");
+                let _request = cfdrs_cdc::registration_codec::decode_registration_request(&read_buf[..read])
+                    .expect("registration request should be valid Cap'n Proto");
                 let response = ConnectionResponse::success(cfdrs_cdc::registration::ConnectionDetails {
                     uuid: Uuid::parse_str("22222222-2222-2222-2222-222222222222").expect("uuid should parse"),
                     location: "TEST".to_owned(),

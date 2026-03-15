@@ -158,8 +158,6 @@ impl QuicTunnelService {
         let control_payload = registration_request
             .as_ref()
             .map(serialize_registration_request)
-            .transpose()
-            .map_err(|error| format!("failed to serialize registration request: {error}"))?
             .unwrap_or_default();
         let control_fin = !control_payload.is_empty();
 
@@ -624,6 +622,7 @@ fn build_registration_request(
     let mut options =
         ConnectionOptions::for_current_platform(identity.tunnel_id, u8::try_from(attempt).unwrap_or(u8::MAX));
     options.origin_local_ip = Some(local_addr.ip());
+    options.client.features = cfdrs_cdc::features::dedup_and_filter(&options.client.features);
 
     Some(RegisterConnectionRequest {
         auth: TunnelAuth {
@@ -636,12 +635,12 @@ fn build_registration_request(
     })
 }
 
-fn serialize_registration_request(request: &RegisterConnectionRequest) -> Result<Vec<u8>, serde_json::Error> {
-    serde_json::to_vec(request)
+fn serialize_registration_request(request: &RegisterConnectionRequest) -> Vec<u8> {
+    cfdrs_cdc::registration_codec::encode_registration_request(request)
 }
 
 fn parse_registration_response(data: &[u8]) -> Option<ConnectionResponse> {
-    serde_json::from_slice(data).ok()
+    cfdrs_cdc::registration_codec::decode_registration_response(data)
 }
 
 /// Encode a `ConnectRequest` into the wire format for testing.
@@ -654,7 +653,7 @@ pub(super) fn serialize_connect_request(request: &ConnectRequest) -> Vec<u8> {
 
 #[cfg(test)]
 pub(super) fn serialize_registration_response(response: &ConnectionResponse) -> Vec<u8> {
-    serde_json::to_vec(response).expect("registration response should serialize for tests")
+    cfdrs_cdc::registration_codec::encode_registration_response(response)
 }
 
 #[cfg(test)]
@@ -749,5 +748,43 @@ mod tests {
         let parsed = parse_registration_response(&wire).expect("registration response should parse");
 
         assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn registration_request_wire_roundtrip() {
+        let identity = TransportIdentity {
+            tunnel_id: Uuid::parse_str("11111111-1111-1111-1111-111111111111").expect("uuid should parse"),
+            identity_source: super::super::identity::IdentitySource::CredentialsFile,
+            endpoint_hint: Some("us".to_owned()),
+            registration_auth: Some(super::super::identity::RegistrationAuth {
+                account_tag: "acct-wire".to_owned(),
+                tunnel_secret: cfdrs_shared::TunnelSecret::from_bytes(b"wire-secret".to_vec()),
+            }),
+            resumption: super::super::identity::ResumptionShape::EarlyDataEnabled,
+        };
+        let target = QuicEdgeTarget {
+            connect_addr: "127.0.0.1:7844".parse().expect("target should parse"),
+            host_label: "region1.v2.argotunnel.com".to_owned(),
+            server_name: "localhost".to_owned(),
+            verification: super::super::edge::PeerVerification::Unverified,
+        };
+
+        let request = build_registration_request(
+            &identity,
+            &target,
+            1,
+            "10.0.0.1:50000".parse().expect("local addr should parse"),
+        )
+        .expect("credentials-file identity should build a request");
+
+        let encoded = serialize_registration_request(&request);
+        let decoded = cfdrs_cdc::registration_codec::decode_registration_request(&encoded)
+            .expect("wire roundtrip should produce a valid request");
+
+        assert_eq!(decoded.auth, request.auth);
+        assert_eq!(decoded.tunnel_id, request.tunnel_id);
+        assert_eq!(decoded.conn_index, request.conn_index);
+        assert_eq!(decoded.options.client.features, request.options.client.features);
+        assert_eq!(decoded.options.origin_local_ip, request.options.origin_local_ip);
     }
 }

@@ -32,7 +32,7 @@ pub mod log_streaming;
 pub mod management;
 pub mod protocol;
 pub mod registration;
-mod registration_codec;
+pub mod registration_codec;
 pub mod stream;
 pub mod stream_codec;
 pub(crate) mod stream_contract;
