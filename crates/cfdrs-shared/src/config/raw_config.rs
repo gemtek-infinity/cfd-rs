@@ -72,4 +72,53 @@ mod tests {
 
         assert_eq!(raw.unknown_top_level_keys(), vec!["extraKey".to_owned()]);
     }
+
+    /// HIS-003: Go `ReadConfigFile` double-parse accepts unknown keys on
+    /// the first (lenient) pass and only surfaces them as warnings on the
+    /// second (strict) pass.  Rust captures them via `serde(flatten)` in a
+    /// single parse.  This test confirms that unknown keys never cause a
+    /// parse failure — the core strict-mode parity invariant.
+    #[test]
+    fn unknown_keys_accepted_not_rejected_strict_mode_parity() {
+        let yaml =
+            "tunnel: abc\ningress:\n  - service: https://localhost:8080\nbadKey1: hello\nbadKey2: 42\n";
+        let raw = ok(RawConfig::from_yaml_str("strict.yaml", yaml));
+
+        let mut unknown = raw.unknown_top_level_keys();
+        unknown.sort();
+        assert_eq!(unknown, vec!["badKey1".to_owned(), "badKey2".to_owned()]);
+
+        // Known fields still parsed correctly alongside unknown keys.
+        assert_eq!(raw.tunnel.as_deref(), Some("abc"));
+        assert_eq!(raw.ingress.len(), 1);
+    }
+
+    /// HIS-003: Go baseline handles empty config files gracefully — the
+    /// first decode returns `io.EOF` which is logged but not fatal.  The
+    /// Rust path must also accept an empty YAML string without error.
+    #[test]
+    fn empty_config_parses_without_error() {
+        let raw = ok(RawConfig::from_yaml_str("empty.yaml", ""));
+
+        assert!(raw.tunnel.is_none());
+        assert!(raw.ingress.is_empty());
+        assert!(raw.unknown_top_level_keys().is_empty());
+    }
+
+    /// HIS-003: A config with only known keys produces zero unknown-key
+    /// warnings — confirms the unknown-key detection does not false-positive.
+    #[test]
+    fn known_keys_only_produces_no_unknown_warnings() {
+        let yaml = "tunnel: test\ncredentials-file: /tmp/cred.json\ningress:\n  - service: http_status:503\n";
+        let raw = ok(RawConfig::from_yaml_str("clean.yaml", yaml));
+
+        assert!(raw.unknown_top_level_keys().is_empty());
+        assert_eq!(raw.tunnel.as_deref(), Some("test"));
+        assert_eq!(
+            raw.credentials_file
+                .as_ref()
+                .map(|p| p.to_str().expect("path should be UTF-8")),
+            Some("/tmp/cred.json")
+        );
+    }
 }

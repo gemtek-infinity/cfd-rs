@@ -86,7 +86,7 @@ interactions are absent.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-001 | config search directory order | `config/configuration.go` `DefaultConfigSearchDirectories()` | search `~/.cloudflared`, `~/.cloudflare-warp`, `~/cloudflare-warp`, `/etc/cloudflared`, `/usr/local/etc/cloudflared` in order, check `config.yml` and `config.yaml` in each | cfdrs-his `discovery.rs` | audited, parity-backed | compare-backed | none recorded | parity compare tests, discovery fixture tests | high | Rust search order matches frozen baseline exactly |
 | HIS-002 | config auto-create behavior | `config/configuration.go` `FindOrCreateConfigPath()` | create parent dir, create config at `/usr/local/etc/cloudflared/config.yml`, create `/var/log/cloudflared`, write minimal YAML with `logDirectory` | cfdrs-his `discovery.rs` | audited, parity-backed | compare-backed | none recorded | filesystem-effect tests, config creation golden tests | high | Rust implements auto-create with correct paths and minimal YAML |
-| HIS-003 | config file YAML loading | `config/configuration.go` `ReadConfigFile()` | YAML decode with empty-file handling, `--config` flag override, strict-mode unknown-field warnings | cfdrs-shared `config/raw_config.rs`, `config/normalized.rs` | audited, partial | compare-backed | open gap | config golden tests, unknown-field warning tests | medium | Rust loads YAML and tracks unknown top-level keys during normalization via `NormalizationWarning::UnknownTopLevelKeys`; warnings now emitted via `tracing::warn!` in `execute_runtime_command()` matching Go stderr warning behavior; strict-mode double-parse not confirmed but unknown-key detection is functional |
+| HIS-003 | config file YAML loading | `config/configuration.go` `ReadConfigFile()` | YAML decode with empty-file handling, `--config` flag override, strict-mode unknown-field warnings | cfdrs-shared `config/raw_config.rs`, `config/normalized.rs` | audited, parity-backed | compare-backed | none recorded | config golden tests, unknown-field warning tests | medium | Rust `serde(flatten)` captures unknown top-level keys in a single parse (Go uses `yaml:",inline"` then `KnownFields(true)` double-parse); both produce warnings without rejecting the config; strict-mode parity confirmed by 6 tests covering unknown-key acceptance, empty-config non-fatal handling, multiple-key aggregation, and no-false-positive; warnings emitted via `tracing::warn!` in `execute_runtime_command()` matching Go stderr behavior |
 | HIS-004 | default path constants | `config/configuration.go` constants | `DefaultUnixConfigLocation=/usr/local/etc/cloudflared`, `DefaultUnixLogLocation=/var/log/cloudflared`, `DefaultConfigFiles=[config.yml, config.yaml]` | cfdrs-shared `config/discovery.rs` | audited, parity-backed | compare-backed | none recorded | constant assertion tests | medium | all constants match |
 | HIS-005 | HOME expansion | `config/configuration.go` and `homedir.Expand` | `~/` prefix expanded via HOME environment variable | cfdrs-shared `config/discovery.rs` | audited, parity-backed | compare-backed | none recorded | HOME expansion tests | medium | implemented |
 
@@ -96,7 +96,7 @@ interactions are absent.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-006 | tunnel credentials JSON parsing | `credentials/credentials.go`, `connection/connection.go` | parse JSON with fields `AccountTag`, `TunnelSecret` (base64), `TunnelID` (UUID), `Endpoint` | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | compare-backed | none recorded | credential JSON parsing tests | high | all fields parsed correctly |
 | HIS-007 | origin cert PEM parsing | `credentials/origin_cert.go` | parse PEM with `ARGO TUNNEL TOKEN` block, decode base64 to JSON with `zoneID`, `accountID`, `apiToken`, `endpoint` | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | compare-backed | none recorded | PEM decoding tests, fixture tests | high | implemented with FED endpoint detection |
-| HIS-008 | credential search-by-ID | `cmd/cloudflared/tunnel/credential_finder.go` `searchByID` | search for `{TunnelID}.json` in origincert dir first, then each discovery directory | cfdrs-his `credentials.rs`, cfdrs-bin `startup/runtime_overrides.rs` | audited, parity-backed | local tests | none recorded | credential search tests, directory traversal tests, tunnel run integration tests | high | `search_credential_by_id()` searches origincert dir then default dirs; wired into tunnel run startup; 2 unit tests |
+| HIS-008 | credential search-by-ID | `cmd/cloudflared/tunnel/credential_finder.go` `searchByID` | search for `{TunnelID}.json` in origincert dir first, then each discovery directory | cfdrs-his `credentials.rs`, cfdrs-bin `startup/runtime_overrides.rs` | audited, parity-backed | local tests | none recorded | credential search tests, directory traversal tests, tunnel run integration tests | high | `search_credential_by_id()` searches origincert dir then default dirs; wired into tunnel run startup; 4 unit tests covering find-in-dir, not-found, origincert-dir fallthrough, and origincert-dir precedence |
 | HIS-009 | origin cert search across dirs | `credentials/origin_cert.go` `FindDefaultOriginCertPath()` | search discovery directories for `cert.pem`, return first match | cfdrs-his `credentials.rs` | audited, parity-backed | local tests | none recorded | cert search tests | high | `find_default_origin_cert_path()` searches discovery dirs for cert.pem |
 | HIS-010 | tunnel token compact format | `connection/connection.go` `TunnelToken` | JSON struct with short keys `a`, `s`, `t`, `e`, base64-encoded for `--token` flag | cfdrs-shared `config/credentials/mod.rs` | audited, parity-backed | local tests | none recorded | token parse and roundtrip tests | high | TunnelToken with short keys, encode/decode/conversions |
 | HIS-011 | credential file write with mode 0400 | `cmd/cloudflared/tunnel/subcommands.go` | write JSON with `os.O_CREATE` and `os.O_EXCL`, mode 0400, fail if file exists | cfdrs-his `credentials.rs` | audited, parity-backed | local tests | none recorded | file creation tests, permission tests | medium | `write_credential_file()` with O_EXCL and mode 0400 |
@@ -276,9 +276,11 @@ process self-restart on update.
 ### Current Rust HIS surface
 
 Implemented and parity-backed: config search directory order (HIS-001), config
-auto-create behavior (HIS-002), default path constants (HIS-004), HOME
+auto-create behavior (HIS-002), config file YAML loading (HIS-003),
+default path constants (HIS-004), HOME
 expansion (HIS-005), tunnel credentials JSON parsing (HIS-006), origin cert PEM
-parsing (HIS-007), credential search-by-ID (HIS-009), tunnel token compact
+parsing (HIS-007), credential search-by-ID (HIS-008),
+credential search-by-ID (HIS-009), tunnel token compact
 format (HIS-010), credential file write (HIS-011), service install config-based
 (HIS-012), service install token-based (HIS-013), systemd unit generation
 (HIS-014), systemd enablement (HIS-015), service uninstall (HIS-017),
@@ -289,8 +291,7 @@ template content (HIS-022), UID detection (HIS-050), terminal detection
 (HIS-061), token lock file (HIS-062), ping group range check (HIS-070), binary
 path detection (HIS-054), glibc marker detection (HIS-055).
 
-Partial with runtime-backed seams: credential search-by-ID (HIS-008, run-path
-integration landed but wider evidence remains open), SysV init script (HIS-016,
+Partial with runtime-backed seams: SysV init script (HIS-016,
 HIS-023, template only), local HTTP metrics server (HIS-024 through HIS-031,
 runtime listener plus partial endpoints including `/config`), all diagnostics
 (HIS-032 through HIS-040, types + stub), watcher/reload (HIS-041 through
@@ -341,7 +342,6 @@ Critical gaps (runtime exists, parity breadth still open):
 
 High gaps (runtime-backed but incomplete):
 
-- HIS-008: credential search-by-ID (needs wider integration evidence)
 - HIS-016, HIS-023: SysV init (deferred, template exists)
 - HIS-026: `/healthcheck` (parity test confirms exact Go body; broader server parity still open)
 - HIS-031: metrics bind address (parity tests for `:PORT`, `localhost:PORT`, explicit IP; runtime-class/container routing still open)
@@ -359,7 +359,6 @@ High gaps (runtime-backed but incomplete):
 
 Medium gaps (trait-defined or constants only):
 
-- HIS-003: config strict-mode warnings
 - HIS-028, HIS-029: quicktunnel and config endpoints (needs HTTP server)
 - HIS-035 through HIS-037: diagnostic sub-collectors (stub)
 - HIS-038: diagnostic instance discovery (local tests, real HTTP pending)
