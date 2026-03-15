@@ -50,7 +50,11 @@ fn main() -> ExitCode {
 
 fn execute(args: impl IntoIterator<Item = OsString>) -> CliOutput {
     match parse_args(args) {
-        Ok(cli) => execute_command(cli),
+        Ok(mut cli) => {
+            cli.flags.apply_env_defaults();
+            cli.flags.apply_defaults();
+            execute_command(cli)
+        }
         Err(message) => CliError::usage(message).into_output(),
     }
 }

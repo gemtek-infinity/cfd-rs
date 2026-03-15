@@ -5,6 +5,7 @@
 //! behavior, help formatting, flag names and aliases, environment-variable
 //! bindings, exit codes, and error text placement.
 
+mod env_defaults;
 mod error;
 mod help;
 mod output;
