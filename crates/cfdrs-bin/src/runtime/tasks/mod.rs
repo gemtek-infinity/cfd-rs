@@ -1,5 +1,6 @@
 mod bridges;
 mod drain;
+mod watcher;
 
 use crate::proxy::PingoraProxySeam;
 

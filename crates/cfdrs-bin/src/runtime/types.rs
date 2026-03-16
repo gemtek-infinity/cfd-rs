@@ -177,6 +177,9 @@ pub(crate) enum RuntimeCommand {
     ControlPlaneFailure {
         detail: String,
     },
+    ConfigFileChanged {
+        path: std::path::PathBuf,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,6 +226,7 @@ pub(crate) enum ChildTask {
     ProxySeam,
     SignalBridge,
     HarnessBridge,
+    ConfigWatcher,
 }
 
 #[derive(Debug, Clone)]

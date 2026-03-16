@@ -136,6 +136,7 @@ impl ApplicationRuntime {
 
         self.spawn_signal_bridge();
         self.spawn_harness_shutdown();
+        self.spawn_config_watcher();
         self.spawn_proxy_seam();
         self.spawn_primary_service(0);
 

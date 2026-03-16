@@ -30,7 +30,7 @@ pub(super) const DEPLOY_OPERATIONAL_CAVEATS: &[&str] = &[
     "no-capnp-registration-rpc",
     "no-origin-cert-registration-content",
     "no-stream-roundtrip",
-    "no-config-reload",
+    "config-watcher-notify-only",
 ];
 
 pub(super) fn summary_line(key: &str, value: &str) -> String {

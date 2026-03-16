@@ -93,6 +93,14 @@ impl ApplicationRuntime {
         Some(RuntimeExit::Failed { detail })
     }
 
+    pub(super) fn handle_config_file_changed(&mut self, path: std::path::PathBuf) -> Option<RuntimeExit> {
+        self.status.record_service_status(
+            "config-watcher",
+            format!("config file changed: {}", path.display()),
+        );
+        None
+    }
+
     pub(super) async fn handle_retryable_service_exit(
         &mut self,
         service: &'static str,

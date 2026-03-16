@@ -325,10 +325,10 @@ fn dependency_boundary_summary_is_emitted() {
     );
 }
 
-// -- Config-reload non-support --
+// -- Config-reload watcher status --
 
 #[test]
-fn config_reload_is_not_supported() {
+fn config_reload_watcher_is_present() {
     let execution = run_with_source(
         runtime_config(),
         test_source([TestBehavior::WaitForShutdown]),
@@ -341,13 +341,13 @@ fn config_reload_is_not_supported() {
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
     assert!(
-        summary_contains(&execution, "failure-config-reload: not-supported"),
-        "should honestly declare config-reload as not supported, summary: {:?}",
+        summary_contains(&execution, "failure-config-reload: watcher-only"),
+        "should declare config-reload watcher is present, summary: {:?}",
         execution.summary_lines
     );
     assert!(
-        summary_contains(&execution, "no reload surface exists"),
-        "should explain why reload is not supported"
+        summary_contains(&execution, "re-apply path pending"),
+        "should explain re-apply path is still pending"
     );
 }
 
@@ -410,8 +410,8 @@ fn failure_evidence_scope_is_honest() {
         "should report in-process harness scope"
     );
     assert!(
-        summary_contains(&execution, "config-reload behavior are deferred"),
-        "should honestly defer config-reload proof"
+        summary_contains(&execution, "config-watcher is wired"),
+        "should declare config-watcher is wired"
     );
 }
 

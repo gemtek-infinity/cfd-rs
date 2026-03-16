@@ -229,7 +229,7 @@ fn deployment_evidence_declares_operational_caveats() {
         "no-origin-cert-registration-content"
     ));
     assert!(summary_contains(&execution, "no-stream-roundtrip"));
-    assert!(summary_contains(&execution, "no-config-reload"));
+    assert!(summary_contains(&execution, "config-watcher-notify-only"));
 }
 
 #[test]

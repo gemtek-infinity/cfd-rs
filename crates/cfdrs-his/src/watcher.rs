@@ -9,7 +9,8 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, RwLock};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, RwLock};
 
 // --- HIS-041: watcher trait ---
 
@@ -48,8 +49,7 @@ pub trait FileWatcher: Send + Sync {
 pub struct NotifyFileWatcher {
     watcher: Mutex<notify::RecommendedWatcher>,
     event_rx: Mutex<std::sync::mpsc::Receiver<Result<notify::Event, notify::Error>>>,
-    shutdown_tx: std::sync::mpsc::SyncSender<()>,
-    shutdown_rx: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
+    shutdown: Arc<AtomicBool>,
 }
 
 impl NotifyFileWatcher {
@@ -68,15 +68,20 @@ impl NotifyFileWatcher {
             })?
         };
 
-        // SyncSender with capacity 0 matches Go's unbuffered channel.
-        let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(0);
-
         Ok(Self {
             watcher: Mutex::new(watcher),
             event_rx: Mutex::new(rx),
-            shutdown_tx,
-            shutdown_rx: Mutex::new(Some(shutdown_rx)),
+            shutdown: Arc::new(AtomicBool::new(false)),
         })
+    }
+
+    /// Return a cloned shutdown flag for external shutdown coordination.
+    ///
+    /// The caller can hold this handle and call `store(true, Relaxed)` to
+    /// signal shutdown even after the watcher has been moved into a
+    /// blocking thread.
+    pub fn shutdown_flag(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.shutdown)
     }
 }
 
@@ -95,10 +100,7 @@ impl FileWatcher for NotifyFileWatcher {
         on_change: impl Fn(&Path) + Send + 'static,
         on_error: impl Fn(&dyn std::error::Error) + Send + 'static,
     ) {
-        let shutdown_rx = match self.shutdown_rx.lock().ok().and_then(|mut guard| guard.take()) {
-            Some(rx) => rx,
-            None => return, // already started
-        };
+        let shutdown = Arc::clone(&self.shutdown);
 
         let event_rx = match self.event_rx.lock() {
             Ok(rx) => rx,
@@ -106,7 +108,7 @@ impl FileWatcher for NotifyFileWatcher {
         };
 
         loop {
-            if shutdown_rx.try_recv().is_ok() {
+            if shutdown.load(Ordering::Relaxed) {
                 break;
             }
 
@@ -128,9 +130,9 @@ impl FileWatcher for NotifyFileWatcher {
     }
 
     fn shutdown(&self) {
-        // Non-blocking send: if Start() already returned, this is a no-op
+        // Atomic store: if start() already returned, this is harmless.
         // (matches Go's select { case f.shutdown <- struct{}{}: default: })
-        let _ = self.shutdown_tx.try_send(());
+        self.shutdown.store(true, Ordering::Relaxed);
     }
 }
 

@@ -47,6 +47,9 @@ impl ApplicationRuntime {
             ChildTask::HarnessBridge => {
                 self.status.push_summary("child-task-stopped: harness-bridge");
             }
+            ChildTask::ConfigWatcher => {
+                self.status.push_summary("child-task-stopped: config-watcher");
+            }
         }
     }
 }
