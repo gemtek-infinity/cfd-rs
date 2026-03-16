@@ -249,4 +249,53 @@ During maintenance mode:
 
 ## Local Handoff
 
-`${workspaceFolder}/GCFGR.md` is becoming mandatory for local overflow state when long or fragile sessions is predicted. It is not canonical repository truth. Use it only when handoff fidelity matters or context compaction is near.
+[`GCFGR.md`](../GCFGR.md) (root of workspace, gitignored) is the mandatory local file for preserving
+session state across context-window compactions and conversation resumptions.
+
+It is NOT canonical repository truth — [`STATUS.md`](../STATUS.md) wins on any conflict.
+
+### When to read GCFGR.md
+
+- at every cold start and conversation resumption
+- after any context-window compaction event
+- when something feels off: a claim seems stale, a file path is wrong, or a
+  ledger count does not match expectations
+
+### When to write GCFGR.md
+
+- before ending a session that produced non-trivial progress
+- when the context window is approaching capacity
+- after any milestone, ledger, or blocker change
+
+### Required sections
+
+The file uses a fixed section order optimized for fast AI context recovery.
+Sections must appear in this exact order:
+
+1. **Instant Context** — branch, commit, test count, workspace version,
+   validate-pr status. One glance tells the agent where it is.
+2. **Active Work** — what is in progress RIGHT NOW: the current row or task,
+   what step is next, what the last completed step was. This is the most
+   important section for resumption fidelity.
+3. **Blockers and Constraints** — hard constraints that caused past mistakes
+   or wasted cycles. Things the agent MUST NOT forget: `!Send` constraints,
+   dependency decisions, wire-format gotchas, debtmap thresholds.
+4. **Ledger Snapshot** — domain totals (closed/partial/divergence). Quick
+   numerical reality check.
+5. **Decisions Log** — architectural and dependency decisions made during the
+   session, with one-line rationale. Prevents re-litigating settled questions.
+6. **Session Mutations** — files touched this session with one-line summaries.
+   Lets the agent verify what actually changed versus what it thinks changed.
+7. **Architecture Invariants** — crate dependency directions. Rarely changes
+   but prevents cross-domain violations.
+8. **Validation Entry** — the exact Just commands. Prevents the agent from
+   inventing ad-hoc cargo chains.
+
+### Anti-drift rules
+
+- GCFGR.md must stay gitignored (enforced by `validate-governance`)
+- when GCFGR.md and [`STATUS.md`](../STATUS.md) disagree, [`STATUS.md`](../STATUS.md) wins
+- do not duplicate stable governance into GCFGR.md — reference the governing
+  file instead of copying its content
+- keep the file under 200 lines; if it grows beyond that, compress older
+  session mutations and decisions
