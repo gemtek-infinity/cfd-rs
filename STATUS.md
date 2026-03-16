@@ -6,7 +6,7 @@
 - compatibility baseline: frozen Go `2026.2.0` in [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - parity routing baseline: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - workspace version: `2026.2.0-alpha.202603`
-- roadmap state: `Program Reset` complete; active implementation milestone: `CDC Contract Foundation`
+- roadmap state: `Program Reset`, `CDC Contract Foundation`, and `Host and Runtime Foundation` complete; active implementation milestone: `CLI Foundation`
 - highest-risk blockers: `CLI-001`, `HIS-016`
 - production-alpha logging blocker set: `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`
 - status rule: this file is the only tracked status source for both humans and AI
@@ -41,26 +41,31 @@ What does not exist yet:
 
 ## Active Milestone
 
-### CDC Contract Foundation
+### CLI Foundation
+
+Preceding milestones complete:
+
+- `Program Reset` — all exit evidence met
+- `CDC Contract Foundation` — all 26 milestone-mapped rows closed; registration, stream, datagram, and protocol contracts are parity-backed in `cfdrs-cdc`
+- `Host and Runtime Foundation` — all 25 milestone-mapped rows closed; service install/uninstall, metrics/readiness/health endpoints, file watcher, reload loop, service manager, signal handling, logging sinks, and host detection are parity-backed
 
 Current objective:
 
-- replace JSON/custom wire shortcuts with baseline-backed CDC contracts
-- close the lane-blocking registration and stream gaps first
-- keep CLI and HIS work unblocked only where CDC dependencies are already explicit
-- keep the logging blocker set explicit while CDC closes the management-token and `/logs` contracts
+- make the top-level CLI surface honest against the frozen baseline
+- close root, help, global flag, and core tunnel lifecycle gaps
+- close CLI-visible logging flags, aliases, defaults, and env bindings
 
 Current milestone exit requires:
 
-- registration schema and wire encoding closure for `CDC-001` through `CDC-006` (closed)
-- stream framing and round-trip closure for `CDC-011` through `CDC-018` (closed)
-- remaining CDC Contract Foundation gaps: none — all CDC Contract Foundation rows closed
-- baseline-backed CDC ownership in `cfdrs-cdc` rather than runtime-local shortcuts
-- matching roadmap, source-map, and ledger evidence for every closed CDC row
+- CLI Foundation rows with parse-only stubs need behavioral implementations (11 of 19 milestone rows still partial)
+- CLI-001 service-mode runtime composition (AppManager/actionLoop wrapper pattern)
+- CLI-009 through CLI-015, CLI-019, CLI-020, CLI-032 behavioral dispatch beyond parse stubs
+- CLI ledger reflects baseline-backed behavior for the closed rows
+- keep the logging blocker set explicit while closing CLI-visible logging entries
 
-Next milestone after CDC closure:
+Next milestone after CLI Foundation closure:
 
-- `Host and Runtime Foundation`
+- `Command Family Closure`
 
 ## Priority Rows
 
@@ -68,8 +73,8 @@ Tier 1 lane-blocking rows, in implementation order:
 
 1. `CDC-001`, `CDC-002` — registration schema and wire encoding (closed)
 2. `CDC-011`, `CDC-012` — stream schema and framing (closed)
-3. `CLI-001`, `CLI-002`, `CLI-003` — root invocation, help text, global flags (CLI-002 and CLI-003 closed; CLI-001 blocked on HIS-043)
-4. `CLI-007`, `CLI-008`, `CLI-010`, `CLI-012` — service, tunnel root, create, run (CLI-007 and CLI-008 closed; CLI-010 and CLI-012 blocked on CDC)
+3. `CLI-001`, `CLI-002`, `CLI-003` — root invocation, help text, global flags (CLI-002 and CLI-003 closed; CLI-001 partial — service-mode runtime composition incomplete)
+4. `CLI-007`, `CLI-008`, `CLI-010`, `CLI-012` — service, tunnel root, create, run (CLI-007 and CLI-008 closed; CLI-010 blocked on CDC-033 REST API client; CLI-012 alpha-limited)
 5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service install/uninstall and systemd templates (closed; HIS-016 SysV fallback still partial; real host `CommandRunner` execution still needs end-to-end verification)
 6. `HIS-024`, `HIS-025`, `HIS-026`, `HIS-027` — local metrics, readiness, healthcheck, and Prometheus exposure (closed; container bind mode, Go ConnTracker connection counting, exact healthcheck parity, and full 19-metric name inventory)
 7. `HIS-041`, `HIS-042`, `HIS-043`, `HIS-044`, `HIS-045` — file watcher, reload loop, service manager, remote config update, reload recovery (HIS-041, HIS-042, HIS-043, HIS-044, HIS-045 closed; HIS-041 runtime watcher wired in cfdrs-bin, re-apply path through ReloadActionLoop pending)
@@ -95,7 +100,7 @@ Closed breakdown:
 - CDC: 29 `audited, parity-backed`
 - HIS: 44 `audited, parity-backed` + 4 `closed` + 1 `audited, intentional divergence` (HIS-053)
 
-Test suite: 1076 tests passing across 5 app crates (`cfdrs-bin`, `cfdrs-cdc`, `cfdrs-cli`, `cfdrs-his`, `cfdrs-shared`).
+Test suite: 991 tests passing across 5 app crates (`cfdrs-bin`, `cfdrs-cdc`, `cfdrs-cli`, `cfdrs-his`, `cfdrs-shared`).
 
 ## Architecture Contract
 

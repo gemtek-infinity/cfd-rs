@@ -52,17 +52,18 @@ Promotion rule:
 
 Current milestone:
 
-- `CDC Contract Foundation`
+- `CLI Foundation`
 
 Next milestone:
 
-- `Host and Runtime Foundation`
+- `Command Family Closure`
 
 Current gate requires:
 
-- baseline-backed closure of the lane-blocking CDC rows called out in [`STATUS.md`](../STATUS.md)
-- roadmap-index ownership and evidence references that match the CDC ledger
-- no reliance on deleted Phase 5 planning/status files or historical audit routing
+- CLI Foundation rows with parse-only stubs need behavioral implementations (11 of 19 milestone rows still partial)
+- CLI-001 service-mode runtime composition
+- CLI-009 through CLI-015, CLI-019, CLI-020, CLI-032 behavioral dispatch beyond parse stubs
+- CLI ledger reflects baseline-backed behavior for the closed rows
 - the cross-domain logging blocker set stays explicit and cannot be treated as a post-alpha cleanup item
 
 ## Production-Alpha Gate

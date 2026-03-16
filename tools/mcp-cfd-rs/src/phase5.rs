@@ -451,11 +451,8 @@ mod tests {
     fn parses_status_summary() {
         let summary = status_summary(&repo_root()).expect("status summary");
 
-        assert_eq!(summary.active_milestone, "CDC Contract Foundation");
-        assert_eq!(
-            summary.next_milestone.as_deref(),
-            Some("Host and Runtime Foundation")
-        );
+        assert_eq!(summary.active_milestone, "CLI Foundation");
+        assert_eq!(summary.next_milestone.as_deref(), Some("Command Family Closure"));
         assert!(!summary.priority_rows.is_empty());
 
         assert_eq!(summary.parity_progress.len(), 3);
@@ -490,7 +487,7 @@ mod tests {
     fn parses_phase5_priority() {
         let priority = phase5_priority(&repo_root()).expect("phase5 priority");
 
-        assert_eq!(priority.active_milestone.name, "CDC Contract Foundation");
+        assert_eq!(priority.active_milestone.name, "CLI Foundation");
         assert!(priority.active_milestone.row_count > 0);
         assert_eq!(priority.final_milestone, "Performance Architecture Overhaul");
     }
