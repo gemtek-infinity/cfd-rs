@@ -4,7 +4,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
 use self::value_flags::try_parse_value_flag;
-use super::types::{GlobalFlags, HelpTarget, TunnelSubcommand};
+use super::types::{GlobalFlags, HelpTarget, RouteSubcommand, TunnelSubcommand};
 use super::{Cli, Command, surface_contract};
 
 /// Short-circuit builder for value-flag matching.
@@ -440,6 +440,20 @@ fn try_parse_bool_flag(arg: &OsStr, state: &mut ParseState) -> bool {
         "--quic-disable-pmtu-discovery" => state.flags.quic_disable_pmtu = true,
         "--no-update-service" => state.flags.no_update_service = true,
         "--proxy-dns" => state.flags.proxy_dns = true,
+        "--show-deleted" | "-d" => state.flags.show_deleted = true,
+        "--show-recently-disconnected" | "-rd" => state.flags.show_recently_disconnected = true,
+        "--invert-sort" => state.flags.invert_sort = true,
+        "--force" | "-f" => state.flags.force = true,
+        "--fedramp" => state.flags.fedramp = true,
+        "--overwrite-dns" => state.flags.overwrite_dns = true,
+        "--filter-is-deleted" => state.flags.filter_is_deleted = true,
+        "--default" => state.flags.vnet_default = true,
+        "--is-default" => state.flags.vnet_is_default_filter = true,
+        "--no-diag-logs" => state.flags.no_diag_logs = true,
+        "--no-diag-metrics" => state.flags.no_diag_metrics = true,
+        "--no-diag-system" => state.flags.no_diag_system = true,
+        "--no-diag-runtime" => state.flags.no_diag_runtime = true,
+        "--no-diag-network" => state.flags.no_diag_network = true,
         _ => return false,
     }
 
@@ -479,7 +493,25 @@ fn finalize_cli(state: ParseState) -> Cli {
 
     if help_requested {
         let target = match &command {
-            Some(Command::Tunnel(_)) => HelpTarget::Tunnel,
+            Some(Command::Tunnel(sub)) => match sub {
+                TunnelSubcommand::Create => HelpTarget::TunnelCreate,
+                TunnelSubcommand::List => HelpTarget::TunnelList,
+                TunnelSubcommand::Run => HelpTarget::TunnelRun,
+                TunnelSubcommand::Delete => HelpTarget::TunnelDelete,
+                TunnelSubcommand::Cleanup => HelpTarget::TunnelCleanup,
+                TunnelSubcommand::Token => HelpTarget::TunnelToken,
+                TunnelSubcommand::Info => HelpTarget::TunnelInfo,
+                TunnelSubcommand::Ready => HelpTarget::TunnelReady,
+                TunnelSubcommand::Diag => HelpTarget::TunnelDiag,
+                TunnelSubcommand::Login => HelpTarget::TunnelLogin,
+                TunnelSubcommand::Route(RouteSubcommand::Dns) => HelpTarget::TunnelRouteDns,
+                TunnelSubcommand::Route(RouteSubcommand::Lb) => HelpTarget::TunnelRouteLb,
+                TunnelSubcommand::Route(RouteSubcommand::Ip(_)) => HelpTarget::TunnelRouteIp,
+                TunnelSubcommand::Route(_) => HelpTarget::TunnelRoute,
+                TunnelSubcommand::Vnet(_) => HelpTarget::TunnelVnet,
+                TunnelSubcommand::Ingress(_) => HelpTarget::TunnelIngress,
+                _ => HelpTarget::Tunnel,
+            },
             Some(Command::Access(_)) => HelpTarget::Access,
             _ => HelpTarget::Root,
         };
@@ -562,3 +594,7 @@ fn set_command(slot: &mut Option<Command>, command: Command) -> Result<(), Strin
 #[cfg(test)]
 #[path = "parse_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "parse_tests_subcmd.rs"]
+mod tests_subcmd;

@@ -17,6 +17,7 @@ pub(super) fn try_parse_value_flag(
     try_origin_and_proxy_flags(matcher)?;
     try_quic_flow_control_flags(matcher)?;
     try_deprecated_api_flags(matcher)?;
+    try_subcommand_specific_flags(matcher)?;
 
     if matcher.matched() {
         state.any_flag_set = true;
@@ -75,7 +76,7 @@ fn try_tunnel_identity_flags<I: Iterator<Item = OsString>>(
         .string("--edge-ip-version", |flags| &mut flags.edge_ip_version)?
         .string("--edge-bind-address", |flags| &mut flags.edge_bind_address)?
         .string("--hostname", |flags| &mut flags.hostname)?
-        .string("--id", |flags| &mut flags.tunnel_id)?
+        .string_alias("--id", "-i", |flags| &mut flags.tunnel_id)?
         .string("--lb-pool", |flags| &mut flags.lb_pool)?
         .push("--tag", |flags| &mut flags.tag)?
         .push_alias("--features", "-F", |flags| &mut flags.features)?
@@ -164,6 +165,65 @@ fn try_deprecated_api_flags<I: Iterator<Item = OsString>>(
         .string("--api-key", |flags| &mut flags.api_key)?
         .string("--api-email", |flags| &mut flags.api_email)?
         .string("--api-ca-key", |flags| &mut flags.api_ca_key)?;
+
+    Ok(())
+}
+
+/// Subcommand-specific flags from per-subcommand Go flag sets.
+///
+/// These map to flags defined on individual tunnel subcommands rather
+/// than the global `Flags()` slice in `tunnel/cmd.go`.
+fn try_subcommand_specific_flags<I: Iterator<Item = OsString>>(
+    matcher: &mut FlagMatcher<'_, I>,
+) -> Result<(), String> {
+    // list/info filters
+    // NOTE: --output is consumed by try_logging_flags (log_format_output);
+    // subcommand output format uses only the -o alias.
+    matcher
+        .string("-o", |flags| &mut flags.output_format)?
+        .string_alias("--name-prefix", "-np", |flags| &mut flags.name_prefix)?
+        .string_alias("--exclude-name-prefix", "-enp", |flags| {
+            &mut flags.exclude_name_prefix
+        })?
+        .string_alias("--when", "-w", |flags| &mut flags.filter_when)?
+        .string("--sort-by", |flags| &mut flags.sort_by)?;
+
+    // create — -s alias omitted (collides with short version flag)
+    matcher.string("--secret", |flags| &mut flags.tunnel_secret)?;
+
+    // cleanup
+    matcher.string_alias("--connector-id", "-c", |flags| &mut flags.connector_id)?;
+
+    // login
+    matcher
+        .string("--loginURL", |flags| &mut flags.login_url)?
+        .string("--callbackURL", |flags| &mut flags.callback_url)?;
+
+    // route ip
+    matcher.string_alias("--vnet", "-vn", |flags| &mut flags.vnet_id)?;
+
+    // route ip show/list filter flags
+    matcher
+        .string("--filter-tunnel-id", |flags| &mut flags.filter_tunnel_id)?
+        .string_alias("--filter-network-is-subset-of", "-nsub", |flags| {
+            &mut flags.filter_network_subset
+        })?
+        .string_alias("--filter-network-is-superset-of", "-nsup", |flags| {
+            &mut flags.filter_network_superset
+        })?
+        .string("--filter-comment-is", |flags| &mut flags.filter_comment_is)?
+        .string("--filter-vnet-id", |flags| &mut flags.filter_vnet_id)?;
+
+    // vnet update — -c alias omitted (collides with --connector-id -c)
+    matcher.string("--comment", |flags| &mut flags.vnet_comment)?;
+
+    // ingress validate
+    matcher.string_alias("--json", "-j", |flags| &mut flags.ingress_json)?;
+
+    // diag
+    matcher
+        .string("--diag-container-id", |flags| &mut flags.diag_container_id)?
+        .string("--diag-pod-id", |flags| &mut flags.diag_pod_id)?;
 
     Ok(())
 }

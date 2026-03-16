@@ -10,19 +10,24 @@ mod error;
 mod help;
 mod output;
 mod parse;
+mod subcommand_help;
 mod surface_contract;
 mod types;
 
 pub use self::error::CliError;
-pub use self::help::{render_access_help, render_help, render_tunnel_help};
+pub use self::help::{render_access_help, render_help, render_subcommand_help, render_tunnel_help};
 pub use self::output::CliOutput;
 pub use self::parse::parse_args;
 pub use self::surface_contract::{
-    CLASSIC_TUNNEL_DEPRECATED_MSG, DB_CONNECT_REMOVED_MSG, PROGRAM_NAME, PROXY_DNS_REMOVED_LOG_MSG,
-    PROXY_DNS_REMOVED_MSG, TUNNEL_CMD_ERROR_MSG, TUNNEL_RUN_HOSTNAME_WARNING_MSG,
+    CLASSIC_TUNNEL_DEPRECATED_MSG, DB_CONNECT_REMOVED_MSG, INGRESS_RULE_NARG_ERROR_MSG, PROGRAM_NAME,
+    PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG, ROUTE_DNS_NARG_ERROR_MSG, ROUTE_IP_ADD_NARG_ERROR_MSG,
+    ROUTE_IP_DELETE_NARG_ERROR_MSG, ROUTE_IP_GET_NARG_ERROR_MSG, ROUTE_LB_NARG_ERROR_MSG,
+    TUNNEL_CLEANUP_NARG_ERROR_MSG, TUNNEL_CMD_ERROR_MSG, TUNNEL_CREATE_NARG_ERROR_MSG,
+    TUNNEL_DELETE_NARG_ERROR_MSG, TUNNEL_INFO_NARG_ERROR_MSG, TUNNEL_RUN_HOSTNAME_WARNING_MSG,
     TUNNEL_RUN_IDENTITY_ERROR_MSG, TUNNEL_RUN_NARG_ERROR_MSG, TUNNEL_TOKEN_FILE_READ_ERROR_PREFIX,
-    TUNNEL_TOKEN_INVALID_MSG, render_short_version, render_version_output, stub_not_implemented,
-    tunnel_run_usage_error,
+    TUNNEL_TOKEN_INVALID_MSG, TUNNEL_TOKEN_NARG_ERROR_MSG, VNET_ADD_NARG_ERROR_MSG,
+    VNET_DELETE_NARG_ERROR_MSG, VNET_UPDATE_NARG_ERROR_MSG, render_short_version, render_version_output,
+    stub_not_implemented, subcommand_usage_error, tunnel_run_usage_error,
 };
 pub use self::types::{
     AccessSubcommand, Cli, Command, GlobalFlags, HelpTarget, IngressSubcommand, IpRouteSubcommand,

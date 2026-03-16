@@ -868,13 +868,103 @@ fn help_flag_alone_routes_to_root_help() {
 }
 
 #[test]
-fn help_overrides_subcommand_context() {
-    // Even if a deeper subcommand like `tunnel run` is parsed,
-    // --help should still resolve to tunnel help (not run-specific).
+fn help_resolves_to_subcommand_level() {
+    // `tunnel run --help` should resolve to per-subcommand help.
     let cli = parse(&[
         surface_contract::TUNNEL_COMMAND,
         surface_contract::TUNNEL_RUN,
         "--help",
     ]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelRun));
+}
+
+#[test]
+fn tunnel_create_help_routes_correctly() {
+    let cli = parse(&["tunnel", "create", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelCreate));
+}
+
+#[test]
+fn tunnel_list_help_routes_correctly() {
+    let cli = parse(&["tunnel", "list", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelList));
+}
+
+#[test]
+fn tunnel_delete_help_routes_correctly() {
+    let cli = parse(&["tunnel", "delete", "-h"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelDelete));
+}
+
+#[test]
+fn tunnel_cleanup_help_routes_correctly() {
+    let cli = parse(&["tunnel", "cleanup", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelCleanup));
+}
+
+#[test]
+fn tunnel_token_help_routes_correctly() {
+    let cli = parse(&["tunnel", "token", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelToken));
+}
+
+#[test]
+fn tunnel_info_help_routes_correctly() {
+    let cli = parse(&["tunnel", "info", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelInfo));
+}
+
+#[test]
+fn tunnel_ready_help_routes_correctly() {
+    let cli = parse(&["tunnel", "ready", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelReady));
+}
+
+#[test]
+fn tunnel_diag_help_routes_correctly() {
+    let cli = parse(&["tunnel", "diag", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelDiag));
+}
+
+#[test]
+fn tunnel_login_help_routes_correctly() {
+    let cli = parse(&["tunnel", "login", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelLogin));
+}
+
+#[test]
+fn tunnel_route_help_routes_correctly() {
+    let cli = parse(&["tunnel", "route", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelRoute));
+}
+
+#[test]
+fn tunnel_route_dns_help_routes_correctly() {
+    let cli = parse(&["tunnel", "route", "dns", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelRouteDns));
+}
+
+#[test]
+fn tunnel_route_ip_help_routes_correctly() {
+    let cli = parse(&["tunnel", "route", "ip", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelRouteIp));
+}
+
+#[test]
+fn tunnel_vnet_help_routes_correctly() {
+    let cli = parse(&["tunnel", "vnet", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelVnet));
+}
+
+#[test]
+fn tunnel_ingress_help_routes_correctly() {
+    let cli = parse(&["tunnel", "ingress", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::TunnelIngress));
+}
+
+#[test]
+fn tunnel_bare_help_routes_to_tunnel() {
+    // `tunnel --help` without a subcommand routes to tunnel-level help.
+    let cli = parse(&["tunnel", "--help"]);
     assert_eq!(cli.command, Command::Help(HelpTarget::Tunnel));
 }

@@ -16,6 +16,23 @@ pub enum HelpTarget {
     Tunnel,
     /// `cloudflared access --help` or `cloudflared help access`.
     Access,
+    // --- Per-subcommand targets ---
+    TunnelCreate,
+    TunnelList,
+    TunnelRun,
+    TunnelDelete,
+    TunnelCleanup,
+    TunnelToken,
+    TunnelInfo,
+    TunnelReady,
+    TunnelDiag,
+    TunnelLogin,
+    TunnelRoute,
+    TunnelRouteDns,
+    TunnelRouteLb,
+    TunnelRouteIp,
+    TunnelVnet,
+    TunnelIngress,
 }
 
 /// Top-level command parsed from the CLI invocation.
@@ -404,6 +421,57 @@ pub struct GlobalFlags {
 
     // --- Proxy DNS (removed) ---
     pub proxy_dns: bool,
+
+    // --- Subcommand: list/info filters ---
+    pub output_format: Option<String>,
+    pub show_deleted: bool,
+    pub name_prefix: Option<String>,
+    pub exclude_name_prefix: Option<String>,
+    pub filter_when: Option<String>,
+    pub show_recently_disconnected: bool,
+    pub sort_by: Option<String>,
+    pub invert_sort: bool,
+
+    // --- Subcommand: create ---
+    pub tunnel_secret: Option<String>,
+
+    // --- Subcommand: delete/cleanup ---
+    pub force: bool,
+    pub connector_id: Option<String>,
+
+    // --- Subcommand: login ---
+    pub login_url: Option<String>,
+    pub callback_url: Option<String>,
+    pub fedramp: bool,
+
+    // --- Subcommand: route ---
+    pub overwrite_dns: bool,
+    pub vnet_id: Option<String>,
+
+    // --- Subcommand: route ip show/list ---
+    pub filter_is_deleted: bool,
+    pub filter_tunnel_id: Option<String>,
+    pub filter_network_subset: Option<String>,
+    pub filter_network_superset: Option<String>,
+    pub filter_comment_is: Option<String>,
+    pub filter_vnet_id: Option<String>,
+
+    // --- Subcommand: vnet ---
+    pub vnet_default: bool,
+    pub vnet_comment: Option<String>,
+    pub vnet_is_default_filter: bool,
+
+    // --- Subcommand: ingress ---
+    pub ingress_json: Option<String>,
+
+    // --- Subcommand: diag ---
+    pub diag_container_id: Option<String>,
+    pub diag_pod_id: Option<String>,
+    pub no_diag_logs: bool,
+    pub no_diag_metrics: bool,
+    pub no_diag_system: bool,
+    pub no_diag_runtime: bool,
+    pub no_diag_network: bool,
 
     // --- Unrecognized but forwarded ---
     /// Flags and arguments not yet handled by the parser.

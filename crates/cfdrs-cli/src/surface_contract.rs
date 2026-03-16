@@ -231,6 +231,78 @@ pub fn tunnel_run_usage_error(message: &str) -> String {
     format!("{message}\nSee 'cloudflared tunnel run --help'.\n")
 }
 
+/// Go baseline: `cliutil.UsageError(...)` in cliutil/errors.go appends
+/// `\nSee 'cloudflared <cmd> --help'.` and exits -1 (shell 255).
+pub fn subcommand_usage_error(cmd_path: &str, message: &str) -> String {
+    format!("{message}\nSee 'cloudflared {cmd_path} --help'.\n")
+}
+
+// --- Subcommand NArg error messages ---
+// Go baseline: each subcommand validates c.NArg() inside its action function.
+// UsageError messages → exit 255; errors.New messages → exit 1.
+
+/// Go baseline: `createCommand()` in subcommands.go.
+pub const TUNNEL_CREATE_NARG_ERROR_MSG: &str =
+    "\"cloudflared tunnel create\" requires exactly 1 argument, the name of tunnel to create.";
+
+/// Go baseline: `infoCommand()` in subcommands.go.
+pub const TUNNEL_INFO_NARG_ERROR_MSG: &str = "\"cloudflared tunnel info\" accepts exactly one argument, the \
+                                              ID or name of the tunnel to get info about.";
+
+/// Go baseline: `deleteCommand()` in subcommands.go.
+pub const TUNNEL_DELETE_NARG_ERROR_MSG: &str =
+    "\"cloudflared tunnel delete\" requires at least 1 argument, the ID or name of the tunnel to delete.";
+
+/// Go baseline: `cleanupCommand()` in subcommands.go.
+pub const TUNNEL_CLEANUP_NARG_ERROR_MSG: &str = "\"cloudflared tunnel cleanup\" requires at least 1 \
+                                                 argument, the IDs of the tunnels to cleanup connections.";
+
+/// Go baseline: `tokenCommand()` in subcommands.go.
+pub const TUNNEL_TOKEN_NARG_ERROR_MSG: &str = "\"cloudflared tunnel token\" requires exactly 1 argument, \
+                                               the name or UUID of tunnel to fetch the credentials token \
+                                               for.";
+
+/// Go baseline: `buildRouteDNSSubcommand()` in subcommands.go.
+pub const ROUTE_DNS_NARG_ERROR_MSG: &str =
+    "This command expects the format \"cloudflared tunnel route dns <tunnel name/id> <hostname>\"";
+
+/// Go baseline: `buildRouteLBSubcommand()` in subcommands.go.
+pub const ROUTE_LB_NARG_ERROR_MSG: &str = "This command expects the format \"cloudflared tunnel route lb \
+                                           <tunnel name/id> <hostname> <load balancer pool>\"";
+
+/// Go baseline: `addRouteCommand()` in ip_route.go → `errors.New`.
+pub const ROUTE_IP_ADD_NARG_ERROR_MSG: &str = "You must supply at least 2 arguments, first the network you \
+                                               wish to route (in CIDR form e.g. 1.2.3.4/32) and then the \
+                                               tunnel ID to proxy with";
+
+/// Go baseline: `deleteRouteCommand()` in ip_route.go → `errors.New`.
+pub const ROUTE_IP_DELETE_NARG_ERROR_MSG: &str =
+    "You must supply exactly one argument, the ID or CIDR of the route you want to delete";
+
+/// Go baseline: `getRouteByIPCommand()` in ip_route.go → `errors.New`.
+pub const ROUTE_IP_GET_NARG_ERROR_MSG: &str = "You must supply exactly one argument, an IP whose route will \
+                                               be queried (e.g. 1.2.3.4 or 2001:0db8:::7334)";
+
+/// Go baseline: `addVirtualNetworkCommand()` in vnets_subcommands.go →
+/// `errors.New`.
+pub const VNET_ADD_NARG_ERROR_MSG: &str =
+    "You must supply at least 1 argument, the name of the virtual network you wish to add.";
+
+/// Go baseline: `deleteVirtualNetworkCommand()` in vnets_subcommands.go →
+/// `errors.New`.
+pub const VNET_DELETE_NARG_ERROR_MSG: &str =
+    "You must supply exactly one argument, either the ID or name of the virtual network to delete";
+
+/// Go baseline: `updateVirtualNetworkCommand()` in vnets_subcommands.go →
+/// `errors.New`. Note: the leading space is present in the Go baseline.
+pub const VNET_UPDATE_NARG_ERROR_MSG: &str =
+    " You must supply exactly one argument, either the ID or (current) name of the virtual network to update";
+
+/// Go baseline: `ingressRuleCommand()` in ingress_subcommands.go →
+/// `errors.New`.
+pub const INGRESS_RULE_NARG_ERROR_MSG: &str =
+    "cloudflared tunnel rule expects a single argument, the URL to test";
+
 /// Go baseline: `tunnelCmdErrorMessage` in cmd/cloudflared/tunnel/cmd.go
 pub const TUNNEL_CMD_ERROR_MSG: &str = "\
 You did not specify any valid additional argument to the cloudflared tunnel command.
