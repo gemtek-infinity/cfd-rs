@@ -249,7 +249,7 @@ During maintenance mode:
 
 ## Local Handoff
 
-[`GCFGR.md`](../GCFGR.md) (root of workspace, gitignored) is the mandatory local file for preserving
+`GCFGR.md` (root of workspace, gitignored) is the mandatory local file for preserving
 session state across context-window compactions and conversation resumptions.
 
 It is NOT canonical repository truth — [`STATUS.md`](../STATUS.md) wins on any conflict.

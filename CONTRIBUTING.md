@@ -70,7 +70,7 @@ When documents conflict, resolve in this order:
 
 ## AI-assisted work
 
-AI contributors should start with [`GCFGR.md`](GCFGR.md) (if it exists) then [`docs/ai-context-routing.md`](docs/ai-context-routing.md).
+AI contributors should start with `GCFGR.md` (if it exists) then [`docs/ai-context-routing.md`](docs/ai-context-routing.md).
 When MCP is available, prefer `status_summary`, `phase5_priority`, `parity_row_details`, `domain_gaps_ranked`, `baseline_source_mapping`, `crate_surface_summary`, and `crate_dependency_graph` before loading larger docs.
 The operational MCP target is debtmap-enabled; if MCP files change, rebuild and smoke that target before trusting MCP again.
 Use [`Justfile`](Justfile) as the normal command surface rather than open-coded cargo chains.
