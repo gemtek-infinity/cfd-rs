@@ -54,6 +54,9 @@ struct ApplicationRuntime {
     protocol_receiver: Option<ProtocolReceiver>,
     stream_response_tx: Option<StreamResponseSender>,
     metrics: Option<metrics::RuntimeMetricsHandle>,
+    /// Guards pidfile write so it fires exactly once, matching Go
+    /// `connectedSignal` + `sync.Once` pattern in `writePidFile`.
+    pidfile_written: bool,
 }
 
 impl ApplicationRuntime {
@@ -102,6 +105,7 @@ impl ApplicationRuntime {
             protocol_receiver,
             stream_response_tx,
             metrics: None,
+            pidfile_written: false,
         }
     }
 

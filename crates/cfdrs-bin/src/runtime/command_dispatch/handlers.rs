@@ -13,10 +13,17 @@ impl ApplicationRuntime {
         let is_resumed = self.status.restart_attempts() > 0;
         self.status.record_timing_service_ready(is_resumed);
 
-        if let Some(pidfile_path) = self.config.pidfile_path()
-            && let Err(error) = write_pidfile(pidfile_path)
+        // Write pidfile exactly once on first connection, matching Go
+        // `connectedSignal` + `sync.Once` pattern in `writePidFile`.
+        if !self.pidfile_written
+            && let Some(pidfile_path) = self.config.pidfile_path()
         {
-            self.status.push_summary(format!("pidfile-write-error: {error}"));
+            match write_pidfile(pidfile_path) {
+                Ok(()) => self.pidfile_written = true,
+                Err(error) => {
+                    self.status.push_summary(format!("pidfile-write-error: {error}"));
+                }
+            }
         }
 
         if self.status.lifecycle_state() == LifecycleState::Starting {

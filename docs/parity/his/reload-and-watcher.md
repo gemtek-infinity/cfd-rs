@@ -292,9 +292,10 @@ in a background goroutine via `writePidFile()`.
 ### Rust State
 
 Runtime service-ready now writes the configured pidfile and removes it during
-shutdown using [crates/cfdrs-his/src/signal.rs](../../../crates/cfdrs-his/src/signal.rs)
+shutdown using [crates/cfdrs-his/src/signal/](../../../crates/cfdrs-his/src/signal/)
 and [crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs](../../../crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs).
-Exact `connectedSignal` timing parity is still open.
+`ConnectedSignal` one-shot type with `std::sync::Once` matches Go `signal.Signal` + `sync.Once`.
+Once-only pidfile guard in `handle_service_ready()` matches Go `writePidFile` timing.
 
 ## Token Lock Files
 
@@ -311,7 +312,7 @@ Purpose: prevent concurrent token fetch races (AUTH-1736).
 
 ### Rust State
 
-Implemented in [crates/cfdrs-his/src/signal.rs](../../../crates/cfdrs-his/src/signal.rs)
+Implemented in [crates/cfdrs-his/src/signal/](../../../crates/cfdrs-his/src/signal/)
 with O_EXCL lock creation, signal-safe cleanup helpers, and local tests.
 
 ## Process Restart (Gracenet)
