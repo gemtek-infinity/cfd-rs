@@ -154,7 +154,7 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-041 | file watcher (inotify) | `watcher/file.go` | fsnotify watcher, triggers on Write events only, shutdown channel | cfdrs-his `watcher.rs` | audited, parity-backed | local tests | none recorded | watch event tests, shutdown tests | critical | `FileWatcher` trait defined; `NotifyFileWatcher` using `notify::RecommendedWatcher` with write-only event filtering and non-blocking shutdown matching Go `fsnotify` behavior; 2 parity tests verify write-event detection and shutdown semantics |
+| HIS-041 | file watcher (inotify) | `watcher/file.go` | fsnotify watcher, triggers on Write events only, shutdown channel | cfdrs-his `watcher.rs`, cfdrs-bin `runtime/tasks/watcher.rs` | audited, parity-backed | local tests | none recorded | watch event tests, shutdown tests | critical | `FileWatcher` trait defined; `NotifyFileWatcher` using `notify::RecommendedWatcher` with write-only event filtering and non-blocking shutdown matching Go `fsnotify` behavior; 2 parity tests verify write-event detection and shutdown semantics; runtime integration wired in `cfdrs-bin`: `spawn_config_watcher()` bridges blocking watcher into async runtime via `spawn_blocking`, `ConfigFileChanged` command reports changes, `shutdown_flag()` enables async cancellation of the blocking loop; re-apply path through `ReloadActionLoop` remains pending (HIS-042 runtime scope) |
 | HIS-042 | config reload action loop | `cmd/cloudflared/app_service.go` `actionLoop()` | receive config updates on channel, create/update/remove services by hash comparison | cfdrs-his `watcher.rs` | audited, parity-backed | local tests | none recorded | reload integration tests, hash comparison tests | critical | `ReloadActionLoop` with channel-driven `run()` matching Go `actionLoop()` select-loop; dispatches `Update`/`Remove`/`Shutdown` actions with `reload_recovery_strategy()` error recovery; parity tests verify multi-action processing, nonfatal-error continuation, fatal-error early stop, and channel-close exit; runtime watcher integration deferred to CLI-001 |
 | HIS-043 | service lifecycle manager | `overwatch/app_manager.go` `AppManager` | add/remove services with hash-based change detection, shutdown old before starting new | cfdrs-his `watcher.rs` | audited, parity-backed | local tests | none recorded | service lifecycle tests | high | `Service` trait matching Go `overwatch.Service` (`name`, `service_type`, `hash`, `shutdown`); `ServiceManager` with hash-based dedup matching Go `AppManager.Add()` — same hash skips, different hash shuts down old before replace; `remove()` shuts down and deletes; parity tests verify add/skip/replace/remove/multi-service semantics |
 | HIS-044 | remote config update | `orchestration/orchestrator.go` `UpdateConfig()` | version-monotonic update, start new origins before closing old, atomic proxy swap via `atomic.Value` | cfdrs-his `watcher.rs` | audited, parity-backed | local tests | none recorded | version ordering tests, atomic swap tests | critical | `InMemoryConfigOrchestrator` with `RwLock` version tracking and monotonicity check matching Go `currentVersion >= version` rejection; `UpdateConfigResponse` type matching Go `pogs.UpdateConfigurationResponse`; initial version `-1`, first valid update `0`; parity tests verify apply-higher, reject-same, reject-lower, initial-version, and version-zero-migration semantics; proxy swap ordering and CDC-backed remote flow remain runtime-integration work |
@@ -295,7 +295,7 @@ Partial with runtime-backed seams: SysV init script (HIS-016,
 HIS-023, template only), local HTTP metrics server (HIS-024 through HIS-031,
 runtime listener plus partial endpoints including `/config`), all diagnostics
 (HIS-032 through HIS-040, types + stub), watcher/reload (HIS-041 through
-HIS-045, concrete reload/orchestrator seams plus deferred watcher wiring), updater (HIS-046, HIS-047,
+HIS-045, concrete reload/orchestrator seams plus runtime watcher wiring in cfdrs-bin), updater (HIS-046, HIS-047,
 traits; HIS-048 and HIS-049 exit codes and package detection now closed), grace period (HIS-059, 30s default plus CLI/runtime
 wiring, but connection-level graceful shutdown still open), double-signal
 (HIS-060, now closed — parity confirmed against actual Go behavior), logging (HIS-063 through HIS-068,
@@ -324,9 +324,8 @@ Note: HIS-053 is the only true `intentional divergence` status. HIS-059 is
 `open gap` despite having the correct constant defined.
 
 Blocked items use owned seams to define the API surface while keeping the
-remaining runtime gaps explicit (diagnostic HTTP breadth, inotify/notify,
-raw sockets). These include HIS-028, HIS-039, HIS-040 (remaining diagnostics
-routes) and HIS-041 (watcher runtime integration in cfdrs-bin).
+remaining runtime gaps explicit (diagnostic HTTP breadth, raw sockets).
+These include HIS-028, HIS-039, HIS-040 (remaining diagnostics routes).
 
 ### Gap ranking by priority
 
@@ -335,7 +334,6 @@ Critical gaps (runtime exists, parity breadth still open):
 - HIS-024: local HTTP metrics server (baseline-backed constant tests landed; container bind mode and startup ordering still open)
 - HIS-025: `/ready` JSON endpoint (baseline-backed JSON shape tests landed; full connection-tracker semantics still open)
 - HIS-027: `/metrics` Prometheus endpoint (config response shape test landed; full baseline registry still open)
-- HIS-041: file watcher (NotifyFileWatcher exists, runtime integration pending)
 - HIS-059: `--grace-period` (baseline-backed edge-case tests landed; connection-level graceful shutdown still open)
 
 High gaps (runtime-backed but incomplete):
