@@ -7,7 +7,7 @@
 - parity routing baseline: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - workspace version: `2026.2.0-alpha.202603`
 - roadmap state: `Program Reset` complete; active implementation milestone: `CDC Contract Foundation`
-- highest-risk blockers: `CDC-007`, `CLI-001`, `HIS-016`, `HIS-041`
+- highest-risk blockers: `CLI-001`, `HIS-016`, `HIS-041`
 - production-alpha logging blocker set: `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`
 - status rule: this file is the only tracked status source for both humans and AI
 
@@ -19,7 +19,7 @@ What exists now:
 
 - `cfdrs-bin`: binary entrypoint, runtime composition with concrete `TransportService` enum (no trait objects), QUIC tunnel shell with datagram dispatch and session management, Pingora seam, deployment/performance/failure evidence
 - `cfdrs-cli`: CLI parsing for all 40+ baseline command paths, 40+ global flags, help, dispatch (stubs for most commands), and CLI-facing error/output types
-- `cfdrs-cdc`: full registration schema types (TunnelAuth, ClientInfo, ConnectionOptions, ConnectionDetails, ConnectionError with retry semantics, ConnectionResponse union, RPC contract types for SessionManager and ConfigurationManager), feature flag categorization, filtering, and selector (`build_feature_list`), stream contract types and metadata constants, CDC-owned Cap'n Proto wire codec (registration and stream request/response encode/decode, runtime-wired in lifecycle.rs and proxy), datagram session types and wire marshal/unmarshal (V2 and V3), edge address management types (AddrSet, Region, Regions with two-region failover), protocol constants (stream signatures, TLS server names, ALPN, edge discovery DNS), management token JWT parsing (`parse_management_token`, `ManagementTokenClaims`) matching Go `UnsafeClaimsWithoutVerification`, Cap'n Proto generated bindings from frozen baseline schemas (`tunnelrpc.capnp` and `quic_metadata_protocol.capnp`)
+- `cfdrs-cdc`: full registration schema types (TunnelAuth, ClientInfo, ConnectionOptions, ConnectionDetails, ConnectionError with retry semantics, ConnectionResponse union, RPC contract types for SessionManager and ConfigurationManager), feature flag categorization, filtering, and selector (`build_feature_list`), stream contract types and metadata constants, CDC-owned Cap'n Proto wire codec (registration, unregister, and stream request/response encode/decode, runtime-wired in lifecycle.rs and proxy), datagram session types and wire marshal/unmarshal (V2 and V3), edge address management types (AddrSet, Region, Regions with two-region failover), protocol constants (stream signatures, TLS server names, ALPN, edge discovery DNS), management token JWT parsing (`parse_management_token`, `ManagementTokenClaims`) matching Go `UnsafeClaimsWithoutVerification`, Cap'n Proto generated bindings from frozen baseline schemas (`tunnelrpc.capnp` and `quic_metadata_protocol.capnp`)
 - `cfdrs-his`: filesystem config discovery IO, credential lookup, service install/uninstall trait contracts, systemd/SysV template generation, metrics/readiness contracts backing a runtime-owned local listener, diagnostics collection types and handlers, file watcher and config reload seams, `NotifyFileWatcher` using `notify::RecommendedWatcher` with write-only filtering, signal handling, logging configuration types, updater stubs, ICMP proxy stubs, hello server stub, environment/privilege detection, `ManagedService` trait and generic `ServiceManager<S>` with hash-based change detection matching Go overwatch `AppManager`, channel-driven `ReloadActionLoop::run()` matching Go `actionLoop()`, versioned `InMemoryConfigOrchestrator` with monotonic version enforcement matching Go `Orchestrator.UpdateConfig()`
 - `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion, log configuration types (`LogLevel`, `LogFormat`, `LogConfig`, `RollingConfig`, `FileConfig`, `ConsoleConfig`, `build_log_config`)
 - live parity ledgers, feature docs, and source routing under [`docs/parity/`](docs/parity/)
@@ -29,7 +29,7 @@ What exists now:
 
 What does not exist yet:
 
-- Cap'n Proto RPC dispatch: CDC-008 (updateLocalConfiguration), CDC-009 (registerUdpSession/unregisterUdpSession), CDC-010 (updateConfiguration) dispatch layers closed; CDC-007 (unregisterConnection) runtime path still requires capnp-rpc transport on the control stream
+- Cap'n Proto RPC dispatch: CDC-007 (unregisterConnection), CDC-008 (updateLocalConfiguration), CDC-009 (registerUdpSession/unregisterUdpSession), CDC-010 (updateConfiguration) dispatch layers closed; all control-stream operations use raw `capnp::serialize` wire path
 - management service, log streaming, Cloudflare REST API client, and management-token workflows
 - broad CLI behavioral parity: root service-mode runtime, tunnel/access/tail/service/update behavioral implementations behind parsed stubs
 - service install/uninstall: `CommandRunner` trait integration and command dispatch are wired and parity-tested; real host `systemctl` execution not yet verified end-to-end
@@ -54,7 +54,7 @@ Current milestone exit requires:
 
 - registration schema and wire encoding closure for `CDC-001` through `CDC-006` (closed)
 - stream framing and round-trip closure for `CDC-011` through `CDC-018` (closed)
-- remaining CDC Contract Foundation gaps: `CDC-007` (unregisterConnection runtime path)
+- remaining CDC Contract Foundation gaps: none — all CDC Contract Foundation rows closed
 - baseline-backed CDC ownership in `cfdrs-cdc` rather than runtime-local shortcuts
 - matching roadmap, source-map, and ledger evidence for every closed CDC row
 

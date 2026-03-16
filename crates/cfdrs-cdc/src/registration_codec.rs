@@ -429,6 +429,37 @@ pub fn encode_registration_response(response: &ConnectionResponse) -> Vec<u8> {
     buf
 }
 
+/// Encode an `UnregisterConnectionRequest` into Cap'n Proto wire format.
+///
+/// CDC-007: `unregisterConnection @1 () -> ()` has zero parameters.
+/// This produces a minimal capnp message with the empty
+/// `unregister_connection_params` struct.
+pub fn encode_unregister_request() -> Vec<u8> {
+    let mut message = ::capnp::message::Builder::new_default();
+    message.init_root::<tunnelrpc_capnp::registration_server::unregister_connection_params::Builder<'_>>();
+
+    let mut buf = Vec::new();
+    ::capnp::serialize::write_message(&mut buf, &message).expect("capnp write to Vec should not fail");
+    buf
+}
+
+/// Parse the response to an `UnregisterConnection` RPC call.
+///
+/// Returns `true` if the data represents a valid (empty)
+/// `unregister_connection_results` capnp message, `false` otherwise.
+/// CDC-007: the RPC returns void, so success is just a parseable message.
+pub fn decode_unregister_response(data: &[u8]) -> bool {
+    let Ok(reader) =
+        ::capnp::serialize::read_message_from_flat_slice(&mut &*data, ::capnp::message::ReaderOptions::new())
+    else {
+        return false;
+    };
+
+    reader
+        .get_root::<tunnelrpc_capnp::registration_server::unregister_connection_results::Reader<'_>>()
+        .is_ok()
+}
+
 /// Parse a `ConnectionResponse` from Cap'n Proto wire format.
 ///
 /// Returns `None` if the data is malformed.
@@ -876,5 +907,35 @@ mod tests {
     fn decode_registration_response_invalid_data() {
         assert!(decode_registration_response(&[]).is_none());
         assert!(decode_registration_response(&[0xff, 0x00]).is_none());
+    }
+
+    // -- CDC-007: UnregisterConnection ------------------------------------
+
+    /// CDC-007: `unregisterConnection @1 () -> ()` encodes to a non-empty
+    /// capnp message despite having zero user-visible parameters.
+    #[test]
+    fn unregister_request_encodes_to_nonempty_capnp() {
+        let encoded = encode_unregister_request();
+        assert!(
+            !encoded.is_empty(),
+            "empty params struct should still produce a capnp segment header"
+        );
+    }
+
+    /// The encoded unregister request round-trips through the response
+    /// decoder when used as both params and results (both are empty structs).
+    #[test]
+    fn unregister_response_decodes_valid_empty_message() {
+        let encoded = encode_unregister_request();
+        assert!(
+            decode_unregister_response(&encoded),
+            "an empty capnp struct message should decode as a valid unregister response"
+        );
+    }
+
+    #[test]
+    fn unregister_response_rejects_invalid_data() {
+        assert!(!decode_unregister_response(&[]));
+        assert!(!decode_unregister_response(&[0xff, 0x00]));
     }
 }

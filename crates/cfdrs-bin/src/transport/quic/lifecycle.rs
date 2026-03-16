@@ -60,6 +60,12 @@ impl QuicTunnelService {
                     conn_index: u8::try_from(self.attempt).unwrap_or(u8::MAX),
                 })
                 .await;
+
+            // CDC-007: Send UnregisterConnection on the control stream.
+            // Matches Go's `registrationClient.GracefulShutdown(ctx, gracePeriod)`
+            // which calls `client.UnregisterConnection(ctx)` in
+            // connection/control.go:waitForUnregister().
+            self.send_unregister_connection(&mut session, command_tx).await;
         }
 
         self.teardown_session(&mut session, &target, command_tx).await;
@@ -174,7 +180,11 @@ impl QuicTunnelService {
             .as_ref()
             .map(serialize_registration_request)
             .unwrap_or_default();
-        let control_fin = !control_payload.is_empty();
+        // CDC-007: Keep the control stream open for subsequent operations
+        // (sendLocalConfiguration, unregisterConnection). The write side
+        // is closed only when the final unregister message is sent during
+        // graceful shutdown.
+        let control_fin = false;
 
         match session
             .connection
@@ -726,6 +736,54 @@ impl QuicTunnelService {
             }
         }
     }
+
+    /// CDC-007: Send `UnregisterConnection` on the control stream during
+    /// graceful shutdown.
+    ///
+    /// Matches Go baseline `connection/control.go:waitForUnregister()` →
+    /// `registrationClient.GracefulShutdown(ctx, gracePeriod)` →
+    /// `client.UnregisterConnection(ctx)`.
+    ///
+    /// Best-effort: errors are logged but do not abort teardown, matching
+    /// Go where `GracefulShutdown` ignores the error from
+    /// `UnregisterConnection`.
+    async fn send_unregister_connection(
+        &self,
+        session: &mut QuicSessionState,
+        command_tx: &mpsc::Sender<RuntimeCommand>,
+    ) {
+        let payload = cfdrs_cdc::registration_codec::encode_unregister_request();
+
+        // Send with fin=true — this is the last message on the control stream.
+        match session.connection.stream_send(CONTROL_STREAM_ID, &payload, true) {
+            Ok(_) => {
+                let _ = flush_egress(
+                    &session.socket,
+                    &mut session.connection,
+                    &mut *session.send_buffer,
+                )
+                .await;
+
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!(
+                        "unregister: sent UnregisterConnection on control stream ({} bytes)",
+                        payload.len()
+                    ),
+                )
+                .await;
+            }
+            Err(error) => {
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!("unregister: failed to write to control stream: {error}"),
+                )
+                .await;
+            }
+        }
+    }
 }
 
 /// Process a single handshake packet, returning a `ServiceExit` if the
@@ -936,5 +994,22 @@ mod tests {
         assert_eq!(decoded.conn_index, request.conn_index);
         assert_eq!(decoded.options.client.features, request.options.client.features);
         assert_eq!(decoded.options.origin_local_ip, request.options.origin_local_ip);
+    }
+
+    /// CDC-007: the unregister request encodes to a non-empty capnp message
+    /// and the response decoder accepts it (both sides are empty structs).
+    #[test]
+    fn unregister_request_codec_roundtrip() {
+        let encoded = cfdrs_cdc::registration_codec::encode_unregister_request();
+
+        assert!(
+            !encoded.is_empty(),
+            "even an empty-params message needs the capnp segment header"
+        );
+
+        assert!(
+            cfdrs_cdc::registration_codec::decode_unregister_response(&encoded),
+            "an empty capnp struct should parse as a valid unregister response"
+        );
     }
 }

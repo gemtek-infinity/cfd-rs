@@ -251,11 +251,14 @@ fn respond_to_registration_stream(
 
     loop {
         match conn.stream_recv(protocol::CONTROL_STREAM_ID, &mut read_buf) {
-            Ok((read, fin)) => {
-                if read == 0 || !fin {
+            Ok((read, _fin)) => {
+                if read == 0 {
                     continue;
                 }
 
+                // The client may keep the control stream open (fin=false) for
+                // subsequent messages (config push, unregister), so we process
+                // the registration as soon as we have data.
                 let _request = cfdrs_cdc::registration_codec::decode_registration_request(&read_buf[..read])
                     .expect("registration request should be valid Cap'n Proto");
                 let response = ConnectionResponse::success(cfdrs_cdc::registration::ConnectionDetails {
@@ -264,7 +267,7 @@ fn respond_to_registration_stream(
                     is_remotely_managed: false,
                 });
                 let payload = serialize_registration_response(&response);
-                let _ = conn.stream_send(protocol::CONTROL_STREAM_ID, &payload, true);
+                let _ = conn.stream_send(protocol::CONTROL_STREAM_ID, &payload, false);
                 flush_test_server_egress(conn, socket, send_buf);
                 return true;
             }
