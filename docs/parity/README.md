@@ -59,6 +59,8 @@ behavior.
 
 Use [`STATUS.md`](../../STATUS.md) for the current priority queue and [`docs/phase-5/roadmap.md`](../phase-5/roadmap.md)
 plus [`docs/phase-5/roadmap-index.csv`](../phase-5/roadmap-index.csv) for implementation order.
+Parity tickets are the row IDs; prefer MCP `next_parity_ticket` and
+`parity_row_details` before opening full ledgers.
 
 ## Source Of Truth
 

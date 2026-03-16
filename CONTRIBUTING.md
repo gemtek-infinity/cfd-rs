@@ -17,6 +17,8 @@ Open deeper leaf docs only when the task needs them.
 - [`docs/phase-5/roadmap-index.csv`](docs/phase-5/roadmap-index.csv) — exact row ownership
 - [`docs/parity/README.md`](docs/parity/README.md) — parity navigation
 - [`docs/parity/source-map.csv`](docs/parity/source-map.csv) — baseline routing
+- parity tickets are the row IDs; prefer MCP `next_parity_ticket` and
+  `parity_row_details` before opening full ledgers
 
 ## Work Loop
 

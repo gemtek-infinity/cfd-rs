@@ -57,32 +57,22 @@ Next milestone after CLI Foundation closure:
 
 Tier 1 lane-blocking rows, in implementation order:
 
-1. `CDC-001`, `CDC-002` — registration schema and wire encoding (closed)
-2. `CDC-011`, `CDC-012` — stream schema and framing (closed)
-3. `CLI-001`, `CLI-002`, `CLI-003` — root invocation, help text,
-   global flags.
-   `CLI-002` and `CLI-003` are closed; `CLI-001` remains partial.
-4. `CLI-007`, `CLI-008`, `CLI-010`, `CLI-012` — service, tunnel root,
-   create, run.
-   `CLI-007` and `CLI-008` are closed; `CLI-010` is blocked on `CDC-033`;
-   `CLI-012` is alpha-limited.
-5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service
-   install/uninstall and systemd templates.
-   Closed; `HIS-016` remains partial.
-6. `HIS-024`, `HIS-025`, `HIS-026`, `HIS-027` — local metrics,
-   readiness, healthcheck, and Prometheus exposure.
-   Closed; exact parity details still matter to the closure story.
-7. `HIS-041`, `HIS-042`, `HIS-043`, `HIS-044`, `HIS-045` — file watcher,
-   reload loop, service manager, remote config update, reload recovery.
-   Closed; re-apply through `ReloadActionLoop` remains pending.
-8. logging blocker set — `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`,
-   `CDC-026`, `CDC-038`, `HIS-036`.
-   Keep this set explicit while closing CLI Foundation rows.
-9. `CDC-033`, `CDC-034` — Cloudflare REST API client and response envelope
-10. `cloudflare-rs` remains gate-only for `CDC-033`, `CDC-034`, `CDC-038`
-    and dependent CLI flows; no dependency admission during prep
-11. final milestone: `Performance Architecture Overhaul` after proof closure
-    reruns cleanly
+1. `CLI-001` — root invocation service-mode wrapper and runtime composition
+   honesty against the frozen baseline
+2. `CLI-009`, `CLI-010`, `CLI-011`, `CLI-012`, `CLI-013`, `CLI-014`,
+   `CLI-015`, `CLI-019`, `CLI-020`, `CLI-032` —
+   remaining CLI Foundation behavioral dispatch rows; `CLI-010` and
+   `CLI-012` still depend on CDC runtime and API surfaces
+3. `HIS-016` — SysV init script generation remains the last open Host and
+   Runtime Foundation row and a proof-closure blocker
+4. `CDC-033`, `CDC-034`, `CDC-038` — Cloudflare REST API client, response
+   envelope, and management-token API surfaces gating command closure and
+   log-streaming parity
+5. `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `HIS-036` —
+   explicit cross-domain logging blocker set; keep it visible while CLI
+   Foundation closes
+6. `HIS-059`, `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
+   remaining command-linked host/runtime rows after CLI Foundation
 
 ## Parity Snapshot
 
@@ -100,7 +90,7 @@ Closed breakdown:
 - CLI: 12 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
 - CDC: 29 `audited, parity-backed`
-- HIS: 44 `audited, parity-backed` + 4 `closed` +
+- HIS: 48 `audited, parity-backed` +
   1 `audited, intentional divergence` (`HIS-053`)
 
 ## Test Snapshot

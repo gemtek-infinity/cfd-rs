@@ -52,8 +52,10 @@ Preferred values:
 - weak
 - partial
 - parity-backed
+- baseline-backed tests
 - compare-backed
 - local tests
+- not applicable
 
 If a new value is needed later, add it deliberately and keep it short.
 
@@ -62,10 +64,12 @@ If a new value is needed later, add it deliberately and keep it short.
 Preferred values:
 
 - none recorded
+- closed
 - open gap
 - intentional divergence
 - unknown
 - blocked
+- not applicable
 
 ## Audited Checklist
 
@@ -127,10 +131,10 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-024 | local HTTP metrics server | `metrics/metrics.go` | bind `localhost:0` (host) or `0.0.0.0:0` (container), try ports 20241-20245, ReadTimeout=10s, WriteTimeout=10s | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | closed | parity-backed | none | bind tests, port fallback tests | critical | runtime binds a local axum listener using `localhost:0` (host) or `0.0.0.0:0` (container) with known port fallback range 20241-20245 and 10s read/write timeouts; `is_container_runtime` flag selects unspecified-address binding matching Go baseline; parity tests verify default addresses, port fallback range, read/write timeouts, and container-mode all-interfaces binding |
-| HIS-025 | `/ready` JSON endpoint | `metrics/readiness.go` `ReadyServer` | JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}`, HTTP 200 if connections > 0, HTTP 503 otherwise | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs`, cfdrs-bin `runtime/state/status.rs` | closed | parity-backed | none | readiness HTTP tests, response shape tests, connection tracker tests | critical | runtime serves `/ready` with baseline JSON shape and 200/503 semantics; `active_connections` tracks per-connection state with Go `ConnTracker` semantics: increment on `RegistrationObserved`, decrement on `Reconnecting`/`Unregistering`/`BridgeClosed` with saturating arithmetic; 6 parity tests verify increment, decrement, underflow safety, and register/disconnect cycles |
-| HIS-026 | `/healthcheck` endpoint | `metrics/metrics.go` | return `OK\n` as text/plain | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | closed | parity-backed | none | liveness probe tests | high | runtime serves `/healthcheck` as `text/plain; charset=utf-8` with body `OK\n`; parity test confirms exact status 200, content-type header, and response body matching Go baseline |
-| HIS-027 | `/metrics` Prometheus endpoint | `metrics/metrics.go` `promhttp.Handler()` | Prometheus text format, `build_info` gauge with goversion/type/revision/version labels | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | closed | parity-backed | none | metrics format tests, build_info label tests, metric name inventory tests | critical | runtime serves Prometheus text via axum with `prometheus-client` registry; `build_info` and readiness gauges registered; `baseline_metrics` module inventories all 19 Go Prometheus metric names with grouping (`cloudflared_tunnel_*`, `cloudflared_config_*`, `cloudflared_tcp_*`, `cloudflared_proxy_*`, plus `build_info` and `tunnel_ids` without namespace); 5 parity tests verify count, uniqueness, and namespace prefix consistency |
+| HIS-024 | local HTTP metrics server | `metrics/metrics.go` | bind `localhost:0` (host) or `0.0.0.0:0` (container), try ports 20241-20245, ReadTimeout=10s, WriteTimeout=10s | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | parity-backed | none recorded | bind tests, port fallback tests | critical | runtime binds a local axum listener using `localhost:0` (host) or `0.0.0.0:0` (container) with known port fallback range 20241-20245 and 10s read/write timeouts; `is_container_runtime` flag selects unspecified-address binding matching Go baseline; parity tests verify default addresses, port fallback range, read/write timeouts, and container-mode all-interfaces binding |
+| HIS-025 | `/ready` JSON endpoint | `metrics/readiness.go` `ReadyServer` | JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}`, HTTP 200 if connections > 0, HTTP 503 otherwise | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs`, cfdrs-bin `runtime/state/status.rs` | audited, parity-backed | parity-backed | none recorded | readiness HTTP tests, response shape tests, connection tracker tests | critical | runtime serves `/ready` with baseline JSON shape and 200/503 semantics; `active_connections` tracks per-connection state with Go `ConnTracker` semantics: increment on `RegistrationObserved`, decrement on `Reconnecting`/`Unregistering`/`BridgeClosed` with saturating arithmetic; 6 parity tests verify increment, decrement, underflow safety, and register/disconnect cycles |
+| HIS-026 | `/healthcheck` endpoint | `metrics/metrics.go` | return `OK\n` as text/plain | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | parity-backed | none recorded | liveness probe tests | high | runtime serves `/healthcheck` as `text/plain; charset=utf-8` with body `OK\n`; parity test confirms exact status 200, content-type header, and response body matching Go baseline |
+| HIS-027 | `/metrics` Prometheus endpoint | `metrics/metrics.go` `promhttp.Handler()` | Prometheus text format, `build_info` gauge with goversion/type/revision/version labels | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | parity-backed | none recorded | metrics format tests, build_info label tests, metric name inventory tests | critical | runtime serves Prometheus text via axum with `prometheus-client` registry; `build_info` and readiness gauges registered; `baseline_metrics` module inventories all 19 Go Prometheus metric names with grouping (`cloudflared_tunnel_*`, `cloudflared_config_*`, `cloudflared_tcp_*`, `cloudflared_proxy_*`, plus `build_info` and `tunnel_ids` without namespace); 5 parity tests verify count, uniqueness, and namespace prefix consistency |
 | HIS-028 | `/quicktunnel` endpoint | `metrics/metrics.go` | JSON `{"hostname":"..."}` with quick tunnel URL | cfdrs-his `metrics_server.rs` | audited, partial | local tests | blocked | quicktunnel response tests | medium | `QuickTunnelResponse` type with serialization tests; 1 parity test (`quick_tunnel_serializes`); no HTTP endpoint |
 | HIS-029 | `/config` endpoint | orchestrator serving versioned config | JSON `{"version":N,"config":{ingress, warp-routing, originRequest}}` | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | config endpoint tests | medium | runtime now serves `/config` with versioned JSON derived from the current normalized config; CDC-backed orchestrator semantics and remote-update parity remain open |
 | HIS-030 | `/debug/pprof/*` endpoints | `http.DefaultServeMux` pprof | binary pprof format, auth disabled (`trace.AuthRequest` returns true) | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | pprof endpoint tests | low | runtime now exposes an explicit deferred `501` boundary for `/debug/pprof/*`; real profiling payloads remain open |

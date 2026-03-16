@@ -87,6 +87,7 @@ Never claim parity from Rust code shape alone.
 - `file_metadata`
 - `status_summary`
 - `phase5_priority`
+- `next_parity_ticket`
 - `parity_row_details`
 - `domain_gaps_ranked`
 - `baseline_source_mapping`
@@ -119,11 +120,15 @@ Never claim parity from Rust code shape alone.
 - use `status_summary` as the default startup entry for repo truth and
   per-domain parity progress
 - use `phase5_priority` for the current lane-blocking queue
+- use `next_parity_ticket` for the next compact parity work item; parity
+  tickets are the row IDs
 - use `crate_dependency_graph` for the workspace dependency graph and
   architecture-policy verdict
 
 ### Parity and milestone work
 
+- parity tickets are row IDs such as `CLI-001`, `CDC-024`, and `HIS-059`
+- use `next_parity_ticket` when you want the next actionable row-ID ticket
 - use `parity_row_details` when you already know the ledger row ID
 - use `domain_gaps_ranked` when you need bounded ranked work inside one domain
 - use `baseline_source_mapping` to jump from a row ID to frozen baseline

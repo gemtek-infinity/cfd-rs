@@ -30,6 +30,7 @@ pub const CORE_TOOL_NAMES: &[&str] = &[
     "file_metadata",
     "status_summary",
     "phase5_priority",
+    "next_parity_ticket",
     "parity_row_details",
     "domain_gaps_ranked",
     "baseline_source_mapping",
@@ -111,6 +112,12 @@ struct FileMetadataRequest {
 #[derive(Debug, Deserialize, JsonSchema)]
 struct ParityRowDetailsRequest {
     row_id: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct NextParityTicketRequest {
+    domain: Option<String>,
+    include_blocked: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -400,9 +407,10 @@ impl ServerHandler for CfdRsMemory {
         let mut info = ServerInfo::default();
         info.instructions = Some(
             "Read-only repository memory server. Start with `status_summary` for repo truth, per-domain \
-             parity progress, and the priority queue. Use `domain_gaps_ranked` for bounded ranked work \
-             inside one domain with partial vs absent breakdown. Use `parity_row_details` for one exact \
-             row, `baseline_source_mapping` for frozen-source routing, and `crate_surface_summary` or \
+             parity progress, and the priority queue. Use `next_parity_ticket` for the next compact row-ID \
+             work item, `domain_gaps_ranked` for bounded ranked work inside one domain with partial vs \
+             absent breakdown, and `parity_row_details` for one exact row drilldown. Use \
+             `baseline_source_mapping` for frozen-source routing, and `crate_surface_summary` or \
              `crate_dependency_graph` before broad code scans. Use `get_context_snapshot`, \
              `get_context_bundle`, or `get_context_brief` for compact routing, and widen to direct file \
              reads only when the first MCP answer is insufficient. The required operational server surface \

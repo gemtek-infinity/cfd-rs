@@ -1,4 +1,7 @@
 use super::ParityRowRecord;
+pub const CLOSED_RUST_STATUSES: &[&str] = &["audited, parity-backed", "audited, intentional divergence"];
+pub const PARTIAL_RUST_STATUSES: &[&str] = &["audited, partial"];
+pub const NOT_AUDITED_RUST_STATUSES: &[&str] = &["not audited"];
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -22,22 +25,6 @@ pub(super) fn value_or_empty(row: &HashMap<String, String>, key: &str) -> String
 
 pub(super) fn normalize_row_id(row_id: &str) -> String {
     row_id.trim().to_uppercase()
-}
-
-pub(super) fn domain_for_row(row_id: &str) -> Result<String, String> {
-    if row_id.starts_with("CLI-") {
-        return Ok("CLI".to_string());
-    }
-
-    if row_id.starts_with("CDC-") {
-        return Ok("CDC".to_string());
-    }
-
-    if row_id.starts_with("HIS-") {
-        return Ok("HIS".to_string());
-    }
-
-    Err(format!("unknown row id domain: {row_id}"))
 }
 
 pub(super) fn normalize_domain(domain: &str) -> Result<String, String> {
@@ -72,12 +59,46 @@ pub(super) fn collect_source_paths(paths: &[String]) -> Vec<String> {
 }
 
 pub(super) fn is_closed_row(row: &ParityRowRecord) -> bool {
-    matches!(
-        row.rust_status_now.as_str(),
-        "audited, parity-backed" | "audited, intentional divergence"
-    )
+    is_closed_status(&row.rust_status_now)
+}
+
+pub(super) fn is_closed_status(status: &str) -> bool {
+    CLOSED_RUST_STATUSES.contains(&status.trim())
 }
 
 pub(super) fn is_partial_status(status: &str) -> bool {
-    status.contains("partial") || status.contains("minimal")
+    PARTIAL_RUST_STATUSES.contains(&status.trim())
+}
+
+pub(super) fn is_not_audited_status(status: &str) -> bool {
+    NOT_AUDITED_RUST_STATUSES.contains(&status.trim())
+}
+
+pub(super) fn is_row_id(value: &str) -> bool {
+    let normalized = value.trim();
+    normalized.len() == 7
+        && matches!(&normalized[0..3], "CLI" | "CDC" | "HIS")
+        && normalized.as_bytes().get(3) == Some(&b'-')
+        && normalized[4..].chars().all(|ch| ch.is_ascii_digit())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_closed_status, is_not_audited_status, is_partial_status};
+
+    #[test]
+    fn closed_statuses_match_canonical_vocabulary() {
+        assert!(is_closed_status("audited, parity-backed"));
+        assert!(is_closed_status("audited, intentional divergence"));
+        assert!(!is_closed_status("audited, partial"));
+        assert!(!is_closed_status("not audited"));
+    }
+
+    #[test]
+    fn partial_and_not_audited_statuses_are_exact() {
+        assert!(is_partial_status("audited, partial"));
+        assert!(!is_partial_status("blocked"));
+        assert!(is_not_audited_status("not audited"));
+        assert!(!is_not_audited_status("audited, absent"));
+    }
 }

@@ -11,12 +11,14 @@ This file keeps only local agent guardrails.
 - Then read [`docs/ai-context-routing.md`](docs/ai-context-routing.md).
 - [`STATUS.md`](STATUS.md) is the only tracked status file.
 - Use MCP-first startup tools:
-  `status_summary`, `phase5_priority`, `parity_row_details`,
+  `status_summary`, `phase5_priority`, `next_parity_ticket`,
+  `parity_row_details`,
   `domain_gaps_ranked`, `baseline_source_mapping`,
   `crate_surface_summary`, `crate_dependency_graph`.
 - Use compact routing tools:
   `get_context_snapshot`, `get_context_bundle`, `get_context_brief`.
 - The operational debtmap-enabled MCP target is the normal startup surface.
+- Parity tickets are the row IDs (`CLI-001`, `CDC-024`, `HIS-059`).
 
 ## Local Guardrails
 

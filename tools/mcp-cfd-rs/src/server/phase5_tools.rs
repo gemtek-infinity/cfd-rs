@@ -1,6 +1,6 @@
 use super::{
-    BaselineSourceMappingRequest, CfdRsMemory, DomainGapsRankedRequest, EmptyRequest, Parameters,
-    ParityRowDetailsRequest, log, phase5, to_json,
+    BaselineSourceMappingRequest, CfdRsMemory, DomainGapsRankedRequest, EmptyRequest,
+    NextParityTicketRequest, Parameters, ParityRowDetailsRequest, log, phase5, to_json,
 };
 use rmcp::{tool, tool_router};
 
@@ -37,6 +37,36 @@ impl CfdRsMemory {
             Err(error) => {
                 span.error(&error);
                 to_json(serde_json::json!({ "error": error }))
+            }
+        }
+    }
+
+    #[tool(
+        description = "Return the next parity row-ID work item, using STATUS.md priority rows first and \
+                       then blocker-aware gap ranking."
+    )]
+    async fn next_parity_ticket(
+        &self,
+        Parameters(NextParityTicketRequest {
+            domain,
+            include_blocked,
+        }): Parameters<NextParityTicketRequest>,
+    ) -> String {
+        let span = log::ToolSpan::start("next_parity_ticket");
+        let include_blocked = include_blocked.unwrap_or(false);
+
+        match phase5::next_parity_ticket(&self.repo_root, domain.as_deref(), include_blocked) {
+            Ok(ticket) => {
+                span.done(&format!("row_id={} domain={}", ticket.row_id, ticket.domain));
+                to_json(ticket)
+            }
+            Err(error) => {
+                span.error(&error);
+                to_json(serde_json::json!({
+                    "error": error,
+                    "domain": domain,
+                    "include_blocked": include_blocked,
+                }))
             }
         }
     }

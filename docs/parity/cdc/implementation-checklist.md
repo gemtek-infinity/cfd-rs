@@ -49,6 +49,7 @@ Preferred values:
 - weak
 - partial
 - parity-backed
+- baseline-backed tests
 - compare-backed
 - local tests
 

@@ -29,7 +29,7 @@ Do not load broad top-level docs by default.
 ## Preferred repo tooling
 
 - prefer repo-owned tooling over hand-crafted local command sequences when a Just recipe, MCP tool, or checked-in helper already exists
-- for startup and routing, prefer MCP tools first: `status_summary`, `phase5_priority`, `crate_dependency_graph`, `domain_gaps_ranked`, `parity_row_details`, and `baseline_source_mapping`
+- for startup and routing, prefer MCP tools first: `status_summary`, `phase5_priority`, `next_parity_ticket`, `crate_dependency_graph`, `domain_gaps_ranked`, `parity_row_details`, and `baseline_source_mapping`
 - for validation, prefer `just validate-pr` as the default full gate instead of open-coded `cargo fmt`/`cargo clippy`/`cargo test` chains
 - for formatting only, prefer `just fmt`
 - for narrower validation, prefer the existing Just recipes: `just validate-governance`, `just validate-app`, `just validate-tools`, `just validate-debtmap`, `just mcp-smoke`, and `just mcp-smoke-maintenance`
@@ -40,10 +40,11 @@ Do not load broad top-level docs by default.
 ## MCP-first rule
 
 If MCP is available, use the startup/routing MCP tools first.
-The required operational MCP surface is 25 tools (18 core + 7 debtmap):
+The required operational MCP surface is 26 tools (19 core + 7 debtmap):
 
 - `status_summary` for startup truth and per-domain parity progress
 - `phase5_priority` for the active queue
+- `next_parity_ticket` for the next compact parity work item; parity tickets are row IDs such as `CLI-001`
 - `crate_dependency_graph` for the workspace dependency graph and architecture-policy verdict
 - `parity_row_details` or `domain_gaps_ranked` for parity work — `domain_gaps_ranked` includes partial vs absent breakdown
 - `baseline_source_mapping` for frozen-source routing
