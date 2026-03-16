@@ -9,9 +9,10 @@ Authoritative rows: `CLI-003`, `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`,
 
 ## Ownership
 
+- `cfdrs-shared` owns log configuration types (`LogLevel`, `LogFormat`, `LogConfig`, `RollingConfig`, `FileConfig`, `ConsoleConfig`, `build_log_config`, permission constants) — see ADR-0007
 - `cfdrs-cli` owns logging flags, aliases, env bindings, help text, and user-visible CLI entry semantics
-- `cfdrs-his` owns stderr/file sinks, rolling rotation, permissions, journald/systemd behavior, and host log collection
-- `cfdrs-cdc` owns management-token scope, `/logs` authentication, WebSocket protocol, filters, sampling, close codes, and host-details upstream flow
+- `cfdrs-his` owns stderr/file sinks, rolling rotation, journald/systemd behavior, host log collection, and `LogSink` trait
+- `cfdrs-cdc` owns management-token scope, `/logs` authentication, WebSocket protocol, filters, sampling, close codes, host-details upstream flow, and wire-protocol `LogLevel`
 
 ## CLI Contract
 
@@ -48,10 +49,19 @@ Current Rust slice:
 - stderr remains the default runtime sink
 - `--logfile` now opens and appends to the requested file while still mirroring stderr
 - `--log-directory` and config `logDirectory` now select a local `cloudflared.log` target
-- local rolling rotation now enforces the admitted max-size/max-backups/max-age surface for file sinks
+- local rolling rotation enforces the admitted max-size/max-backups/max-age surface with backup-count enforcement tests
 - `--log-format-output` now switches the runtime subscriber between text and JSON output
 - `--loglevel` now drives runtime log filtering, and `--transport-loglevel` can widen the effective verbosity
-- exact lumberjack-compatible rotation semantics, journald/systemd local sinks, and management `/logs` streaming remain open gaps
+- conditional `tracing_journald` layer activates when `JOURNAL_STREAM` is set (systemd-launched)
+- `sd_notify::notify` sends `READY=1` matching Go `daemon.SdNotify`
+- management `/logs` WebSocket streaming remains pending (CDC-026)
+
+Local format divergence:
+
+- local log output uses `tracing_subscriber` formatters (`.compact()` for text, `.json()` for JSON)
+- this intentionally differs from Go's zerolog field names (`time`, `level`, `message`)
+- local format is not part of the upstream contract — upstream format parity is tracked under CDC-026
+- backup file naming uses numeric suffixes (`.1`, `.2`) instead of lumberjack timestamp naming — local-only concern
 
 ## Host Collection Contract
 

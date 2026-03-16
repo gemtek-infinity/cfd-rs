@@ -5,9 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
-use cfdrs_his::logging::{
-    LOG_DIR_PERM_MODE, LOG_FILE_PERM_MODE, LogConfig, LogFormat, LogLevel, RollingConfig,
-};
+use cfdrs_shared::{LOG_DIR_PERM_MODE, LOG_FILE_PERM_MODE, LogConfig, LogFormat, LogLevel, RollingConfig};
 use tracing::Level;
 use tracing_subscriber::fmt;
 use tracing_subscriber::fmt::writer::MakeWriter;
@@ -348,7 +346,7 @@ mod tests {
     #[test]
     fn runtime_log_path_prefers_explicit_file() {
         let config = LogConfig {
-            file: Some(cfdrs_his::logging::FileConfig {
+            file: Some(cfdrs_shared::FileConfig {
                 dirname: PathBuf::from("/tmp"),
                 filename: "cloudflared.log".to_owned(),
             }),
@@ -429,6 +427,59 @@ mod tests {
         assert!(root.join("cloudflared.log.1").exists());
 
         let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn rotating_sink_enforces_max_backups_limit() {
+        let root = std::env::temp_dir().join(format!("cfdrs-backup-limit-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).expect("temp dir should exist");
+
+        let mut sink = RotatingFile::new(RollingConfig {
+            dirname: root.clone(),
+            filename: "cloudflared.log".to_owned(),
+            max_size_mb: 1,
+            max_backups: 3,
+            max_age_days: 0,
+        })
+        .expect("rotating file should open");
+
+        // Trigger 4 rotations — with max_backups=3, oldest is pruned.
+        let payload = vec![b'x'; 1024 * 1024];
+
+        for _ in 0..4 {
+            sink.write_all(&payload).expect("write should succeed");
+            sink.write_all(b"y").expect("overflow write should rotate");
+        }
+
+        assert!(root.join("cloudflared.log").exists());
+        assert!(root.join("cloudflared.log.1").exists());
+        assert!(root.join("cloudflared.log.2").exists());
+        assert!(root.join("cloudflared.log.3").exists());
+        assert!(
+            !root.join("cloudflared.log.4").exists(),
+            "backup count should not exceed max_backups=3"
+        );
+
+        let _ = fs::remove_dir_all(root);
+    }
+
+    // --- HIS-065: backup naming is numeric, not lumberjack timestamps ---
+
+    #[test]
+    fn backup_naming_uses_numeric_suffixes_not_lumberjack_timestamps() {
+        // Go lumberjack: cloudflared-2024-01-15T10-30-00.000.log
+        // Rust: cloudflared.log.1, cloudflared.log.2, ...
+        // Intentional local divergence — backup filenames are not sent
+        // upstream. Rotation behavior (size, count, age) matches Go.
+        assert_eq!(
+            backup_path(Path::new("/var/log/cloudflared/cloudflared.log"), 1),
+            PathBuf::from("/var/log/cloudflared/cloudflared.log.1")
+        );
+        assert_eq!(
+            backup_path(Path::new("/var/log/cloudflared/cloudflared.log"), 5),
+            PathBuf::from("/var/log/cloudflared/cloudflared.log.5")
+        );
     }
 
     // --- HIS-063: --logfile takes precedence over --log-directory ---

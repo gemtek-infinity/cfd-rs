@@ -8,7 +8,7 @@
 - workspace version: `2026.2.0-alpha.202603`
 - roadmap state: `Program Reset` complete; active implementation milestone: `CDC Contract Foundation`
 - highest-risk blockers: `CDC-007`, `CLI-001`, `HIS-016`, `HIS-041`, `HIS-042`
-- production-alpha logging blocker set: `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-050`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067`
+- production-alpha logging blocker set: `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`
 - status rule: this file is the only tracked status source for both humans and AI
 
 ## Current Reality
@@ -21,7 +21,7 @@ What exists now:
 - `cfdrs-cli`: CLI parsing for all 40+ baseline command paths, 40+ global flags, help, dispatch (stubs for most commands), and CLI-facing error/output types
 - `cfdrs-cdc`: full registration schema types (TunnelAuth, ClientInfo, ConnectionOptions, ConnectionDetails, ConnectionError with retry semantics, ConnectionResponse union, RPC contract types for SessionManager and ConfigurationManager), feature flag categorization, filtering, and selector (`build_feature_list`), stream contract types and metadata constants, CDC-owned Cap'n Proto wire codec (registration and stream request/response encode/decode, runtime-wired in lifecycle.rs and proxy), datagram session types and wire marshal/unmarshal (V2 and V3), edge address management types (AddrSet, Region, Regions with two-region failover), protocol constants (stream signatures, TLS server names, ALPN, edge discovery DNS), management token JWT parsing (`parse_management_token`, `ManagementTokenClaims`) matching Go `UnsafeClaimsWithoutVerification`, Cap'n Proto generated bindings from frozen baseline schemas (`tunnelrpc.capnp` and `quic_metadata_protocol.capnp`)
 - `cfdrs-his`: filesystem config discovery IO, credential lookup, service install/uninstall trait contracts, systemd/SysV template generation, metrics/readiness contracts backing a runtime-owned local listener, diagnostics collection types and handlers, file watcher and config reload seams, `NotifyFileWatcher` using `notify::RecommendedWatcher` with write-only filtering, signal handling, logging configuration types, updater stubs, ICMP proxy stubs, hello server stub, environment/privilege detection
-- `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion
+- `cfdrs-shared`: config, credentials, ingress, discovery constants, error taxonomy, artifact conversion, log configuration types (`LogLevel`, `LogFormat`, `LogConfig`, `RollingConfig`, `FileConfig`, `ConsoleConfig`, `build_log_config`)
 - live parity ledgers, feature docs, and source routing under [`docs/parity/`](docs/parity/)
 - frozen Go baseline in [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - debtmap-enabled MCP server surface for bounded repo truth and routing
@@ -35,7 +35,7 @@ What does not exist yet:
 - service install/uninstall: `CommandRunner` trait integration and command dispatch are wired and parity-tested; real host `systemctl` execution not yet verified end-to-end
 - local HTTP endpoints: runtime now binds local `/ready`, `/healthcheck`, `/metrics`, `/config`, and `/diag/configuration` via axum with `prometheus-client` registry, baseline-backed container bind mode, Go `ConnTracker` connection counting, and full 19-metric Prometheus name inventory; quicktunnel, `/diag/system`, `/diag/tunnel`, and real pprof endpoints remain pending
 - config reload and file watcher: reload action loop and in-memory orchestrator seams now exist; `NotifyFileWatcher` using `notify::RecommendedWatcher` with write-only filtering is wired and parity-tested; runtime watcher integration and service-hash comparison remain pending
-- logging sinks: runtime now honors `--logfile`, `--log-directory`, `--log-format-output`, global log level wiring, and bounded file rotation; layered subscriber includes conditional `tracing_journald` layer when running under systemd; `sd_notify::notify` sends `READY=1` matching Go `daemon.SdNotify`; upstream management log streaming remains pending
+- logging sinks: local sink surface parity-backed — `--logfile`, `--log-directory`, `--log-format-output`, global log level, bounded file rotation with backup-count enforcement, conditional `tracing_journald` layer, `sd_notify::notify` `READY=1`; local output format intentionally differs from Go zerolog (upstream format parity is CDC-026); upstream management `/logs` streaming remains pending
 - ICMP proxy, hello server, graceful restart: trait stubs exist; real implementations pending
 - performance-architectural overhaul of the final admitted hot paths
 
@@ -73,7 +73,7 @@ Tier 1 lane-blocking rows, in implementation order:
 5. `HIS-012` through `HIS-015`, `HIS-017`, `HIS-022` — service install/uninstall and systemd templates (closed; HIS-016 SysV fallback still partial; real host `CommandRunner` execution still needs end-to-end verification)
 6. `HIS-024`, `HIS-025`, `HIS-026`, `HIS-027` — local metrics, readiness, healthcheck, and Prometheus exposure (closed; container bind mode, Go ConnTracker connection counting, exact healthcheck parity, and full 19-metric name inventory)
 7. `HIS-041`, `HIS-042`, `HIS-044` — file watcher, reload loop, remote config update (trait contracts exist; integration pending)
-8. logging blocker set — `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`, `HIS-063`, `HIS-064`, `HIS-065`, `HIS-067` (CLI-003 and HIS-068 closed)
+8. logging blocker set — `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036` (CLI-003, HIS-050, HIS-063, HIS-064, HIS-065, HIS-067, HIS-068 closed)
 9. `CDC-033`, `CDC-034` — Cloudflare REST API client and response envelope
 10. `cloudflare-rs` remains gate-only for `CDC-033`, `CDC-034`, `CDC-038` and dependent CLI flows; no dependency admission during prep
 11. final milestone: `Performance Architecture Overhaul` after proof closure reruns cleanly
@@ -95,9 +95,10 @@ Ownership rules:
 - Cloudflare contract work lands in `cfdrs-cdc`
 - host/runtime interaction work lands in `cfdrs-his`
 - shared types stay in `cfdrs-shared` only when more than one top-level domain needs them
+- `cfdrs-shared` owns log configuration types (`LogLevel`, `LogFormat`, `LogConfig`, `RollingConfig`, `FileConfig`, `ConsoleConfig`, `build_log_config`, permission constants) — see ADR-0007
 - `cfdrs-cli` owns logging flags, help text, aliases, and env bindings
-- `cfdrs-his` owns local sinks, file rotation, journald/systemd behavior, and host collection
-- `cfdrs-cdc` owns management token scope, `/logs` protocol, and upstream logging contracts
+- `cfdrs-his` owns local sinks, file rotation, journald/systemd behavior, host collection, and `LogSink` trait
+- `cfdrs-cdc` owns management token scope, `/logs` protocol, upstream logging contracts, and wire-protocol `LogLevel`
 - performance work must preserve these boundaries; it may optimize seams but must not collapse the workspace into a convenience monolith
 
 ## Canonical Links
