@@ -78,6 +78,25 @@ Tier 1 lane-blocking rows, in implementation order:
 10. `cloudflare-rs` remains gate-only for `CDC-033`, `CDC-034`, `CDC-038` and dependent CLI flows; no dependency admission during prep
 11. final milestone: `Performance Architecture Overhaul` after proof closure reruns cleanly
 
+## Parity Progress Summary
+
+Counts from the `Rust status now` column in each domain ledger.
+
+| Domain | Total | Closed | Partial | Not audited | % Closed |
+| --- | --- | --- | --- | --- | --- |
+| CLI | 32 | 13 | 19 | 0 | 41% |
+| CDC | 44 | 29 | 15 | 0 | 66% |
+| HIS | 74 | 49 | 23 | 2 | 66% |
+| **Total** | **150** | **91** | **57** | **2** | **61%** |
+
+Closed breakdown:
+
+- CLI: 12 `audited, parity-backed` + 1 `audited, intentional divergence` (CLI-031)
+- CDC: 29 `audited, parity-backed`
+- HIS: 44 `audited, parity-backed` + 4 `closed` + 1 `audited, intentional divergence` (HIS-053)
+
+Test suite: 870 tests passing across 5 app crates (`cfdrs-bin`, `cfdrs-cdc`, `cfdrs-cli`, `cfdrs-his`, `cfdrs-shared`).
+
 ## Architecture Contract
 
 Allowed crate dependency direction:
