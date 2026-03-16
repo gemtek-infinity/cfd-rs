@@ -20,7 +20,6 @@ Start here:
 
 - [`docs/README.md`](docs/README.md) — canonical human documentation map
 - [`STATUS.md`](STATUS.md) — current blockers, parity snapshot, tests
-- [`REWRITE_CHARTER.md`](REWRITE_CHARTER.md) — non-negotiables and lane
 - [`Justfile`](Justfile) — command surface
 
 ## Repository Shape
@@ -32,8 +31,6 @@ Start here:
 - [`crates/cfdrs-shared`](crates/cfdrs-shared/) — admitted shared types
 - [`baseline-2026.2.0/`](baseline-2026.2.0/) — frozen Go behavior truth
 
-## Contributing
-
-Use [`CONTRIBUTING.md`](CONTRIBUTING.md) for human workflow.
-Use [`docs/ai-context-routing.md`](docs/ai-context-routing.md) only when
-working through Copilot or other agents.
+Human workflow lives in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Copilot and agent routing lives in
+[`docs/ai-context-routing.md`](docs/ai-context-routing.md).

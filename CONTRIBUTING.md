@@ -2,23 +2,22 @@
 
 Human contribution workflow for this repository.
 
-## Read First
+## Start
 
-1. [`README.md`](README.md)
-2. [`docs/README.md`](docs/README.md)
-3. [`STATUS.md`](STATUS.md)
+- [`README.md`](README.md) — landing page
+- [`docs/README.md`](docs/README.md) — human documentation map
+- [`STATUS.md`](STATUS.md) — current blockers, milestone, parity snapshot
 
 Open deeper leaf docs only when the task needs them.
 
 ## Find Work
 
-- [`STATUS.md`](STATUS.md) — current blockers, milestone, parity snapshot
+- [`STATUS.md`](STATUS.md) — current blockers and priority
 - [`docs/phase-5/roadmap.md`](docs/phase-5/roadmap.md) — implementation order
-- [`docs/phase-5/roadmap-index.csv`](docs/phase-5/roadmap-index.csv) — exact row ownership
+- [`docs/phase-5/roadmap-index.csv`](docs/phase-5/roadmap-index.csv) —
+  exact row ownership
 - [`docs/parity/README.md`](docs/parity/README.md) — parity navigation
 - [`docs/parity/source-map.csv`](docs/parity/source-map.csv) — baseline routing
-- parity tickets are the row IDs; prefer MCP `next_parity_ticket` and
-  `parity_row_details` before opening full ledgers
 
 ## Work Loop
 
@@ -44,7 +43,10 @@ Focused entrypoints:
 - `just validate-governance` — docs and source-map validation
 - `just validate-app` — app crates
 - `just validate-tools` — MCP and tool crates
-- `just mcp-smoke` — operational MCP smoke
+- `just mcp-smoke` — operational MCP smoke when touching MCP tools or routing
+  docs
+
+The operational MCP target is debtmap-enabled.
 
 `just fmt` runs `cargo +nightly fmt --all`.
 
@@ -60,6 +62,15 @@ Use evidence from the frozen Go baseline in
 - contract-level tests
 - host-behavior tests
 
+## Before Review
+
+- Keep the diff narrow and source-grounded.
+- Include parity ledger, source-map, and [`STATUS.md`](STATUS.md) updates when
+  the change affects them.
+- Do not hand-edit generated artifacts such as
+  [`docs/parity/source-map.csv`](docs/parity/source-map.csv); regenerate or
+  validate them through repo tooling.
+
 ## Conflict Order
 
 1. frozen Go baseline code and tests
@@ -73,6 +84,3 @@ Use evidence from the frozen Go baseline in
    [`docs/parity/source-map.csv`](docs/parity/source-map.csv), and the
    relevant parity doc
 7. workflow notes such as [`AGENTS.md`](AGENTS.md) and [`SKILLS.md`](SKILLS.md)
-
-AI-specific routing lives in [`docs/ai-context-routing.md`](docs/ai-context-routing.md).
-The operational MCP target is debtmap-enabled.
