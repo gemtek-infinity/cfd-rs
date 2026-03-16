@@ -23,6 +23,7 @@ cfdrs-cli = { path = "crates/cfdrs-cli" }
 cfdrs-his = { path = "crates/cfdrs-his" }
 cfdrs-shared = { path = "crates/cfdrs-shared" }
 # crates.io dependencies
+axum = { version = "0.8", features = ["ws"] }
 base64 = "0.22.1"
 capnp = "0.25.2"
 capnp-futures = "0.25.0"
@@ -33,17 +34,21 @@ hickory-resolver = { version = "0.25.2", default-features = false, features = [
   "tls-ring",
   "tokio",
 ] }
+jsonwebtoken = "9"
 mimalloc = { version = "0.1.48", default-features = false, features = [
   "extended",
   "local_dynamic_tls",
   "no_thp",
   "override",
 ] }
+notify = { version = "7", default-features = false, features = ["macos_fsevent"] }
 openssl = { version = "0.10.76", features = ["vendored"] }
 pem = "3.0.6"
 pingora-http = "0.8"
+prometheus-client = "0.23"
 quiche = { version = "0.26.1", default-features = false, features = ["boringssl-vendored"] }
 reqwest = { version = "0.13.2", default-features = false, features = ["rustls"] }
+sd-notify = "0.4"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.149", default-features = false, features = ["std"] }
 serde_yaml = "0.9.34-deprecated"
@@ -60,7 +65,10 @@ tokio = { version = "1.50.0", features = [
   "time",
 ] }
 tokio-util = { version = "0.7.16", features = ["rt"] }
+tower = { version = "0.5", features = ["util"] }
 tracing = "0.1.41"
+tracing-appender = "0.2"
+tracing-journald = "0.3"
 tracing-subscriber = { version = "0.3.20", default-features = false, features = ["fmt", "json"] }
 url = { version = "2.5.8", features = ["serde"] }
 uuid = { version = "1.22.0", default-features = false, features = ["serde", "std", "v4", "v7"] }

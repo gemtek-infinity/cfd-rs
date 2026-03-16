@@ -6,6 +6,10 @@ mod runtime;
 mod startup;
 mod transport;
 
+// Admitted for non-blocking file writer layer; not yet wired (hand-rolled
+// size-based rotation matches Go parity).
+use tracing_appender as _;
+
 use std::env;
 use std::ffi::OsString;
 use std::path::Path;

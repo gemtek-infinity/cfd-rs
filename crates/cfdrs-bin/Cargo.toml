@@ -7,6 +7,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
+axum.workspace = true
 cfdrs-cdc.workspace = true
 cfdrs-cli.workspace = true
 cfdrs-his.workspace = true
@@ -14,12 +15,15 @@ cfdrs-shared.workspace = true
 hickory-resolver.workspace = true
 mimalloc.workspace = true
 pingora-http.workspace = true
+prometheus-client.workspace = true
 quiche.workspace = true
 reqwest.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
+tracing-appender.workspace = true
+tracing-journald.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
 
@@ -28,6 +32,7 @@ name = "cloudflared"
 path = "src/main.rs"
 
 [dev-dependencies]
+tower.workspace = true
 url.workspace = true
 
 [lints]

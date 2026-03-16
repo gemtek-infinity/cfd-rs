@@ -60,8 +60,8 @@ impl<F> ApplicationRuntime<F>
 where
     F: RuntimeServiceFactory,
 {
-    fn start_metrics_server(&mut self) -> Result<(), String> {
-        let handle = metrics::RuntimeMetricsHandle::start(self.config.as_ref())?;
+    async fn start_metrics_server(&mut self) -> Result<(), String> {
+        let handle = metrics::RuntimeMetricsHandle::start(self.config.as_ref()).await?;
         let actual_address = handle.actual_address();
 
         self.status
@@ -109,7 +109,7 @@ where
     }
 
     async fn run(mut self) -> RuntimeExecution {
-        if let Err(detail) = self.start_metrics_server() {
+        if let Err(detail) = self.start_metrics_server().await {
             return self.finish(RuntimeExit::Failed { detail }).await;
         }
 
@@ -179,7 +179,7 @@ where
         self.drain_child_tasks().await;
 
         if let Some(metrics) = self.metrics.take() {
-            metrics.stop();
+            metrics.stop().await;
         }
 
         if let Some(pidfile_path) = self.config.pidfile_path() {

@@ -113,6 +113,16 @@ pub fn uninstall_linux_service(runner: &dyn CommandRunner) -> Result<()> {
     }
 }
 
+/// HIS-022: notify systemd that the service is ready.
+///
+/// Matches Go's `notifySystemd` which calls
+/// `daemon.SdNotify(false, "READY=1")` after connections are established.
+/// Does nothing if `NOTIFY_SOCKET` is not set (not running under systemd).
+pub fn notify_ready() -> Result<()> {
+    sd_notify::notify(false, &[sd_notify::NotifyState::Ready])
+        .map_err(|e| ConfigError::invariant(format!("sd_notify(READY=1) failed: {e}")))
+}
+
 /// Copy a file from `src` to `dest`.
 pub fn copy_file(src: &Path, dest: &Path) -> Result<()> {
     std::fs::copy(src, dest).map_err(|e| {

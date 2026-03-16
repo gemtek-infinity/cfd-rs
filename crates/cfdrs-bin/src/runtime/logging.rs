@@ -11,6 +11,7 @@ use cfdrs_his::logging::{
 use tracing::Level;
 use tracing_subscriber::fmt;
 use tracing_subscriber::fmt::writer::MakeWriter;
+use tracing_subscriber::layer::SubscriberExt;
 
 use super::RUNTIME_LOGGING;
 
@@ -92,31 +93,56 @@ pub(crate) fn install_runtime_logging(log_config: &LogConfig, transport_level: O
     let writer = RuntimeLogWriter { file };
     let level = resolve_global_level(log_config.min_level, transport_level);
 
+    // Optional journald layer — active when JOURNAL_STREAM is set (indicates
+    // the process was started by systemd with journal output).
+    let journal_layer = journal_layer();
+
     RUNTIME_LOGGING.get_or_init(|| match log_config.format {
         LogFormat::Json => {
-            let subscriber = fmt()
+            let fmt_layer = fmt::layer()
                 .with_writer(writer)
-                .with_max_level(level)
                 .with_target(false)
                 .without_time()
-                .json()
-                .finish();
+                .json();
+
+            let subscriber = tracing_subscriber::Registry::default()
+                .with(tracing_subscriber::filter::LevelFilter::from_level(level))
+                .with(fmt_layer)
+                .with(journal_layer);
 
             let _ = tracing::subscriber::set_global_default(subscriber);
         }
         LogFormat::Text => {
-            let subscriber = fmt()
+            let fmt_layer = fmt::layer()
                 .with_writer(writer)
-                .with_max_level(level)
                 .with_target(false)
                 .without_time()
                 .with_ansi(false)
-                .compact()
-                .finish();
+                .compact();
+
+            let subscriber = tracing_subscriber::Registry::default()
+                .with(tracing_subscriber::filter::LevelFilter::from_level(level))
+                .with(fmt_layer)
+                .with(journal_layer);
 
             let _ = tracing::subscriber::set_global_default(subscriber);
         }
     });
+}
+
+/// Create a journald layer if JOURNAL_STREAM is set (systemd-launched process).
+///
+/// HIS-063, HIS-064, HIS-065: when running as a systemd service,
+/// Go relies on stderr being captured by the journal, but a direct
+/// journald layer gives structured fields and avoids double-logging.
+fn journal_layer() -> Option<tracing_journald::Layer> {
+    std::env::var_os("JOURNAL_STREAM")?;
+
+    tracing_journald::layer()
+        .inspect_err(|error| {
+            eprintln!("journald layer unavailable: {error}");
+        })
+        .ok()
 }
 
 impl RuntimeLogSink {

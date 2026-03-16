@@ -2,12 +2,13 @@
 //!
 //! Covers HIS-041 through HIS-045.
 //!
-//! The watcher is trait-based: `FileWatcher` defines the contract,
-//! and the actual `notify` crate integration lives in cfdrs-bin
-//! where the async runtime is available.
+//! `FileWatcher` defines the contract. `NotifyFileWatcher` provides
+//! the concrete `notify`-backed implementation matching Go
+//! `watcher/file.go` behavior: Write-only filter, delegate errors
+//! to caller, non-blocking shutdown.
 
 use std::path::{Path, PathBuf};
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 
 // --- HIS-041: watcher trait ---
 
@@ -37,6 +38,99 @@ pub trait FileWatcher: Send + Sync {
 
     /// Signal shutdown (non-blocking).
     fn shutdown(&self);
+}
+
+// --- HIS-041 concrete implementation ---
+
+/// Concrete file watcher backed by the `notify` crate (inotify on Linux).
+///
+/// Matches Go `watcher.File` behavior:
+/// - Only Write events are forwarded to the notifier
+/// - Errors are delegated, never logged internally
+/// - Shutdown is non-blocking and idempotent
+pub struct NotifyFileWatcher {
+    watcher: Mutex<notify::RecommendedWatcher>,
+    event_rx: Mutex<std::sync::mpsc::Receiver<Result<notify::Event, notify::Error>>>,
+    shutdown_tx: std::sync::mpsc::SyncSender<()>,
+    shutdown_rx: Mutex<Option<std::sync::mpsc::Receiver<()>>>,
+}
+
+impl NotifyFileWatcher {
+    pub fn new() -> cfdrs_shared::Result<Self> {
+        let (tx, rx) = std::sync::mpsc::channel();
+        let watcher = {
+            use notify::Watcher;
+            notify::RecommendedWatcher::new(
+                move |result| {
+                    let _ = tx.send(result);
+                },
+                notify::Config::default(),
+            )
+            .map_err(|error| {
+                cfdrs_shared::ConfigError::invariant(format!("file watcher creation failed: {error}"))
+            })?
+        };
+
+        // SyncSender with capacity 0 matches Go's unbuffered channel.
+        let (shutdown_tx, shutdown_rx) = std::sync::mpsc::sync_channel(0);
+
+        Ok(Self {
+            watcher: Mutex::new(watcher),
+            event_rx: Mutex::new(rx),
+            shutdown_tx,
+            shutdown_rx: Mutex::new(Some(shutdown_rx)),
+        })
+    }
+}
+
+impl FileWatcher for NotifyFileWatcher {
+    fn add(&mut self, path: PathBuf) -> cfdrs_shared::Result<()> {
+        use notify::Watcher;
+        self.watcher
+            .lock()
+            .map_err(|_| cfdrs_shared::ConfigError::invariant("watcher lock poisoned"))?
+            .watch(&path, notify::RecursiveMode::NonRecursive)
+            .map_err(|error| cfdrs_shared::ConfigError::invariant(format!("file watch add failed: {error}")))
+    }
+
+    fn start(&mut self, notifier: Box<dyn WatcherNotification>) {
+        let shutdown_rx = match self.shutdown_rx.lock().ok().and_then(|mut guard| guard.take()) {
+            Some(rx) => rx,
+            None => return, // already started
+        };
+
+        let event_rx = match self.event_rx.lock() {
+            Ok(rx) => rx,
+            Err(_) => return,
+        };
+
+        loop {
+            if shutdown_rx.try_recv().is_ok() {
+                break;
+            }
+
+            match event_rx.recv_timeout(std::time::Duration::from_millis(50)) {
+                Ok(Ok(event)) => {
+                    if event.kind.is_modify() {
+                        for path in &event.paths {
+                            notifier.item_did_change(path);
+                        }
+                    }
+                }
+                Ok(Err(error)) => {
+                    notifier.watcher_did_error(&error);
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+            }
+        }
+    }
+
+    fn shutdown(&self) {
+        // Non-blocking send: if Start() already returned, this is a no-op
+        // (matches Go's select { case f.shutdown <- struct{}{}: default: })
+        let _ = self.shutdown_tx.try_send(());
+    }
 }
 
 // --- HIS-042: reload trait ---
@@ -229,7 +323,7 @@ pub fn reload_recovery_strategy(error: &cfdrs_shared::ConfigError) -> ReloadReco
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Mutex;
+    use std::sync::{Arc, Mutex};
 
     use cfdrs_shared::ConfigError;
 
@@ -447,5 +541,69 @@ mod tests {
             orchestrator.get_config_json().expect("should load"),
             serde_json::json!({"v": 3})
         );
+    }
+
+    // --- HIS-041: NotifyFileWatcher ---
+
+    #[test]
+    fn notify_file_watcher_detects_write_event() {
+        use std::io::Write;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file_path = dir.path().join("config.yml");
+        std::fs::write(&file_path, "v: 1").expect("initial write");
+
+        let mut watcher = NotifyFileWatcher::new().expect("watcher");
+        watcher.add(file_path.clone()).expect("watch add");
+
+        let changed: Arc<Mutex<Vec<PathBuf>>> = Arc::new(Mutex::new(Vec::new()));
+        let changed_clone = Arc::clone(&changed);
+
+        struct TestNotifier(Arc<Mutex<Vec<PathBuf>>>);
+        impl WatcherNotification for TestNotifier {
+            fn item_did_change(&self, path: &Path) {
+                self.0.lock().expect("lock").push(path.to_path_buf());
+            }
+
+            fn watcher_did_error(&self, _error: &dyn std::error::Error) {}
+        }
+
+        let watcher_handle = std::thread::spawn(move || {
+            watcher.start(Box::new(TestNotifier(changed_clone)));
+        });
+
+        // Give the watcher time to start
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        // Trigger a write event
+        let mut f = std::fs::OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open(&file_path)
+            .expect("open for write");
+        f.write_all(b"v: 2").expect("write");
+        f.flush().expect("flush");
+        drop(f);
+
+        // Wait for the event to propagate
+        std::thread::sleep(std::time::Duration::from_millis(200));
+
+        let paths = changed.lock().expect("lock");
+        assert!(
+            !paths.is_empty(),
+            "should have received at least one write notification"
+        );
+
+        // Watcher thread is still blocking; we need to drop it
+        // (it will exit when the test ends and the channels drop)
+        drop(watcher_handle);
+    }
+
+    #[test]
+    fn notify_file_watcher_shutdown_is_nonblocking() {
+        let watcher = NotifyFileWatcher::new().expect("watcher");
+        // Calling shutdown before start should not block or panic
+        watcher.shutdown();
+        watcher.shutdown(); // idempotent
     }
 }

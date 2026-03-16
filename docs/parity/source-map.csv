@@ -61,7 +61,7 @@ CDC-027,CDC,docs/parity/cdc/management-and-diagnostics.md,baseline-2026.2.0/mana
 CDC-028,CDC,docs/parity/cdc/management-and-diagnostics.md,baseline-2026.2.0/management/service.go,/service.go;/metrics;/debug/pprof;enableDiagServices=true;DIAG_ROUTES
 CDC-029,CDC,docs/parity/cdc/metrics-readiness-and-api.md,baseline-2026.2.0/metrics/readiness.go,"/readiness.go;GET /ready;{""status"":200,""readyConnections"":N,""connectorId"":""uuid""};/ready;status;readyConnections;connectorId;ConnTracker"
 CDC-030,CDC,docs/parity/cdc/metrics-readiness-and-api.md,baseline-2026.2.0/metrics/metrics.go,/metrics.go;GET /healthcheck;OK\n;/healthcheck;text/plain; charset=utf-8;HEALTHCHECK_RESPONSE;/plain
-CDC-031,CDC,docs/parity/cdc/metrics-readiness-and-api.md,baseline-2026.2.0/metrics/metrics.go,/metrics.go;GET /metrics;promhttp.Handler();/metrics;build_info;cfdrs_ready_connections
+CDC-031,CDC,docs/parity/cdc/metrics-readiness-and-api.md,baseline-2026.2.0/metrics/metrics.go,/metrics.go;GET /metrics;promhttp.Handler();/metrics;prometheus-client;build_info;cfdrs_ready_connections
 CDC-032,CDC,docs/parity/cdc/metrics-readiness-and-api.md,baseline-2026.2.0/metrics/metrics.go,"/metrics.go;GET /quicktunnel;{""hostname"":""<hostname>""};/quicktunnel;QuickTunnelResponse"
 CDC-033,CDC,docs/parity/cdc/metrics-readiness-and-api.md,baseline-2026.2.0/cfapi/tunnel.go;baseline-2026.2.0/cfapi/client.go,/tunnel.go;CreateTunnel;GetTunnel;GetTunnelToken;DeleteTunnel;ListTunnels;ListActiveClients;CleanupConnections;/accounts/{accountTag}/cfd_tunnel/...;/accounts/
 CDC-034,CDC,docs/parity/cdc/metrics-readiness-and-api.md,baseline-2026.2.0/cfapi/base_client.go,"/base_client.go;{""success"":true,""errors"":[],""messages"":[],""result"":...,""result_info"":{...}};ApiResponse;ApiError;Pagination;ApiClientError"
@@ -101,7 +101,7 @@ HIS-023,HIS,docs/parity/his/service-installation.md,baseline-2026.2.0/cmd/cloudf
 HIS-024,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,/metrics.go;localhost:0;0.0.0.0:0;ReadTimeout;WriteTimeout;is_container_runtime;/write
 HIS-025,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/readiness.go,"/ready;ReadyServer;/readiness.go;{""status"":200,""readyConnections"":N,""connectorId"":""uuid""};active_connections;ConnTracker;RegistrationObserved;Reconnecting;Unregistering;BridgeClosed"
 HIS-026,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,/healthcheck;/metrics.go;OK\n;/plain;text/plain; charset=utf-8
-HIS-027,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,/metrics;promhttp.Handler();/metrics.go;build_info;/type/revision/version;baseline_metrics;cloudflared_tunnel_*;cloudflared_config_*;cloudflared_tcp_*;cloudflared_proxy_*
+HIS-027,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,/metrics;promhttp.Handler();/metrics.go;build_info;/type/revision/version;prometheus-client;baseline_metrics;cloudflared_tunnel_*;cloudflared_config_*;cloudflared_tcp_*
 HIS-028,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go,"/quicktunnel;/metrics.go;{""hostname"":""...""};QuickTunnelResponse;quick_tunnel_serializes"
 HIS-029,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go;baseline-2026.2.0/metrics/readiness.go;baseline-2026.2.0/diagnostic/handlers.go,"/config;{""version"":N,""config"":{ingress, warp-routing, originRequest}}"
 HIS-030,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/metrics/metrics.go;baseline-2026.2.0/metrics/readiness.go;baseline-2026.2.0/diagnostic/handlers.go,/debug/pprof/*;/debug/pprof/;http.DefaultServeMux;trace.AuthRequest;501
@@ -115,7 +115,7 @@ HIS-037,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diag
 HIS-038,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/diagnostic.go;baseline-2026.2.0/diagnostic/handlers.go;baseline-2026.2.0/diagnostic/log_collector_host.go;baseline-2026.2.0/diagnostic/system_collector_linux.go;baseline-2026.2.0/diagnostic/network/collector_unix.go,"diagnostic/;AddressableTunnelState;DiscoveryError;MetricsServerNotFound;MultipleMetricsServersFound;known_metrics_addresses(is_virtual);find_metrics_server(addresses, probe);FindMetricsServer;/virtual"
 HIS-039,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/handlers.go,/diag/system;/handlers.go;system_info_json_keys_match_go_baseline;system_info_response_json_shape_matches_go;disk_volume_json_keys_match_go_baseline
 HIS-040,HIS,docs/parity/his/diagnostics-and-collection.md,baseline-2026.2.0/diagnostic/handlers.go,/diag/tunnel;/handlers.go;tunnel_state_json_keys_match_go_baseline;indexed_connection_info_json_keys_match_go_baseline;tunnel_state_omitempty_matches_go
-HIS-041,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/watcher/file.go,/file.go;FileWatcher;notify
+HIS-041,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/watcher/file.go,/file.go;FileWatcher;NotifyFileWatcher;notify::RecommendedWatcher;fsnotify;notify
 HIS-042,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/app_service.go,actionLoop();/cloudflared/app_service.go;/update/remove;ReloadActionLoop;notify;/remove/shutdown
 HIS-043,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/overwatch/app_manager.go,AppManager;/app_manager.go;/remove
 HIS-044,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/orchestration/orchestrator.go,UpdateConfig();/orchestrator.go;atomic.Value;InMemoryConfigOrchestrator;/read
@@ -137,9 +137,9 @@ HIS-059,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudfla
 HIS-060,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/signal.go,/cloudflared/tunnel/signal.go;waitForSignal();signal.Stop();/SIGINT;ShutdownSignal
 HIS-061,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,--pidfile;/cloudflared/tunnel/cmd.go;connectedSignal
 HIS-062,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/token/token.go,/token.go;<token-path>.lock;/SIGTERM;acquire_token_lock();release_token_lock();OpenOptionsExt::mode()
-HIS-063,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,--logfile;/create.go;LogFile;/systemd
-HIS-064,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go;baseline-2026.2.0/config/configuration.go,--log-directory;/create.go;/configuration.go;/var/log/cloudflared;logDirectory;cloudflared.log
-HIS-065,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,/create.go;/max-backups/max-age;/systemd
+HIS-063,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,--logfile;/create.go;LogFile;tracing_journald;JOURNAL_STREAM
+HIS-064,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go;baseline-2026.2.0/config/configuration.go,--log-directory;/create.go;/configuration.go;/var/log/cloudflared;logDirectory;cloudflared.log;tracing_journald
+HIS-065,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,/create.go;tracing_journald;/max-backups/max-age
 HIS-066,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/create.go,/create.go;log_file_perm_mode_matches_go_baseline;log_dir_perm_mode_matches_go_baseline
 HIS-067,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/configuration.go,--log-format-output;/configuration.go;/config
 HIS-068,HIS,docs/parity/logging-compatibility.md,baseline-2026.2.0/logger/configuration.go,--loglevel;--transport-loglevel;/configuration.go;info;LogLevel;TUNNEL_PROTO_LOGLEVEL;TUNNEL_TRANSPORT_LOGLEVEL;resolve_global_level();logTransport;2026.2.0
