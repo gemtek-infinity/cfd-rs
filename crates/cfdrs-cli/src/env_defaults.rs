@@ -288,6 +288,15 @@ impl GlobalFlags {
         env_string(reader, "TUNNEL_API_KEY", &mut self.api_key);
         env_string(reader, "TUNNEL_API_EMAIL", &mut self.api_email);
         env_string(reader, "TUNNEL_API_CA_KEY", &mut self.api_ca_key);
+
+        // --- Subcommand-specific env vars ---
+        env_string(reader, "TUNNEL_LIST_SORT_BY", &mut self.sort_by);
+        env_bool_flag(reader, "TUNNEL_LIST_INVERT_SORT", &mut self.invert_sort);
+        env_string(reader, "TUNNEL_CREATE_SECRET", &mut self.tunnel_secret);
+        env_bool_flag(reader, "TUNNEL_FORCE_PROVISIONING_DNS", &mut self.overwrite_dns);
+        env_string(reader, "TUNNEL_CLEANUP_CONNECTOR", &mut self.connector_id);
+        env_string(reader, "TUNNEL_INGRESS_VALIDATE_JSON", &mut self.ingress_json);
+        env_bool_flag(reader, "TUNNEL_RUN_FORCE_OVERWRITE", &mut self.force);
     }
 
     /// Apply frozen Go baseline default values for fields not set by CLI args

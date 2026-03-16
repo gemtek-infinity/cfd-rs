@@ -442,24 +442,23 @@ fn login_and_tunnel_login_both_dispatch() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn empty_invocation_returns_service_mode_error() {
+fn empty_invocation_enters_config_discovery() {
     // Go baseline: `cloudflared` with zero args and zero flags enters
-    // handleServiceMode() which starts a config-watcher daemon loop.
-    // Until the watcher/reload infrastructure (HIS-041 through HIS-043)
-    // is wired, this should return a clear guidance message.
+    // handleServiceMode() which discovers/creates config via
+    // FindOrCreateConfigPath(), then starts a config-watcher daemon loop.
+    // Rust matches this: bare invocation enters startup path (config
+    // discovery → runtime).  On test machines without /etc/cloudflared or
+    // write access to default config paths, this produces a config error.
     let output = run_cloudflared(&[]);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     assert!(
         !output.status.success(),
-        "empty invocation should fail until service mode is implemented"
+        "empty invocation should fail without a discoverable config"
     );
+    // Should NOT produce the old stub error
     assert!(
-        stderr.contains("service mode"),
-        "error should mention service mode: {stderr:?}"
-    );
-    assert!(
-        stderr.contains("tunnel run"),
-        "error should suggest 'tunnel run' as an alternative: {stderr:?}"
+        !stderr.contains("service mode requires a configuration file"),
+        "service mode stub must be replaced: {stderr:?}"
     );
 }
