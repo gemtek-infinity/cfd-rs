@@ -237,4 +237,4 @@ During maintenance mode:
 
 ## Local Handoff
 
-[`GCFGR.md`](../GCFGR.md) is becoming mandatory for local overflow state when long or fragile sessions is predicted. It is not canonical repository truth. Use it only when handoff fidelity matters or context compaction is near.
+`${workspaceFolder}/GCFGR.md` is becoming mandatory for local overflow state when long or fragile sessions is predicted. It is not canonical repository truth. Use it only when handoff fidelity matters or context compaction is near.
