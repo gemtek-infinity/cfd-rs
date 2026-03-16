@@ -6,21 +6,22 @@
 
 use std::time::Duration;
 
-use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_factory};
+use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_source};
 
 use super::fixtures::{runtime_config, summary_contains};
-use super::harness::{TestBehavior, TestFactory};
+use super::harness::{TestBehavior, test_source};
 
 // -- Cold path evidence --
 
 #[test]
 fn cold_path_emits_performance_evidence() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -33,12 +34,13 @@ fn cold_path_emits_performance_evidence() {
 
 #[test]
 fn cold_path_passes_regression_threshold_gate() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -58,12 +60,13 @@ fn cold_path_passes_regression_threshold_gate() {
 
 #[test]
 fn resumed_path_emits_performance_evidence_after_restart() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -75,12 +78,13 @@ fn resumed_path_emits_performance_evidence_after_restart() {
 
 #[test]
 fn resumed_path_passes_regression_threshold_gate() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -96,10 +100,11 @@ fn resumed_path_passes_regression_threshold_gate() {
 
 #[test]
 fn failed_path_emits_performance_evidence() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::FatalFailure]),
+        test_source([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -113,12 +118,13 @@ fn failed_path_emits_performance_evidence() {
 
 #[test]
 fn performance_evidence_lines_have_structured_format() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -149,12 +155,13 @@ fn performance_evidence_lines_have_structured_format() {
 
 #[test]
 fn stage_timing_values_are_nonnegative() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -182,12 +189,13 @@ fn stage_timing_values_are_nonnegative() {
 
 #[test]
 fn zero_rtt_lane_evidence_is_emitted() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -210,12 +218,13 @@ fn zero_rtt_lane_evidence_is_emitted() {
 
 #[test]
 fn evidence_scope_is_honest() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -234,12 +243,13 @@ fn evidence_scope_is_honest() {
 
 #[test]
 fn pipeline_latency_is_measured_on_cold_path() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -265,22 +275,24 @@ fn pipeline_latency_is_measured_on_cold_path() {
 #[test]
 fn cold_and_resumed_paths_are_behaviorally_distinct() {
     // Cold path.
-    let cold = run_with_factory(
+    let cold = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
         None,
+        None,
     );
 
     // Resumed path (one retryable failure, then success).
-    let resumed = run_with_factory(
+    let resumed = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -310,12 +322,13 @@ fn cold_and_resumed_paths_are_behaviorally_distinct() {
 #[test]
 fn regression_thresholds_are_documented_in_evidence() {
     // Validate that evidence contains enough perf lines to gate CI.
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 

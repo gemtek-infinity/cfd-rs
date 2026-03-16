@@ -4,10 +4,10 @@ use std::path::Path;
 use cfdrs_cli::GlobalFlags;
 use cfdrs_his::credentials::search_credential_by_id;
 use cfdrs_his::environment::current_uid;
-use cfdrs_his::logging::{LogConfig, LogLevel, build_log_config};
 use cfdrs_his::metrics_server::parse_metrics_address;
 use cfdrs_his::signal::parse_grace_period;
 use cfdrs_shared::{ConfigError, OriginCertLocator};
+use cfdrs_shared::{LogConfig, LogLevel, build_log_config};
 
 use crate::runtime::RuntimeConfig;
 

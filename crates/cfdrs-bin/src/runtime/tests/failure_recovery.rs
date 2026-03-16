@@ -9,10 +9,10 @@
 
 use std::time::Duration;
 
-use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_factory};
+use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_source};
 
 use super::fixtures::{runtime_config, summary_contains};
-use super::harness::{TestBehavior, TestFactory};
+use super::harness::{TestBehavior, test_source};
 
 // -- Reconnect / retry proof --
 
@@ -20,14 +20,15 @@ use super::harness::{TestBehavior, TestFactory};
 fn restart_exhaustion_is_bounded_and_visible() {
     // Policy allows max 2 restart attempts. Supply 3 retryable failures
     // so the budget is exhausted before any success.
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([
+        test_source([
             TestBehavior::RetryableFailure,
             TestBehavior::RetryableFailure,
             TestBehavior::RetryableFailure,
         ]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -49,12 +50,13 @@ fn restart_exhaustion_is_bounded_and_visible() {
 
 #[test]
 fn each_retryable_failure_records_failure_visibility() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -75,12 +77,13 @@ fn each_retryable_failure_records_failure_visibility() {
 
 #[test]
 fn restart_resets_lifecycle_to_starting() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -98,12 +101,13 @@ fn restart_resets_lifecycle_to_starting() {
 #[test]
 fn restart_budget_zero_means_no_recovery() {
     // Even with zero restarts exhausted, a clean path has no exhaustion.
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -117,9 +121,9 @@ fn restart_budget_zero_means_no_recovery() {
 
 #[test]
 fn transport_failure_counter_tracks_retryable_exits() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([
+        test_source([
             TestBehavior::RetryableFailure,
             TestBehavior::RetryableFailure,
             TestBehavior::WaitForShutdown,
@@ -127,6 +131,7 @@ fn transport_failure_counter_tracks_retryable_exits() {
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(75))
             .build(),
+        None,
         None,
     );
 
@@ -143,12 +148,13 @@ fn transport_failure_counter_tracks_retryable_exits() {
 #[test]
 fn shutdown_during_starting_state_is_clean() {
     // Immediate shutdown injection with no service ready delay.
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(5))
             .build(),
+        None,
         None,
     );
 
@@ -162,12 +168,13 @@ fn shutdown_during_starting_state_is_clean() {
 
 #[test]
 fn shutdown_records_child_task_cleanup() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -180,10 +187,11 @@ fn shutdown_records_child_task_cleanup() {
 
 #[test]
 fn shutdown_after_fatal_records_failure_state() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::FatalFailure]),
+        test_source([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -200,14 +208,15 @@ fn shutdown_after_fatal_records_failure_state() {
 
 #[test]
 fn shutdown_after_restart_exhaustion_records_failure() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([
+        test_source([
             TestBehavior::RetryableFailure,
             TestBehavior::RetryableFailure,
             TestBehavior::RetryableFailure,
         ]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -222,10 +231,11 @@ fn shutdown_after_restart_exhaustion_records_failure() {
 
 #[test]
 fn deferred_service_exit_reports_boundary() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::DeferredExit]),
+        test_source([TestBehavior::DeferredExit]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -249,10 +259,11 @@ fn deferred_service_exit_reports_boundary() {
 
 #[test]
 fn control_plane_failure_is_visible() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::ControlPlaneFailure]),
+        test_source([TestBehavior::ControlPlaneFailure]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -269,10 +280,11 @@ fn control_plane_failure_is_visible() {
 
 #[test]
 fn fatal_failure_records_dependency_boundary() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::FatalFailure]),
+        test_source([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -290,12 +302,13 @@ fn fatal_failure_records_dependency_boundary() {
 
 #[test]
 fn dependency_boundary_summary_is_emitted() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
+        None,
         None,
     );
 
@@ -312,28 +325,29 @@ fn dependency_boundary_summary_is_emitted() {
     );
 }
 
-// -- Config-reload non-support --
+// -- Config-reload watcher status --
 
 #[test]
-fn config_reload_is_not_supported() {
-    let execution = run_with_factory(
+fn config_reload_watcher_is_present() {
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
     assert_eq!(execution.exit, RuntimeExit::Clean);
     assert!(
-        summary_contains(&execution, "failure-config-reload: not-supported"),
-        "should honestly declare config-reload as not supported, summary: {:?}",
+        summary_contains(&execution, "failure-config-reload: watcher-only"),
+        "should declare config-reload watcher is present, summary: {:?}",
         execution.summary_lines
     );
     assert!(
-        summary_contains(&execution, "no reload surface exists"),
-        "should explain why reload is not supported"
+        summary_contains(&execution, "re-apply path pending"),
+        "should explain re-apply path is still pending"
     );
 }
 
@@ -341,12 +355,13 @@ fn config_reload_is_not_supported() {
 
 #[test]
 fn failure_evidence_is_emitted_at_runtime_finish() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -375,12 +390,13 @@ fn failure_evidence_is_emitted_at_runtime_finish() {
 
 #[test]
 fn failure_evidence_scope_is_honest() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -394,21 +410,22 @@ fn failure_evidence_scope_is_honest() {
         "should report in-process harness scope"
     );
     assert!(
-        summary_contains(&execution, "config-reload behavior are deferred"),
-        "should honestly defer config-reload proof"
+        summary_contains(&execution, "config-watcher is wired"),
+        "should declare config-watcher is wired"
     );
 }
 
 #[test]
 fn failure_evidence_under_exhausted_restarts() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([
+        test_source([
             TestBehavior::RetryableFailure,
             TestBehavior::RetryableFailure,
             TestBehavior::RetryableFailure,
         ]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -431,10 +448,11 @@ fn failure_evidence_under_exhausted_restarts() {
 
 #[test]
 fn failure_evidence_under_deferred_exit() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::DeferredExit]),
+        test_source([TestBehavior::DeferredExit]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 

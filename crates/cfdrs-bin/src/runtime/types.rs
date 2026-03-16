@@ -1,13 +1,9 @@
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
 
 use cfdrs_shared::{ConfigSource, DiscoveryOutcome, NormalizedConfig};
-use tokio::sync::mpsc;
-use tokio::task::JoinSet;
-use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::protocol::ProtocolBridgeState;
@@ -22,6 +18,11 @@ pub(crate) struct RuntimeConfig {
     shutdown_grace_period: Option<Duration>,
     pidfile_path: Option<PathBuf>,
     metrics_bind_address: Option<SocketAddr>,
+    /// Whether this binary runs in a container ("virtual") runtime.
+    ///
+    /// Matches Go compile-time `metrics.Runtime` variable. When true,
+    /// the metrics server binds to `0.0.0.0` instead of `localhost`.
+    is_container_runtime: bool,
     diagnostic_configuration: BTreeMap<String, String>,
 }
 
@@ -34,6 +35,7 @@ impl RuntimeConfig {
             shutdown_grace_period: None,
             pidfile_path: None,
             metrics_bind_address: None,
+            is_container_runtime: false,
             diagnostic_configuration: BTreeMap::new(),
         }
     }
@@ -87,6 +89,10 @@ impl RuntimeConfig {
 
     pub(super) fn metrics_bind_address(&self) -> Option<SocketAddr> {
         self.metrics_bind_address
+    }
+
+    pub(super) fn is_container_runtime(&self) -> bool {
+        self.is_container_runtime
     }
 
     pub(crate) fn diagnostic_configuration(&self) -> &BTreeMap<String, String> {
@@ -171,6 +177,9 @@ pub(crate) enum RuntimeCommand {
     ControlPlaneFailure {
         detail: String,
     },
+    ConfigFileChanged {
+        path: std::path::PathBuf,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -217,21 +226,7 @@ pub(crate) enum ChildTask {
     ProxySeam,
     SignalBridge,
     HarnessBridge,
-}
-
-pub(crate) trait RuntimeServiceFactory: Send + Sync + 'static {
-    fn create_primary(&self, config: Arc<RuntimeConfig>, attempt: u32) -> Box<dyn RuntimeService>;
-}
-
-pub(crate) trait RuntimeService: Send + 'static {
-    fn name(&self) -> &'static str;
-
-    fn spawn(
-        self: Box<Self>,
-        command_tx: mpsc::Sender<RuntimeCommand>,
-        shutdown: CancellationToken,
-        child_tasks: &mut JoinSet<ChildTask>,
-    );
+    ConfigWatcher,
 }
 
 #[derive(Debug, Clone)]

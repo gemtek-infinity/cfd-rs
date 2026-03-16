@@ -1,10 +1,11 @@
 use tokio::sync::mpsc;
 
 use super::edge::EDGE_DEFAULT_REGION;
+use super::edge::QuicEdgeTarget;
 use super::identity::TransportIdentity;
 use super::session::QuicSessionState;
-use super::{QuicEdgeTarget, QuicTunnelService, TransportLifecycleStage};
-use crate::runtime::{RuntimeCommand, RuntimeService};
+use super::{QuicTunnelService, TransportLifecycleStage};
+use crate::runtime::RuntimeCommand;
 
 impl QuicTunnelService {
     pub(super) async fn report_identity_status(

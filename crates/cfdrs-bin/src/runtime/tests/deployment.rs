@@ -20,21 +20,22 @@
 
 use std::time::Duration;
 
-use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_factory};
+use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_source};
 
 use super::fixtures::{runtime_config, summary_contains};
-use super::harness::{TestBehavior, TestFactory};
+use super::harness::{TestBehavior, test_source};
 
 // -- Deployment contract evidence --
 
 #[test]
 fn deployment_evidence_emits_contract_line() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -51,12 +52,13 @@ fn deployment_evidence_emits_contract_line() {
 
 #[test]
 fn deployment_evidence_reports_host_validation() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -70,12 +72,13 @@ fn deployment_evidence_reports_host_validation() {
 
 #[test]
 fn deployment_evidence_reports_glibc_markers() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -89,12 +92,13 @@ fn deployment_evidence_reports_glibc_markers() {
 
 #[test]
 fn deployment_evidence_reports_systemd_supervision() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -111,12 +115,13 @@ fn deployment_evidence_reports_systemd_supervision() {
 
 #[test]
 fn deployment_evidence_reports_binary_path() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -130,12 +135,13 @@ fn deployment_evidence_reports_binary_path() {
 
 #[test]
 fn deployment_evidence_reports_config_path() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -149,12 +155,13 @@ fn deployment_evidence_reports_config_path() {
 
 #[test]
 fn deployment_evidence_reports_filesystem_contract() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -170,12 +177,13 @@ fn deployment_evidence_reports_filesystem_contract() {
 
 #[test]
 fn deployment_evidence_declares_known_gaps() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -194,12 +202,13 @@ fn deployment_evidence_declares_known_gaps() {
 
 #[test]
 fn deployment_evidence_declares_operational_caveats() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -220,17 +229,18 @@ fn deployment_evidence_declares_operational_caveats() {
         "no-origin-cert-registration-content"
     ));
     assert!(summary_contains(&execution, "no-stream-roundtrip"));
-    assert!(summary_contains(&execution, "no-config-reload"));
+    assert!(summary_contains(&execution, "config-watcher-notify-only"));
 }
 
 #[test]
 fn deployment_evidence_declares_evidence_scope() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 
@@ -249,10 +259,11 @@ fn deployment_evidence_declares_evidence_scope() {
 
 #[test]
 fn deployment_evidence_emitted_on_fatal_exit() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::FatalFailure]),
+        test_source([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
+        None,
         None,
     );
 
@@ -275,12 +286,13 @@ fn deployment_evidence_emitted_on_fatal_exit() {
 
 #[test]
 fn deployment_evidence_lines_have_structured_format() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
+        None,
         None,
     );
 

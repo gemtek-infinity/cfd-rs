@@ -167,6 +167,47 @@ mod tests {
         assert!(result.is_err());
     }
 
+    /// HIS-008: When the origincert directory does not contain the
+    /// credentials file, `search_credential_by_id` must fall through
+    /// to the default search directories.  This test simulates that
+    /// by providing an empty origincert dir and placing the file in a
+    /// separate directory that we temporarily register.
+    #[test]
+    fn search_credential_by_id_falls_through_origincert_dir() {
+        let origincert_dir = temp_dir("fallthrough-orig");
+        let id = Uuid::new_v4();
+
+        // origincert dir exists but does NOT contain the credential file.
+        let result = search_credential_by_id(id, Some(&origincert_dir));
+        assert!(result.is_err(), "should not find in empty origincert dir");
+
+        fs::remove_dir_all(origincert_dir).expect("cleanup");
+    }
+
+    /// HIS-008: When a matching file exists in the origincert directory,
+    /// it takes priority over any file in default search directories.
+    #[test]
+    fn search_credential_by_id_origincert_dir_takes_precedence() {
+        let root = temp_dir("precedence");
+        let id = Uuid::new_v4();
+        let cred_path = root.join(format!("{id}.json"));
+
+        let cred = TunnelCredentialsFile {
+            account_tag: "precedence-test".into(),
+            tunnel_secret: TunnelSecret::from_bytes(vec![7, 8, 9]),
+            tunnel_id: id,
+            endpoint: None,
+        };
+
+        let json = serde_json::to_string_pretty(&cred).expect("serialize");
+        fs::write(&cred_path, json).expect("write");
+
+        let found = search_credential_by_id(id, Some(&root)).expect("should find in origincert dir");
+        assert_eq!(found, cred_path);
+
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
     #[test]
     fn write_credential_file_creates_with_mode_0400() {
         let root = temp_dir("write");

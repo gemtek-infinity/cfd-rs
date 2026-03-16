@@ -7,12 +7,12 @@
 //! - reconnect/retry behavior is bounded and visible
 //! - shutdown behavior is observable through lifecycle transitions
 //! - dependency-boundary failures are reported at the correct owner
-//! - config-reload is honestly declared as not supported
+//! - config-file-watcher is wired via `NotifyFileWatcher`
 //!
 //! What this does not prove:
 //! - real QUIC reconnect against a live edge (transport is in-process)
 //! - broad proxy failure recovery beyond the admitted origin path
-//! - config-reload behavior (no owned reload surface exists)
+//! - full config-reload integration (watcher exists, re-apply path pending)
 //! - deployment-level recovery (packaging/process manager integration)
 
 use super::RuntimeStatus;
@@ -39,12 +39,11 @@ impl RuntimeStatus {
         self.summary_lines
             .push(format!("failure-transport-failures: {}", self.transport_failures));
 
-        // Config reload: this runtime has no owned reload surface.
-        // SIGHUP is not handled, no reload command exists, and config
-        // is frozen at startup handoff. This is honest non-support.
+        // Config reload: file watcher is wired via NotifyFileWatcher,
+        // but the re-apply path through ReloadActionLoop is not yet
+        // connected. The watcher detects changes; the runtime logs them.
         self.summary_lines.push(
-            "failure-config-reload: not-supported (config is frozen at startup, no reload surface exists)"
-                .to_owned(),
+            "failure-config-reload: watcher-only (file changes detected, re-apply path pending)".to_owned(),
         );
 
         // Dependency-boundary summary: report which boundaries reported
@@ -55,8 +54,8 @@ impl RuntimeStatus {
 
         // Evidence scope honesty.
         self.summary_lines.push(
-            "failure-evidence-scope: in-process-harness-failure-proof (real transport reconnect, \
-             deployment-level recovery, and config-reload behavior are deferred)"
+            "failure-evidence-scope: in-process-harness-failure-proof (real transport reconnect and \
+             deployment-level recovery are deferred; config-watcher is wired, re-apply pending)"
                 .to_owned(),
         );
     }

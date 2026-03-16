@@ -22,6 +22,7 @@ This table summarizes all 13 standards. Each links to its detailed section below
 | 11 | [Stack-allocated types](#11-standard-prefer-stack-allocated-types-where-safe) | Default to stack allocation for bounded, predictable sizes |
 | 12 | [Zero-copy types](#12-standard-prefer-zero-copy-types-where-practical) | Borrow instead of clone when lifetimes allow |
 | 13 | [Async task ownership](#13-standard-long-lived-async-tasks-require-explicit-ownership-and-recovery) | Every spawned task needs an owner, budget, and recovery plan |
+| 14 | [Generic dispatch over dyn Trait](#14-standard-prefer-generic-dispatch-and-enums-over-boxdyn-trait-for-closed-sets) | Use generics and enums for closed sets; reserve dyn for open extension points |
 
 ## Purpose
 
@@ -404,3 +405,40 @@ When choosing between two valid designs, prefer the one that:
 8. gives every long-lived task an explicit owner and shutdown path
 
 Smaller, clearer, more owned boundaries win.
+
+---
+
+## 14. Standard: Prefer generic dispatch and enums over `Box<dyn Trait>` for closed sets
+
+Use `dyn Trait` only when the set of implementors is genuinely open at runtime.
+For closed sets — types fully known at compile time within this workspace —
+prefer generics, enums, or closures.
+
+See [`docs/adr/0008-generic-dispatch-over-dyn-trait.md`](adr/0008-generic-dispatch-over-dyn-trait.md)
+for the rationale and the three specific patterns this rule applies to.
+
+Prefer:
+
+- `struct Manager<S: BoundedTrait>` over `struct Manager { items: Vec<Box<dyn Trait>> }`
+  when the item type is fixed at the call site
+- `enum ServiceVariant { A(ConcreteA), B(ConcreteB) }` over a factory trait
+  returning `Box<dyn Service>` when variants are enumerable
+- `impl Fn(&T)` closure parameters over `Box<dyn SingleMethodCallback>` for
+  callback dispatch with one or two methods
+
+Avoid:
+
+- introducing `Box<dyn Trait>` to mirror Go interface patterns — Go interfaces
+  are structurally typed and zero-cost; Rust `dyn Trait` carries heap
+  allocation and vtable indirection
+- factory traits whose sole purpose is to construct an erased type — replace
+  with a plain constructor function returning a concrete enum
+- single-method trait objects where a closure parameter is cleaner and
+  avoids a `trait` definition entirely
+
+Review signal:
+
+- if a `HashMap` value type is `Box<dyn Trait>` and the concrete types are all
+  defined in this workspace, it likely violates this standard
+- if a trait has one method and is used only as `Box<dyn Trait>` callback
+  parameter, replace with `impl Fn`

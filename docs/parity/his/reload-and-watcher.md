@@ -229,24 +229,23 @@ Platform-specific files:
 - pidfile helpers wired on runtime service-ready and cleanup through
         [crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs](../../../crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs)
 - reload recovery strategy and action handling in [crates/cfdrs-his/src/watcher.rs](../../../crates/cfdrs-his/src/watcher.rs):
-    `ReloadActionLoop` keeps the previous config on nonfatal update errors and stops on invariant failures
-- in-memory config update seam in [crates/cfdrs-his/src/watcher.rs](../../../crates/cfdrs-his/src/watcher.rs):
-    `InMemoryConfigOrchestrator` owns update/read JSON swapping until CDC-backed remote config lands
+    `ReloadActionLoop` keeps the previous config on nonfatal update errors and stops on invariant failures;
+    channel-driven `run()` processes actions from `mpsc::Receiver<ReloadAction>` matching Go `actionLoop()` select semantics
+- service lifecycle manager in [crates/cfdrs-his/src/watcher.rs](../../../crates/cfdrs-his/src/watcher.rs):
+    `Service` trait matching Go `overwatch.Service` (`name`, `service_type`, `hash`, `shutdown`);
+    `ServiceManager` with hash-based change detection matching Go `AppManager.Add()` — same hash skips, different hash shuts down old before replacing
+- versioned config orchestrator in [crates/cfdrs-his/src/watcher.rs](../../../crates/cfdrs-his/src/watcher.rs):
+    `InMemoryConfigOrchestrator` with version-monotonic `update_config(version, config)` matching Go `Orchestrator.UpdateConfig()` — rejects `current_version >= version`, initial version `-1`, returns `UpdateConfigResponse`
 
 ### What is missing
 
-- file watcher (no fsnotify equivalent)
-- config reload action loop runtime wiring
-- service lifecycle manager (overwatch)
-- remote config update ordering and proxy swap semantics
+- file watcher runtime integration (HIS-041 `NotifyFileWatcher` exists but is not connected to the reload loop in cfdrs-bin)
 - auto-update mechanism
 - update CLI command
 - update check HTTP client
-- file watcher (no fsnotify equivalent)
 - graceful process restart (fork/exec)
 - package manager detection (`.installedFromPackageManager`)
 - double-signal immediate shutdown (second signal bypass grace period)
-- token lock file (host-side `.lock` file with signal cleanup)
 - gracenet socket inheritance for restart
 
 ## Signal Handling
@@ -293,9 +292,10 @@ in a background goroutine via `writePidFile()`.
 ### Rust State
 
 Runtime service-ready now writes the configured pidfile and removes it during
-shutdown using [crates/cfdrs-his/src/signal.rs](../../../crates/cfdrs-his/src/signal.rs)
+shutdown using [crates/cfdrs-his/src/signal/](../../../crates/cfdrs-his/src/signal/)
 and [crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs](../../../crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs).
-Exact `connectedSignal` timing parity is still open.
+`ConnectedSignal` one-shot type with `std::sync::Once` matches Go `signal.Signal` + `sync.Once`.
+Once-only pidfile guard in `handle_service_ready()` matches Go `writePidFile` timing.
 
 ## Token Lock Files
 
@@ -312,7 +312,7 @@ Purpose: prevent concurrent token fetch races (AUTH-1736).
 
 ### Rust State
 
-Implemented in [crates/cfdrs-his/src/signal.rs](../../../crates/cfdrs-his/src/signal.rs)
+Implemented in [crates/cfdrs-his/src/signal/](../../../crates/cfdrs-his/src/signal/)
 with O_EXCL lock creation, signal-safe cleanup helpers, and local tests.
 
 ## Process Restart (Gracenet)

@@ -5,6 +5,7 @@ Use this file as a short operating guide, not as a document index dump.
 
 ## Read first
 
+- `GCFGR.md` — local session handoff state (read this FIRST if it exists; it is your context recovery file)
 - [`STATUS.md`](STATUS.md) — the only tracked status file
 - [`docs/phase-5/roadmap.md`](docs/phase-5/roadmap.md) — normative Phase 5 roadmap
 - [`docs/parity/README.md`](docs/parity/README.md) — parity index
@@ -19,7 +20,8 @@ Use this file as a short operating guide, not as a document index dump.
 - keep patches narrow and source-grounded
 - update the relevant parity ledger for parity work
 - update [`docs/parity/source-map.csv`](docs/parity/source-map.csv) when baseline routing changes
-- `GCFGR.md` is optional local handoff state only; [`STATUS.md`](STATUS.md) wins
+- always reconcile [`STATUS.md`](STATUS.md) after session work, as it is the source of truth for blockers and priority
+- read `GCFGR.md` at cold start and after any context compaction; update it before ending a non-trivial session
 - when formatting Rust, use `cargo +nightly fmt`, never plain `cargo fmt`
 - use [`Justfile`](Justfile) for normal execution instead of open-coded local command chains
 - if you touch `tools/mcp-cfd-rs*` or MCP-facing routing docs, rebuild and smoke the debtmap-enabled MCP target before relying on MCP again

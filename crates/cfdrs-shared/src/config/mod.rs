@@ -10,6 +10,7 @@ pub mod credentials;
 pub mod discovery;
 pub mod error;
 pub mod ingress;
+pub mod logging;
 pub mod normalized;
 pub mod raw_config;
 
@@ -28,6 +29,10 @@ pub use self::ingress::{
     AccessConfig, DurationSpec, IngressFlagRequest, IngressIpRule, IngressMatch, IngressRule, IngressService,
     NO_INGRESS_RULES_FLAGS_MESSAGE, NormalizedIngress, OriginRequestConfig, OriginRequestConfigBuilder,
     ProxyType, RawIngressRule, find_matching_rule, parse_ingress_flags,
+};
+pub use self::logging::{
+    ConsoleConfig, DEFAULT_LOG_DIRECTORY, FileConfig, LOG_DIR_PERM_MODE, LOG_FILE_PERM_MODE, LogConfig,
+    LogFormat, LogLevel, RollingConfig, build_log_config,
 };
 pub use self::normalized::{NormalizationWarning, NormalizedConfig};
 pub use self::raw_config::{RawConfig, WarpRoutingConfig};

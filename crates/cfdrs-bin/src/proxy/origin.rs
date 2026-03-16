@@ -9,7 +9,11 @@
 //! `baseline-2026.2.0/proxy/proxy.go` and
 //! `baseline-2026.2.0/ingress/origin_proxy.go`.
 
-use cfdrs_cdc::stream::{ConnectRequest, ConnectResponse, ConnectionType};
+use cfdrs_cdc::stream::{ConnectRequest, ConnectResponse, ConnectionType, Metadata};
+use cfdrs_cdc::stream_contract::{
+    HttpHeader, RESPONSE_META_CLOUDFLARED, RESPONSE_META_HEADER, RESPONSE_META_ORIGIN, RESPONSE_USER_HEADERS,
+    is_control_response_header, serialize_headers,
+};
 use cfdrs_shared::IngressService;
 use pingora_http::ResponseHeader;
 
@@ -37,9 +41,15 @@ pub(crate) enum OriginResponse {
 ///
 /// Within each path, the ingress service type determines the
 /// concrete origin behavior (status code, hello-world, forward, etc.).
-pub(crate) fn dispatch_to_origin(service: &IngressService, request: &ConnectRequest) -> OriginResponse {
+pub(crate) async fn dispatch_to_origin(
+    service: &IngressService,
+    request: &ConnectRequest,
+    client: &reqwest::Client,
+) -> OriginResponse {
     match request.connection_type {
-        ConnectionType::Http | ConnectionType::WebSocket => dispatch_http_path(service, request),
+        ConnectionType::Http | ConnectionType::WebSocket => {
+            dispatch_http_path(service, request, client).await
+        }
         ConnectionType::Tcp => dispatch_tcp_path(service, request),
     }
 }
@@ -49,11 +59,15 @@ pub(crate) fn dispatch_to_origin(service: &IngressService, request: &ConnectRequ
 /// Go baseline: `case pogs.ConnectionTypeHTTP, pogs.ConnectionTypeWebsocket:`
 /// Both types route through `ProxyHTTP`, with a boolean `isWebsocket` flag
 /// to distinguish upgrade semantics.
-fn dispatch_http_path(service: &IngressService, request: &ConnectRequest) -> OriginResponse {
+async fn dispatch_http_path(
+    service: &IngressService,
+    request: &ConnectRequest,
+    client: &reqwest::Client,
+) -> OriginResponse {
     match service {
         IngressService::HttpStatus(code) => OriginResponse::Http(Box::new(build_status_response(*code))),
         IngressService::HelloWorld => OriginResponse::Http(Box::new(build_hello_world_response())),
-        IngressService::Http(_url) => dispatch_http_origin(request),
+        IngressService::Http(origin_url) => dispatch_http_origin(origin_url.as_str(), request, client).await,
 
         // Services not reachable through HTTP/WS dispatch
         IngressService::TcpOverWebsocket(_)
@@ -115,29 +129,48 @@ fn service_label(service: &IngressService) -> &'static str {
 
 /// Dispatch an HTTP-scheme origin request.
 ///
-/// For now, returns a 502 response indicating that real HTTP origin
-/// proxying (round-trip to the origin URL) is the next surface to
-/// make operational. The dispatch path is real: ingress matching
-/// routes here, the request metadata is available, and the response
-/// path is wired.
-fn dispatch_http_origin(request: &ConnectRequest) -> OriginResponse {
-    // The request carries the full HTTP metadata from the edge.
-    // Real origin proxying will:
-    // 1. Build an HTTP request to the origin URL
-    // 2. Execute the round-trip via a connection pool
-    // 3. Return the origin's response headers and stream the body
-    //
-    // For now, acknowledge the dispatch path is wired by returning a
-    // structured 502 that carries the destination information.
-    let mut response = build_status_response(502);
+/// Builds an HTTP request to the origin URL, executes the round-trip,
+/// and returns the origin's response headers. Matches Go baseline
+/// behavior from `ingress/origin_proxy.go` `RoundTrip`.
+async fn dispatch_http_origin(
+    origin_url: &str,
+    request: &ConnectRequest,
+    client: &reqwest::Client,
+) -> OriginResponse {
+    let path = extract_path_from_dest(&request.dest);
+    let origin_base = origin_url.trim_end_matches('/');
+    let target_url = format!("{origin_base}{path}");
 
-    // Flag the response so tests and evidence can distinguish "routed
-    // to HTTP origin but origin connection not yet implemented" from
-    // "no ingress match."
-    let _ = response.insert_header("X-Cloudflared-Origin-Status", "dispatch-wired");
-    let _ = response.insert_header("X-Cloudflared-Origin-Dest", &request.dest);
+    let method =
+        reqwest::Method::from_bytes(request.http_method().as_bytes()).unwrap_or(reqwest::Method::GET);
 
-    OriginResponse::Http(Box::new(response))
+    let mut req_builder = client.request(method, &target_url);
+
+    for (name, value) in request.http_headers() {
+        req_builder = req_builder.header(name, value);
+    }
+
+    if let Some(host) = request.http_host() {
+        req_builder = req_builder.header("Host", host);
+    }
+
+    match req_builder.send().await {
+        Ok(resp) => {
+            let status = resp.status().as_u16();
+            let mut header = build_status_response(status);
+
+            for (name, value) in resp.headers() {
+                let _ = header.insert_header(name.clone(), value.clone());
+            }
+
+            OriginResponse::Http(Box::new(header))
+        }
+        Err(_) => {
+            // Origin unreachable: return 502.
+            // Matches Go error path: "Unable to reach the origin service."
+            OriginResponse::Http(Box::new(build_status_response(502)))
+        }
+    }
 }
 
 /// Build a hello-world HTML response.
@@ -174,20 +207,50 @@ pub(super) fn build_status_response(code: u16) -> ResponseHeader {
 /// - `Http(header)` → `ConnectResponse::http(status, headers)`
 /// - `StreamEstablished` → `ConnectResponse::tcp_ack(None)`
 /// - `Unimplemented { label }` → `ConnectResponse::error(message)`
-#[allow(dead_code)] // Phase 5.2: called from stream handler once lifecycle wiring is done
 pub(crate) fn to_connect_response(response: &OriginResponse) -> ConnectResponse {
     match response {
         OriginResponse::Http(header) => {
             let status = header.status.as_u16();
+
+            // CDC-017: strip control headers before forwarding to the edge.
             let headers: Vec<(String, String)> = header
                 .headers
                 .iter()
+                .filter(|(name, _)| !is_control_response_header(name.as_str()))
                 .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or("").to_string()))
                 .collect();
-            ConnectResponse::http(status, headers)
+
+            let mut resp = ConnectResponse::http(status, headers.clone());
+
+            // CDC-015: serialized response headers for edge reconstruction.
+            let http_headers: Vec<HttpHeader> = headers
+                .iter()
+                .map(|(name, value)| HttpHeader {
+                    name: name.clone(),
+                    value: value.clone(),
+                })
+                .collect();
+
+            resp.metadata.push(Metadata::new(
+                RESPONSE_USER_HEADERS,
+                serialize_headers(&http_headers),
+            ));
+
+            // CDC-016: response source metadata.
+            resp.metadata
+                .push(Metadata::new(RESPONSE_META_HEADER, RESPONSE_META_CLOUDFLARED));
+
+            resp
         }
 
-        OriginResponse::StreamEstablished => ConnectResponse::tcp_ack(None),
+        OriginResponse::StreamEstablished => {
+            let mut resp = ConnectResponse::tcp_ack(None);
+
+            resp.metadata
+                .push(Metadata::new(RESPONSE_META_HEADER, RESPONSE_META_ORIGIN));
+
+            resp
+        }
 
         OriginResponse::Unimplemented { service_label } => {
             ConnectResponse::error(format!("service not implemented: {service_label}"))
@@ -201,9 +264,10 @@ pub(crate) fn to_connect_response(response: &OriginResponse) -> ConnectResponse 
 /// 1. Extract host and path from the request
 /// 2. Match against ingress rules
 /// 3. Dispatch to the matched origin service
-pub(crate) fn proxy_connect_request(
+pub(crate) async fn proxy_connect_request(
     ingress: &[cfdrs_shared::IngressRule],
     request: &ConnectRequest,
+    client: &reqwest::Client,
 ) -> OriginResponse {
     let host = request.http_host().unwrap_or("");
     let path = extract_path_from_dest(&request.dest);
@@ -212,7 +276,7 @@ pub(crate) fn proxy_connect_request(
         cfdrs_shared::find_matching_rule(ingress, host, path).map(|index| &ingress[index].service);
 
     match matched_service {
-        Some(service) => dispatch_to_origin(service, request),
+        Some(service) => dispatch_to_origin(service, request, client).await,
         None => OriginResponse::Http(Box::new(build_status_response(502))),
     }
 }
@@ -243,7 +307,11 @@ fn extract_path_from_dest(dest: &str) -> &str {
 mod tests {
     use super::*;
     use cfdrs_cdc::stream::{ConnectionType, Metadata};
+    use cfdrs_cdc::stream_contract::{
+        RESPONSE_META_CLOUDFLARED, RESPONSE_META_HEADER, RESPONSE_META_ORIGIN, RESPONSE_USER_HEADERS,
+    };
     use cfdrs_shared::{IngressMatch, IngressRule, OriginRequestConfig};
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     fn status_rule(hostname: Option<&str>, code: u16) -> IngressRule {
         IngressRule {
@@ -296,11 +364,60 @@ mod tests {
         }
     }
 
-    #[test]
-    fn dispatch_http_status_returns_configured_code() {
+    fn test_client() -> reqwest::Client {
+        reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_millis(500))
+            .timeout(std::time::Duration::from_secs(5))
+            .build()
+            .expect("test HTTP client")
+    }
+
+    /// Start a single-shot HTTP origin server for integration testing.
+    ///
+    /// Binds to a random port on 127.0.0.1, accepts one connection,
+    /// reads the request, and writes a fixed response. Returns the port
+    /// and a handle that resolves to the raw request text received.
+    async fn start_origin_server(
+        status: u16,
+        response_headers: Vec<(&'static str, &'static str)>,
+    ) -> (u16, tokio::task::JoinHandle<String>) {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind test origin");
+        let port = listener.local_addr().expect("local addr").port();
+
+        let handle = tokio::spawn(async move {
+            let (mut socket, _) = listener.accept().await.expect("accept");
+
+            let mut buf = vec![0u8; 4096];
+            let n = socket.read(&mut buf).await.expect("read request");
+            let request_text = String::from_utf8_lossy(&buf[..n]).to_string();
+
+            let mut response = format!("HTTP/1.1 {status} OK\r\n");
+
+            for (name, value) in &response_headers {
+                response.push_str(&format!("{name}: {value}\r\n"));
+            }
+
+            response.push_str("Content-Length: 0\r\n\r\n");
+
+            socket
+                .write_all(response.as_bytes())
+                .await
+                .expect("write response");
+
+            request_text
+        });
+
+        (port, handle)
+    }
+
+    #[tokio::test]
+    async fn dispatch_http_status_returns_configured_code() {
+        let client = test_client();
         let rules = vec![status_rule(None, 418)];
         let request = make_request("example.com", "http://example.com/");
-        let response = proxy_connect_request(&rules, &request);
+        let response = proxy_connect_request(&rules, &request, &client).await;
 
         match response {
             OriginResponse::Http(header) => assert_eq!(header.status.as_u16(), 418),
@@ -308,11 +425,12 @@ mod tests {
         }
     }
 
-    #[test]
-    fn dispatch_hello_world_returns_200() {
+    #[tokio::test]
+    async fn dispatch_hello_world_returns_200() {
+        let client = test_client();
         let rules = vec![hello_rule(None)];
         let request = make_request("example.com", "http://example.com/");
-        let response = proxy_connect_request(&rules, &request);
+        let response = proxy_connect_request(&rules, &request, &client).await;
 
         match response {
             OriginResponse::Http(header) => assert_eq!(header.status.as_u16(), 200),
@@ -320,11 +438,12 @@ mod tests {
         }
     }
 
-    #[test]
-    fn dispatch_http_origin_returns_502_with_dispatch_marker() {
-        let rules = vec![http_rule(None, "http://localhost:8080")];
-        let request = make_request("example.com", "http://localhost:8080/api");
-        let response = proxy_connect_request(&rules, &request);
+    #[tokio::test]
+    async fn dispatch_http_origin_unreachable_returns_502() {
+        let client = test_client();
+        let rules = vec![http_rule(None, "http://127.0.0.1:1")];
+        let request = make_request("example.com", "http://127.0.0.1:1/api");
+        let response = proxy_connect_request(&rules, &request, &client).await;
 
         match response {
             OriginResponse::Http(header) => {
@@ -335,8 +454,96 @@ mod tests {
         }
     }
 
-    #[test]
-    fn dispatch_hostname_matching() {
+    // --- CDC-018: origin HTTP round-trip tests ---
+
+    /// Reachable origin returns the real status code and headers from
+    /// the upstream server through the full dispatch pipeline.
+    #[tokio::test]
+    async fn dispatch_http_origin_reachable_returns_origin_response() {
+        let (port, server) = start_origin_server(201, vec![("X-Origin-Id", "abc-123")]).await;
+
+        let client = test_client();
+        let rules = vec![http_rule(None, &format!("http://127.0.0.1:{port}"))];
+        let request = make_request("example.com", "http://example.com/api");
+        let response = proxy_connect_request(&rules, &request, &client).await;
+
+        match response {
+            OriginResponse::Http(header) => {
+                assert_eq!(header.status.as_u16(), 201);
+
+                let origin_id = header
+                    .headers
+                    .get("x-origin-id")
+                    .expect("origin header should be forwarded");
+                assert_eq!(origin_id.to_str().expect("valid header"), "abc-123");
+            }
+            other => panic!("expected Http response, got: {other:?}"),
+        }
+
+        server.await.expect("test origin server");
+    }
+
+    /// Origin error status (500) must propagate as-is through dispatch,
+    /// not be remapped to 502 (which is reserved for unreachable origins).
+    #[tokio::test]
+    async fn dispatch_http_origin_server_error_propagated() {
+        let (port, server) = start_origin_server(500, vec![]).await;
+
+        let client = test_client();
+        let rules = vec![http_rule(None, &format!("http://127.0.0.1:{port}"))];
+        let request = make_request("example.com", "http://example.com/");
+        let response = proxy_connect_request(&rules, &request, &client).await;
+
+        match response {
+            OriginResponse::Http(header) => {
+                assert_eq!(header.status.as_u16(), 500);
+            }
+            other => panic!("expected Http response, got: {other:?}"),
+        }
+
+        server.await.expect("test origin server");
+    }
+
+    /// Request method and Host header from the ConnectRequest metadata
+    /// are forwarded to the origin server on the wire.
+    #[tokio::test]
+    async fn dispatch_http_origin_forwards_method_and_host() {
+        let (port, server) = start_origin_server(200, vec![]).await;
+
+        let client = test_client();
+        let service =
+            IngressService::Http(url::Url::parse(&format!("http://127.0.0.1:{port}")).expect("url"));
+        let request = ConnectRequest {
+            dest: format!("http://127.0.0.1:{port}/api/v1"),
+            connection_type: ConnectionType::Http,
+            metadata: vec![
+                Metadata::new("HttpMethod", "POST"),
+                Metadata::new("HttpHost", "api.example.com"),
+            ],
+        };
+
+        let response = dispatch_to_origin(&service, &request, &client).await;
+        assert!(matches!(response, OriginResponse::Http(_)));
+
+        let received = server.await.expect("test origin server");
+        let first_line = received.lines().next().unwrap_or("");
+
+        assert!(
+            first_line.starts_with("POST "),
+            "should forward POST method, got: {first_line}"
+        );
+
+        let received_lower = received.to_ascii_lowercase();
+
+        assert!(
+            received_lower.contains("host: api.example.com"),
+            "should forward Host header, got:\n{received}"
+        );
+    }
+
+    #[tokio::test]
+    async fn dispatch_hostname_matching() {
+        let client = test_client();
         let rules = vec![
             status_rule(Some("api.example.com"), 200),
             hello_rule(Some("hello.example.com")),
@@ -344,28 +551,29 @@ mod tests {
         ];
 
         let api_req = make_request("api.example.com", "http://api.example.com/");
-        match proxy_connect_request(&rules, &api_req) {
+        match proxy_connect_request(&rules, &api_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
             other => panic!("expected 200, got: {other:?}"),
         }
 
         let hello_req = make_request("hello.example.com", "http://hello.example.com/");
-        match proxy_connect_request(&rules, &hello_req) {
+        match proxy_connect_request(&rules, &hello_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
             other => panic!("expected 200, got: {other:?}"),
         }
 
         let other_req = make_request("other.example.com", "http://other.example.com/");
-        match proxy_connect_request(&rules, &other_req) {
+        match proxy_connect_request(&rules, &other_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 404),
             other => panic!("expected 404, got: {other:?}"),
         }
     }
 
-    #[test]
-    fn dispatch_empty_ingress_returns_502() {
+    #[tokio::test]
+    async fn dispatch_empty_ingress_returns_502() {
+        let client = test_client();
         let request = make_request("example.com", "http://example.com/");
-        let response = proxy_connect_request(&[], &request);
+        let response = proxy_connect_request(&[], &request, &client).await;
 
         match response {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 502),
@@ -382,8 +590,9 @@ mod tests {
         assert_eq!(extract_path_from_dest("10.0.0.1:8080"), "/");
     }
 
-    #[test]
-    fn unimplemented_services_report_label() {
+    #[tokio::test]
+    async fn unimplemented_services_report_label() {
+        let client = test_client();
         let service = IngressService::SocksProxy;
         let request = ConnectRequest {
             dest: "socks://localhost:1080".into(),
@@ -391,7 +600,7 @@ mod tests {
             metadata: vec![],
         };
 
-        match dispatch_to_origin(&service, &request) {
+        match dispatch_to_origin(&service, &request, &client).await {
             OriginResponse::Unimplemented { service_label } => {
                 assert_eq!(service_label, "socks-proxy");
             }
@@ -404,19 +613,20 @@ mod tests {
     /// Go baseline dispatches HTTP and WebSocket through the same
     /// `ProxyHTTP` path. Verify both connection types reach the
     /// HTTP dispatch arm for an Http service.
-    #[test]
-    fn http_and_websocket_share_dispatch_path() {
+    #[tokio::test]
+    async fn http_and_websocket_share_dispatch_path() {
+        let client = test_client();
         let rules = vec![status_rule(None, 200)];
 
         let http_req = make_typed_request("example.com", "http://example.com/", ConnectionType::Http);
         let ws_req = make_typed_request("example.com", "http://example.com/", ConnectionType::WebSocket);
 
-        match proxy_connect_request(&rules, &http_req) {
+        match proxy_connect_request(&rules, &http_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
             other => panic!("HTTP request should dispatch to Http response, got: {other:?}"),
         }
 
-        match proxy_connect_request(&rules, &ws_req) {
+        match proxy_connect_request(&rules, &ws_req, &client).await {
             OriginResponse::Http(h) => assert_eq!(h.status.as_u16(), 200),
             other => panic!("WebSocket request should share HTTP dispatch path, got: {other:?}"),
         }
@@ -425,12 +635,13 @@ mod tests {
     /// Go baseline dispatches TCP through a separate `ProxyTCP` path.
     /// HTTP-only services (HttpStatus, HelloWorld) should be
     /// unreachable via TCP and return Unimplemented.
-    #[test]
-    fn tcp_dispatch_rejects_http_only_services() {
+    #[tokio::test]
+    async fn tcp_dispatch_rejects_http_only_services() {
+        let client = test_client();
         let rules = vec![status_rule(None, 200)];
         let tcp_req = make_typed_request("example.com", "example.com:8080", ConnectionType::Tcp);
 
-        match proxy_connect_request(&rules, &tcp_req) {
+        match proxy_connect_request(&rules, &tcp_req, &client).await {
             OriginResponse::Unimplemented { service_label } => {
                 assert_eq!(service_label, "http-status");
             }
@@ -440,8 +651,9 @@ mod tests {
 
     /// TCP-capable services dispatch through the TCP path and report
     /// their correct label (pending real implementation).
-    #[test]
-    fn tcp_dispatch_to_tcp_service_reports_label() {
+    #[tokio::test]
+    async fn tcp_dispatch_to_tcp_service_reports_label() {
+        let client = test_client();
         let service =
             IngressService::TcpOverWebsocket(url::Url::parse("tcp://10.0.0.5:22").expect("test url"));
         let request = ConnectRequest {
@@ -450,7 +662,7 @@ mod tests {
             metadata: vec![Metadata::new("FlowID", "flow-42")],
         };
 
-        match dispatch_to_origin(&service, &request) {
+        match dispatch_to_origin(&service, &request, &client).await {
             OriginResponse::Unimplemented { service_label } => {
                 assert_eq!(service_label, "tcp-over-websocket");
             }
@@ -460,12 +672,13 @@ mod tests {
 
     /// WebSocket connection type to an Http service goes through
     /// the HTTP dispatch path (same as Go baseline).
-    #[test]
-    fn websocket_to_http_service_dispatches_through_http_path() {
-        let rules = vec![http_rule(None, "http://localhost:8080")];
+    #[tokio::test]
+    async fn websocket_to_http_service_dispatches_through_http_path() {
+        let client = test_client();
+        let rules = vec![http_rule(None, "http://127.0.0.1:1")];
         let ws_req = make_typed_request("example.com", "http://example.com/ws", ConnectionType::WebSocket);
 
-        match proxy_connect_request(&rules, &ws_req) {
+        match proxy_connect_request(&rules, &ws_req, &client).await {
             OriginResponse::Http(h) => {
                 // Http forward is wired but returns 502 (origin connection not yet implemented)
                 assert_eq!(h.status.as_u16(), 502);
@@ -519,6 +732,22 @@ mod tests {
         assert!(cr.is_ok());
         assert_eq!(cr.metadata[0].key, "HttpStatus");
         assert_eq!(cr.metadata[0].val, "418");
+
+        // CDC-016: response meta should be present and mark cloudflared as source.
+        assert!(
+            cr.metadata
+                .iter()
+                .any(|m| m.key == RESPONSE_META_HEADER && m.val == RESPONSE_META_CLOUDFLARED),
+            "should contain response meta metadata, got: {:?}",
+            cr.metadata
+        );
+
+        // CDC-015: serialized response headers metadata should be present.
+        assert!(
+            cr.metadata.iter().any(|m| m.key == RESPONSE_USER_HEADERS),
+            "should contain serialized response headers metadata, got: {:?}",
+            cr.metadata
+        );
     }
 
     /// TCP stream established converts to a successful TCP ack.
@@ -529,6 +758,15 @@ mod tests {
 
         assert!(cr.is_ok());
         assert!(cr.error.is_empty());
+
+        // CDC-016: TCP ack should mark origin as source.
+        assert!(
+            cr.metadata
+                .iter()
+                .any(|m| m.key == RESPONSE_META_HEADER && m.val == RESPONSE_META_ORIGIN),
+            "TCP ack should contain origin response meta, got: {:?}",
+            cr.metadata
+        );
     }
 
     /// Unimplemented service converts to an error ConnectResponse
@@ -559,6 +797,7 @@ mod tests {
         assert!(cr.is_ok());
         assert_eq!(cr.metadata[0].key, "HttpStatus");
         assert_eq!(cr.metadata[0].val, "200");
+
         // Content-Type header should be in metadata.
         // Pingora lowercases header names per HTTP/2 conventions,
         // so the metadata key is "HttpHeader:content-type".
@@ -569,6 +808,15 @@ mod tests {
             "should contain content-type header metadata, got: {:?}",
             cr.metadata
         );
+
+        // CDC-016: response meta should mark cloudflared as source.
+        assert!(
+            cr.metadata
+                .iter()
+                .any(|m| m.key == RESPONSE_META_HEADER && m.val == RESPONSE_META_CLOUDFLARED),
+            "hello-world should have cloudflared response meta, got: {:?}",
+            cr.metadata
+        );
     }
 
     // --- CDC-018: end-to-end dispatch → ConnectResponse ---
@@ -576,12 +824,13 @@ mod tests {
     /// Full round-trip: ConnectRequest → ingress match → dispatch →
     /// OriginResponse → ConnectResponse. This is the CDC-018
     /// stream round-trip path.
-    #[test]
-    fn end_to_end_http_dispatch_to_connect_response() {
+    #[tokio::test]
+    async fn end_to_end_http_dispatch_to_connect_response() {
+        let client = test_client();
         let rules = vec![status_rule(Some("api.example.com"), 200), status_rule(None, 404)];
         let request = make_request("api.example.com", "http://api.example.com/health");
 
-        let origin = proxy_connect_request(&rules, &request);
+        let origin = proxy_connect_request(&rules, &request, &client).await;
         let cr = to_connect_response(&origin);
 
         assert!(cr.is_ok());
@@ -589,12 +838,13 @@ mod tests {
     }
 
     /// Full round-trip for a TCP request that hits an HTTP-only service.
-    #[test]
-    fn end_to_end_tcp_dispatch_to_error_connect_response() {
+    #[tokio::test]
+    async fn end_to_end_tcp_dispatch_to_error_connect_response() {
+        let client = test_client();
         let rules = vec![status_rule(None, 200)];
         let request = make_typed_request("example.com", "example.com:22", ConnectionType::Tcp);
 
-        let origin = proxy_connect_request(&rules, &request);
+        let origin = proxy_connect_request(&rules, &request, &client).await;
         let cr = to_connect_response(&origin);
 
         assert!(!cr.is_ok());
@@ -606,13 +856,145 @@ mod tests {
     }
 
     /// No ingress match produces a 502 ConnectResponse.
-    #[test]
-    fn end_to_end_no_match_returns_502_connect_response() {
+    #[tokio::test]
+    async fn end_to_end_no_match_returns_502_connect_response() {
+        let client = test_client();
         let request = make_request("example.com", "http://example.com/");
-        let origin = proxy_connect_request(&[], &request);
+        let origin = proxy_connect_request(&[], &request, &client).await;
         let cr = to_connect_response(&origin);
 
         assert!(cr.is_ok());
         assert_eq!(cr.metadata[0].val, "502");
+    }
+
+    /// Full pipeline through a reachable origin: ConnectRequest →
+    /// ingress match → real HTTP round-trip → OriginResponse →
+    /// ConnectResponse with CDC-015/016 metadata verification.
+    #[tokio::test]
+    async fn end_to_end_reachable_origin_to_connect_response() {
+        let (port, server) = start_origin_server(200, vec![("X-Forwarded", "origin-value")]).await;
+
+        let client = test_client();
+        let rules = vec![http_rule(
+            Some("origin.test"),
+            &format!("http://127.0.0.1:{port}"),
+        )];
+        let request = make_request("origin.test", "http://origin.test/health");
+
+        let origin = proxy_connect_request(&rules, &request, &client).await;
+        let cr = to_connect_response(&origin);
+
+        assert!(cr.is_ok(), "reachable origin should produce OK response");
+        assert_eq!(cr.metadata[0].val, "200");
+
+        // CDC-016: response meta should mark cloudflared as source.
+        assert!(
+            cr.metadata
+                .iter()
+                .any(|m| m.key == RESPONSE_META_HEADER && m.val == RESPONSE_META_CLOUDFLARED),
+            "should contain cloudflared response meta"
+        );
+
+        // CDC-015: serialized response headers should include the origin header.
+        let serialized = cr
+            .metadata
+            .iter()
+            .find(|m| m.key == RESPONSE_USER_HEADERS)
+            .expect("should have serialized headers");
+        let deserialized =
+            cfdrs_cdc::stream_contract::deserialize_headers(&serialized.val).expect("should deserialize");
+
+        assert!(
+            deserialized
+                .iter()
+                .any(|h| h.name == "x-forwarded" && h.value == "origin-value"),
+            "origin header should survive the full pipeline, got: {:?}",
+            deserialized
+        );
+
+        server.await.expect("test origin server");
+    }
+
+    // --- CDC-017: control header stripping ---
+
+    /// Control headers (cf-int-*, cf-cloudflared-*, cf-proxy-*, :*)
+    /// must be stripped from the ConnectResponse metadata.
+    #[test]
+    fn connect_response_strips_control_headers() {
+        let mut header = ResponseHeader::build(200, None).expect("200 is valid");
+        let _ = header.insert_header("content-type", "text/plain");
+        let _ = header.insert_header("cf-int-internal", "secret");
+        let _ = header.insert_header("cf-cloudflared-request-headers", "encoded");
+        let _ = header.insert_header("cf-proxy-worker", "worker-1");
+        let _ = header.insert_header("x-custom", "allowed");
+
+        let origin = OriginResponse::Http(Box::new(header));
+        let cr = to_connect_response(&origin);
+
+        assert!(cr.is_ok());
+
+        // User headers should be forwarded.
+        assert!(
+            cr.metadata.iter().any(|m| m.key.contains("content-type")),
+            "content-type should be forwarded"
+        );
+        assert!(
+            cr.metadata.iter().any(|m| m.key.contains("x-custom")),
+            "x-custom should be forwarded"
+        );
+
+        // Control headers should be stripped.
+        assert!(
+            !cr.metadata.iter().any(|m| m.key.contains("cf-int-internal")),
+            "cf-int-* should be stripped"
+        );
+        assert!(
+            !cr.metadata
+                .iter()
+                .any(|m| m.key.contains("cf-cloudflared-request-headers")),
+            "cf-cloudflared-* should be stripped"
+        );
+        assert!(
+            !cr.metadata.iter().any(|m| m.key.contains("cf-proxy-worker")),
+            "cf-proxy-* should be stripped"
+        );
+    }
+
+    // --- CDC-015: serialized response headers ---
+
+    /// Response serialized headers metadata should round-trip through
+    /// serialize/deserialize correctly.
+    #[test]
+    fn connect_response_serialized_headers_roundtrip() {
+        let mut header = ResponseHeader::build(200, None).expect("200 is valid");
+        let _ = header.insert_header("content-type", "application/json");
+        let _ = header.insert_header("x-request-id", "abc-123");
+
+        let origin = OriginResponse::Http(Box::new(header));
+        let cr = to_connect_response(&origin);
+
+        let serialized = cr
+            .metadata
+            .iter()
+            .find(|m| m.key == RESPONSE_USER_HEADERS)
+            .expect("should have serialized headers metadata");
+
+        let deserialized =
+            cfdrs_cdc::stream_contract::deserialize_headers(&serialized.val).expect("should deserialize");
+
+        assert!(
+            deserialized
+                .iter()
+                .any(|h| h.name == "content-type" && h.value == "application/json"),
+            "should contain content-type, got: {:?}",
+            deserialized
+        );
+        assert!(
+            deserialized
+                .iter()
+                .any(|h| h.name == "x-request-id" && h.value == "abc-123"),
+            "should contain x-request-id, got: {:?}",
+            deserialized
+        );
     }
 }

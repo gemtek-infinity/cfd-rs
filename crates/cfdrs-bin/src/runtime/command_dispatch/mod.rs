@@ -1,11 +1,8 @@
 mod handlers;
 
-use super::{ApplicationRuntime, RuntimeCommand, RuntimeExit, RuntimeServiceFactory, ServiceExit};
+use super::{ApplicationRuntime, RuntimeCommand, RuntimeExit, ServiceExit};
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     pub(super) async fn handle_command(&mut self, command: RuntimeCommand) -> Option<RuntimeExit> {
         match command {
             RuntimeCommand::ServiceReady { service } => self.handle_service_ready(service),
@@ -20,6 +17,7 @@ where
             RuntimeCommand::ServiceExited(service_exit) => self.handle_service_exit(service_exit).await,
             RuntimeCommand::ShutdownRequested(reason) => self.handle_shutdown_requested(reason),
             RuntimeCommand::ControlPlaneFailure { detail } => self.handle_control_plane_failure(detail),
+            RuntimeCommand::ConfigFileChanged { path } => self.handle_config_file_changed(path),
         }
     }
 

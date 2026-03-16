@@ -13,6 +13,7 @@ Do not load broad top-level docs by default.
 - [`docs/parity/source-map.csv`](../docs/parity/source-map.csv) — exact row-to-baseline routing
 - [`Justfile`](../Justfile) — authoritative command surface
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md) — contributor workflow
+- `GCFGR.md` — local session handoff state (gitignored; read first if it exists)
 
 ## Rules
 
@@ -20,8 +21,9 @@ Do not load broad top-level docs by default.
 - do not claim parity from Rust code shape alone
 - use frozen baseline code/tests first for behavior truth
 - keep scope bounded to one owning domain when possible
-- `GCFGR.md` is optional local handoff state only; [`STATUS.md`](../STATUS.md) wins
-- format Rust with `cargo +nightly fmt`, not plain `cargo fmt`
+- always reconcile [`STATUS.md`](../STATUS.md) after session work, as it is the source of truth for blockers and priority
+- read `GCFGR.md` at cold start and after context compaction; update it before ending non-trivial sessions
+- format Rust code with `just fmt` (which uses `cargo +nightly fmt`), not plain `cargo fmt`
 - use [`Justfile`](../Justfile) for normal execution, not ad hoc local command chains
 
 ## Preferred repo tooling

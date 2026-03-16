@@ -6,20 +6,24 @@ use crate::protocol::ProtocolBridgeState;
 use crate::proxy::ProxySeamState;
 use crate::transport::TransportLifecycleStage;
 
-use super::super::{ApplicationRuntime, LifecycleState, RuntimeExit, RuntimeServiceFactory, ShutdownReason};
+use super::super::{ApplicationRuntime, LifecycleState, RuntimeExit, ShutdownReason};
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     pub(super) fn handle_service_ready(&mut self, service: &'static str) -> Option<RuntimeExit> {
         let is_resumed = self.status.restart_attempts() > 0;
         self.status.record_timing_service_ready(is_resumed);
 
-        if let Some(pidfile_path) = self.config.pidfile_path()
-            && let Err(error) = write_pidfile(pidfile_path)
+        // Write pidfile exactly once on first connection, matching Go
+        // `connectedSignal` + `sync.Once` pattern in `writePidFile`.
+        if !self.pidfile_written
+            && let Some(pidfile_path) = self.config.pidfile_path()
         {
-            self.status.push_summary(format!("pidfile-write-error: {error}"));
+            match write_pidfile(pidfile_path) {
+                Ok(()) => self.pidfile_written = true,
+                Err(error) => {
+                    self.status.push_summary(format!("pidfile-write-error: {error}"));
+                }
+            }
         }
 
         if self.status.lifecycle_state() == LifecycleState::Starting {
@@ -94,6 +98,14 @@ where
         self.status
             .record_failure_boundary("runtime-control-plane", "fatal", &detail);
         Some(RuntimeExit::Failed { detail })
+    }
+
+    pub(super) fn handle_config_file_changed(&mut self, path: std::path::PathBuf) -> Option<RuntimeExit> {
+        self.status.record_service_status(
+            "config-watcher",
+            format!("config file changed: {}", path.display()),
+        );
+        None
     }
 
     pub(super) async fn handle_retryable_service_exit(

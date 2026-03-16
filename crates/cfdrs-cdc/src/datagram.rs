@@ -596,6 +596,44 @@ impl std::fmt::Display for SessionIdleErr {
 impl std::error::Error for SessionIdleErr {}
 
 // ---------------------------------------------------------------------------
+// V3 session manager trait (CDC-041)
+// ---------------------------------------------------------------------------
+
+/// Connection identifier for associating sessions with QUIC connections.
+///
+/// Matches the `conn.ID()` used in Go's `SessionManager.RegisterSession`.
+pub type ConnectionId = u8;
+
+/// V3 datagram session manager trait.
+///
+/// Matches the `SessionManager` interface in `quic/v3/manager.go`.
+/// Implementations coordinate UDP session lifecycle: registration,
+/// lookup, and teardown.
+pub trait SessionManager: Send + Sync {
+    /// Register a new session for the given request.
+    ///
+    /// If the request ID already exists for a different connection,
+    /// returns `SessionError::BoundToOtherConn`. If already registered
+    /// for the same connection, returns `SessionError::AlreadyRegistered`.
+    /// Rate limiting may return `SessionError::RegistrationRateLimited`.
+    fn register_session(
+        &self,
+        request: &UdpSessionRegistrationDatagram,
+        connection_id: ConnectionId,
+    ) -> Result<RequestId, SessionError>;
+
+    /// Look up an active session by request ID.
+    ///
+    /// Returns `SessionError::NotFound` if no session exists.
+    fn get_session(&self, request_id: &RequestId) -> Result<ConnectionId, SessionError>;
+
+    /// Unregister and close a session by request ID.
+    ///
+    /// No-op if the session does not exist.
+    fn unregister_session(&self, request_id: &RequestId);
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 

@@ -13,8 +13,8 @@ use uuid::Uuid;
 
 use crate::registration::{
     ClientInfo, ConnectionDetails, ConnectionError, ConnectionOptions, ConnectionResponse,
-    RegisterUdpSessionRequest, RegisterUdpSessionResponse, TunnelAuth, UpdateConfigurationRequest,
-    UpdateConfigurationResponse, UpdateLocalConfigurationRequest,
+    RegisterConnectionRequest, RegisterUdpSessionRequest, RegisterUdpSessionResponse, TunnelAuth,
+    UpdateConfigurationRequest, UpdateConfigurationResponse, UpdateLocalConfigurationRequest,
 };
 use crate::tunnelrpc_capnp;
 
@@ -291,7 +291,7 @@ impl RegisterUdpSessionResponse {
 //   registerUdpSession(sessionId: Data, dstIp: Data, dstPort: UInt16,
 //                      closeAfterIdleHint: Int64, traceContext: Text)
 // We provide encode/decode over a raw capnp message for testing and
-// downstream codec reuse when capnp-rpc is admitted.
+// downstream codec reuse now that capnp-rpc is admitted.
 // ---------------------------------------------------------------------------
 
 impl RegisterUdpSessionRequest {
@@ -356,6 +356,124 @@ impl UpdateConfigurationRequest {
             config: config.to_vec(),
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Wire-level encode / decode for registration RPC
+// ---------------------------------------------------------------------------
+
+/// Encode a `RegisterConnectionRequest` into Cap'n Proto wire format.
+///
+/// Uses the generated `register_connection_params` struct from
+/// `tunnelrpc.capnp` to encode all RPC parameters (auth, tunnelId,
+/// connIndex, options) into a single Cap'n Proto message.
+pub fn encode_registration_request(request: &RegisterConnectionRequest) -> Vec<u8> {
+    let mut message = ::capnp::message::Builder::new_default();
+
+    let mut builder =
+        message.init_root::<tunnelrpc_capnp::registration_server::register_connection_params::Builder<'_>>();
+
+    request.auth.marshal_capnp(builder.reborrow().init_auth());
+    builder.set_tunnel_id(request.tunnel_id.as_bytes());
+    builder.set_conn_index(request.conn_index);
+    request.options.marshal_capnp(builder.init_options());
+
+    let mut buf = Vec::new();
+    ::capnp::serialize::write_message(&mut buf, &message).expect("capnp write to Vec should not fail");
+    buf
+}
+
+/// Parse a `RegisterConnectionRequest` from Cap'n Proto wire format.
+///
+/// Returns `None` if the data is malformed or contains invalid fields.
+pub fn decode_registration_request(data: &[u8]) -> Option<RegisterConnectionRequest> {
+    let reader =
+        ::capnp::serialize::read_message_from_flat_slice(&mut &*data, ::capnp::message::ReaderOptions::new())
+            .ok()?;
+
+    let root = reader
+        .get_root::<tunnelrpc_capnp::registration_server::register_connection_params::Reader<'_>>()
+        .ok()?;
+
+    let auth = TunnelAuth::unmarshal_capnp(root.get_auth().ok()?).ok()?;
+
+    let tunnel_id_bytes = root.get_tunnel_id().ok()?;
+    let tunnel_id = Uuid::from_slice(tunnel_id_bytes).ok()?;
+
+    let conn_index = root.get_conn_index();
+    let options = ConnectionOptions::unmarshal_capnp(root.get_options().ok()?).ok()?;
+
+    Some(RegisterConnectionRequest {
+        auth,
+        tunnel_id,
+        conn_index,
+        options,
+    })
+}
+
+/// Encode a `ConnectionResponse` into Cap'n Proto wire format.
+///
+/// Uses the generated `register_connection_results` struct from
+/// `tunnelrpc.capnp` to wrap the response in the same schema layout
+/// the edge produces.
+pub fn encode_registration_response(response: &ConnectionResponse) -> Vec<u8> {
+    let mut message = ::capnp::message::Builder::new_default();
+
+    let builder =
+        message.init_root::<tunnelrpc_capnp::registration_server::register_connection_results::Builder<'_>>();
+
+    response.marshal_capnp(builder.init_result());
+
+    let mut buf = Vec::new();
+    ::capnp::serialize::write_message(&mut buf, &message).expect("capnp write to Vec should not fail");
+    buf
+}
+
+/// Encode an `UnregisterConnectionRequest` into Cap'n Proto wire format.
+///
+/// CDC-007: `unregisterConnection @1 () -> ()` has zero parameters.
+/// This produces a minimal capnp message with the empty
+/// `unregister_connection_params` struct.
+pub fn encode_unregister_request() -> Vec<u8> {
+    let mut message = ::capnp::message::Builder::new_default();
+    message.init_root::<tunnelrpc_capnp::registration_server::unregister_connection_params::Builder<'_>>();
+
+    let mut buf = Vec::new();
+    ::capnp::serialize::write_message(&mut buf, &message).expect("capnp write to Vec should not fail");
+    buf
+}
+
+/// Parse the response to an `UnregisterConnection` RPC call.
+///
+/// Returns `true` if the data represents a valid (empty)
+/// `unregister_connection_results` capnp message, `false` otherwise.
+/// CDC-007: the RPC returns void, so success is just a parseable message.
+pub fn decode_unregister_response(data: &[u8]) -> bool {
+    let Ok(reader) =
+        ::capnp::serialize::read_message_from_flat_slice(&mut &*data, ::capnp::message::ReaderOptions::new())
+    else {
+        return false;
+    };
+
+    reader
+        .get_root::<tunnelrpc_capnp::registration_server::unregister_connection_results::Reader<'_>>()
+        .is_ok()
+}
+
+/// Parse a `ConnectionResponse` from Cap'n Proto wire format.
+///
+/// Returns `None` if the data is malformed.
+pub fn decode_registration_response(data: &[u8]) -> Option<ConnectionResponse> {
+    let reader =
+        ::capnp::serialize::read_message_from_flat_slice(&mut &*data, ::capnp::message::ReaderOptions::new())
+            .ok()?;
+
+    let root = reader
+        .get_root::<tunnelrpc_capnp::registration_server::register_connection_results::Reader<'_>>()
+        .ok()?;
+
+    let result_reader = root.get_result().ok()?;
+    ConnectionResponse::unmarshal_capnp(result_reader).ok()
 }
 
 #[cfg(test)]
@@ -722,5 +840,102 @@ mod tests {
         let req = UpdateConfigurationRequest::from_rpc_params(7, b"raw-config");
         assert_eq!(req.version, 7);
         assert_eq!(req.config, b"raw-config".to_vec());
+    }
+
+    // -- Wire-level registration round-trips --------------------------------
+
+    #[test]
+    fn wire_round_trip_registration_request() {
+        let id = Uuid::parse_str("11111111-1111-1111-1111-111111111111").expect("uuid");
+        let request = RegisterConnectionRequest {
+            auth: TunnelAuth {
+                account_tag: "acct-123".into(),
+                tunnel_secret: vec![0xaa, 0xbb, 0xcc],
+            },
+            tunnel_id: id,
+            conn_index: 2,
+            options: ConnectionOptions::for_current_platform(id, 2),
+        };
+
+        let encoded = encode_registration_request(&request);
+        let decoded =
+            decode_registration_request(&encoded).expect("wire round-trip should produce a valid request");
+
+        assert_eq!(decoded.auth, request.auth);
+        assert_eq!(decoded.tunnel_id, request.tunnel_id);
+        assert_eq!(decoded.conn_index, request.conn_index);
+        assert_eq!(decoded.options, request.options);
+    }
+
+    #[test]
+    fn wire_round_trip_registration_response_success() {
+        let resp = ConnectionResponse::Success(ConnectionDetails {
+            uuid: Uuid::parse_str("22222222-2222-2222-2222-222222222222").expect("uuid"),
+            location: "SFO".into(),
+            is_remotely_managed: true,
+        });
+
+        let encoded = encode_registration_response(&resp);
+        let decoded =
+            decode_registration_response(&encoded).expect("wire round-trip should produce a valid response");
+
+        assert_eq!(decoded, resp);
+    }
+
+    #[test]
+    fn wire_round_trip_registration_response_error() {
+        let resp = ConnectionResponse::Error(ConnectionError {
+            cause: "too many connections".into(),
+            retry_after_ns: 5_000_000_000,
+            should_retry: true,
+        });
+
+        let encoded = encode_registration_response(&resp);
+        let decoded =
+            decode_registration_response(&encoded).expect("wire round-trip should produce a valid response");
+
+        assert_eq!(decoded, resp);
+    }
+
+    #[test]
+    fn decode_registration_request_invalid_data() {
+        assert!(decode_registration_request(&[]).is_none());
+        assert!(decode_registration_request(&[0xff, 0x00]).is_none());
+    }
+
+    #[test]
+    fn decode_registration_response_invalid_data() {
+        assert!(decode_registration_response(&[]).is_none());
+        assert!(decode_registration_response(&[0xff, 0x00]).is_none());
+    }
+
+    // -- CDC-007: UnregisterConnection ------------------------------------
+
+    /// CDC-007: `unregisterConnection @1 () -> ()` encodes to a non-empty
+    /// capnp message despite having zero user-visible parameters.
+    #[test]
+    fn unregister_request_encodes_to_nonempty_capnp() {
+        let encoded = encode_unregister_request();
+        assert!(
+            !encoded.is_empty(),
+            "empty params struct should still produce a capnp segment header"
+        );
+    }
+
+    /// The encoded unregister request round-trips through the response
+    /// decoder when used as both params and results (both are empty structs).
+    #[test]
+    fn unregister_response_decodes_valid_empty_message() {
+        let encoded = encode_unregister_request();
+        assert!(
+            decode_unregister_response(&encoded),
+            "an empty capnp struct message should decode as a valid unregister response"
+        );
+    }
+
+    #[test]
+    fn unregister_response_rejects_invalid_data() {
+        assert!(!decode_unregister_response(&[]));
+        assert!(!decode_unregister_response(&[0xff, 0x00]));
     }
 }

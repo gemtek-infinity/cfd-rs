@@ -6,17 +6,21 @@ mod runtime;
 mod startup;
 mod transport;
 
+// Admitted for non-blocking file writer layer; not yet wired (hand-rolled
+// size-based rotation matches Go parity).
+use tracing_appender as _;
+
 use std::env;
 use std::ffi::OsString;
 use std::path::Path;
 use std::process::ExitCode;
 
 use cfdrs_cli::{
-    AccessSubcommand, CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command,
-    DB_CONNECT_REMOVED_MSG, GlobalFlags, IngressSubcommand, IpRouteSubcommand, ManagementSubcommand,
-    PROGRAM_NAME, PROXY_DNS_REMOVED_MSG, RouteSubcommand, ServiceAction, TUNNEL_CMD_ERROR_MSG,
-    TailSubcommand, TunnelSubcommand, VnetSubcommand, parse_args, render_help, render_short_version,
-    render_version_output, stub_not_implemented,
+    CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command, DB_CONNECT_REMOVED_MSG, GlobalFlags,
+    HelpTarget, PROGRAM_NAME, PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG, ServiceAction,
+    TUNNEL_CMD_ERROR_MSG, TUNNEL_RUN_HOSTNAME_WARNING_MSG, TUNNEL_RUN_NARG_ERROR_MSG, TunnelSubcommand,
+    parse_args, render_access_help, render_help, render_short_version, render_tunnel_help,
+    render_version_output, stub_not_implemented, tunnel_run_usage_error,
 };
 use cfdrs_his::environment::current_executable;
 use cfdrs_his::service::{
@@ -50,14 +54,20 @@ fn main() -> ExitCode {
 
 fn execute(args: impl IntoIterator<Item = OsString>) -> CliOutput {
     match parse_args(args) {
-        Ok(cli) => execute_command(cli),
+        Ok(mut cli) => {
+            cli.flags.apply_env_defaults();
+            cli.flags.apply_defaults();
+            execute_command(cli)
+        }
         Err(message) => CliError::usage(message).into_output(),
     }
 }
 
 fn execute_command(cli: Cli) -> CliOutput {
     match &cli.command {
-        Command::Help => CliOutput::success(render_help(PROGRAM_NAME)),
+        Command::Help(HelpTarget::Root) => CliOutput::success(render_help(PROGRAM_NAME)),
+        Command::Help(HelpTarget::Tunnel) => CliOutput::success(render_tunnel_help(PROGRAM_NAME)),
+        Command::Help(HelpTarget::Access) => CliOutput::success(render_access_help(PROGRAM_NAME)),
         Command::Version { short: true } => CliOutput::success(render_short_version()),
         Command::Version { short: false } => CliOutput::success(render_version_output(PROGRAM_NAME)),
         Command::Validate => execute_startup_command(&cli, CliMode::Validate),
@@ -65,7 +75,7 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::Service(ServiceAction::Install) => execute_service_install(&cli),
         Command::Service(ServiceAction::Uninstall) => execute_service_uninstall(),
 
-        Command::Tunnel(TunnelSubcommand::Run) => execute_startup_command(&cli, CliMode::Run),
+        Command::Tunnel(TunnelSubcommand::Run) => execute_tunnel_run(cli),
 
         // Go baseline: TunnelCommand() dispatch tree in cmd/cloudflared/tunnel/cmd.go
         Command::Tunnel(TunnelSubcommand::Bare) => execute_tunnel_bare(&cli),
@@ -83,10 +93,16 @@ fn execute_command(cli: Cli) -> CliOutput {
 
         // Removed features — exact error messages from Go baseline.
         Command::ProxyDns | Command::Tunnel(TunnelSubcommand::ProxyDns) => {
+            // Go baseline: log.Error().Msg("DNS Proxy is no longer supported since version
+            // ...") then returns errors.New(removedMessage).  urfave/cli exit
+            // code is 1.
+            eprintln!("{PROXY_DNS_REMOVED_LOG_MSG}");
             CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1)
         }
         Command::Tunnel(TunnelSubcommand::DbConnect) => {
-            CliOutput::failure(String::new(), DB_CONNECT_REMOVED_MSG.to_owned(), 1)
+            // Go baseline: cliutil.RemovedCommand("db-connect") uses cli.Exit(..., -1)
+            // which shells see as exit code 255 (unsigned byte truncation of -1).
+            CliOutput::failure(String::new(), DB_CONNECT_REMOVED_MSG.to_owned(), 255)
         }
 
         // Everything else is recognized but not yet implemented.
@@ -97,55 +113,7 @@ fn execute_command(cli: Cli) -> CliOutput {
 /// Build a human-readable label for any command variant, including sub-tree
 /// depth.  Used for stub-not-implemented messages.
 fn full_command_label(command: &Command) -> String {
-    match command {
-        Command::Access(sub) => match sub {
-            AccessSubcommand::Login => "access login".into(),
-            AccessSubcommand::Curl => "access curl".into(),
-            AccessSubcommand::Token => "access token".into(),
-            AccessSubcommand::Tcp => "access tcp".into(),
-            AccessSubcommand::SshConfig => "access ssh-config".into(),
-            AccessSubcommand::SshGen => "access ssh-gen".into(),
-            AccessSubcommand::Bare => "access".into(),
-        },
-        Command::Tail(sub) => match sub {
-            TailSubcommand::Token => "tail token".into(),
-            TailSubcommand::Bare => "tail".into(),
-        },
-        Command::Service(action) => match action {
-            ServiceAction::Install => "service install".into(),
-            ServiceAction::Uninstall => "service uninstall".into(),
-        },
-        Command::Management(sub) => match sub {
-            ManagementSubcommand::Token => "management token".into(),
-            ManagementSubcommand::Bare => "management".into(),
-        },
-        Command::Tunnel(TunnelSubcommand::Route(sub)) => match sub {
-            RouteSubcommand::Dns => "tunnel route dns".into(),
-            RouteSubcommand::Lb => "tunnel route lb".into(),
-            RouteSubcommand::Ip(ip) => match ip {
-                IpRouteSubcommand::Add => "tunnel route ip add".into(),
-                IpRouteSubcommand::Show => "tunnel route ip show".into(),
-                IpRouteSubcommand::Delete => "tunnel route ip delete".into(),
-                IpRouteSubcommand::Get => "tunnel route ip get".into(),
-                IpRouteSubcommand::Bare => "tunnel route ip".into(),
-            },
-            RouteSubcommand::Bare => "tunnel route".into(),
-        },
-        Command::Tunnel(TunnelSubcommand::Vnet(sub)) => match sub {
-            VnetSubcommand::Add => "tunnel vnet add".into(),
-            VnetSubcommand::List => "tunnel vnet list".into(),
-            VnetSubcommand::Delete => "tunnel vnet delete".into(),
-            VnetSubcommand::Update => "tunnel vnet update".into(),
-            VnetSubcommand::Bare => "tunnel vnet".into(),
-        },
-        Command::Tunnel(TunnelSubcommand::Ingress(sub)) => match sub {
-            IngressSubcommand::Validate => "tunnel ingress validate".into(),
-            IngressSubcommand::Rule => "tunnel ingress rule".into(),
-            IngressSubcommand::Bare => "tunnel ingress".into(),
-        },
-        Command::Tunnel(sub) => format!("tunnel {sub}"),
-        _ => format!("{command}"),
-    }
+    command.full_label()
 }
 
 fn execute_startup_command(cli: &Cli, mode: CliMode) -> CliOutput {
@@ -156,6 +124,33 @@ fn execute_startup_command(cli: &Cli, mode: CliMode) -> CliOutput {
         },
         Err(error) => CliError::config(error).into_output(),
     }
+}
+
+/// Go baseline: `runCommand()` in subcommands.go lines 748–788.
+///
+/// Validation order (matching Go exactly):
+///   1. NArg > 1 → UsageError
+///   2. `--hostname` set → warning log (non-fatal)
+///   3. `--token` → `--token-file` → positional arg → config tunnel ID
+///   4. missing identity → UsageError
+fn execute_tunnel_run(cli: Cli) -> CliOutput {
+    let flags = &cli.flags;
+
+    // Step 1: NArg validation — Go rejects more than one positional arg.
+    if flags.rest_args.len() > 1 {
+        return CliOutput::failure(
+            String::new(),
+            tunnel_run_usage_error(TUNNEL_RUN_NARG_ERROR_MSG),
+            255,
+        );
+    }
+
+    // Steps 2–4: token resolution and identity check happen after config
+    // loading in execute_runtime_command / prepare_runtime_startup.
+    // Token-only mode (bypassing config entirely) requires startup path
+    // restructuring and is tracked as a remaining CLI-032 gap.
+
+    execute_startup_command(&cli, CliMode::Run)
 }
 
 /// Go baseline: TunnelCommand() dispatch tree in cmd/cloudflared/tunnel/cmd.go.
@@ -218,6 +213,12 @@ fn execute_runtime_command(startup: StartupSurface, flags: &GlobalFlags) -> CliO
                 tracing::warn!("Your configuration file has unknown top-level keys: {:?}", keys,);
             }
         }
+    }
+
+    // Go baseline: runCommand() in subcommands.go line 757 — warn when
+    // --hostname is set but a Named Tunnel is configured.  Non-fatal.
+    if flags.hostname.is_some() {
+        tracing::warn!("{TUNNEL_RUN_HOSTNAME_WARNING_MSG}");
     }
 
     let report = runtime::run(runtime_config);
@@ -404,5 +405,67 @@ mod tests {
     fn runtime_command_label_for_service_install_stays_stable() {
         let label = full_command_label(&Command::Service(ServiceAction::Install));
         assert_eq!(label, "service install");
+    }
+
+    // --- CLI-032: tunnel run NArg validation ---
+
+    #[test]
+    fn tunnel_run_rejects_multiple_positional_args() {
+        // Go baseline: c.NArg() > 1 → UsageError (exit -1 = 255)
+        let output = execute(
+            ["cloudflared", "tunnel", "run", "arg1", "arg2"]
+                .into_iter()
+                .map(OsString::from),
+        );
+
+        assert_eq!(
+            output.exit_code, 255,
+            "Go baseline exit code is -1 (255 unsigned)"
+        );
+        assert!(
+            output.stderr.contains("accepts only one argument"),
+            "stderr must contain NArg error: {:?}",
+            output.stderr
+        );
+        assert!(
+            output.stderr.contains("See 'cloudflared tunnel run --help'."),
+            "stderr must contain help suffix: {:?}",
+            output.stderr
+        );
+    }
+
+    #[test]
+    fn tunnel_run_allows_single_positional_arg() {
+        // Go baseline: c.NArg() == 1 is the tunnel name/ID — valid
+        let output = execute(
+            ["cloudflared", "tunnel", "run", "my-tunnel"]
+                .into_iter()
+                .map(OsString::from),
+        );
+
+        // Should NOT get the NArg error (may get config discovery error, that's fine)
+        assert_ne!(
+            output.exit_code, 255,
+            "single positional arg must not trigger NArg rejection"
+        );
+        assert!(
+            !output.stderr.contains("accepts only one argument"),
+            "single positional arg must not trigger NArg error"
+        );
+    }
+
+    #[test]
+    fn tunnel_run_allows_zero_positional_args() {
+        // Go baseline: c.NArg() == 0 is valid (uses config tunnel ID or token)
+        let output = execute(["cloudflared", "tunnel", "run"].into_iter().map(OsString::from));
+
+        assert_ne!(
+            output.exit_code, 255,
+            "zero positional args must not trigger NArg rejection"
+        );
+        assert!(
+            !output.stderr.contains("accepts only one argument"),
+            "zero positional args must not trigger NArg error"
+        );
     }
 }

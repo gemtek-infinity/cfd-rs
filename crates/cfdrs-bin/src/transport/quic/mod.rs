@@ -6,11 +6,10 @@ use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
 use super::TransportLifecycleStage;
-use crate::protocol::ProtocolSender;
-use crate::runtime::{
-    ChildTask, RuntimeCommand, RuntimeConfig, RuntimeService, RuntimeServiceFactory, ServiceExit,
-};
+use crate::protocol::{ProtocolSender, SharedStreamResponseReceiver};
+use crate::runtime::{ChildTask, RuntimeCommand, RuntimeConfig, ServiceExit};
 
+mod datagram;
 mod edge;
 mod identity;
 mod lifecycle;
@@ -20,60 +19,28 @@ mod session;
 #[cfg(test)]
 mod tests;
 
-use self::edge::{EDGE_DEFAULT_REGION, QuicEdgeTarget, resolve_edge_target};
+pub(crate) use self::edge::QuicEdgeTarget;
+use self::edge::{EDGE_DEFAULT_REGION, resolve_edge_target};
 use self::identity::TransportIdentity;
 
 const QUIC_ESTABLISH_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_DATAGRAM_SIZE: usize = 1350;
 
-#[derive(Debug, Clone)]
-pub(crate) struct QuicTunnelServiceFactory {
-    test_target: Option<QuicEdgeTarget>,
-    protocol_sender: ProtocolSender,
+pub(crate) struct QuicTunnelService {
+    pub(in crate::transport) config: Arc<RuntimeConfig>,
+    pub(in crate::transport) attempt: u32,
+    pub(in crate::transport) test_target: Option<QuicEdgeTarget>,
+    pub(in crate::transport) protocol_sender: ProtocolSender,
+    pub(in crate::transport) stream_response_rx: SharedStreamResponseReceiver,
 }
 
-impl QuicTunnelServiceFactory {
-    pub(crate) fn production(protocol_sender: ProtocolSender) -> Self {
-        Self {
-            test_target: None,
-            protocol_sender,
-        }
-    }
-
-    #[cfg(test)]
-    fn with_test_target(protocol_sender: ProtocolSender, target: QuicEdgeTarget) -> Self {
-        Self {
-            test_target: Some(target),
-            protocol_sender,
-        }
-    }
-}
-
-impl RuntimeServiceFactory for QuicTunnelServiceFactory {
-    fn create_primary(&self, config: Arc<RuntimeConfig>, attempt: u32) -> Box<dyn RuntimeService> {
-        Box::new(QuicTunnelService {
-            config,
-            attempt,
-            test_target: self.test_target.clone(),
-            protocol_sender: self.protocol_sender.clone(),
-        })
-    }
-}
-
-struct QuicTunnelService {
-    config: Arc<RuntimeConfig>,
-    attempt: u32,
-    test_target: Option<QuicEdgeTarget>,
-    protocol_sender: ProtocolSender,
-}
-
-impl RuntimeService for QuicTunnelService {
-    fn name(&self) -> &'static str {
+impl QuicTunnelService {
+    pub(in crate::transport) fn name(&self) -> &'static str {
         "quic-tunnel-core"
     }
 
-    fn spawn(
-        self: Box<Self>,
+    pub(in crate::transport) fn spawn(
+        self,
         command_tx: mpsc::Sender<RuntimeCommand>,
         shutdown: CancellationToken,
         child_tasks: &mut JoinSet<ChildTask>,

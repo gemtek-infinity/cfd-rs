@@ -610,6 +610,9 @@ def is_linkable_repo_candidate(candidate: str) -> bool:
         return False
     if candidate.startswith(("CLI-", "CDC-", "HIS-")):
         return False
+    # GCFGR.md is gitignored and must not be linked.
+    if candidate == "GCFGR.md":
+        return False
     return (
         "/" in candidate
         or candidate.endswith(

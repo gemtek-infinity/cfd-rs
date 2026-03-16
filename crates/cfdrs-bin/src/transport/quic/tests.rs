@@ -1,10 +1,10 @@
-use super::QuicTunnelServiceFactory;
 use super::edge::{PeerVerification, QuicEdgeTarget, edge_host_label};
 use super::identity::{IdentitySource, TransportIdentity};
 use super::lifecycle::serialize_registration_response;
 use super::session::build_quiche_config;
 use crate::protocol;
-use crate::runtime::{RuntimeExit, run_with_factory};
+use crate::runtime::{RuntimeExit, run_with_source};
+use crate::transport::TransportServiceSource;
 use cfdrs_cdc::registration::ConnectionResponse;
 use cfdrs_shared::{ConfigSource, DiscoveryAction, DiscoveryOutcome, NormalizedConfig, RawConfig};
 use std::fs;
@@ -251,20 +251,23 @@ fn respond_to_registration_stream(
 
     loop {
         match conn.stream_recv(protocol::CONTROL_STREAM_ID, &mut read_buf) {
-            Ok((read, fin)) => {
-                if read == 0 || !fin {
+            Ok((read, _fin)) => {
+                if read == 0 {
                     continue;
                 }
 
-                let _request: serde_json::Value = serde_json::from_slice(&read_buf[..read])
-                    .expect("registration request should be valid JSON");
+                // The client may keep the control stream open (fin=false) for
+                // subsequent messages (config push, unregister), so we process
+                // the registration as soon as we have data.
+                let _request = cfdrs_cdc::registration_codec::decode_registration_request(&read_buf[..read])
+                    .expect("registration request should be valid Cap'n Proto");
                 let response = ConnectionResponse::success(cfdrs_cdc::registration::ConnectionDetails {
                     uuid: Uuid::parse_str("22222222-2222-2222-2222-222222222222").expect("uuid should parse"),
                     location: "TEST".to_owned(),
                     is_remotely_managed: false,
                 });
                 let payload = serialize_registration_response(&response);
-                let _ = conn.stream_send(protocol::CONTROL_STREAM_ID, &payload, true);
+                let _ = conn.stream_send(protocol::CONTROL_STREAM_ID, &payload, false);
                 flush_test_server_egress(conn, socket, send_buf);
                 return true;
             }
@@ -345,21 +348,24 @@ fn runtime_crosses_wire_protocol_boundary_after_quic_establish() {
     let server_addr = spawn_test_server(&root);
     let runtime_config = runtime_config(&root, server_addr);
     let (protocol_sender, protocol_receiver) = protocol::protocol_bridge();
-    let execution = run_with_factory(
+    let (_, stream_response_rx) = protocol::stream_response_bridge();
+    let execution = run_with_source(
         runtime_config,
-        QuicTunnelServiceFactory::with_test_target(
-            protocol_sender,
-            QuicEdgeTarget {
+        TransportServiceSource::Quic {
+            test_target: Some(QuicEdgeTarget {
                 connect_addr: server_addr,
                 host_label: "localhost".to_owned(),
                 server_name: "localhost".to_owned(),
                 verification: PeerVerification::Unverified,
-            },
-        ),
+            }),
+            protocol_sender,
+            stream_response_rx,
+        },
         crate::runtime::HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_secs(5))
             .build(),
         Some(protocol_receiver),
+        None,
     );
 
     // After Phase 5.1 the transport enters the stream-serving loop,

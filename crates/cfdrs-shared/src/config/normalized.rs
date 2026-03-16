@@ -159,4 +159,73 @@ mod tests {
         assert_eq!(normalized.ingress[0].origin_request.ip_rules.len(), 1);
         assert_eq!(normalized.ingress[1].origin_request.ip_rules.len(), 1);
     }
+
+    /// HIS-003: Go baseline double-parse produces warnings for multiple
+    /// unknown keys without affecting known-field parsing.  Verify the
+    /// Rust normalization pipeline carries all unknown keys as a single
+    /// `UnknownTopLevelKeys` warning while correctly parsing the rest.
+    #[test]
+    fn multiple_unknown_keys_produce_single_warning_with_all_keys() {
+        let raw = ok(RawConfig::from_yaml_str(
+            "strict-multi.yaml",
+            "tunnel: parity-check\ningress:\n  - service: https://localhost:8080\nalpha: 1\nbeta: \
+             two\ngamma: true\n",
+        ));
+        let normalized = ok(NormalizedConfig::from_raw(
+            ConfigSource::DiscoveredPath("/tmp/config.yml".into()),
+            raw,
+        ));
+
+        assert_eq!(normalized.warnings.len(), 1);
+
+        match &normalized.warnings[0] {
+            NormalizationWarning::UnknownTopLevelKeys(keys) => {
+                let mut sorted = keys.clone();
+                sorted.sort();
+                assert_eq!(sorted, vec!["alpha", "beta", "gamma"]);
+            }
+        }
+
+        // Known fields still parsed correctly.
+        assert_eq!(
+            normalized.tunnel,
+            Some(TunnelReference {
+                raw: "parity-check".to_owned(),
+                uuid: None,
+            })
+        );
+        assert_eq!(normalized.ingress.len(), 1);
+    }
+
+    /// HIS-003: A clean config with no unknown keys must produce zero
+    /// warnings — the normalization pipeline must not false-positive.
+    #[test]
+    fn clean_config_produces_no_warnings() {
+        let raw = ok(RawConfig::from_yaml_str(
+            "clean.yaml",
+            "tunnel: clean-test\ningress:\n  - service: http_status:503\n",
+        ));
+        let normalized = ok(NormalizedConfig::from_raw(
+            ConfigSource::DiscoveredPath("/tmp/config.yml".into()),
+            raw,
+        ));
+
+        assert!(normalized.warnings.is_empty());
+    }
+
+    /// HIS-003: Empty config file must normalize without error and produce
+    /// a default 503 catch-all rule.  Matches Go `io.EOF` non-fatal path.
+    #[test]
+    fn empty_config_normalizes_with_default_ingress() {
+        let raw = ok(RawConfig::from_yaml_str("empty.yaml", ""));
+        let normalized = ok(NormalizedConfig::from_raw(
+            ConfigSource::DiscoveredPath("/tmp/config.yml".into()),
+            raw,
+        ));
+
+        assert!(normalized.warnings.is_empty());
+        assert!(normalized.tunnel.is_none());
+        assert_eq!(normalized.ingress.len(), 1);
+        assert_eq!(normalized.ingress[0].service, IngressService::HttpStatus(503));
+    }
 }

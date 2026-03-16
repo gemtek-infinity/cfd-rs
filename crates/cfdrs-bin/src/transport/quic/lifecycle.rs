@@ -2,12 +2,13 @@ use tokio::sync::mpsc;
 use tokio::time;
 use tokio_util::sync::CancellationToken;
 
+use super::datagram::{DatagramSessionManager, dispatch_datagram};
 use super::edge::QuicEdgeTarget;
 use super::identity::TransportIdentity;
 use super::session::{QuicSessionState, flush_egress};
 use super::{QUIC_ESTABLISH_TIMEOUT, QuicTunnelService, TransportLifecycleStage};
 use crate::protocol::{CONTROL_STREAM_ID, ProtocolBridgeState, ProtocolEvent};
-use crate::runtime::{RuntimeCommand, RuntimeService, ServiceExit};
+use crate::runtime::{RuntimeCommand, ServiceExit};
 use cfdrs_cdc::registration::{ConnectionOptions, ConnectionResponse, RegisterConnectionRequest, TunnelAuth};
 use cfdrs_cdc::stream::ConnectRequest;
 
@@ -43,9 +44,29 @@ impl QuicTunnelService {
         // Phase 5.1: Enter the stream-serving loop. Accept incoming QUIC
         // data streams from the edge, parse ConnectRequest metadata, and
         // forward them to the proxy layer through the protocol bridge.
+        // CDC-040/041: Also handle V3 QUIC datagrams for UDP session proxying.
+        let datagram_manager = DatagramSessionManager::new();
         let exit = self
-            .serve_streams(&mut session, &target, command_tx, shutdown)
+            .serve_streams(&mut session, &target, command_tx, shutdown, &datagram_manager)
             .await;
+
+        // CDC-019: Signal Unregistering on graceful shutdown before teardown.
+        // Matches Go's waitForUnregister() → GracefulShutdown() flow in
+        // connection/control.go.
+        if matches!(exit, ServiceExit::Completed { .. }) {
+            let _ = self
+                .protocol_sender
+                .send(ProtocolEvent::Unregistering {
+                    conn_index: u8::try_from(self.attempt).unwrap_or(u8::MAX),
+                })
+                .await;
+
+            // CDC-007: Send UnregisterConnection on the control stream.
+            // Matches Go's `registrationClient.GracefulShutdown(ctx, gracePeriod)`
+            // which calls `client.UnregisterConnection(ctx)` in
+            // connection/control.go:waitForUnregister().
+            self.send_unregister_connection(&mut session, command_tx).await;
+        }
 
         self.teardown_session(&mut session, &target, command_tx).await;
 
@@ -158,10 +179,12 @@ impl QuicTunnelService {
         let control_payload = registration_request
             .as_ref()
             .map(serialize_registration_request)
-            .transpose()
-            .map_err(|error| format!("failed to serialize registration request: {error}"))?
             .unwrap_or_default();
-        let control_fin = !control_payload.is_empty();
+        // CDC-007: Keep the control stream open for subsequent operations
+        // (sendLocalConfiguration, unregisterConnection). The write side
+        // is closed only when the final unregister message is sent during
+        // graceful shutdown.
+        let control_fin = false;
 
         match session
             .connection
@@ -296,6 +319,16 @@ impl QuicTunnelService {
                                     )
                                 })?;
 
+                            // CDC-019/CDC-008: On conn_index 0 when not remotely
+                            // managed, send local configuration to the edge.
+                            // Matches Go baseline connection/control.go:
+                            //   if connIndex == 0 && !TunnelIsRemotelyManaged {
+                            //       SendLocalConfiguration(ctx, tunnelConfig)
+                            //   }
+                            if self.attempt == 0 && !details.is_remotely_managed {
+                                self.send_local_configuration(session, command_tx).await;
+                            }
+
                             super::send_status(
                                 command_tx,
                                 self.name(),
@@ -384,6 +417,7 @@ impl QuicTunnelService {
         target: &QuicEdgeTarget,
         command_tx: &mpsc::Sender<RuntimeCommand>,
         shutdown: CancellationToken,
+        datagram_manager: &DatagramSessionManager,
     ) -> ServiceExit {
         super::send_transport_stage(
             command_tx,
@@ -416,6 +450,14 @@ impl QuicTunnelService {
             streams_accepted += self
                 .process_readable_streams(session, &mut stream_buf, streams_accepted, command_tx)
                 .await;
+
+            // CDC-040/041: Drain pending QUIC datagrams and dispatch them
+            // through the session manager. Matches Go's
+            // `datagramConn.Serve()` receive loop in `quic/v3/muxer.go`.
+            let conn_index = u8::try_from(self.attempt).unwrap_or(u8::MAX);
+            self.drain_datagrams(session, conn_index, datagram_manager);
+
+            self.drain_pending_responses(session);
 
             let _ = flush_egress(
                 &session.socket,
@@ -466,6 +508,40 @@ impl QuicTunnelService {
         }
 
         accepted
+    }
+
+    /// Drain all pending QUIC datagrams from the connection and dispatch
+    /// them through the V3 session manager.
+    ///
+    /// Matches Go's `datagramConn.Serve()` receive → dispatch loop in
+    /// `quic/v3/muxer.go`. Response datagrams (session registration acks)
+    /// are sent back through the same QUIC connection.
+    fn drain_datagrams(
+        &self,
+        session: &mut QuicSessionState,
+        conn_index: u8,
+        datagram_manager: &DatagramSessionManager,
+    ) {
+        let mut dgram_buf = [0u8; cfdrs_cdc::datagram::MAX_DATAGRAM_PAYLOAD_LEN];
+
+        loop {
+            match session.connection.dgram_recv(&mut dgram_buf) {
+                Ok(len) => {
+                    if let Some(response) = dispatch_datagram(&dgram_buf[..len], conn_index, datagram_manager)
+                    {
+                        // Best-effort: if the send fails the response is lost,
+                        // matching Go's behavior where send errors are logged
+                        // but do not stop the muxer loop.
+                        let _ = session.connection.dgram_send(&response);
+                    }
+                }
+                Err(quiche::Error::Done) => break,
+                Err(error) => {
+                    tracing::warn!(%error, "error receiving QUIC datagram");
+                    break;
+                }
+            }
+        }
     }
 
     /// Try to read and parse a ConnectRequest from a single QUIC stream.
@@ -550,6 +626,20 @@ impl QuicTunnelService {
         }
     }
 
+    /// Drain pending stream responses from the proxy and write them to
+    /// QUIC data streams so they are included in the next egress flush.
+    fn drain_pending_responses(&self, session: &mut QuicSessionState) {
+        let Ok(mut rx) = self.stream_response_rx.lock() else {
+            return;
+        };
+
+        while let Ok(response) = rx.try_recv() {
+            let _ = session
+                .connection
+                .stream_send(response.stream_id, &response.data, true);
+        }
+    }
+
     async fn teardown_session(
         &self,
         session: &mut QuicSessionState,
@@ -564,6 +654,16 @@ impl QuicTunnelService {
             &mut *session.send_buffer,
         )
         .await;
+
+        // CDC-019: Signal Disconnected after the connection is closed.
+        // Matches Go's Disconnected status in connection/event.go.
+        let _ = self
+            .protocol_sender
+            .send(ProtocolEvent::Disconnected {
+                conn_index: u8::try_from(self.attempt).unwrap_or(u8::MAX),
+            })
+            .await;
+
         super::send_transport_stage(
             command_tx,
             self.name(),
@@ -577,6 +677,112 @@ impl QuicTunnelService {
             "transport-session-state: teardown".to_owned(),
         )
         .await;
+    }
+
+    /// CDC-008/CDC-019: Send local configuration to the edge on conn_index 0.
+    ///
+    /// Matches Go baseline `connection/control.go`:
+    ///   `registrationClient.SendLocalConfiguration(ctx, tunnelConfig)`
+    ///
+    /// Serialises the running ingress/warp-routing/originRequest config as
+    /// JSON, writes it to the control stream, and emits `ConfigPushed`.
+    /// Errors are logged but do not abort the lifecycle (matching Go).
+    async fn send_local_configuration(
+        &self,
+        session: &mut QuicSessionState,
+        command_tx: &mpsc::Sender<RuntimeCommand>,
+    ) {
+        let config_json = match serde_json::to_vec(&serde_json::json!({
+            "ingress": self.config.normalized().ingress,
+            "warp-routing": self.config.normalized().warp_routing,
+            "originRequest": self.config.normalized().origin_request,
+        })) {
+            Ok(json) => json,
+            Err(error) => {
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!("config-push: failed to serialize local configuration: {error}"),
+                )
+                .await;
+                return;
+            }
+        };
+
+        let request = cfdrs_cdc::registration::UpdateLocalConfigurationRequest { config: config_json };
+        let payload = request.to_capnp_bytes();
+
+        match session.connection.stream_send(CONTROL_STREAM_ID, &payload, false) {
+            Ok(_) => {
+                let _ = self
+                    .protocol_sender
+                    .send(ProtocolEvent::ConfigPushed { conn_index: 0 })
+                    .await;
+
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!("config-push: sent local configuration ({} bytes)", payload.len()),
+                )
+                .await;
+            }
+            Err(error) => {
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!("config-push: failed to write to control stream: {error}"),
+                )
+                .await;
+            }
+        }
+    }
+
+    /// CDC-007: Send `UnregisterConnection` on the control stream during
+    /// graceful shutdown.
+    ///
+    /// Matches Go baseline `connection/control.go:waitForUnregister()` →
+    /// `registrationClient.GracefulShutdown(ctx, gracePeriod)` →
+    /// `client.UnregisterConnection(ctx)`.
+    ///
+    /// Best-effort: errors are logged but do not abort teardown, matching
+    /// Go where `GracefulShutdown` ignores the error from
+    /// `UnregisterConnection`.
+    async fn send_unregister_connection(
+        &self,
+        session: &mut QuicSessionState,
+        command_tx: &mpsc::Sender<RuntimeCommand>,
+    ) {
+        let payload = cfdrs_cdc::registration_codec::encode_unregister_request();
+
+        // Send with fin=true — this is the last message on the control stream.
+        match session.connection.stream_send(CONTROL_STREAM_ID, &payload, true) {
+            Ok(_) => {
+                let _ = flush_egress(
+                    &session.socket,
+                    &mut session.connection,
+                    &mut *session.send_buffer,
+                )
+                .await;
+
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!(
+                        "unregister: sent UnregisterConnection on control stream ({} bytes)",
+                        payload.len()
+                    ),
+                )
+                .await;
+            }
+            Err(error) => {
+                super::send_status(
+                    command_tx,
+                    self.name(),
+                    format!("unregister: failed to write to control stream: {error}"),
+                )
+                .await;
+            }
+        }
     }
 }
 
@@ -624,6 +830,7 @@ fn build_registration_request(
     let mut options =
         ConnectionOptions::for_current_platform(identity.tunnel_id, u8::try_from(attempt).unwrap_or(u8::MAX));
     options.origin_local_ip = Some(local_addr.ip());
+    options.client.features = cfdrs_cdc::features::build_feature_list(true, false);
 
     Some(RegisterConnectionRequest {
         auth: TunnelAuth {
@@ -636,12 +843,12 @@ fn build_registration_request(
     })
 }
 
-fn serialize_registration_request(request: &RegisterConnectionRequest) -> Result<Vec<u8>, serde_json::Error> {
-    serde_json::to_vec(request)
+fn serialize_registration_request(request: &RegisterConnectionRequest) -> Vec<u8> {
+    cfdrs_cdc::registration_codec::encode_registration_request(request)
 }
 
 fn parse_registration_response(data: &[u8]) -> Option<ConnectionResponse> {
-    serde_json::from_slice(data).ok()
+    cfdrs_cdc::registration_codec::decode_registration_response(data)
 }
 
 /// Encode a `ConnectRequest` into the wire format for testing.
@@ -654,7 +861,7 @@ pub(super) fn serialize_connect_request(request: &ConnectRequest) -> Vec<u8> {
 
 #[cfg(test)]
 pub(super) fn serialize_registration_response(response: &ConnectionResponse) -> Vec<u8> {
-    serde_json::to_vec(response).expect("registration response should serialize for tests")
+    cfdrs_cdc::registration_codec::encode_registration_response(response)
 }
 
 #[cfg(test)]
@@ -749,5 +956,60 @@ mod tests {
         let parsed = parse_registration_response(&wire).expect("registration response should parse");
 
         assert_eq!(parsed, response);
+    }
+
+    #[test]
+    fn registration_request_wire_roundtrip() {
+        let identity = TransportIdentity {
+            tunnel_id: Uuid::parse_str("11111111-1111-1111-1111-111111111111").expect("uuid should parse"),
+            identity_source: super::super::identity::IdentitySource::CredentialsFile,
+            endpoint_hint: Some("us".to_owned()),
+            registration_auth: Some(super::super::identity::RegistrationAuth {
+                account_tag: "acct-wire".to_owned(),
+                tunnel_secret: cfdrs_shared::TunnelSecret::from_bytes(b"wire-secret".to_vec()),
+            }),
+            resumption: super::super::identity::ResumptionShape::EarlyDataEnabled,
+        };
+        let target = QuicEdgeTarget {
+            connect_addr: "127.0.0.1:7844".parse().expect("target should parse"),
+            host_label: "region1.v2.argotunnel.com".to_owned(),
+            server_name: "localhost".to_owned(),
+            verification: super::super::edge::PeerVerification::Unverified,
+        };
+
+        let request = build_registration_request(
+            &identity,
+            &target,
+            1,
+            "10.0.0.1:50000".parse().expect("local addr should parse"),
+        )
+        .expect("credentials-file identity should build a request");
+
+        let encoded = serialize_registration_request(&request);
+        let decoded = cfdrs_cdc::registration_codec::decode_registration_request(&encoded)
+            .expect("wire roundtrip should produce a valid request");
+
+        assert_eq!(decoded.auth, request.auth);
+        assert_eq!(decoded.tunnel_id, request.tunnel_id);
+        assert_eq!(decoded.conn_index, request.conn_index);
+        assert_eq!(decoded.options.client.features, request.options.client.features);
+        assert_eq!(decoded.options.origin_local_ip, request.options.origin_local_ip);
+    }
+
+    /// CDC-007: the unregister request encodes to a non-empty capnp message
+    /// and the response decoder accepts it (both sides are empty structs).
+    #[test]
+    fn unregister_request_codec_roundtrip() {
+        let encoded = cfdrs_cdc::registration_codec::encode_unregister_request();
+
+        assert!(
+            !encoded.is_empty(),
+            "even an empty-params message needs the capnp segment header"
+        );
+
+        assert!(
+            cfdrs_cdc::registration_codec::decode_unregister_response(&encoded),
+            "an empty capnp struct should parse as a valid unregister response"
+        );
     }
 }

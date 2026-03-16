@@ -8,6 +8,8 @@ version.workspace = true
 
 [dependencies]
 cfdrs-shared = { path = "../cfdrs-shared" }
+notify.workspace = true
+sd-notify.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 uuid.workspace = true
