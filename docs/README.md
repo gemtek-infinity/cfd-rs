@@ -1,38 +1,51 @@
 # Documentation Map
 
-Use the smallest file that answers the question.
+Canonical human documentation router.
+Open the smallest file that answers the question.
 
 ## Start Here
 
-- [`STATUS.md`](../STATUS.md) — the only tracked status file
-- [`docs/phase-5/roadmap.md`](phase-5/roadmap.md) — normative Phase 5 roadmap
-- [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md) — non-negotiables, scope, lane
-- [`docs/promotion-gates.md`](promotion-gates.md) — phase model and promotion rules
-- [`docs/ai-context-routing.md`](ai-context-routing.md) — AI routing and MCP contract
-- [`Justfile`](../Justfile) — authoritative command surface
+| File | Role |
+| --- | --- |
+| [`STATUS.md`](../STATUS.md) | current blockers, milestone, parity snapshot, tests |
+| [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md) | non-negotiables, lane, scope |
+| [`docs/phase-5/roadmap.md`](phase-5/roadmap.md) | implementation order and exit evidence |
+| [`docs/promotion-gates.md`](promotion-gates.md) | gate rules |
 
-## Parity
+## Canonical Docs
 
-- [`docs/parity/README.md`](parity/README.md) — parity index
-- [`docs/parity/source-map.csv`](parity/source-map.csv) — exact row-to-baseline routing
-- [`docs/parity/logging-compatibility.md`](parity/logging-compatibility.md) — cross-domain logging contract
-- [`docs/parity/cli/implementation-checklist.md`](parity/cli/implementation-checklist.md)
-- [`docs/parity/cdc/implementation-checklist.md`](parity/cdc/implementation-checklist.md)
-- [`docs/parity/his/implementation-checklist.md`](parity/his/implementation-checklist.md)
+| File | Open when |
+| --- | --- |
+| [`STATUS.md`](../STATUS.md) | you need current reality |
+| [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md) | you need scope or lane truth |
+| [`docs/phase-5/roadmap.md`](phase-5/roadmap.md) | you need milestone order or exit evidence |
+| [`docs/promotion-gates.md`](promotion-gates.md) | you need promotion boundaries |
+| [`docs/ai-context-routing.md`](ai-context-routing.md) | you are working through Copilot or MCP |
 
-## Policy
+## Execution And Commands
 
-- [`docs/compatibility-scope.md`](compatibility-scope.md)
-- [`docs/build-artifact-policy.md`](build-artifact-policy.md)
-- [`docs/dependency-policy.md`](dependency-policy.md)
-- [`docs/allocator-runtime-baseline.md`](allocator-runtime-baseline.md)
-- [`docs/go-rust-semantic-mapping.md`](go-rust-semantic-mapping.md)
-- [`docs/deployment-notes.md`](deployment-notes.md)
+| File | Open when |
+| --- | --- |
+| [`Justfile`](../Justfile) | you need the supported command surface |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md) | you are preparing a human change for review |
+| [`.github/instructions/rust.instructions.md`](../.github/instructions/rust.instructions.md) | you are touching Rust or Cargo manifests |
 
-## Implementation References
+## Leaf Evidence And Parity
 
-- [`docs/phase-5/roadmap-index.csv`](phase-5/roadmap-index.csv) — exact parity-row milestone map
-- [`.github/instructions/rust.instructions.md`](../.github/instructions/rust.instructions.md)
-- [`docs/code-style.md`](code-style.md)
-- [`docs/engineering-standards.md`](engineering-standards.md)
-- [`CONTRIBUTING.md`](../CONTRIBUTING.md)
+| File | Open when |
+| --- | --- |
+| [`docs/parity/README.md`](parity/README.md) | you need the owning parity domain |
+| [`docs/parity/source-map.csv`](parity/source-map.csv) | you need row-to-baseline routing |
+| [`docs/parity/logging-compatibility.md`](parity/logging-compatibility.md) | you are touching logging contracts |
+| [`docs/phase-5/roadmap-index.csv`](phase-5/roadmap-index.csv) | you need exact row-to-milestone ownership |
+
+## Policy And Reference
+
+| File | Open when |
+| --- | --- |
+| [`docs/dependency-policy.md`](dependency-policy.md) | you are changing dependencies |
+| [`docs/allocator-runtime-baseline.md`](allocator-runtime-baseline.md) | you are touching runtime or allocator choices |
+| [`docs/compatibility-scope.md`](compatibility-scope.md) | you need compatibility boundary rules |
+| [`docs/build-artifact-policy.md`](build-artifact-policy.md) | you are changing build or packaging outputs |
+| [`docs/code-style.md`](code-style.md) | you need deeper human style guidance |
+| [`docs/engineering-standards.md`](engineering-standards.md) | you need structural engineering guidance |
