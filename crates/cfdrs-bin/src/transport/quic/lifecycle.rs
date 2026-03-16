@@ -8,7 +8,7 @@ use super::identity::TransportIdentity;
 use super::session::{QuicSessionState, flush_egress};
 use super::{QUIC_ESTABLISH_TIMEOUT, QuicTunnelService, TransportLifecycleStage};
 use crate::protocol::{CONTROL_STREAM_ID, ProtocolBridgeState, ProtocolEvent};
-use crate::runtime::{RuntimeCommand, RuntimeService, ServiceExit};
+use crate::runtime::{RuntimeCommand, ServiceExit};
 use cfdrs_cdc::registration::{ConnectionOptions, ConnectionResponse, RegisterConnectionRequest, TunnelAuth};
 use cfdrs_cdc::stream::ConnectRequest;
 

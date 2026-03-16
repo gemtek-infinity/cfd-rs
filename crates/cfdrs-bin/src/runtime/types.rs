@@ -1,13 +1,9 @@
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::time::Duration;
 
 use cfdrs_shared::{ConfigSource, DiscoveryOutcome, NormalizedConfig};
-use tokio::sync::mpsc;
-use tokio::task::JoinSet;
-use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::protocol::ProtocolBridgeState;
@@ -227,21 +223,6 @@ pub(crate) enum ChildTask {
     ProxySeam,
     SignalBridge,
     HarnessBridge,
-}
-
-pub(crate) trait RuntimeServiceFactory: Send + Sync + 'static {
-    fn create_primary(&self, config: Arc<RuntimeConfig>, attempt: u32) -> Box<dyn RuntimeService>;
-}
-
-pub(crate) trait RuntimeService: Send + 'static {
-    fn name(&self) -> &'static str;
-
-    fn spawn(
-        self: Box<Self>,
-        command_tx: mpsc::Sender<RuntimeCommand>,
-        shutdown: CancellationToken,
-        child_tasks: &mut JoinSet<ChildTask>,
-    );
 }
 
 #[derive(Debug, Clone)]

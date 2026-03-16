@@ -1,14 +1,8 @@
 use std::{env, fs};
 
-use super::{
-    ApplicationRuntime, FROZEN_TARGET_TRIPLE, GLIBC_RUNTIME_MARKERS, RuntimeServiceFactory,
-    TRANSPORT_CRYPTO_LANE,
-};
+use super::{ApplicationRuntime, FROZEN_TARGET_TRIPLE, GLIBC_RUNTIME_MARKERS, TRANSPORT_CRYPTO_LANE};
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     pub(super) fn record_security_compliance_boundary(&mut self) -> Result<(), String> {
         self.status.push_summary(format!(
             "security-boundary: runtime-crypto-surface=transport-tls-only lane={TRANSPORT_CRYPTO_LANE}"

@@ -1,11 +1,8 @@
 mod handlers;
 
-use super::{ApplicationRuntime, RuntimeCommand, RuntimeExit, RuntimeServiceFactory, ServiceExit};
+use super::{ApplicationRuntime, RuntimeCommand, RuntimeExit, ServiceExit};
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     pub(super) async fn handle_command(&mut self, command: RuntimeCommand) -> Option<RuntimeExit> {
         match command {
             RuntimeCommand::ServiceReady { service } => self.handle_service_ready(service),

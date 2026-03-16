@@ -1,15 +1,15 @@
 use std::time::Duration;
 
-use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_factory};
+use crate::runtime::{HarnessBuilder, RuntimeExit, run_with_source};
 
 use super::fixtures::{runtime_config, summary_contains};
-use super::harness::{TestBehavior, TestFactory};
+use super::harness::{TestBehavior, test_source};
 
 #[test]
 fn runtime_owns_config_after_startup_handoff() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
@@ -29,9 +29,9 @@ fn runtime_owns_config_after_startup_handoff() {
 
 #[test]
 fn runtime_orders_shutdown_of_ready_service() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(25))
             .build(),
@@ -50,9 +50,9 @@ fn runtime_orders_shutdown_of_ready_service() {
 
 #[test]
 fn runtime_restarts_retryable_service_before_shutdown() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
+        test_source([TestBehavior::RetryableFailure, TestBehavior::WaitForShutdown]),
         HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_millis(50))
             .build(),
@@ -74,9 +74,9 @@ fn runtime_restarts_retryable_service_before_shutdown() {
 
 #[test]
 fn runtime_fails_fatal_service_without_restart() {
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config(),
-        TestFactory::new([TestBehavior::FatalFailure]),
+        test_source([TestBehavior::FatalFailure]),
         HarnessBuilder::for_tests().build(),
         None,
         None,

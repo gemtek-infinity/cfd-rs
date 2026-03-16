@@ -24,7 +24,7 @@ const EDGE_DEFAULT_HOST: &str = "region1.v2.argotunnel.com";
 /// connection always carries the CA bundle path and an unverified
 /// connection cannot accidentally enable verification without one.
 #[derive(Debug, Clone)]
-pub(super) enum PeerVerification {
+pub(in crate::transport) enum PeerVerification {
     Verified {
         ca_bundle_path: PathBuf,
     },
@@ -33,11 +33,11 @@ pub(super) enum PeerVerification {
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct QuicEdgeTarget {
-    pub(super) connect_addr: SocketAddr,
-    pub(super) host_label: String,
-    pub(super) server_name: String,
-    pub(super) verification: PeerVerification,
+pub(crate) struct QuicEdgeTarget {
+    pub(in crate::transport) connect_addr: SocketAddr,
+    pub(in crate::transport) host_label: String,
+    pub(in crate::transport) server_name: String,
+    pub(in crate::transport) verification: PeerVerification,
 }
 
 /// Resolve the edge target for a QUIC connection via SRV discovery.

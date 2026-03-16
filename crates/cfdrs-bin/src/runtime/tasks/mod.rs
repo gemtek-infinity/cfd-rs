@@ -3,12 +3,9 @@ mod drain;
 
 use crate::proxy::PingoraProxySeam;
 
-use super::{ApplicationRuntime, RuntimeServiceFactory};
+use super::ApplicationRuntime;
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     pub(super) fn spawn_proxy_seam(&mut self) {
         let ingress = self.config.normalized().ingress.clone();
         let seam = PingoraProxySeam::new(ingress);
@@ -28,7 +25,7 @@ where
     }
 
     pub(super) fn spawn_primary_service(&mut self, attempt: u32) {
-        let service = self.factory.create_primary(self.config.clone(), attempt);
+        let service = self.service_source.create_service(self.config.clone(), attempt);
         self.status.push_summary(format!(
             "primary-service-attempt: {} service={}",
             attempt + 1,

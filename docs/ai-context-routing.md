@@ -64,6 +64,18 @@ Load next only if needed:
 - [`docs/parity/logging-compatibility.md`](parity/logging-compatibility.md) for logging and management-log questions
 - [`docs/phase-5/roadmap-index.csv`](phase-5/roadmap-index.csv)
 
+### Design Pattern Or Dispatch Mechanism Question
+
+Load first:
+
+- [`docs/adr/0008-generic-dispatch-over-dyn-trait.md`](adr/0008-generic-dispatch-over-dyn-trait.md)
+
+Load next only if needed:
+
+- [`docs/engineering-standards.md`](../docs/engineering-standards.md) § 14
+- [`docs/adr/0001-hybrid-concurrency-model.md`](adr/0001-hybrid-concurrency-model.md)
+  for task ownership and concurrency shape questions
+
 ### Runtime Or Dependency Policy
 
 Load first:

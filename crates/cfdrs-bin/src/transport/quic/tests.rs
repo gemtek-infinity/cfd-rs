@@ -1,10 +1,10 @@
-use super::QuicTunnelServiceFactory;
 use super::edge::{PeerVerification, QuicEdgeTarget, edge_host_label};
 use super::identity::{IdentitySource, TransportIdentity};
 use super::lifecycle::serialize_registration_response;
 use super::session::build_quiche_config;
 use crate::protocol;
-use crate::runtime::{RuntimeExit, run_with_factory};
+use crate::runtime::{RuntimeExit, run_with_source};
+use crate::transport::TransportServiceSource;
 use cfdrs_cdc::registration::ConnectionResponse;
 use cfdrs_shared::{ConfigSource, DiscoveryAction, DiscoveryOutcome, NormalizedConfig, RawConfig};
 use std::fs;
@@ -346,18 +346,18 @@ fn runtime_crosses_wire_protocol_boundary_after_quic_establish() {
     let runtime_config = runtime_config(&root, server_addr);
     let (protocol_sender, protocol_receiver) = protocol::protocol_bridge();
     let (_, stream_response_rx) = protocol::stream_response_bridge();
-    let execution = run_with_factory(
+    let execution = run_with_source(
         runtime_config,
-        QuicTunnelServiceFactory::with_test_target(
-            protocol_sender,
-            stream_response_rx,
-            QuicEdgeTarget {
+        TransportServiceSource::Quic {
+            test_target: Some(QuicEdgeTarget {
                 connect_addr: server_addr,
                 host_label: "localhost".to_owned(),
                 server_name: "localhost".to_owned(),
                 verification: PeerVerification::Unverified,
-            },
-        ),
+            }),
+            protocol_sender,
+            stream_response_rx,
+        },
         crate::runtime::HarnessBuilder::for_tests()
             .with_shutdown_after(Duration::from_secs(5))
             .build(),

@@ -3,12 +3,9 @@ use tokio::time;
 #[cfg(target_family = "unix")]
 use tokio::signal::unix::{SignalKind, signal};
 
-use super::super::{ApplicationRuntime, ChildTask, RuntimeCommand, RuntimeServiceFactory, ShutdownReason};
+use super::super::{ApplicationRuntime, ChildTask, RuntimeCommand, ShutdownReason};
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     pub(in crate::runtime) fn spawn_signal_bridge(&mut self) {
         if !self.harness.enable_signals {
             return;
@@ -58,10 +55,7 @@ async fn unix_signal_task(
     }
 }
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     pub(in crate::runtime) fn spawn_harness_shutdown(&mut self) {
         let Some(duration) = self.harness.injected_shutdown_after else {
             return;

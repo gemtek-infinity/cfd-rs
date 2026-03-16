@@ -1,11 +1,8 @@
 use tokio::time;
 
-use super::super::{ApplicationRuntime, ChildTask, RuntimeServiceFactory};
+use super::super::{ApplicationRuntime, ChildTask};
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     pub(in crate::runtime) async fn drain_child_tasks(&mut self) {
         loop {
             let joined = time::timeout(self.policy.shutdown_grace_period, self.child_tasks.join_next()).await;

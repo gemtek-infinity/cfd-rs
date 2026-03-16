@@ -6,12 +6,9 @@ use crate::protocol::ProtocolBridgeState;
 use crate::proxy::ProxySeamState;
 use crate::transport::TransportLifecycleStage;
 
-use super::super::{ApplicationRuntime, LifecycleState, RuntimeExit, RuntimeServiceFactory, ShutdownReason};
+use super::super::{ApplicationRuntime, LifecycleState, RuntimeExit, ShutdownReason};
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     pub(super) fn handle_service_ready(&mut self, service: &'static str) -> Option<RuntimeExit> {
         let is_resumed = self.status.restart_attempts() > 0;
         self.status.record_timing_service_ready(is_resumed);

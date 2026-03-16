@@ -155,10 +155,10 @@ interactions are absent.
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-041 | file watcher (inotify) | `watcher/file.go` | fsnotify watcher, triggers on Write events only, shutdown channel | cfdrs-his `watcher.rs` | audited, parity-backed | local tests | none recorded | watch event tests, shutdown tests | critical | `FileWatcher` trait defined; `NotifyFileWatcher` using `notify::RecommendedWatcher` with write-only event filtering and non-blocking shutdown matching Go `fsnotify` behavior; 2 parity tests verify write-event detection and shutdown semantics |
-| HIS-042 | config reload action loop | `cmd/cloudflared/app_service.go` `actionLoop()` | receive config updates on channel, create/update/remove services by hash comparison | cfdrs-his `watcher.rs` | audited, partial | local tests | open gap | reload integration tests, hash comparison tests | critical | `ReloadActionLoop` now models update/remove/shutdown handling with restart-or-keep-previous recovery; `notify` wiring and service-hash comparison remain open |
-| HIS-043 | service lifecycle manager | `overwatch/app_manager.go` `AppManager` | add/remove services with hash-based change detection, shutdown old before starting new | cfdrs-his `watcher.rs` | audited, partial | minimal | blocked | service lifecycle tests | high | `AppManager` trait defined; no lifecycle runtime |
-| HIS-044 | remote config update | `orchestration/orchestrator.go` `UpdateConfig()` | version-monotonic update, start new origins before closing old, atomic proxy swap via `atomic.Value` | cfdrs-his `watcher.rs` | audited, partial | local tests | open gap | version ordering tests, atomic swap tests | critical | `InMemoryConfigOrchestrator` now provides an owned update/read seam for config JSON; parity tests verify initial config return and latest-update preservation; version monotonicity, proxy swap ordering, and CDC-backed remote flow remain open |
-| HIS-045 | reload error recovery | watcher and orchestrator error paths | parse errors leave old service running, watch errors logged and continue, version downgrades rejected | cfdrs-his `watcher.rs` | audited, partial | local tests | open gap | failure mode tests | high | `reload_recovery_strategy()` plus `ReloadActionLoop` now preserve the previous config on nonfatal errors and stop on invariant failures; parity tests verify IO error recovery and remove-action continuation; runtime watcher integration remains deferred |
+| HIS-042 | config reload action loop | `cmd/cloudflared/app_service.go` `actionLoop()` | receive config updates on channel, create/update/remove services by hash comparison | cfdrs-his `watcher.rs` | audited, parity-backed | local tests | none recorded | reload integration tests, hash comparison tests | critical | `ReloadActionLoop` with channel-driven `run()` matching Go `actionLoop()` select-loop; dispatches `Update`/`Remove`/`Shutdown` actions with `reload_recovery_strategy()` error recovery; parity tests verify multi-action processing, nonfatal-error continuation, fatal-error early stop, and channel-close exit; runtime watcher integration deferred to CLI-001 |
+| HIS-043 | service lifecycle manager | `overwatch/app_manager.go` `AppManager` | add/remove services with hash-based change detection, shutdown old before starting new | cfdrs-his `watcher.rs` | audited, parity-backed | local tests | none recorded | service lifecycle tests | high | `Service` trait matching Go `overwatch.Service` (`name`, `service_type`, `hash`, `shutdown`); `ServiceManager` with hash-based dedup matching Go `AppManager.Add()` — same hash skips, different hash shuts down old before replace; `remove()` shuts down and deletes; parity tests verify add/skip/replace/remove/multi-service semantics |
+| HIS-044 | remote config update | `orchestration/orchestrator.go` `UpdateConfig()` | version-monotonic update, start new origins before closing old, atomic proxy swap via `atomic.Value` | cfdrs-his `watcher.rs` | audited, parity-backed | local tests | none recorded | version ordering tests, atomic swap tests | critical | `InMemoryConfigOrchestrator` with `RwLock` version tracking and monotonicity check matching Go `currentVersion >= version` rejection; `UpdateConfigResponse` type matching Go `pogs.UpdateConfigurationResponse`; initial version `-1`, first valid update `0`; parity tests verify apply-higher, reject-same, reject-lower, initial-version, and version-zero-migration semantics; proxy swap ordering and CDC-backed remote flow remain runtime-integration work |
+| HIS-045 | reload error recovery | watcher and orchestrator error paths | parse errors leave old service running, watch errors logged and continue, version downgrades rejected | cfdrs-his `watcher.rs` | audited, parity-backed | local tests | none recorded | failure mode tests | high | `reload_recovery_strategy()` maps `ErrorCategory::InvariantViolation` to `Shutdown`, all others to `KeepPrevious`; `ReloadActionLoop` preserves previous config on nonfatal errors and stops on invariant failures; version downgrade rejection tested via `InMemoryConfigOrchestrator`; parity tests verify IO error recovery, remove-action continuation, invariant-shutdown, and version-monotonicity rejection |
 
 ### Updater
 
@@ -326,7 +326,7 @@ Note: HIS-053 is the only true `intentional divergence` status. HIS-059 is
 Blocked items use owned seams to define the API surface while keeping the
 remaining runtime gaps explicit (diagnostic HTTP breadth, inotify/notify,
 raw sockets). These include HIS-028, HIS-039, HIS-040 (remaining diagnostics
-routes) and HIS-041 through HIS-044 (watcher/reload runtime wiring).
+routes) and HIS-041 (watcher runtime integration in cfdrs-bin).
 
 ### Gap ranking by priority
 
@@ -335,9 +335,7 @@ Critical gaps (runtime exists, parity breadth still open):
 - HIS-024: local HTTP metrics server (baseline-backed constant tests landed; container bind mode and startup ordering still open)
 - HIS-025: `/ready` JSON endpoint (baseline-backed JSON shape tests landed; full connection-tracker semantics still open)
 - HIS-027: `/metrics` Prometheus endpoint (config response shape test landed; full baseline registry still open)
-- HIS-041: file watcher (needs notify crate)
-- HIS-042: config reload action loop (runtime wiring and service-hash parity still open)
-- HIS-044: remote config update handling (orchestrator parity tests landed; needs CDC-backed version ordering and proxy swap)
+- HIS-041: file watcher (NotifyFileWatcher exists, runtime integration pending)
 - HIS-059: `--grace-period` (baseline-backed edge-case tests landed; connection-level graceful shutdown still open)
 
 High gaps (runtime-backed but incomplete):
@@ -347,8 +345,6 @@ High gaps (runtime-backed but incomplete):
 - HIS-031: metrics bind address (parity tests for `:PORT`, `localhost:PORT`, explicit IP; runtime-class/container routing still open)
 - HIS-032 through HIS-034: diagnostic command and collectors (stub)
 - HIS-039, HIS-040: diagnostic HTTP endpoints (stub)
-- HIS-043: service lifecycle manager (trait only)
-- HIS-045: reload error recovery (strategy, action loop, and parity tests implemented; watcher integration deferred)
 - HIS-046, HIS-047: update command and auto-update (stub)
 - HIS-062: token lock file (implemented)
 - HIS-063: log file creation (parity-backed — file sink, permissions, journald layer, logfile-over-directory precedence)

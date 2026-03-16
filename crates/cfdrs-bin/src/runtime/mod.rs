@@ -3,7 +3,7 @@ use std::sync::Arc;
 use cfdrs_his::signal::remove_pidfile;
 
 use crate::protocol::{self, ProtocolReceiver, StreamResponseSender};
-use crate::transport::QuicTunnelServiceFactory;
+use crate::transport::TransportServiceSource;
 
 use tokio::runtime::Builder;
 use tokio::sync::mpsc;
@@ -26,7 +26,7 @@ use self::state::{LifecycleState, ReadinessState, RuntimeStatus};
 use self::types::RuntimePolicy;
 pub(crate) use self::types::{
     ChildTask, HarnessBuilder, RuntimeCommand, RuntimeConfig, RuntimeExecution, RuntimeExit, RuntimeHarness,
-    RuntimeService, RuntimeServiceFactory, ServiceExit, ShutdownReason,
+    ServiceExit, ShutdownReason,
 };
 
 const PRIMARY_SERVICE_NAME: &str = "quic-tunnel-core";
@@ -41,9 +41,9 @@ const GLIBC_RUNTIME_MARKERS: &[&str] = &[
 
 static RUNTIME_LOGGING: std::sync::OnceLock<()> = std::sync::OnceLock::new();
 
-struct ApplicationRuntime<F> {
+struct ApplicationRuntime {
     config: Arc<RuntimeConfig>,
-    factory: F,
+    service_source: TransportServiceSource,
     policy: RuntimePolicy,
     harness: RuntimeHarness,
     command_tx: mpsc::Sender<RuntimeCommand>,
@@ -56,10 +56,7 @@ struct ApplicationRuntime<F> {
     metrics: Option<metrics::RuntimeMetricsHandle>,
 }
 
-impl<F> ApplicationRuntime<F>
-where
-    F: RuntimeServiceFactory,
-{
+impl ApplicationRuntime {
     async fn start_metrics_server(&mut self) -> Result<(), String> {
         let handle = metrics::RuntimeMetricsHandle::start(self.config.as_ref()).await?;
         let actual_address = handle.actual_address();
@@ -80,7 +77,7 @@ where
 
     fn new(
         config: RuntimeConfig,
-        factory: F,
+        service_source: TransportServiceSource,
         harness: RuntimeHarness,
         protocol_receiver: Option<ProtocolReceiver>,
         stream_response_tx: Option<StreamResponseSender>,
@@ -94,7 +91,7 @@ where
 
         Self {
             config: Arc::new(config),
-            factory,
+            service_source,
             policy,
             harness,
             command_tx,
@@ -221,31 +218,35 @@ where
 pub(crate) fn run(config: RuntimeConfig) -> RuntimeExecution {
     let (protocol_sender, protocol_receiver) = protocol::protocol_bridge();
     let (stream_response_tx, stream_response_rx) = protocol::stream_response_bridge();
-    run_with_factory(
+    run_with_source(
         config,
-        QuicTunnelServiceFactory::production(protocol_sender, stream_response_rx),
+        TransportServiceSource::production(protocol_sender, stream_response_rx),
         HarnessBuilder::production().build(),
         Some(protocol_receiver),
         Some(stream_response_tx),
     )
 }
 
-pub(crate) fn run_with_factory<F>(
+pub(crate) fn run_with_source(
     config: RuntimeConfig,
-    factory: F,
+    service_source: TransportServiceSource,
     harness: RuntimeHarness,
     protocol_receiver: Option<ProtocolReceiver>,
     stream_response_tx: Option<StreamResponseSender>,
-) -> RuntimeExecution
-where
-    F: RuntimeServiceFactory,
-{
+) -> RuntimeExecution {
     let runtime = Builder::new_current_thread()
         .enable_all()
         .build()
         .expect("tokio runtime should build for the admitted production-alpha shell");
 
     runtime.block_on(
-        ApplicationRuntime::new(config, factory, harness, protocol_receiver, stream_response_tx).run(),
+        ApplicationRuntime::new(
+            config,
+            service_source,
+            harness,
+            protocol_receiver,
+            stream_response_tx,
+        )
+        .run(),
     )
 }
