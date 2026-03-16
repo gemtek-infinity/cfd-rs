@@ -142,6 +142,8 @@ pub(super) fn extract_inline_backtick_item(section: &str, label_prefix: &str) ->
 
 pub(super) fn parse_priority_queue(section: &str) -> Result<Vec<PriorityQueueEntry>, String> {
     let mut entries = Vec::new();
+    let mut current_rank: Option<u32> = None;
+    let mut current_lines = Vec::new();
 
     for line in section.lines() {
         let trimmed = line.trim();
@@ -150,21 +152,25 @@ pub(super) fn parse_priority_queue(section: &str) -> Result<Vec<PriorityQueueEnt
             continue;
         }
 
-        let Some((rank_text, remainder)) = trimmed.split_once('.') else {
-            continue;
-        };
+        if let Some((rank_text, remainder)) = trimmed.split_once('.')
+            && let Ok(rank) = rank_text.trim().parse::<u32>()
+        {
+            if let Some(previous_rank) = current_rank.replace(rank) {
+                entries.push(build_priority_entry(previous_rank, &current_lines.join(" "))?);
+                current_lines.clear();
+            }
 
-        let Ok(rank) = rank_text.trim().parse::<u32>() else {
+            current_lines.push(remainder.trim().to_string());
             continue;
-        };
+        }
 
-        let (row_source, summary) = split_priority_line(remainder.trim());
-        let row_ids = extract_row_ids(row_source).unwrap_or_default();
-        entries.push(PriorityQueueEntry {
-            rank,
-            row_ids,
-            summary: summary.to_string(),
-        });
+        if current_rank.is_some() {
+            current_lines.push(trimmed.to_string());
+        }
+    }
+
+    if let Some(rank) = current_rank {
+        entries.push(build_priority_entry(rank, &current_lines.join(" "))?);
     }
 
     Ok(entries)
@@ -199,6 +205,17 @@ fn split_priority_line(line: &str) -> (&str, &str) {
     }
 
     (line, "")
+}
+
+fn build_priority_entry(rank: u32, text: &str) -> Result<PriorityQueueEntry, String> {
+    let (row_source, summary) = split_priority_line(text.trim());
+    let row_ids = extract_row_ids(row_source)?;
+
+    Ok(PriorityQueueEntry {
+        rank,
+        row_ids,
+        summary: summary.to_string(),
+    })
 }
 
 fn extract_row_ids(text: &str) -> Result<Vec<String>, String> {

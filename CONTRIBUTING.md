@@ -1,79 +1,86 @@
 # Contributing
 
-Read these first:
+Human contribution workflow for this repository.
 
-1. [`README.md`](README.md)
-2. [`STATUS.md`](STATUS.md)
-3. [`docs/phase-5/roadmap.md`](docs/phase-5/roadmap.md)
-4. [`REWRITE_CHARTER.md`](REWRITE_CHARTER.md)
-5. [`docs/promotion-gates.md`](docs/promotion-gates.md)
-6. [`docs/ai-context-routing.md`](docs/ai-context-routing.md)
+## Start
 
-## How to find work
+- [`README.md`](README.md) — landing page
+- [`docs/README.md`](docs/README.md) — human documentation map
+- [`STATUS.md`](STATUS.md) — current blockers, milestone, parity snapshot
 
-Parity work is tracked in three live ledgers:
+Open deeper leaf docs only when the task needs them.
 
-- [`docs/parity/cli/implementation-checklist.md`](docs/parity/cli/implementation-checklist.md)
-- [`docs/parity/cdc/implementation-checklist.md`](docs/parity/cdc/implementation-checklist.md)
-- [`docs/parity/his/implementation-checklist.md`](docs/parity/his/implementation-checklist.md)
+## Find Work
 
-Use [`STATUS.md`](STATUS.md) for the current priority queue.
-Use [`docs/phase-5/roadmap-index.csv`](docs/phase-5/roadmap-index.csv) when you need the exact milestone for a row.
-Use [`docs/parity/source-map.csv`](docs/parity/source-map.csv) when you need the exact frozen-baseline jump path.
+- [`STATUS.md`](STATUS.md) — current blockers and priority
+- [`docs/phase-5/roadmap.md`](docs/phase-5/roadmap.md) — implementation order
+- [`docs/phase-5/roadmap-index.csv`](docs/phase-5/roadmap-index.csv) —
+  exact row ownership
+- [`docs/parity/README.md`](docs/parity/README.md) — parity navigation
+- [`docs/parity/source-map.csv`](docs/parity/source-map.csv) — baseline routing
 
-## Build and test
+## Work Loop
 
-Normal entry:
+1. Make the smallest source-grounded change.
+2. Keep crate ownership boundaries intact.
+3. Update the owning parity ledger when behavior or evidence changes.
+4. Regenerate or validate [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
+   through repo tooling if routing changed.
+5. Update [`STATUS.md`](STATUS.md) if current reality changed.
+6. Run the full validation gate.
+
+## Validate
+
+Default entry:
 
 ```bash
 just validate-pr
 ```
 
-Useful focused entrypoints:
+Focused entrypoints:
 
-```bash
-just fmt
-just fmt-check
-just validate-governance
-just validate-app
-just validate-tools
-just mcp-smoke
-```
+- `just fmt` — formatting only
+- `just validate-governance` — docs and source-map validation
+- `just validate-app` — app crates
+- `just validate-tools` — MCP and tool crates
+- `just mcp-smoke` — operational MCP smoke when touching MCP tools or routing
+  docs
 
-`fmt` always means `cargo +nightly fmt --all`.
+The operational MCP target is debtmap-enabled.
 
-## Parity evidence
+`just fmt` runs `cargo +nightly fmt --all`.
+
+## Parity Evidence
 
 Do not claim parity from Rust code shape alone.
-Evidence must come from the frozen Go baseline in [`baseline-2026.2.0/`](baseline-2026.2.0/).
-Typical evidence includes:
+
+Use evidence from the frozen Go baseline in
+[`baseline-2026.2.0/`](baseline-2026.2.0/):
 
 - blackbox output comparison
 - wire-format round-trip tests
 - contract-level tests
 - host-behavior tests
 
-Update the touched ledger row when the evidence changes.
-Update [`docs/parity/source-map.csv`](docs/parity/source-map.csv) when the baseline routing for a row changes.
+## Before Review
 
-## Document order
+- Keep the diff narrow and source-grounded.
+- Include parity ledger, source-map, and [`STATUS.md`](STATUS.md) updates when
+  the change affects them.
+- Do not hand-edit generated artifacts such as
+  [`docs/parity/source-map.csv`](docs/parity/source-map.csv); regenerate or
+  validate them through repo tooling.
 
-When documents conflict, resolve in this order:
+## Conflict Order
 
 1. frozen Go baseline code and tests
-2. [`REWRITE_CHARTER.md`](REWRITE_CHARTER.md) and [`docs/compatibility-scope.md`](docs/compatibility-scope.md)
+2. [`REWRITE_CHARTER.md`](REWRITE_CHARTER.md) and
+   [`docs/compatibility-scope.md`](docs/compatibility-scope.md)
 3. [`docs/promotion-gates.md`](docs/promotion-gates.md)
 4. [`STATUS.md`](STATUS.md)
-5. [`docs/phase-5/roadmap.md`](docs/phase-5/roadmap.md) and [`docs/phase-5/roadmap-index.csv`](docs/phase-5/roadmap-index.csv)
-6. [`docs/parity/README.md`](docs/parity/README.md), [`docs/parity/source-map.csv`](docs/parity/source-map.csv), and the relevant parity doc
-7. [`AGENTS.md`](AGENTS.md) and [`SKILLS.md`](SKILLS.md)
-
-## AI-assisted work
-
-AI contributors should start with `GCFGR.md` (if it exists) then [`docs/ai-context-routing.md`](docs/ai-context-routing.md).
-When MCP is available, prefer `status_summary`, `phase5_priority`, `parity_row_details`, `domain_gaps_ranked`, `baseline_source_mapping`, `crate_surface_summary`, and `crate_dependency_graph` before loading larger docs.
-The operational MCP target is debtmap-enabled; if MCP files change, rebuild and smoke that target before trusting MCP again.
-Use [`Justfile`](Justfile) as the normal command surface rather than open-coded cargo chains.
-Prefer `just validate-pr` for the default full validation gate and `just fmt` for formatting-only work.
-When a matching Just recipe or checked-in helper exists, do not substitute bespoke `cargo`, `python3 tools/...`, or `cargo run --manifest-path ...` command chains unless you are intentionally debugging that recipe or isolating its failure.
-Do not hand-edit generated artifacts such as [`docs/parity/source-map.csv`](docs/parity/source-map.csv); regenerate or validate them through the checked-in tooling.
+5. [`docs/phase-5/roadmap.md`](docs/phase-5/roadmap.md) and
+   [`docs/phase-5/roadmap-index.csv`](docs/phase-5/roadmap-index.csv)
+6. [`docs/parity/README.md`](docs/parity/README.md),
+   [`docs/parity/source-map.csv`](docs/parity/source-map.csv), and the
+   relevant parity doc
+7. workflow notes such as [`AGENTS.md`](AGENTS.md) and [`SKILLS.md`](SKILLS.md)

@@ -6,8 +6,8 @@ mod source_map;
 mod text;
 
 use self::helpers::{
-    collect_source_paths, domain_for_row, is_closed_row, is_partial_status, ledger_path_for_domain,
-    normalize_domain, normalize_row_id, read_repo_text,
+    collect_source_paths, is_closed_row, is_not_audited_status, is_partial_status, is_row_id,
+    ledger_path_for_domain, normalize_domain, normalize_row_id, read_repo_text,
 };
 use self::ledger::parse_ledger_rows;
 use self::roadmap::{parse_milestones, parse_roadmap_index, rows_for_milestone};
@@ -18,6 +18,7 @@ use self::text::{
     parse_canonical_links, parse_priority_queue, parse_sections, parse_status_fields, section_content,
 };
 use serde::Serialize;
+use std::collections::HashMap;
 use std::path::Path;
 
 pub const STATUS_PATH: &str = "STATUS.md";
@@ -95,6 +96,7 @@ pub struct Phase5PriorityResponse {
     pub source_paths: Vec<&'static str>,
     pub active_milestone: MilestoneDetail,
     pub next_milestone: Option<String>,
+    pub next_actionable_row_id: Option<String>,
     pub priority_queue: Vec<PriorityQueueEntry>,
     pub final_milestone: String,
 }
@@ -131,6 +133,10 @@ pub struct ParityRowDetailsResponse {
     pub baseline_paths: Vec<String>,
     pub symbol_hints: Vec<String>,
     pub baseline_behavior_or_contract: String,
+    pub evidence_ref: String,
+    pub actionable_now: bool,
+    pub actionability_reason: String,
+    pub blocked_by_satisfied: bool,
     pub ledger_status: LedgerStatus,
     pub roadmap: RoadmapStatus,
 }
@@ -144,7 +150,12 @@ pub struct DomainGapEntry {
     pub owner_crate: String,
     pub status_bucket: String,
     pub rust_status_now: String,
+    pub parity_evidence_status: String,
     pub divergence_status: String,
+    pub blocked_by: String,
+    pub evidence_ref: String,
+    pub actionable_now: bool,
+    pub actionability_reason: String,
     pub baseline_source: String,
     pub notes: String,
 }
@@ -169,6 +180,26 @@ pub struct BaselineSourceMappingResponse {
     pub baseline_source: String,
     pub baseline_paths: Vec<String>,
     pub symbol_hints: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct NextParityTicketResponse {
+    pub source_paths: Vec<String>,
+    pub row_id: String,
+    pub domain: String,
+    pub feature_group: String,
+    pub owner_crate: String,
+    pub priority: String,
+    pub milestone: String,
+    pub rust_status_now: String,
+    pub parity_evidence_status: String,
+    pub blocked_by: String,
+    pub actionable_now: bool,
+    pub actionability_reason: String,
+    pub selection_basis: String,
+    pub feature_doc: String,
+    pub baseline_paths: Vec<String>,
+    pub required_tests: String,
 }
 
 #[derive(Debug, Clone)]
@@ -209,6 +240,21 @@ struct ParityRowRecord {
 struct MilestoneRecord {
     name: String,
     content: String,
+}
+
+#[derive(Debug, Clone)]
+struct Actionability {
+    actionable_now: bool,
+    actionability_reason: String,
+    blocked_by_satisfied: bool,
+}
+
+#[derive(Debug, Clone)]
+struct ResolvedParityRow {
+    row: ParityRowRecord,
+    roadmap: RoadmapIndexEntry,
+    source_map: SourceMapEntry,
+    actionability: Actionability,
 }
 
 pub fn status_summary(repo_root: &Path) -> Result<StatusSummaryResponse, String> {
@@ -253,6 +299,9 @@ pub fn phase5_priority(repo_root: &Path) -> Result<Phase5PriorityResponse, Strin
         .ok_or_else(|| format!("active milestone not found in roadmap: {active_name}"))?;
     let roadmap_index = parse_roadmap_index(repo_root)?;
     let row_ids = rows_for_milestone(&roadmap_index, &active_name);
+    let next_actionable_row_id = next_parity_ticket(repo_root, None, false)
+        .ok()
+        .map(|ticket| ticket.row_id);
 
     Ok(Phase5PriorityResponse {
         source_paths: vec![STATUS_PATH, ROADMAP_PATH, ROADMAP_INDEX_PATH],
@@ -267,6 +316,7 @@ pub fn phase5_priority(repo_root: &Path) -> Result<Phase5PriorityResponse, Strin
             row_ids,
         },
         next_milestone: status.next_milestone,
+        next_actionable_row_id,
         priority_queue: status.priority_rows,
         final_milestone: MILESTONE_ORDER
             .last()
@@ -276,52 +326,53 @@ pub fn phase5_priority(repo_root: &Path) -> Result<Phase5PriorityResponse, Strin
 }
 
 pub fn parity_row_details(repo_root: &Path, row_id: &str) -> Result<ParityRowDetailsResponse, String> {
-    let normalized = normalize_row_id(row_id);
-    let domain = domain_for_row(&normalized)?;
-    let row = parse_ledger_rows(repo_root, &domain)?
-        .into_iter()
-        .find(|entry| entry.row_id == normalized)
-        .ok_or_else(|| format!("row not found in {domain} ledger: {normalized}"))?;
+    let active_milestone = status_summary(repo_root)?.active_milestone;
+    let all_rows = parse_all_ledger_rows(repo_root)?;
     let index = parse_roadmap_index(repo_root)?;
     let source_map = parse_source_map(repo_root)?;
-    let roadmap = index
-        .get(&normalized)
-        .ok_or_else(|| format!("row not found in roadmap index: {normalized}"))?;
-    let source_map_entry = source_map
-        .get(&normalized)
-        .ok_or_else(|| format!("row not found in source map: {normalized}"))?;
+    let resolved = resolve_parity_row(
+        &normalize_row_id(row_id),
+        &all_rows,
+        &index,
+        &source_map,
+        &active_milestone,
+    )?;
 
     Ok(ParityRowDetailsResponse {
         source_paths: collect_source_paths(&[
-            ledger_path_for_domain(&domain).to_string(),
+            ledger_path_for_domain(&resolved.row.domain).to_string(),
             ROADMAP_INDEX_PATH.to_string(),
             SOURCE_MAP_PATH.to_string(),
-            source_map_entry.feature_doc.clone(),
+            resolved.source_map.feature_doc.clone(),
         ]),
-        row_id: row.row_id,
-        domain: row.domain,
-        section: row.section,
-        feature_group: row.feature_group,
-        feature_doc: source_map_entry.feature_doc.clone(),
-        baseline_source: row.baseline_source.clone(),
-        baseline_paths: source_map_entry.baseline_paths.clone(),
-        symbol_hints: source_map_entry.symbol_hints.clone(),
-        baseline_behavior_or_contract: row.baseline_behavior_or_contract,
+        row_id: resolved.row.row_id.clone(),
+        domain: resolved.row.domain.clone(),
+        section: resolved.row.section.clone(),
+        feature_group: resolved.row.feature_group.clone(),
+        feature_doc: resolved.source_map.feature_doc.clone(),
+        baseline_source: resolved.row.baseline_source.clone(),
+        baseline_paths: resolved.source_map.baseline_paths.clone(),
+        symbol_hints: resolved.source_map.symbol_hints.clone(),
+        baseline_behavior_or_contract: resolved.row.baseline_behavior_or_contract.clone(),
+        evidence_ref: resolved.roadmap.evidence_ref.clone(),
+        actionable_now: resolved.actionability.actionable_now,
+        actionability_reason: resolved.actionability.actionability_reason.clone(),
+        blocked_by_satisfied: resolved.actionability.blocked_by_satisfied,
         ledger_status: LedgerStatus {
-            rust_owner_now: row.rust_owner_now,
-            rust_status_now: row.rust_status_now,
-            parity_evidence_status: row.parity_evidence_status,
-            divergence_status: row.divergence_status,
-            required_tests: row.required_tests,
-            priority: row.priority,
-            notes: row.notes,
+            rust_owner_now: resolved.row.rust_owner_now.clone(),
+            rust_status_now: resolved.row.rust_status_now.clone(),
+            parity_evidence_status: resolved.row.parity_evidence_status.clone(),
+            divergence_status: resolved.row.divergence_status.clone(),
+            required_tests: resolved.row.required_tests.clone(),
+            priority: resolved.row.priority.clone(),
+            notes: resolved.row.notes.clone(),
         },
         roadmap: RoadmapStatus {
-            milestone: roadmap.milestone.clone(),
-            owner_crate: roadmap.owner_crate.clone(),
-            status_bucket: roadmap.status_bucket.clone(),
-            blocked_by: roadmap.blocked_by.clone(),
-            evidence_ref: roadmap.evidence_ref.clone(),
+            milestone: resolved.roadmap.milestone.clone(),
+            owner_crate: resolved.roadmap.owner_crate.clone(),
+            status_bucket: resolved.roadmap.status_bucket.clone(),
+            blocked_by: resolved.roadmap.blocked_by.clone(),
+            evidence_ref: resolved.roadmap.evidence_ref.clone(),
         },
     })
 }
@@ -333,6 +384,7 @@ pub fn domain_gaps_ranked(
 ) -> Result<DomainGapsRankedResponse, String> {
     let normalized_domain = normalize_domain(domain)?;
     let active_milestone = status_summary(repo_root)?.active_milestone;
+    let all_rows = parse_all_ledger_rows(repo_root)?;
     let index = parse_roadmap_index(repo_root)?;
     let rows = parse_ledger_rows(repo_root, &normalized_domain)?;
 
@@ -347,6 +399,8 @@ pub fn domain_gaps_ranked(
             continue;
         };
 
+        let actionability = evaluate_actionability(&row, index_row, &active_milestone, &all_rows)?;
+
         open_rows.push(DomainGapEntry {
             row_id: row.row_id,
             feature_group: row.feature_group,
@@ -355,7 +409,12 @@ pub fn domain_gaps_ranked(
             owner_crate: index_row.owner_crate.clone(),
             status_bucket: index_row.status_bucket.clone(),
             rust_status_now: row.rust_status_now,
+            parity_evidence_status: row.parity_evidence_status,
             divergence_status: row.divergence_status,
+            blocked_by: index_row.blocked_by.clone(),
+            evidence_ref: index_row.evidence_ref.clone(),
+            actionable_now: actionability.actionable_now,
+            actionability_reason: actionability.actionability_reason,
             baseline_source: row.baseline_source,
             notes: row.notes,
         });
@@ -386,6 +445,119 @@ pub fn domain_gaps_ranked(
     })
 }
 
+pub fn next_parity_ticket(
+    repo_root: &Path,
+    domain: Option<&str>,
+    include_blocked: bool,
+) -> Result<NextParityTicketResponse, String> {
+    let status = status_summary(repo_root)?;
+    let active_milestone = status.active_milestone.clone();
+    let normalized_domain = domain.map(normalize_domain).transpose()?;
+    let all_rows = parse_all_ledger_rows(repo_root)?;
+    let index = parse_roadmap_index(repo_root)?;
+    let source_map = parse_source_map(repo_root)?;
+
+    if let Some(resolved) = next_ticket_from_priority_queue(
+        &status.priority_rows,
+        normalized_domain.as_deref(),
+        include_blocked,
+        &all_rows,
+        &index,
+        &source_map,
+        &active_milestone,
+    )? {
+        return Ok(build_next_ticket_response(
+            &resolved,
+            "status_priority_queue",
+            true,
+        ));
+    }
+
+    let Some(row) = next_ticket_from_open_rows(
+        normalized_domain.as_deref(),
+        include_blocked,
+        &all_rows,
+        &index,
+        &source_map,
+        &active_milestone,
+    )?
+    else {
+        return Err(no_matching_ticket_error(normalized_domain.as_deref()));
+    };
+
+    Ok(build_next_ticket_response(&row, "fallback_ranked_gap", false))
+}
+
+fn next_ticket_from_priority_queue(
+    priority_rows: &[PriorityQueueEntry],
+    domain_filter: Option<&str>,
+    include_blocked: bool,
+    all_rows: &HashMap<String, ParityRowRecord>,
+    index: &HashMap<String, RoadmapIndexEntry>,
+    source_map: &HashMap<String, SourceMapEntry>,
+    active_milestone: &str,
+) -> Result<Option<ResolvedParityRow>, String> {
+    for entry in priority_rows {
+        for row_id in &entry.row_ids {
+            let resolved = resolve_parity_row(row_id, all_rows, index, source_map, active_milestone)?;
+            if next_ticket_candidate(&resolved, domain_filter, include_blocked) {
+                return Ok(Some(resolved));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+fn next_ticket_from_open_rows(
+    domain_filter: Option<&str>,
+    include_blocked: bool,
+    all_rows: &HashMap<String, ParityRowRecord>,
+    index: &HashMap<String, RoadmapIndexEntry>,
+    source_map: &HashMap<String, SourceMapEntry>,
+    active_milestone: &str,
+) -> Result<Option<ResolvedParityRow>, String> {
+    let mut open_rows = collect_open_rows(all_rows, index, source_map, active_milestone)?;
+    open_rows.retain(|row| matches_domain_filter(&row.row.domain, domain_filter));
+    if !include_blocked {
+        open_rows.retain(|row| row.actionability.actionable_now);
+    }
+    open_rows.sort_by(|left, right| compare_resolved_rows(left, right, active_milestone));
+
+    Ok(open_rows.into_iter().next())
+}
+
+fn next_ticket_candidate(
+    resolved: &ResolvedParityRow,
+    domain_filter: Option<&str>,
+    include_blocked: bool,
+) -> bool {
+    matches_domain_filter(&resolved.row.domain, domain_filter)
+        && !is_closed_row(&resolved.row)
+        && (include_blocked || resolved.actionability.actionable_now)
+}
+
+fn matches_domain_filter(row_domain: &str, domain_filter: Option<&str>) -> bool {
+    domain_filter.is_none_or(|expected| row_domain == expected)
+}
+
+fn compare_resolved_rows(
+    left: &ResolvedParityRow,
+    right: &ResolvedParityRow,
+    active_milestone: &str,
+) -> std::cmp::Ordering {
+    let left_gap = resolved_row_to_gap_entry(left);
+    let right_gap = resolved_row_to_gap_entry(right);
+    compare_gap_entries(&left_gap, &right_gap, active_milestone)
+}
+
+fn no_matching_ticket_error(domain_filter: Option<&str>) -> String {
+    match domain_filter {
+        Some(domain) => format!("no matching parity ticket found for domain: {domain}"),
+        None => "no matching parity ticket found".to_string(),
+    }
+}
+
 pub fn baseline_source_mapping(
     repo_root: &Path,
     row_id: &str,
@@ -407,6 +579,204 @@ pub fn baseline_source_mapping(
     })
 }
 
+fn parse_all_ledger_rows(repo_root: &Path) -> Result<HashMap<String, ParityRowRecord>, String> {
+    let mut rows = HashMap::new();
+
+    for domain in ["CLI", "CDC", "HIS"] {
+        for row in parse_ledger_rows(repo_root, domain)? {
+            rows.insert(row.row_id.clone(), row);
+        }
+    }
+
+    Ok(rows)
+}
+
+fn resolve_parity_row(
+    row_id: &str,
+    all_rows: &HashMap<String, ParityRowRecord>,
+    index: &HashMap<String, RoadmapIndexEntry>,
+    source_map: &HashMap<String, SourceMapEntry>,
+    active_milestone: &str,
+) -> Result<ResolvedParityRow, String> {
+    let normalized = normalize_row_id(row_id);
+    let row = all_rows
+        .get(&normalized)
+        .cloned()
+        .ok_or_else(|| format!("row not found in ledger set: {normalized}"))?;
+    let roadmap = index
+        .get(&normalized)
+        .cloned()
+        .ok_or_else(|| format!("row not found in roadmap index: {normalized}"))?;
+    let source_map = source_map
+        .get(&normalized)
+        .cloned()
+        .ok_or_else(|| format!("row not found in source map: {normalized}"))?;
+    let actionability = evaluate_actionability(&row, &roadmap, active_milestone, all_rows)?;
+
+    Ok(ResolvedParityRow {
+        row,
+        roadmap,
+        source_map,
+        actionability,
+    })
+}
+
+fn collect_open_rows(
+    all_rows: &HashMap<String, ParityRowRecord>,
+    index: &HashMap<String, RoadmapIndexEntry>,
+    source_map: &HashMap<String, SourceMapEntry>,
+    active_milestone: &str,
+) -> Result<Vec<ResolvedParityRow>, String> {
+    let mut rows = Vec::new();
+
+    for row_id in all_rows.keys() {
+        let resolved = resolve_parity_row(row_id, all_rows, index, source_map, active_milestone)?;
+        if !is_closed_row(&resolved.row) {
+            rows.push(resolved);
+        }
+    }
+
+    Ok(rows)
+}
+
+fn evaluate_actionability(
+    row: &ParityRowRecord,
+    roadmap: &RoadmapIndexEntry,
+    active_milestone: &str,
+    all_rows: &HashMap<String, ParityRowRecord>,
+) -> Result<Actionability, String> {
+    let (blocked_by_satisfied, blocked_reason) =
+        evaluate_blocker(&roadmap.blocked_by, active_milestone, all_rows)?;
+
+    let (actionable_now, actionability_reason) = if is_closed_row(row) {
+        (false, "row already closed".to_string())
+    } else if matches!(
+        roadmap.status_bucket.as_str(),
+        "already_proven" | "intentional_divergence"
+    ) {
+        (
+            false,
+            format!("status bucket {} is not actionable work", roadmap.status_bucket),
+        )
+    } else if roadmap.status_bucket == "deferred" {
+        (
+            false,
+            format!("status bucket deferred until {}", roadmap.blocked_by),
+        )
+    } else if roadmap.status_bucket == "non_lane" {
+        (
+            false,
+            "status bucket non_lane is out of the admitted lane".to_string(),
+        )
+    } else if !blocked_by_satisfied {
+        (false, blocked_reason)
+    } else {
+        (true, blocked_reason)
+    };
+
+    Ok(Actionability {
+        actionable_now,
+        actionability_reason,
+        blocked_by_satisfied,
+    })
+}
+
+fn evaluate_blocker(
+    blocked_by: &str,
+    active_milestone: &str,
+    all_rows: &HashMap<String, ParityRowRecord>,
+) -> Result<(bool, String), String> {
+    let normalized = blocked_by.trim();
+
+    if normalized.is_empty() || normalized == "none" {
+        return Ok((true, "no blocker recorded".to_string()));
+    }
+
+    if is_row_id(normalized) {
+        let Some(row) = all_rows.get(normalized) else {
+            return Err(format!("blocked_by row not found in ledger set: {normalized}"));
+        };
+        return Ok(if is_closed_row(row) {
+            (true, format!("blocked_by row {normalized} is already closed"))
+        } else {
+            (false, format!("blocked_by row {normalized} is not yet closed"))
+        });
+    }
+
+    let blocked_rank =
+        milestone_rank(normalized).ok_or_else(|| format!("unknown blocked_by milestone: {normalized}"))?;
+    let active_rank = milestone_rank(active_milestone)
+        .ok_or_else(|| format!("unknown active milestone: {active_milestone}"))?;
+
+    Ok(if blocked_rank < active_rank {
+        (true, format!("prerequisite milestone {normalized} is complete"))
+    } else {
+        (
+            false,
+            format!("prerequisite milestone {normalized} is not yet complete"),
+        )
+    })
+}
+
+fn milestone_rank(name: &str) -> Option<usize> {
+    MILESTONE_ORDER.iter().position(|candidate| *candidate == name)
+}
+
+fn resolved_row_to_gap_entry(row: &ResolvedParityRow) -> DomainGapEntry {
+    DomainGapEntry {
+        row_id: row.row.row_id.clone(),
+        feature_group: row.row.feature_group.clone(),
+        priority: row.row.priority.clone(),
+        milestone: row.roadmap.milestone.clone(),
+        owner_crate: row.roadmap.owner_crate.clone(),
+        status_bucket: row.roadmap.status_bucket.clone(),
+        rust_status_now: row.row.rust_status_now.clone(),
+        parity_evidence_status: row.row.parity_evidence_status.clone(),
+        divergence_status: row.row.divergence_status.clone(),
+        blocked_by: row.roadmap.blocked_by.clone(),
+        evidence_ref: row.roadmap.evidence_ref.clone(),
+        actionable_now: row.actionability.actionable_now,
+        actionability_reason: row.actionability.actionability_reason.clone(),
+        baseline_source: row.row.baseline_source.clone(),
+        notes: row.row.notes.clone(),
+    }
+}
+
+fn build_next_ticket_response(
+    row: &ResolvedParityRow,
+    selection_basis: &str,
+    include_status_path: bool,
+) -> NextParityTicketResponse {
+    let mut source_paths = vec![
+        ledger_path_for_domain(&row.row.domain).to_string(),
+        ROADMAP_INDEX_PATH.to_string(),
+        SOURCE_MAP_PATH.to_string(),
+        row.source_map.feature_doc.clone(),
+    ];
+    if include_status_path {
+        source_paths.insert(0, STATUS_PATH.to_string());
+    }
+
+    NextParityTicketResponse {
+        source_paths: collect_source_paths(&source_paths),
+        row_id: row.row.row_id.clone(),
+        domain: row.row.domain.clone(),
+        feature_group: row.row.feature_group.clone(),
+        owner_crate: row.roadmap.owner_crate.clone(),
+        priority: row.row.priority.clone(),
+        milestone: row.roadmap.milestone.clone(),
+        rust_status_now: row.row.rust_status_now.clone(),
+        parity_evidence_status: row.row.parity_evidence_status.clone(),
+        blocked_by: row.roadmap.blocked_by.clone(),
+        actionable_now: row.actionability.actionable_now,
+        actionability_reason: row.actionability.actionability_reason.clone(),
+        selection_basis: selection_basis.to_string(),
+        feature_doc: row.source_map.feature_doc.clone(),
+        baseline_paths: row.source_map.baseline_paths.clone(),
+        required_tests: row.row.required_tests.clone(),
+    }
+}
+
 fn compute_parity_progress(repo_root: &Path) -> Result<Vec<ParityDomainProgress>, String> {
     ["CLI", "CDC", "HIS"]
         .iter()
@@ -418,7 +788,12 @@ fn compute_parity_progress(repo_root: &Path) -> Result<Vec<ParityDomainProgress>
                 .iter()
                 .filter(|row| !is_closed_row(row) && is_partial_status(&row.rust_status_now))
                 .count();
+            let not_audited = rows
+                .iter()
+                .filter(|row| is_not_audited_status(&row.rust_status_now))
+                .count();
             let absent = total - closed - partial;
+            debug_assert!(not_audited <= absent);
 
             Ok(ParityDomainProgress {
                 domain: domain.to_string(),
@@ -434,8 +809,8 @@ fn compute_parity_progress(repo_root: &Path) -> Result<Vec<ParityDomainProgress>
 #[cfg(test)]
 mod tests {
     use super::{
-        baseline_source_mapping, domain_gaps_ranked, parity_row_details, parse_roadmap_index,
-        phase5_priority, status_summary,
+        baseline_source_mapping, domain_gaps_ranked, next_parity_ticket, parity_row_details,
+        parse_roadmap_index, phase5_priority, status_summary,
     };
     use std::path::PathBuf;
 
@@ -490,6 +865,7 @@ mod tests {
         assert_eq!(priority.active_milestone.name, "CLI Foundation");
         assert!(priority.active_milestone.row_count > 0);
         assert_eq!(priority.final_milestone, "Performance Architecture Overhaul");
+        assert_eq!(priority.next_actionable_row_id.as_deref(), Some("CLI-001"));
     }
 
     #[test]
@@ -511,6 +887,12 @@ mod tests {
         assert_eq!(row.feature_doc, "docs/parity/cli/root-and-global-flags.md");
         assert!(!row.baseline_paths.is_empty());
         assert!(!row.symbol_hints.is_empty());
+        assert!(row.actionable_now);
+        assert!(row.blocked_by_satisfied);
+        assert_eq!(
+            row.evidence_ref,
+            "docs/parity/cli/implementation-checklist.md#cli-001"
+        );
     }
 
     #[test]
@@ -521,6 +903,7 @@ mod tests {
         assert!(ranked.total_open_rows >= ranked.rows.len());
         assert!(!ranked.rows.is_empty());
         assert_eq!(ranked.partial_rows + ranked.absent_rows, ranked.total_open_rows);
+        assert!(ranked.rows.iter().all(|row| !row.actionability_reason.is_empty()));
     }
 
     #[test]
@@ -531,5 +914,52 @@ mod tests {
         assert_eq!(mapping.feature_doc, "docs/parity/cli/root-and-global-flags.md");
         assert!(!mapping.baseline_paths.is_empty());
         assert!(!mapping.symbol_hints.is_empty());
+    }
+
+    #[test]
+    fn next_ticket_prefers_status_priority_queue() {
+        let ticket = next_parity_ticket(&repo_root(), None, false).expect("next ticket");
+
+        assert_eq!(ticket.row_id, "CLI-001");
+        assert!(ticket.actionable_now);
+        assert_eq!(ticket.selection_basis, "status_priority_queue");
+    }
+
+    #[test]
+    fn blocked_rows_are_skipped_unless_requested() {
+        let default_ticket =
+            next_parity_ticket(&repo_root(), Some("HIS"), false).expect("default HIS ticket");
+        assert_eq!(default_ticket.row_id, "HIS-059");
+        assert!(default_ticket.actionable_now);
+
+        let blocked_ticket = next_parity_ticket(&repo_root(), Some("HIS"), true).expect("blocked HIS ticket");
+        assert_eq!(blocked_ticket.row_id, "HIS-016");
+        assert!(!blocked_ticket.actionable_now);
+    }
+
+    #[test]
+    fn closed_his_metrics_rows_do_not_rank_as_open_gaps() {
+        let ranked = domain_gaps_ranked(&repo_root(), "HIS", 40).expect("HIS gaps");
+        let row_ids = ranked
+            .rows
+            .iter()
+            .map(|row| row.row_id.as_str())
+            .collect::<Vec<_>>();
+
+        for row_id in ["HIS-024", "HIS-025", "HIS-026", "HIS-027"] {
+            assert!(!row_ids.contains(&row_id));
+        }
+    }
+
+    #[test]
+    fn blocked_row_details_report_actionability() {
+        let row = parity_row_details(&repo_root(), "HIS-016").expect("blocked row details");
+
+        assert!(!row.actionable_now);
+        assert!(!row.blocked_by_satisfied);
+        assert_eq!(
+            row.actionability_reason,
+            "status bucket deferred until Command Family Closure"
+        );
     }
 }

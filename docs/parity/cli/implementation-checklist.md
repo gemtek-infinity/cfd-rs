@@ -49,6 +49,7 @@ Preferred values:
 - weak
 - partial
 - parity-backed
+- baseline-backed tests
 - compare-backed
 - local tests
 
@@ -59,6 +60,7 @@ If a new value is needed later, add it deliberately and keep it short.
 Preferred values:
 
 - none recorded
+- closed
 - open gap
 - intentional divergence
 - unknown

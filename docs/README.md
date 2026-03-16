@@ -1,38 +1,53 @@
 # Documentation Map
 
-Use the smallest file that answers the question.
+Canonical human documentation map.
+Open the smallest file that answers the question.
 
 ## Start Here
 
-- [`STATUS.md`](../STATUS.md) — the only tracked status file
-- [`docs/phase-5/roadmap.md`](phase-5/roadmap.md) — normative Phase 5 roadmap
-- [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md) — non-negotiables, scope, lane
-- [`docs/promotion-gates.md`](promotion-gates.md) — phase model and promotion rules
-- [`docs/ai-context-routing.md`](ai-context-routing.md) — AI routing and MCP contract
-- [`Justfile`](../Justfile) — authoritative command surface
+- [`README.md`](../README.md) — landing page and quick validation entrypoint
+- [`STATUS.md`](../STATUS.md) — current blockers, milestone, parity snapshot,
+  tests
+- [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md) — non-negotiables, lane,
+  scope
+- [`phase-5/roadmap.md`](phase-5/roadmap.md) — implementation order and exit
+  evidence
 
-## Parity
+## Canonical Docs
 
-- [`docs/parity/README.md`](parity/README.md) — parity index
-- [`docs/parity/source-map.csv`](parity/source-map.csv) — exact row-to-baseline routing
-- [`docs/parity/logging-compatibility.md`](parity/logging-compatibility.md) — cross-domain logging contract
-- [`docs/parity/cli/implementation-checklist.md`](parity/cli/implementation-checklist.md)
-- [`docs/parity/cdc/implementation-checklist.md`](parity/cdc/implementation-checklist.md)
-- [`docs/parity/his/implementation-checklist.md`](parity/his/implementation-checklist.md)
+- [`STATUS.md`](../STATUS.md) — current reality
+- [`REWRITE_CHARTER.md`](../REWRITE_CHARTER.md) — scope, lane,
+  non-negotiables
+- [`phase-5/roadmap.md`](phase-5/roadmap.md) — milestone order and exit
+  evidence
+- [`promotion-gates.md`](promotion-gates.md) — promotion gates and phase rules
+- [`ai-context-routing.md`](ai-context-routing.md) — open when you are working
+  through Copilot or another agent
 
-## Policy
+## Execution / Commands
 
-- [`docs/compatibility-scope.md`](compatibility-scope.md)
-- [`docs/build-artifact-policy.md`](build-artifact-policy.md)
-- [`docs/dependency-policy.md`](dependency-policy.md)
-- [`docs/allocator-runtime-baseline.md`](allocator-runtime-baseline.md)
-- [`docs/go-rust-semantic-mapping.md`](go-rust-semantic-mapping.md)
-- [`docs/deployment-notes.md`](deployment-notes.md)
+- [`Justfile`](../Justfile) — supported command surface
+- [`CONTRIBUTING.md`](../CONTRIBUTING.md) — human change workflow
+- [`.github/instructions/rust.instructions.md`](../.github/instructions/rust.instructions.md) — Rust and Cargo manifest instructions
 
-## Implementation References
+## Leaf Evidence / Parity
 
-- [`docs/phase-5/roadmap-index.csv`](phase-5/roadmap-index.csv) — exact parity-row milestone map
-- [`.github/instructions/rust.instructions.md`](../.github/instructions/rust.instructions.md)
-- [`docs/code-style.md`](code-style.md)
-- [`docs/engineering-standards.md`](engineering-standards.md)
-- [`CONTRIBUTING.md`](../CONTRIBUTING.md)
+- [`parity/README.md`](parity/README.md) — parity navigation
+- [`parity/source-map.csv`](parity/source-map.csv) — row-to-baseline routing
+- [`phase-5/roadmap-index.csv`](phase-5/roadmap-index.csv) — exact
+  row-to-milestone ownership
+- [`parity/logging-compatibility.md`](parity/logging-compatibility.md) —
+  logging contract
+
+## Policies / Reference
+
+- [`compatibility-scope.md`](compatibility-scope.md) — compatibility boundary
+  rules
+- [`dependency-policy.md`](dependency-policy.md) — dependency admission rules
+- [`allocator-runtime-baseline.md`](allocator-runtime-baseline.md) — runtime
+  and allocator choices
+- [`build-artifact-policy.md`](build-artifact-policy.md) — build and packaging
+  outputs
+- [`code-style.md`](code-style.md) — deeper human style guidance
+- [`engineering-standards.md`](engineering-standards.md) — structural
+  engineering guidance

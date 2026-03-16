@@ -19,6 +19,7 @@ SOURCE_MAP_PATH = REPO_ROOT / "docs/parity/source-map.csv"
 STATUS_PATH = REPO_ROOT / "STATUS.md"
 CHARTER_PATH = REPO_ROOT / "REWRITE_CHARTER.md"
 LOGGING_DOC_PATH = REPO_ROOT / "docs/parity/logging-compatibility.md"
+PARITY_README_PATH = REPO_ROOT / "docs/parity/README.md"
 JUSTFILE_PATH = REPO_ROOT / "Justfile"
 GITIGNORE_PATH = REPO_ROOT / ".gitignore"
 SELF_PATH = REPO_ROOT / "tools/validate_phase5_docs.py"
@@ -33,6 +34,7 @@ README_PATH = REPO_ROOT / "README.md"
 DEPENDENCY_POLICY_PATH = REPO_ROOT / "docs/dependency-policy.md"
 ROADMAP_PATH = REPO_ROOT / "docs/phase-5/roadmap.md"
 MCP_MANIFEST_PATH = REPO_ROOT / "tools/mcp-cfd-rs/Cargo.toml"
+PHASE5_HELPERS_PATH = REPO_ROOT / "tools/mcp-cfd-rs/src/phase5/helpers.rs"
 REQUIRED_STATUS_HEADINGS = [
     "## Active Snapshot",
     "## Current Reality",
@@ -89,6 +91,7 @@ ALLOWED_DEPS = {
 REQUIRED_CORE_TOOL_SNIPPETS = [
     "status_summary",
     "phase5_priority",
+    "next_parity_ticket",
     "parity_row_details",
     "domain_gaps_ranked",
     "baseline_source_mapping",
@@ -145,16 +148,56 @@ LOGGING_ROWS = {
     "HIS-067",
     "HIS-068",
 }
+ALLOWED_RUST_STATUS_VALUES = {
+    "not audited",
+    "audited, absent",
+    "audited, partial",
+    "audited, parity-backed",
+    "audited, intentional divergence",
+    "blocked",
+}
+ALLOWED_EVIDENCE_STATUS_VALUES = {
+    "not present",
+    "minimal",
+    "weak",
+    "partial",
+    "parity-backed",
+    "baseline-backed tests",
+    "compare-backed",
+    "local tests",
+    "not applicable",
+}
+ALLOWED_DIVERGENCE_STATUS_VALUES = {
+    "none recorded",
+    "closed",
+    "open gap",
+    "intentional divergence",
+    "unknown",
+    "blocked",
+    "not applicable",
+}
+CLOSED_RUST_STATUS_VALUES = {
+    "audited, parity-backed",
+    "audited, intentional divergence",
+}
+PARTIAL_RUST_STATUS_VALUES = {"audited, partial"}
+NOT_AUDITED_RUST_STATUS_VALUES = {"not audited"}
+NOT_APPLICABLE_ROW_IDS = {"HIS-056", "HIS-057"}
 
 
 def main() -> int:
     errors: list[str] = []
     validate_row_coverage(errors)
     validate_source_map(errors)
+    validate_ledger_vocabulary(errors)
     validate_status_contract(errors)
+    validate_status_parity_snapshot(errors)
+    validate_status_priority_queue(errors)
+    validate_parity_readme_summary(errors)
     validate_charter_contract(errors)
     validate_logging_contract(errors)
     validate_evidence_vocabulary(errors)
+    validate_mcp_status_vocab(errors)
     validate_legacy_cleanup(errors)
     validate_architecture(errors)
     validate_gcfgr_ignored(errors)
@@ -265,6 +308,167 @@ def validate_source_map(errors: list[str]) -> None:
 
         if not symbol_hints:
             errors.append(f"source-map row {row_id} has no symbol_hints")
+
+
+def validate_ledger_vocabulary(errors: list[str]) -> None:
+    for path in LEDGER_PATHS:
+        text = path.read_text(encoding="utf-8")
+        rows = parse_ledger_rows(path)
+
+        if any(
+            row["parity_evidence_status"] == "not applicable"
+            or row["divergence_status"] == "not applicable"
+            for row in rows
+        ):
+            if text.count("- not applicable") < 2:
+                errors.append(
+                    f"{path.relative_to(REPO_ROOT)} must document 'not applicable' in the evidence and divergence vocab sections"
+                )
+
+        for row in rows:
+            row_id = row["row_id"]
+            rust_status = row["rust_status_now"]
+            evidence_status = row["parity_evidence_status"]
+            divergence_status = row["divergence_status"]
+
+            if rust_status not in ALLOWED_RUST_STATUS_VALUES:
+                errors.append(
+                    f"{path.relative_to(REPO_ROOT)} row {row_id} has undeclared Rust status now value: {rust_status}"
+                )
+
+            if evidence_status not in ALLOWED_EVIDENCE_STATUS_VALUES:
+                errors.append(
+                    f"{path.relative_to(REPO_ROOT)} row {row_id} has undeclared Parity evidence status value: {evidence_status}"
+                )
+
+            if divergence_status not in ALLOWED_DIVERGENCE_STATUS_VALUES:
+                errors.append(
+                    f"{path.relative_to(REPO_ROOT)} row {row_id} has undeclared Divergence status value: {divergence_status}"
+                )
+
+            if (
+                evidence_status == "not applicable"
+                or divergence_status == "not applicable"
+            ) and row_id not in NOT_APPLICABLE_ROW_IDS:
+                errors.append(
+                    f"{path.relative_to(REPO_ROOT)} row {row_id} uses 'not applicable' outside the allowed packaging-only rows"
+                )
+
+
+def validate_status_parity_snapshot(errors: list[str]) -> None:
+    section = extract_section(STATUS_PATH.read_text(encoding="utf-8"), "## Parity Snapshot")
+    if section is None:
+        return
+
+    table = parse_markdown_table(section)
+    if not table:
+        errors.append("STATUS.md Parity Snapshot table is missing or malformed")
+        return
+
+    expected = expected_status_parity_snapshot()
+    actual = {normalize_table_domain_name(row.get("Domain", "")): row for row in table}
+
+    for domain, summary in expected.items():
+        row = actual.get(domain)
+        if row is None:
+            errors.append(f"STATUS.md Parity Snapshot is missing row for {domain}")
+            continue
+
+        expected_values = {
+            "Total": str(summary["total"]),
+            "Closed": str(summary["closed"]),
+            "Partial": str(summary["partial"]),
+            "Not audited": str(summary["not_audited"]),
+            "% Closed": f"{summary['percent_closed']}%",
+        }
+        for column, expected_value in expected_values.items():
+            actual_value = row.get(column, "").replace("*", "").strip()
+            if actual_value != expected_value:
+                errors.append(
+                    f"STATUS.md Parity Snapshot {domain} {column} expected {expected_value} but found {row.get(column)}"
+                )
+
+
+def validate_status_priority_queue(errors: list[str]) -> None:
+    section = extract_section(STATUS_PATH.read_text(encoding="utf-8"), "## Priority Rows")
+    if section is None:
+        return
+
+    ledger_rows = {row["row_id"]: row for row in parse_all_ledger_rows()}
+    seen: set[str] = set()
+
+    for line_number, entry in parse_status_priority_entries(section):
+        row_source, _summary = split_priority_line(entry)
+        row_ids = re.findall(r"(?:CLI|CDC|HIS)-\d{3}", row_source)
+        if not row_ids:
+            errors.append(
+                f"STATUS.md Priority Rows entry at relative line {line_number} must contain at least one row ID"
+            )
+            continue
+
+        for row_id in row_ids:
+            if row_id in seen:
+                errors.append(f"STATUS.md Priority Rows repeats row ID: {row_id}")
+                continue
+            seen.add(row_id)
+
+            row = ledger_rows.get(row_id)
+            if row is None:
+                errors.append(f"STATUS.md Priority Rows references unknown row ID: {row_id}")
+                continue
+
+            if row["rust_status_now"] in CLOSED_RUST_STATUS_VALUES:
+                errors.append(f"STATUS.md Priority Rows references already closed row: {row_id}")
+
+
+def validate_parity_readme_summary(errors: list[str]) -> None:
+    section = extract_section(PARITY_README_PATH.read_text(encoding="utf-8"), "## Cross-Domain Summary")
+    if section is None:
+        return
+
+    table = parse_markdown_table(section)
+    if not table:
+        errors.append("docs/parity/README.md Cross-Domain Summary table is missing or malformed")
+        return
+
+    expected = expected_parity_readme_summary()
+    actual = {normalize_table_domain_name(row.get("Domain", "")): row for row in table}
+
+    for domain, summary in expected.items():
+        row = actual.get(domain)
+        if row is None:
+            errors.append(f"docs/parity/README.md Cross-Domain Summary is missing row for {domain}")
+            continue
+
+        expected_values = {
+            "Rows": str(summary["rows"]),
+            "Critical": str(summary["critical"]),
+            "High": str(summary["high"]),
+        }
+        for column, expected_value in expected_values.items():
+            if row.get(column) != expected_value:
+                errors.append(
+                    f"docs/parity/README.md Cross-Domain Summary {domain} {column} expected {expected_value} but found {row.get(column)}"
+                )
+
+
+def validate_mcp_status_vocab(errors: list[str]) -> None:
+    text = PHASE5_HELPERS_PATH.read_text(encoding="utf-8")
+    for required_symbol in (
+        "CLOSED_RUST_STATUSES",
+        "PARTIAL_RUST_STATUSES",
+        "NOT_AUDITED_RUST_STATUSES",
+    ):
+        if required_symbol not in text:
+            errors.append(
+                f"tools/mcp-cfd-rs/src/phase5/helpers.rs must define {required_symbol}"
+            )
+
+    for value in sorted(CLOSED_RUST_STATUS_VALUES | PARTIAL_RUST_STATUS_VALUES | NOT_AUDITED_RUST_STATUS_VALUES):
+        if value not in text:
+            errors.append(
+                f"tools/mcp-cfd-rs/src/phase5/helpers.rs must keep canonical status literal: {value}"
+            )
 
 
 def validate_status_contract(errors: list[str]) -> None:
@@ -535,6 +739,192 @@ def validate_markdown_link_targets(errors: list[str]) -> None:
 def parse_ledger_row_ids(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
     return re.findall(r"^\|\s*((?:CLI|CDC|HIS)-\d{3})\s*\|", text, flags=re.MULTILINE)
+
+
+def parse_all_ledger_rows() -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for path in LEDGER_PATHS:
+        rows.extend(parse_ledger_rows(path))
+    return rows
+
+
+def parse_ledger_rows(path: Path) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    current_section = ""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    index = 0
+
+    while index < len(lines):
+        line = lines[index].strip()
+
+        if line.startswith("### "):
+            current_section = line.removeprefix("### ").strip()
+            index += 1
+            continue
+
+        if line.startswith("|"):
+            header = split_markdown_row(line)
+            has_divider = (
+                index + 1 < len(lines)
+                and is_markdown_divider(split_markdown_row(lines[index + 1].strip()))
+            )
+            if header and header[0] == "ID" and has_divider:
+                index += 2
+                while index < len(lines):
+                    row_line = lines[index].strip()
+                    if not row_line.startswith("|"):
+                        break
+                    cells = split_markdown_row(row_line)
+                    if len(cells) != len(header):
+                        break
+                    row = dict(zip(header, cells))
+                    row_id = row.get("ID", "").strip()
+                    if re.fullmatch(r"(?:CLI|CDC|HIS)-\d{3}", row_id):
+                        rows.append(
+                            {
+                                "row_id": row_id,
+                                "domain": row_id.split("-", 1)[0],
+                                "section": current_section,
+                                "rust_status_now": row.get("Rust status now", "").strip(),
+                                "parity_evidence_status": row.get("Parity evidence status", "").strip(),
+                                "divergence_status": row.get("Divergence status", "").strip(),
+                                "priority": row.get("Priority", "").strip(),
+                            }
+                        )
+                    index += 1
+                continue
+
+        index += 1
+
+    return rows
+
+
+def split_markdown_row(line: str) -> list[str]:
+    return [cell.strip() for cell in line.strip().strip("|").split("|")]
+
+
+def is_markdown_divider(cells: list[str]) -> bool:
+    return bool(cells) and all(
+        cell and all(ch in "-: " for ch in cell) for cell in cells
+    )
+
+
+def parse_markdown_table(section: str) -> list[dict[str, str]]:
+    lines = [line.strip() for line in section.splitlines() if line.strip().startswith("|")]
+    if len(lines) < 2:
+        return []
+
+    header = split_markdown_row(lines[0])
+    divider = split_markdown_row(lines[1])
+    if not is_markdown_divider(divider):
+        return []
+
+    rows: list[dict[str, str]] = []
+    for line in lines[2:]:
+        cells = split_markdown_row(line)
+        if len(cells) != len(header):
+            continue
+        rows.append(dict(zip(header, cells)))
+    return rows
+
+
+def parse_status_priority_entries(section: str) -> list[tuple[int, str]]:
+    entries: list[tuple[int, str]] = []
+    current_line: int | None = None
+    current_parts: list[str] = []
+
+    for line_number, line in enumerate(section.splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        match = re.match(r"^(\d+)\.\s+(.*)$", stripped)
+        if match:
+            if current_line is not None:
+                entries.append((current_line, " ".join(current_parts)))
+            current_line = line_number
+            current_parts = [match.group(2).strip()]
+            continue
+
+        if current_line is not None:
+            current_parts.append(stripped)
+
+    if current_line is not None:
+        entries.append((current_line, " ".join(current_parts)))
+
+    return entries
+
+
+def split_priority_line(text: str) -> tuple[str, str]:
+    if " — " in text:
+        return tuple(text.split(" — ", 1))
+    if " - " in text:
+        return tuple(text.split(" - ", 1))
+    return text, ""
+
+
+def normalize_table_domain_name(value: str) -> str:
+    return value.replace("*", "").strip()
+
+
+def expected_status_parity_snapshot() -> dict[str, dict[str, int]]:
+    rows = parse_all_ledger_rows()
+    summaries: dict[str, dict[str, int]] = {}
+
+    for domain in ("CLI", "CDC", "HIS"):
+        domain_rows = [row for row in rows if row["domain"] == domain]
+        closed = sum(
+            1 for row in domain_rows if row["rust_status_now"] in CLOSED_RUST_STATUS_VALUES
+        )
+        partial = sum(
+            1 for row in domain_rows if row["rust_status_now"] in PARTIAL_RUST_STATUS_VALUES
+        )
+        not_audited = sum(
+            1
+            for row in domain_rows
+            if row["rust_status_now"] in NOT_AUDITED_RUST_STATUS_VALUES
+        )
+        total = len(domain_rows)
+        summaries[domain] = {
+            "total": total,
+            "closed": closed,
+            "partial": partial,
+            "not_audited": not_audited,
+            "percent_closed": round((closed / total) * 100) if total else 0,
+        }
+
+    total_rows = sum(summary["total"] for summary in summaries.values())
+    total_closed = sum(summary["closed"] for summary in summaries.values())
+    total_partial = sum(summary["partial"] for summary in summaries.values())
+    total_not_audited = sum(summary["not_audited"] for summary in summaries.values())
+    summaries["Total"] = {
+        "total": total_rows,
+        "closed": total_closed,
+        "partial": total_partial,
+        "not_audited": total_not_audited,
+        "percent_closed": round((total_closed / total_rows) * 100) if total_rows else 0,
+    }
+    return summaries
+
+
+def expected_parity_readme_summary() -> dict[str, dict[str, int]]:
+    rows = parse_all_ledger_rows()
+    summaries: dict[str, dict[str, int]] = {}
+
+    for domain in ("CLI", "CDC", "HIS"):
+        domain_rows = [row for row in rows if row["domain"] == domain]
+        summaries[domain] = {
+            "rows": len(domain_rows),
+            "critical": sum(1 for row in domain_rows if row["priority"] == "critical"),
+            "high": sum(1 for row in domain_rows if row["priority"] == "high"),
+        }
+
+    summaries["Total"] = {
+        "rows": sum(summary["rows"] for summary in summaries.values()),
+        "critical": sum(summary["critical"] for summary in summaries.values()),
+        "high": sum(summary["high"] for summary in summaries.values()),
+    }
+    return summaries
 
 
 def extract_section(text: str, heading: str) -> str | None:
