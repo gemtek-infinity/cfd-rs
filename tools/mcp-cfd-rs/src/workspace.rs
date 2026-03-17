@@ -342,7 +342,8 @@ fn section_bullets(sections: &[(String, String)], title: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{crate_dependency_graph, crate_surface_summary};
+    use super::{WORKSPACE_CRATES, allowed_dependencies, crate_dependency_graph, crate_surface_summary};
+    use std::collections::BTreeSet;
     use std::path::PathBuf;
 
     fn repo_root() -> PathBuf {
@@ -367,5 +368,68 @@ mod tests {
         assert_eq!(summary.crate_name, "cfdrs-cli");
         assert!(summary.direct_dependencies.contains(&"cfdrs-shared".to_string()));
         assert!(summary.policy_ok);
+    }
+
+    /// Drift guard: WORKSPACE_CRATES must list exactly the crates
+    /// that appear in the root Cargo.toml workspace members.
+    #[test]
+    fn workspace_crates_match_root_cargo_toml() {
+        let manifest = std::fs::read_to_string(repo_root().join("Cargo.toml")).expect("root Cargo.toml");
+
+        let mut members = BTreeSet::new();
+        let mut in_members = false;
+        for line in manifest.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("members") && trimmed.contains('[') {
+                in_members = true;
+                continue;
+            }
+            if in_members {
+                if trimmed.contains(']') {
+                    break;
+                }
+                let cleaned = trimmed.trim_matches(['"', ',', ' ']);
+                if !cleaned.is_empty()
+                    && let Some(name) = cleaned.strip_prefix("crates/")
+                {
+                    members.insert(name.to_string());
+                }
+            }
+        }
+
+        let constant_names: BTreeSet<String> = WORKSPACE_CRATES
+            .iter()
+            .map(|(name, _, _)| (*name).to_string())
+            .collect();
+
+        assert_eq!(
+            constant_names, members,
+            "WORKSPACE_CRATES constant is out of sync with Cargo.toml workspace members",
+        );
+    }
+
+    /// Drift guard: allowed_dependencies() must list exactly the crates
+    /// present in WORKSPACE_CRATES.
+    #[test]
+    fn allowed_dependencies_covers_all_workspace_crates() {
+        let allowed = allowed_dependencies();
+        let crate_names: BTreeSet<&str> = WORKSPACE_CRATES.iter().map(|(name, _, _)| *name).collect();
+
+        let policy_names: BTreeSet<&str> = allowed.keys().copied().collect();
+
+        assert_eq!(
+            policy_names, crate_names,
+            "allowed_dependencies() keys are out of sync with WORKSPACE_CRATES",
+        );
+
+        // Every dependency target must also be a known workspace crate.
+        for (from, targets) in &allowed {
+            for target in targets {
+                assert!(
+                    crate_names.contains(target),
+                    "allowed_dependencies: {from} -> {target} references unknown crate",
+                );
+            }
+        }
     }
 }
