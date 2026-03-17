@@ -5,9 +5,9 @@
 - lane: Linux only, `x86_64-unknown-linux-gnu`, quiche + BoringSSL,
   0-RTT required
 - workspace version: `2026.2.0-alpha.202603`
-- active milestone: `CLI Foundation`
-- next milestone: `Command Family Closure`
-- highest-risk blockers: `CLI-001`, `HIS-016`
+- active milestone: `Command Family Closure`
+- next milestone: `Proof Closure`
+- highest-risk blockers: `HIS-016`
 - production-alpha logging blocker set:
   `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`
 - behavior truth: [`baseline-2026.2.0/`](baseline-2026.2.0/)
@@ -30,49 +30,40 @@ What exists now:
 
 What does not exist yet:
 
-- CLI Foundation behavioral closure for 11 of 19 milestone rows
-- `CLI-001` service-mode runtime composition
-- behavioral dispatch for `CLI-009` through `CLI-015`, `CLI-019`, `CLI-020`,
-  and `CLI-032`
+- CLI Foundation milestone is complete; `Command Family Closure` is next
 - management service, log streaming, and Cloudflare REST API client
 - final `Performance Architecture Overhaul`
 
 ## Active Milestone
 
-### CLI Foundation
+### Command Family Closure
 
 - objective:
-  make the root, help, global-flag, and core tunnel lifecycle surface honest
-  against the frozen baseline
+  close remaining command families and the CDC/HIS surfaces they depend on;
+  finish the user-visible surface required for the declared Linux lane;
+  close the remaining cross-domain logging surface
 - current front edge:
-  `CLI-001`, then `CLI-009` through `CLI-015`, `CLI-019`, `CLI-020`, `CLI-032`
+  `HIS-016`, `CLI-023`, `CDC-023`
 - exit still requires:
-  behavioral implementations for the remaining partial CLI Foundation rows
+  behavioral implementation for remaining partial CLI, CDC, and HIS rows
+  mapped to `Command Family Closure` in the roadmap index
 
-Next milestone after CLI Foundation closure:
+Previous milestone (`CLI Foundation`) is complete.
 
-- `Command Family Closure`
+Next milestone after Command Family Closure:
+
+- `Proof Closure`
 
 ## Priority Rows
 
 Tier 1 lane-blocking rows, in implementation order:
 
-1. `CLI-001` — root invocation service-mode wrapper and runtime composition
-   honesty against the frozen baseline
-2. `CLI-009`, `CLI-010`, `CLI-011`, `CLI-012`, `CLI-013`, `CLI-014`,
-   `CLI-015`, `CLI-019`, `CLI-020`, `CLI-032` —
-   remaining CLI Foundation behavioral dispatch rows; `CLI-010` and
-   `CLI-012` still depend on CDC runtime and API surfaces
-3. `HIS-016` — SysV init script generation remains the last open Host and
+1. `HIS-016` — SysV init script generation remains the last open Host and
    Runtime Foundation row and a proof-closure blocker
-4. `CDC-033`, `CDC-034`, `CDC-038` — Cloudflare REST API client, response
-   envelope, and management-token API surfaces gating command closure and
-   log-streaming parity
-5. `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `HIS-036` —
-   explicit cross-domain logging blocker set; keep it visible while CLI
-   Foundation closes
-6. `HIS-059`, `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
-   remaining command-linked host/runtime rows after CLI Foundation
+2. `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `HIS-036` —
+   explicit cross-domain logging blocker set
+3. `HIS-059`, `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
+   remaining command-linked host/runtime rows
 
 ## Parity Snapshot
 
@@ -80,22 +71,22 @@ Counts from the `Rust status now` column in each domain ledger.
 
 | Domain | Total | Closed | Partial | Not audited | % Closed |
 | --- | --- | --- | --- | --- | --- |
-| CLI | 32 | 13 | 19 | 0 | 41% |
-| CDC | 44 | 29 | 15 | 0 | 66% |
+| CLI | 32 | 25 | 7 | 0 | 78% |
+| CDC | 44 | 36 | 8 | 0 | 82% |
 | HIS | 74 | 49 | 23 | 2 | 66% |
-| **Total** | **150** | **91** | **57** | **2** | **61%** |
+| **Total** | **150** | **110** | **38** | **2** | **73%** |
 
 Closed breakdown:
 
-- CLI: 12 `audited, parity-backed` + 1 `audited, intentional divergence`
+- CLI: 24 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
-- CDC: 29 `audited, parity-backed`
+- CDC: 36 `audited, parity-backed`
 - HIS: 48 `audited, parity-backed` +
   1 `audited, intentional divergence` (`HIS-053`)
 
 ## Test Snapshot
 
-991 tests passing across 5 app crates:
+1036 tests passing across 5 app crates:
 
 - `cfdrs-bin`
 - `cfdrs-cdc`
