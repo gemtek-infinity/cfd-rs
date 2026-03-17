@@ -59,4 +59,13 @@ pub use protocol::{
     StaticProtocolSelector, TlsSettings,
 };
 
+pub use api::{
+    ApiClientConfig, ApiClientError, ApiResponse, CloudflareApiClient, DEFAULT_API_BASE_URL, FED_API_BASE_URL,
+};
+pub use api_resources::{
+    ActiveClient, DetailedRoute, DnsRouteRequest, DnsRouteResult, HostnameRoute, HostnameRouteResult,
+    IpRouteFilter, LbRouteRequest, LbRouteResult, ManagementResource, NewRoute, NewTunnel, NewVirtualNetwork,
+    Route, Tunnel, TunnelFilter, TunnelWithToken, UpdateVirtualNetwork, VirtualNetwork, VnetFilter,
+};
+
 pub use edge::{AddrSet, Region, Regions, UsedBy};

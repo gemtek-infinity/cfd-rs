@@ -52,19 +52,18 @@ Promotion rule:
 
 Current milestone:
 
-- `CLI Foundation`
+- `Command Family Closure`
 
 Next milestone:
 
-- `Command Family Closure`
+- `Proof Closure`
 
 Current gate requires:
 
-- CLI Foundation rows with parse-only stubs need behavioral implementations (11 of 19 milestone rows still partial)
-- CLI-001 service-mode runtime composition
-- CLI-009 through CLI-015, CLI-019, CLI-020, CLI-032 behavioral dispatch beyond parse stubs
-- CLI ledger reflects baseline-backed behavior for the closed rows
+- remaining partial CLI, CDC, and HIS rows mapped to `Command Family Closure` in the roadmap index need behavioral implementations
 - the cross-domain logging blocker set stays explicit and cannot be treated as a post-alpha cleanup item
+
+Previous milestone (`CLI Foundation`) is complete.
 
 ## Production-Alpha Gate
 

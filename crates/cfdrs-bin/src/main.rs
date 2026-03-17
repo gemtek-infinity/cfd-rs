@@ -1,10 +1,15 @@
 #![forbid(unsafe_code)]
 
+#[allow(dead_code)] // Wired incrementally during CLI Foundation closure.
+mod api_client;
 mod protocol;
 mod proxy;
+mod route_vnet_commands;
 mod runtime;
 mod startup;
 mod transport;
+mod tunnel_commands;
+mod tunnel_login;
 
 // Admitted for non-blocking file writer layer; not yet wired (hand-rolled
 // size-based rotation matches Go parity).
@@ -82,6 +87,14 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::Service(ServiceAction::Install) => execute_service_install(&cli),
         Command::Service(ServiceAction::Uninstall) => execute_service_uninstall(),
 
+        // Go baseline: login at root level dispatches same as tunnel login
+        // (main.go: loginCommand() → login.go: login()).
+        Command::Login => tunnel_login::execute_tunnel_login(
+            cli.flags.fedramp,
+            cli.flags.login_url.as_deref(),
+            cli.flags.callback_url.as_deref(),
+        ),
+
         Command::Tunnel(_) => dispatch_tunnel_subcommand(cli),
 
         // Go baseline: handleServiceMode() in main.go — daemon-style
@@ -108,6 +121,13 @@ fn dispatch_tunnel_subcommand(cli: Cli) -> CliOutput {
         Command::Tunnel(TunnelSubcommand::Run) => execute_tunnel_run(cli),
         Command::Tunnel(TunnelSubcommand::Bare) => execute_tunnel_bare(&cli),
 
+        // Go baseline: tunnel login → login.go: login().
+        Command::Tunnel(TunnelSubcommand::Login) => tunnel_login::execute_tunnel_login(
+            cli.flags.fedramp,
+            cli.flags.login_url.as_deref(),
+            cli.flags.callback_url.as_deref(),
+        ),
+
         // Removed features — exact error messages from Go baseline.
         Command::Tunnel(TunnelSubcommand::ProxyDns) => {
             eprintln!("{PROXY_DNS_REMOVED_LOG_MSG}");
@@ -119,30 +139,15 @@ fn dispatch_tunnel_subcommand(cli: Cli) -> CliOutput {
             CliOutput::failure(String::new(), DB_CONNECT_REMOVED_MSG.to_owned(), 255)
         }
 
-        // NArg validation — UsageError pattern (exit 255).
-        Command::Tunnel(TunnelSubcommand::Create) => {
-            validate_narg_exact(&cli.flags, 1, "tunnel create", TUNNEL_CREATE_NARG_ERROR_MSG).unwrap_or_else(
-                || CliOutput::failure(String::new(), stub_not_implemented("tunnel create"), 1),
-            )
-        }
-        Command::Tunnel(TunnelSubcommand::Delete) => {
-            validate_narg_min(&cli.flags, 1, "tunnel delete", TUNNEL_DELETE_NARG_ERROR_MSG).unwrap_or_else(
-                || CliOutput::failure(String::new(), stub_not_implemented("tunnel delete"), 1),
-            )
-        }
-        Command::Tunnel(TunnelSubcommand::Cleanup) => {
-            validate_narg_min(&cli.flags, 1, "tunnel cleanup", TUNNEL_CLEANUP_NARG_ERROR_MSG).unwrap_or_else(
-                || CliOutput::failure(String::new(), stub_not_implemented("tunnel cleanup"), 1),
-            )
-        }
-        Command::Tunnel(TunnelSubcommand::Token) => {
-            validate_narg_exact(&cli.flags, 1, "tunnel token", TUNNEL_TOKEN_NARG_ERROR_MSG)
-                .unwrap_or_else(|| CliOutput::failure(String::new(), stub_not_implemented("tunnel token"), 1))
-        }
-        Command::Tunnel(TunnelSubcommand::Info) => {
-            validate_narg_exact(&cli.flags, 1, "tunnel info", TUNNEL_INFO_NARG_ERROR_MSG)
-                .unwrap_or_else(|| CliOutput::failure(String::new(), stub_not_implemented("tunnel info"), 1))
-        }
+        // Tunnel CRUD subcommands (create, list, delete, cleanup, token, info).
+        Command::Tunnel(
+            sub @ (TunnelSubcommand::Create
+            | TunnelSubcommand::List
+            | TunnelSubcommand::Delete
+            | TunnelSubcommand::Cleanup
+            | TunnelSubcommand::Token
+            | TunnelSubcommand::Info),
+        ) => dispatch_tunnel_crud(sub, &cli.flags),
 
         // Route subcommands.
         Command::Tunnel(TunnelSubcommand::Route(sub)) => dispatch_route_subcommand(sub, &cli.flags),
@@ -163,33 +168,55 @@ fn dispatch_tunnel_subcommand(cli: Cli) -> CliOutput {
     }
 }
 
+/// Dispatch tunnel CRUD subcommands with NArg validation.
+fn dispatch_tunnel_crud(sub: &TunnelSubcommand, flags: &GlobalFlags) -> CliOutput {
+    match sub {
+        TunnelSubcommand::Create => {
+            validate_narg_exact(flags, 1, "tunnel create", TUNNEL_CREATE_NARG_ERROR_MSG)
+                .unwrap_or_else(|| tunnel_commands::execute_tunnel_create(flags))
+        }
+        TunnelSubcommand::List => tunnel_commands::execute_tunnel_list(flags),
+        TunnelSubcommand::Delete => {
+            validate_narg_min(flags, 1, "tunnel delete", TUNNEL_DELETE_NARG_ERROR_MSG)
+                .unwrap_or_else(|| tunnel_commands::execute_tunnel_delete(flags))
+        }
+        TunnelSubcommand::Cleanup => {
+            validate_narg_min(flags, 1, "tunnel cleanup", TUNNEL_CLEANUP_NARG_ERROR_MSG)
+                .unwrap_or_else(|| tunnel_commands::execute_tunnel_cleanup(flags))
+        }
+        TunnelSubcommand::Token => validate_narg_exact(flags, 1, "tunnel token", TUNNEL_TOKEN_NARG_ERROR_MSG)
+            .unwrap_or_else(|| tunnel_commands::execute_tunnel_token(flags)),
+        TunnelSubcommand::Info => validate_narg_exact(flags, 1, "tunnel info", TUNNEL_INFO_NARG_ERROR_MSG)
+            .unwrap_or_else(|| tunnel_commands::execute_tunnel_info(flags)),
+        _ => unreachable!("dispatch_tunnel_crud called with non-CRUD subcommand"),
+    }
+}
+
 /// Dispatch `tunnel route *` subcommands.
 fn dispatch_route_subcommand(sub: &RouteSubcommand, flags: &GlobalFlags) -> CliOutput {
     match sub {
         RouteSubcommand::Dns => validate_narg_exact(flags, 2, "tunnel route dns", ROUTE_DNS_NARG_ERROR_MSG)
-            .unwrap_or_else(|| {
-                CliOutput::failure(String::new(), stub_not_implemented("tunnel route dns"), 1)
-            }),
+            .unwrap_or_else(|| route_vnet_commands::execute_route_dns(flags)),
         RouteSubcommand::Lb => validate_narg_exact(flags, 3, "tunnel route lb", ROUTE_LB_NARG_ERROR_MSG)
-            .unwrap_or_else(|| CliOutput::failure(String::new(), stub_not_implemented("tunnel route lb"), 1)),
-        // Route IP — errors.New pattern (exit 1).
+            .unwrap_or_else(|| route_vnet_commands::execute_route_lb(flags)),
         RouteSubcommand::Ip(IpRouteSubcommand::Add) => {
             if flags.rest_args.len() < 2 {
                 return CliOutput::failure(String::new(), ROUTE_IP_ADD_NARG_ERROR_MSG.to_owned(), 1);
             }
-            CliOutput::failure(String::new(), stub_not_implemented("tunnel route ip add"), 1)
+            route_vnet_commands::execute_route_ip_add(flags)
         }
+        RouteSubcommand::Ip(IpRouteSubcommand::Show) => route_vnet_commands::execute_route_ip_show(flags),
         RouteSubcommand::Ip(IpRouteSubcommand::Delete) => {
             if flags.rest_args.len() != 1 {
                 return CliOutput::failure(String::new(), ROUTE_IP_DELETE_NARG_ERROR_MSG.to_owned(), 1);
             }
-            CliOutput::failure(String::new(), stub_not_implemented("tunnel route ip delete"), 1)
+            route_vnet_commands::execute_route_ip_delete(flags)
         }
         RouteSubcommand::Ip(IpRouteSubcommand::Get) => {
             if flags.rest_args.len() != 1 {
                 return CliOutput::failure(String::new(), ROUTE_IP_GET_NARG_ERROR_MSG.to_owned(), 1);
             }
-            CliOutput::failure(String::new(), stub_not_implemented("tunnel route ip get"), 1)
+            route_vnet_commands::execute_route_ip_get(flags)
         }
         _ => CliOutput::failure(String::new(), stub_not_implemented("tunnel route"), 1),
     }
@@ -202,19 +229,20 @@ fn dispatch_vnet_subcommand(sub: &VnetSubcommand, flags: &GlobalFlags) -> CliOut
             if flags.rest_args.is_empty() {
                 return CliOutput::failure(String::new(), VNET_ADD_NARG_ERROR_MSG.to_owned(), 1);
             }
-            CliOutput::failure(String::new(), stub_not_implemented("tunnel vnet add"), 1)
+            route_vnet_commands::execute_vnet_add(flags)
         }
+        VnetSubcommand::List => route_vnet_commands::execute_vnet_list(flags),
         VnetSubcommand::Delete => {
             if flags.rest_args.is_empty() {
                 return CliOutput::failure(String::new(), VNET_DELETE_NARG_ERROR_MSG.to_owned(), 1);
             }
-            CliOutput::failure(String::new(), stub_not_implemented("tunnel vnet delete"), 1)
+            route_vnet_commands::execute_vnet_delete(flags)
         }
         VnetSubcommand::Update => {
             if flags.rest_args.len() != 1 {
                 return CliOutput::failure(String::new(), VNET_UPDATE_NARG_ERROR_MSG.to_owned(), 1);
             }
-            CliOutput::failure(String::new(), stub_not_implemented("tunnel vnet update"), 1)
+            route_vnet_commands::execute_vnet_update(flags)
         }
         _ => CliOutput::failure(String::new(), stub_not_implemented("tunnel vnet"), 1),
     }
@@ -297,16 +325,21 @@ fn execute_tunnel_run(cli: Cli) -> CliOutput {
 
     match token_str {
         Ok(Some(ref s)) if !s.is_empty() => {
-            // Token string found — validate it (Go line 777–778).
-            if TunnelToken::decode(s).is_err() {
-                return CliOutput::failure(
-                    String::new(),
-                    tunnel_run_usage_error(TUNNEL_TOKEN_INVALID_MSG),
-                    255,
-                );
-            }
-            // Valid token — proceed through startup (runtime will use token).
-            return execute_startup_command(&cli, CliMode::Run);
+            // Token string found — validate and decode (Go line 777–778).
+            let token = match TunnelToken::decode(s) {
+                Ok(t) => t,
+                Err(_) => {
+                    return CliOutput::failure(
+                        String::new(),
+                        tunnel_run_usage_error(TUNNEL_TOKEN_INVALID_MSG),
+                        255,
+                    );
+                }
+            };
+
+            // Go baseline: sc.runWithCredentials(token.Credentials())
+            // Token provides both tunnel identity and credentials directly.
+            return execute_run_with_token(flags, token);
         }
         Ok(Some(_) | None) => {
             // No token — fall through to positional arg / config check.
@@ -322,19 +355,76 @@ fn execute_tunnel_run(cli: Cli) -> CliOutput {
     }
 
     // Step 3: Positional arg — tunnel name/ID (Go line 781).
-    if !flags.rest_args.is_empty() {
-        return execute_startup_command(&cli, CliMode::Run);
+    let tunnel_ref = flags.rest_args.first().map(|s| s.as_str());
+
+    // Step 4: Config tunnel ID fallback (Go lines 783–787).
+    match resolve_startup(flags.config_path.clone()) {
+        Ok(mut startup) => {
+            // If positional arg provided, override config tunnel with it.
+            if let Some(name_or_id) = tunnel_ref {
+                startup.normalized.tunnel =
+                    Some(cfdrs_shared::TunnelReference::from_raw(name_or_id.to_owned()));
+            }
+
+            if startup.normalized.tunnel.is_some() {
+                execute_runtime_command(startup, flags)
+            } else {
+                CliOutput::failure(
+                    String::new(),
+                    tunnel_run_usage_error(TUNNEL_RUN_IDENTITY_ERROR_MSG),
+                    255,
+                )
+            }
+        }
+        Err(error) => {
+            if tunnel_ref.is_some() {
+                // Positional arg present but config resolution failed.
+                // Go still needs config context for ingress/runtime.
+                CliError::config(error).into_output()
+            } else {
+                CliOutput::failure(
+                    String::new(),
+                    tunnel_run_usage_error(TUNNEL_RUN_IDENTITY_ERROR_MSG),
+                    255,
+                )
+            }
+        }
+    }
+}
+
+/// Run with credentials extracted directly from a decoded token.
+///
+/// Go baseline: `sc.runWithCredentials(token.Credentials())` — the token
+/// provides both the tunnel identity (UUID) and the credential material,
+/// bypassing config-based credential discovery.
+fn execute_run_with_token(flags: &GlobalFlags, token: TunnelToken) -> CliOutput {
+    let mut startup = match resolve_startup(flags.config_path.clone()) {
+        Ok(s) => s,
+        Err(error) => return CliError::config(error).into_output(),
+    };
+
+    // Inject token-derived tunnel identity and credential file into the
+    // startup surface so the runtime uses them without file-based discovery.
+    startup.normalized.tunnel = Some(cfdrs_shared::TunnelReference::from_raw(
+        token.tunnel_id.to_string(),
+    ));
+
+    // Write token credentials to a temp file so the runtime can load them
+    // through the standard credential-file path.  Go passes credentials
+    // in-memory; we bridge via a temporary credential file.
+    let creds = token.to_credentials_file();
+    match creds.to_pretty_json() {
+        Ok(json) => {
+            let cred_dir = std::env::temp_dir();
+            let cred_path = cred_dir.join(format!("{}.json", token.tunnel_id));
+            if std::fs::write(&cred_path, json).is_ok() {
+                startup.normalized.credentials.credentials_file = Some(cred_path);
+            }
+        }
+        Err(error) => return CliError::config(error).into_output(),
     }
 
-    // Step 4: Config tunnel ID (Go lines 783–787).
-    match resolve_startup(flags.config_path.clone()) {
-        Ok(startup) if startup.normalized.tunnel.is_some() => execute_runtime_command(startup, flags),
-        _ => CliOutput::failure(
-            String::new(),
-            tunnel_run_usage_error(TUNNEL_RUN_IDENTITY_ERROR_MSG),
-            255,
-        ),
-    }
+    execute_runtime_command(startup, flags)
 }
 
 /// Resolve the token string from `--token` or `--token-file` flags.
@@ -945,7 +1035,12 @@ mod tests {
         assert_ne!(out.exit_code, 255, "list has no NArg constraint");
     }
 
+    /// Login dispatch no longer hits `stub_not_implemented` — it runs the
+    /// real login flow which requires network access.  The NArg constraint
+    /// (exit 255) was already validated by `tunnel_login::tests`.  This test
+    /// exercises the real dispatch path and needs network access.
     #[test]
+    #[ignore = "requires network access — run manually with --include-ignored"]
     fn tunnel_login_accepts_zero_args() {
         let out = exec(&["cloudflared", "tunnel", "login"]);
         assert_ne!(out.exit_code, 255, "login has no NArg constraint");
@@ -1119,26 +1214,82 @@ mod tests {
     }
 
     // --- CLI-001: service mode (bare invocation) ---
+    //
+    // Go baseline: handleServiceMode() in main.go — empty invocation enters
+    // service mode via FindOrCreateConfigPath() → AppManager → AppService.Run().
+    // Rust equivalent: ServiceMode → execute_startup_command() → resolve_startup()
+    // → execute_runtime_command() → ApplicationRuntime::run() with signal bridge,
+    // config watcher, and primary service (equivalent to Go AppManager pattern).
 
     #[test]
-    fn service_mode_dispatches_to_startup() {
-        // Go baseline: handleServiceMode() in main.go — empty invocation enters
-        // service mode which discovers config and starts daemonically.
-        // Without a config or discoverable default, this should produce a config
-        // error, NOT the old stub error.
+    fn service_mode_enters_config_discovery_not_help() {
+        // Go baseline: empty invocation enters handleServiceMode(), never
+        // prints help.  Without a discoverable config, Go calls
+        // FindOrCreateConfigPath() which creates a default or fails.
         let out = exec(&["cloudflared"]);
+
+        // Must not produce help output (Go handleServiceMode ≠ help).
         assert!(
-            !out.stderr.contains("service mode requires a configuration file"),
-            "service mode stub must be replaced by real dispatch"
+            !out.stdout.contains("USAGE:"),
+            "bare invocation must not produce help output"
+        );
+        assert!(
+            !out.stdout.contains("COMMANDS:"),
+            "bare invocation must not produce command listing"
         );
     }
 
     #[test]
-    fn service_mode_with_config_dispatches_to_runtime() {
-        // Go baseline: handleServiceMode() with --config → load config and run.
-        // Use a valid config that has a tunnel, expect it to reach the runtime
-        // (not service mode stub error).
-        let config_path = std::env::temp_dir().join("cfdrs-service-mode-test.yml");
+    fn service_mode_without_config_produces_config_error() {
+        // Go baseline: handleServiceMode() calls FindOrCreateConfigPath().
+        // Without a discoverable config file and no --config flag, the path
+        // either creates a default or fails with a config-related error.
+        // The key invariant: it does NOT produce a stub error or help.
+        let out = exec(&["cloudflared"]);
+
+        assert!(
+            !out.stderr.contains("not yet implemented"),
+            "service mode must not be a stub"
+        );
+        // Exit code 1 matches Go config-error path.
+        assert_eq!(out.exit_code, 1, "config discovery failure should exit 1");
+    }
+
+    #[test]
+    fn service_mode_with_config_reaches_runtime() {
+        // Go baseline: handleServiceMode() with a valid config enters
+        // AppManager → AppService → actionLoop().
+        // Rust equivalent: reaches ApplicationRuntime::run() which produces
+        // deployment contract output.
+        let config_path = std::env::temp_dir().join("cfdrs-cli001-runtime-test.yml");
+        std::fs::write(
+            &config_path,
+            "tunnel: 00000000-0000-0000-0000-000000000000\ningress:\n  - service: http_status:503\n",
+        )
+        .expect("write test config");
+
+        let path_str = config_path.to_str().expect("path to str");
+        let out = exec(&["cloudflared", "--config", path_str]);
+
+        // Must reach the runtime — stdout contains deployment contract output.
+        assert!(
+            out.stdout.contains("config-source:"),
+            "bare invocation with config must reach runtime startup: {:?}",
+            out.stdout,
+        );
+        assert!(
+            out.stdout.contains("deploy-contract:"),
+            "bare invocation with config must produce deployment contract output: {:?}",
+            out.stdout,
+        );
+        let _ = std::fs::remove_file(config_path);
+    }
+
+    #[test]
+    fn service_mode_with_config_shows_ingress_rules() {
+        // Go baseline: runtime logs show ingress configuration.
+        // Rust: startup surface renders ingress rule count.
+        let config_path = std::env::temp_dir().join("cfdrs-cli001-ingress-test.yml");
         std::fs::write(
             &config_path,
             "tunnel: 00000000-0000-0000-0000-000000000000\ningress:\n  - service: http_status:503\n",
@@ -1149,8 +1300,41 @@ mod tests {
         let out = exec(&["cloudflared", "--config", path_str]);
 
         assert!(
-            !out.stderr.contains("service mode requires a configuration file"),
-            "bare invocation with --config must not hit old stub"
+            out.stdout.contains("ingress-rules: 1"),
+            "runtime output must show ingress rule count: {:?}",
+            out.stdout,
+        );
+        let _ = std::fs::remove_file(config_path);
+    }
+
+    #[test]
+    fn service_mode_and_tunnel_run_with_config_reach_same_runtime() {
+        // Go baseline: handleServiceMode() and `tunnel run` with the same
+        // config both reach the same runtime path.
+        let config_path = std::env::temp_dir().join("cfdrs-cli001-equivalence-test.yml");
+        std::fs::write(
+            &config_path,
+            "tunnel: 00000000-0000-0000-0000-000000000000\ningress:\n  - service: http_status:503\n",
+        )
+        .expect("write test config");
+
+        let path_str = config_path.to_str().expect("path to str");
+        let out_bare = exec(&["cloudflared", "--config", path_str]);
+        let out_run = exec(&["cloudflared", "tunnel", "run", "--config", path_str]);
+
+        // Both paths must reach the runtime and produce deployment contract.
+        assert!(
+            out_bare.stdout.contains("deploy-contract:"),
+            "bare invocation must reach runtime"
+        );
+        assert!(
+            out_run.stdout.contains("deploy-contract:"),
+            "tunnel run must reach runtime"
+        );
+        // Same exit code from the runtime.
+        assert_eq!(
+            out_bare.exit_code, out_run.exit_code,
+            "bare invocation and tunnel run must produce same exit code"
         );
         let _ = std::fs::remove_file(config_path);
     }

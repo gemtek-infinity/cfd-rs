@@ -8,6 +8,7 @@ version.workspace = true
 
 [dependencies]
 axum.workspace = true
+base64.workspace = true
 cfdrs-cdc.workspace = true
 cfdrs-cli.workspace = true
 cfdrs-his.workspace = true
@@ -18,13 +19,16 @@ pingora-http.workspace = true
 prometheus-client.workspace = true
 quiche.workspace = true
 reqwest.workspace = true
+serde.workspace = true
 serde_json.workspace = true
+serde_yaml.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true
 tracing.workspace = true
 tracing-appender.workspace = true
 tracing-journald.workspace = true
 tracing-subscriber.workspace = true
+url.workspace = true
 uuid.workspace = true
 
 [[bin]]
@@ -32,8 +36,8 @@ name = "cloudflared"
 path = "src/main.rs"
 
 [dev-dependencies]
+tempfile.workspace = true
 tower.workspace = true
-url.workspace = true
 
 [lints]
 workspace = true

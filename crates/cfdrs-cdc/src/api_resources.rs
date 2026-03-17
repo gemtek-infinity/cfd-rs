@@ -305,6 +305,228 @@ pub struct LbRouteResult {
 }
 
 // ---------------------------------------------------------------------------
+// Hostname route envelope (CDC-039)
+// ---------------------------------------------------------------------------
+
+/// A hostname route request sent to the zone-level routing endpoint.
+///
+/// Matches the polymorphic `HostnameRoute` interface in `cfapi/hostname.go`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HostnameRoute {
+    Dns(DnsRouteRequest),
+    Lb(LbRouteRequest),
+}
+
+impl Serialize for HostnameRoute {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Dns(req) => req.serialize(serializer),
+            Self::Lb(req) => req.serialize(serializer),
+        }
+    }
+}
+
+/// Result from a hostname route operation.
+///
+/// Matches the polymorphic `HostnameRouteResult` interface in
+/// `cfapi/hostname.go`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HostnameRouteResult {
+    Dns(DnsRouteResult),
+    Lb(LbRouteResult),
+}
+
+impl HostnameRouteResult {
+    /// One-line success summary matching Go's `SuccessSummary()`.
+    pub fn success_summary(&self) -> String {
+        match self {
+            Self::Dns(r) => {
+                format!("{} => {} (CNAME {})", r.name, r.cname, r.cname)
+            }
+            Self::Lb(r) => {
+                format!("load_balancer: {}, pool: {}", r.load_balancer, r.pool)
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Filter types (CDC-033, CDC-036, CDC-037)
+// ---------------------------------------------------------------------------
+
+/// Query parameters for listing tunnels.
+///
+/// Matches `TunnelFilter` builder methods in `cfapi/tunnel_filter.go`.
+#[derive(Debug, Clone, Default)]
+pub struct TunnelFilter {
+    pub name: Option<String>,
+    pub name_prefix: Option<String>,
+    pub exclude_prefix: Option<String>,
+    pub is_deleted: Option<bool>,
+    pub existed_at: Option<String>,
+    pub tunnel_id: Option<Uuid>,
+    pub per_page: Option<u32>,
+    pub page: Option<u32>,
+}
+
+impl TunnelFilter {
+    pub fn by_name(name: impl Into<String>) -> Self {
+        Self {
+            name: Some(name.into()),
+            is_deleted: Some(false),
+            ..Default::default()
+        }
+    }
+
+    pub fn to_query_pairs(&self) -> Vec<(&str, String)> {
+        let mut pairs = Vec::new();
+
+        if let Some(ref v) = self.name {
+            pairs.push(("name", v.clone()));
+        }
+
+        if let Some(ref v) = self.name_prefix {
+            pairs.push(("name_prefix", v.clone()));
+        }
+
+        if let Some(ref v) = self.exclude_prefix {
+            pairs.push(("exclude_prefix", v.clone()));
+        }
+
+        if let Some(v) = self.is_deleted {
+            pairs.push(("is_deleted", v.to_string()));
+        }
+
+        if let Some(ref v) = self.existed_at {
+            pairs.push(("existed_at", v.clone()));
+        }
+
+        if let Some(v) = self.tunnel_id {
+            pairs.push(("uuid", v.to_string()));
+        }
+
+        if let Some(v) = self.per_page {
+            pairs.push(("per_page", v.to_string()));
+        }
+
+        if let Some(v) = self.page {
+            pairs.push(("page", v.to_string()));
+        }
+
+        pairs
+    }
+}
+
+/// Query parameters for listing IP routes.
+///
+/// Matches `IpRouteFilter` builder methods in `cfapi/ip_route_filter.go`.
+#[derive(Debug, Clone, Default)]
+pub struct IpRouteFilter {
+    pub is_deleted: Option<bool>,
+    pub network_subset: Option<String>,
+    pub network_superset: Option<String>,
+    pub existed_at: Option<String>,
+    pub tunnel_id: Option<Uuid>,
+    pub virtual_network_id: Option<Uuid>,
+    pub comment: Option<String>,
+    pub per_page: Option<u32>,
+    pub page: Option<u32>,
+}
+
+impl IpRouteFilter {
+    pub fn to_query_pairs(&self) -> Vec<(&str, String)> {
+        let mut pairs = vec![("tun_types", "cfd_tunnel".to_string())];
+
+        if let Some(v) = self.is_deleted {
+            pairs.push(("is_deleted", v.to_string()));
+        }
+
+        if let Some(ref v) = self.network_subset {
+            pairs.push(("network_subset", v.clone()));
+        }
+
+        if let Some(ref v) = self.network_superset {
+            pairs.push(("network_superset", v.clone()));
+        }
+
+        if let Some(ref v) = self.existed_at {
+            pairs.push(("existed_at", v.clone()));
+        }
+
+        if let Some(v) = self.tunnel_id {
+            pairs.push(("tunnel_id", v.to_string()));
+        }
+
+        if let Some(v) = self.virtual_network_id {
+            pairs.push(("virtual_network_id", v.to_string()));
+        }
+
+        if let Some(ref v) = self.comment {
+            pairs.push(("comment", v.clone()));
+        }
+
+        if let Some(v) = self.per_page {
+            pairs.push(("per_page", v.to_string()));
+        }
+
+        if let Some(v) = self.page {
+            pairs.push(("page", v.to_string()));
+        }
+
+        pairs
+    }
+}
+
+/// Query parameters for listing virtual networks.
+///
+/// Matches `VnetFilter` builder methods in
+/// `cfapi/virtual_network_filter.go`.
+#[derive(Debug, Clone, Default)]
+pub struct VnetFilter {
+    pub id: Option<Uuid>,
+    pub name: Option<String>,
+    pub is_default: Option<bool>,
+    pub is_deleted: Option<bool>,
+    pub per_page: Option<u32>,
+}
+
+impl VnetFilter {
+    pub fn by_name(name: impl Into<String>) -> Self {
+        Self {
+            name: Some(name.into()),
+            is_deleted: Some(false),
+            ..Default::default()
+        }
+    }
+
+    pub fn to_query_pairs(&self) -> Vec<(&str, String)> {
+        let mut pairs = Vec::new();
+
+        if let Some(v) = self.id {
+            pairs.push(("id", v.to_string()));
+        }
+
+        if let Some(ref v) = self.name {
+            pairs.push(("name", v.clone()));
+        }
+
+        if let Some(v) = self.is_default {
+            pairs.push(("is_default", v.to_string()));
+        }
+
+        if let Some(v) = self.is_deleted {
+            pairs.push(("is_deleted", v.to_string()));
+        }
+
+        if let Some(v) = self.per_page {
+            pairs.push(("per_page", v.to_string()));
+        }
+
+        pairs
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -515,5 +737,79 @@ mod tests {
         let lb: LbRouteResult = serde_json::from_str(lb_json).expect("deserialize lb");
         assert_eq!(lb.load_balancer, "my-lb.example.com");
         assert_eq!(lb.pool, "pool-1");
+    }
+
+    // -- Hostname route envelope (CDC-039) --------------------------------
+
+    #[test]
+    fn hostname_route_dns_serializes_correctly() {
+        let route = HostnameRoute::Dns(DnsRouteRequest::new("example.com".to_string(), true));
+        let json = serde_json::to_string(&route).expect("serialize");
+        let v: serde_json::Value = serde_json::from_str(&json).expect("parse");
+        assert_eq!(v["type"], "dns");
+        assert_eq!(v["user_hostname"], "example.com");
+    }
+
+    #[test]
+    fn hostname_route_lb_serializes_correctly() {
+        let route = HostnameRoute::Lb(LbRouteRequest::new("lb-1".to_string(), "pool-1".to_string()));
+        let json = serde_json::to_string(&route).expect("serialize");
+        let v: serde_json::Value = serde_json::from_str(&json).expect("parse");
+        assert_eq!(v["type"], "lb");
+        assert_eq!(v["lb_name"], "lb-1");
+    }
+
+    #[test]
+    fn hostname_route_result_success_summary() {
+        let dns = HostnameRouteResult::Dns(DnsRouteResult {
+            cname: "new".to_string(),
+            name: "example.com".to_string(),
+        });
+        assert!(dns.success_summary().contains("example.com"));
+
+        let lb = HostnameRouteResult::Lb(LbRouteResult {
+            load_balancer: "updated".to_string(),
+            pool: "new".to_string(),
+        });
+        assert!(lb.success_summary().contains("updated"));
+    }
+
+    // -- Filter types (CDC-033, CDC-036, CDC-037) -------------------------
+
+    #[test]
+    fn tunnel_filter_by_name_sets_is_deleted_false() {
+        let f = TunnelFilter::by_name("my-tunnel");
+        let pairs = f.to_query_pairs();
+        assert!(pairs.iter().any(|(k, v)| *k == "name" && v == "my-tunnel"));
+        assert!(pairs.iter().any(|(k, v)| *k == "is_deleted" && v == "false"));
+    }
+
+    #[test]
+    fn tunnel_filter_query_pairs() {
+        let f = TunnelFilter {
+            name_prefix: Some("prod-".to_string()),
+            per_page: Some(50),
+            page: Some(2),
+            ..Default::default()
+        };
+        let pairs = f.to_query_pairs();
+        assert!(pairs.iter().any(|(k, v)| *k == "name_prefix" && v == "prod-"));
+        assert!(pairs.iter().any(|(k, v)| *k == "per_page" && v == "50"));
+        assert!(pairs.iter().any(|(k, v)| *k == "page" && v == "2"));
+    }
+
+    #[test]
+    fn ip_route_filter_always_includes_tun_types() {
+        let f = IpRouteFilter::default();
+        let pairs = f.to_query_pairs();
+        assert!(pairs.iter().any(|(k, v)| *k == "tun_types" && v == "cfd_tunnel"));
+    }
+
+    #[test]
+    fn vnet_filter_by_name_sets_is_deleted_false() {
+        let f = VnetFilter::by_name("default");
+        let pairs = f.to_query_pairs();
+        assert!(pairs.iter().any(|(k, v)| *k == "name" && v == "default"));
+        assert!(pairs.iter().any(|(k, v)| *k == "is_deleted" && v == "false"));
     }
 }

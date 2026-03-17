@@ -25,7 +25,7 @@ pub(crate) fn prepare_runtime_startup(
     mut startup: StartupSurface,
     flags: &GlobalFlags,
 ) -> Result<PreparedRuntimeStartup, ConfigError> {
-    apply_runtime_credential_discovery(&mut startup)?;
+    apply_runtime_credential_discovery(&mut startup, flags)?;
 
     let grace_period = parse_grace_period(flags.grace_period.as_deref())?;
     let log_config = resolve_log_config(&startup, flags)?;
@@ -52,8 +52,29 @@ pub(crate) fn prepare_runtime_startup(
     })
 }
 
-fn apply_runtime_credential_discovery(startup: &mut StartupSurface) -> Result<(), ConfigError> {
+/// Go baseline: `findCredentials(tunnelID)` in subcommands.go.
+///
+/// Resolution order (matching Go):
+///   1. Already resolved (e.g. from `--token` path) — skip.
+///   2. `--credentials-contents` flag — inline JSON credential material.
+///   3. `{TunnelID}.json` file search in origin cert directory.
+fn apply_runtime_credential_discovery(
+    startup: &mut StartupSurface,
+    flags: &GlobalFlags,
+) -> Result<(), ConfigError> {
     if startup.normalized.credentials.credentials_file.is_some() {
+        return Ok(());
+    }
+
+    // Go baseline: sc.c.IsSet("credentials-contents") → json.Unmarshal
+    if let Some(contents) = flags.credentials_contents.as_deref() {
+        let creds = cfdrs_shared::TunnelCredentialsFile::from_json_str(contents)?;
+        let cred_dir = std::env::temp_dir();
+        let cred_path = cred_dir.join(format!("{}.json", creds.tunnel_id));
+        let json = creds.to_pretty_json()?;
+        std::fs::write(&cred_path, json)
+            .map_err(|source| ConfigError::write_file(cred_path.clone(), source))?;
+        startup.normalized.credentials.credentials_file = Some(cred_path);
         return Ok(());
     }
 
@@ -254,5 +275,55 @@ mod tests {
 
         let error = resolve_metrics_bind_address(&flags).expect_err("invalid metrics address should fail");
         assert_eq!(error.category().to_string(), "invariant-violation");
+    }
+
+    #[test]
+    fn credentials_contents_flag_writes_temp_credential_file() {
+        let mut startup = startup_surface(None);
+        let flags = GlobalFlags {
+            credentials_contents: Some(
+                r#"{"AccountTag":"acct","TunnelSecret":"AQID","TunnelID":"00000000-0000-0000-0000-000000000000"}"#
+                    .to_owned(),
+            ),
+            ..GlobalFlags::default()
+        };
+
+        apply_runtime_credential_discovery(&mut startup, &flags)
+            .expect("credential discovery should succeed");
+
+        let cred_path = startup
+            .normalized
+            .credentials
+            .credentials_file
+            .as_ref()
+            .expect("credentials_file should be set");
+
+        assert!(cred_path.exists(), "temp credential file should exist");
+        let contents = fs::read_to_string(cred_path).expect("credential file should be readable");
+        assert!(
+            contents.contains("00000000-0000-0000-0000-000000000000"),
+            "credential file should contain tunnel ID"
+        );
+    }
+
+    #[test]
+    fn credential_discovery_skips_when_already_resolved() {
+        let mut startup = startup_surface(None);
+        let existing = std::path::PathBuf::from("/tmp/already-set.json");
+        startup.normalized.credentials.credentials_file = Some(existing.clone());
+
+        let flags = GlobalFlags {
+            credentials_contents: Some(r#"{"AccountTag":"a","TunnelSecret":"AQ==","TunnelID":"11111111-1111-1111-1111-111111111111"}"#.to_owned()),
+            ..GlobalFlags::default()
+        };
+
+        apply_runtime_credential_discovery(&mut startup, &flags)
+            .expect("credential discovery should succeed");
+
+        assert_eq!(
+            startup.normalized.credentials.credentials_file,
+            Some(existing),
+            "credentials_file should not be overridden when already set"
+        );
     }
 }
