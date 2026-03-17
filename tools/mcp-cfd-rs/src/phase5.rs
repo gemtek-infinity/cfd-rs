@@ -1068,4 +1068,21 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn deferred_rows_become_actionable_after_prerequisite_milestone() {
+        let status = status_summary(&repo_root()).expect("status summary");
+        if status.active_milestone != "Proof Closure" {
+            return;
+        }
+
+        let row = parity_row_details(&repo_root(), "HIS-016").expect("proof-closure row details");
+        if row.ledger_status.rust_status_now != "audited, parity-backed" {
+            assert!(
+                row.actionable_now,
+                "expected HIS-016 to be actionable in Proof Closure, got reason: {}",
+                row.actionability_reason,
+            );
+        }
+    }
 }
