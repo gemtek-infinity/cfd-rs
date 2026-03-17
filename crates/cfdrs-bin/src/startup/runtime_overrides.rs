@@ -3,7 +3,7 @@ use std::path::Path;
 
 use cfdrs_cli::GlobalFlags;
 use cfdrs_his::credentials::search_credential_by_id;
-use cfdrs_his::environment::current_uid;
+use cfdrs_his::environment::{current_uid, is_container_runtime};
 use cfdrs_his::metrics_server::parse_metrics_address;
 use cfdrs_his::signal::parse_grace_period;
 use cfdrs_shared::{ConfigError, OriginCertLocator};
@@ -34,6 +34,7 @@ pub(crate) fn prepare_runtime_startup(
 
     let mut runtime_config = RuntimeConfig::new(startup.discovery.clone(), startup.normalized.clone())
         .with_shutdown_grace_period(grace_period)
+        .with_container_runtime(is_container_runtime())
         .with_diagnostic_configuration(diagnostic_configuration);
 
     if let Some(pidfile_path) = flags.pidfile.clone() {
@@ -325,5 +326,57 @@ mod tests {
             Some(existing),
             "credentials_file should not be overridden when already set"
         );
+    }
+
+    // --- HIS-031: container/runtime-class detection ---
+
+    #[test]
+    fn container_runtime_setter_enables_virtual_binding() {
+        let startup = startup_surface(None);
+        let config = RuntimeConfig::new(startup.discovery.clone(), startup.normalized.clone())
+            .with_container_runtime(true);
+
+        assert!(
+            config.is_container_runtime(),
+            "with_container_runtime(true) should enable container mode"
+        );
+    }
+
+    #[test]
+    fn container_runtime_defaults_to_host_mode() {
+        let startup = startup_surface(None);
+        let config = RuntimeConfig::new(startup.discovery.clone(), startup.normalized.clone());
+
+        assert!(
+            !config.is_container_runtime(),
+            "default RuntimeConfig should be host mode"
+        );
+    }
+
+    #[test]
+    fn prepare_runtime_startup_wires_container_detection() {
+        // In normal test builds (no CONTAINER_BUILD env, no /.dockerenv),
+        // the runtime config should report host mode.
+        let root = temp_dir("container-detect");
+        let origin_cert = root.join("cert.pem");
+        let credentials_path = root.join(format!("{}.json", uuid::Uuid::nil()));
+
+        fs::write(&origin_cert, b"pem").expect("origin cert should be written");
+        fs::write(
+            &credentials_path,
+            r#"{"AccountTag":"acct","TunnelSecret":"AQID","TunnelID":"00000000-0000-0000-0000-000000000000"}"#,
+        )
+        .expect("credentials should be written");
+
+        let prepared = prepare_runtime_startup(startup_surface(Some(origin_cert)), &GlobalFlags::default())
+            .expect("runtime startup should prepare");
+
+        assert_eq!(
+            prepared.runtime_config.is_container_runtime(),
+            is_container_runtime(),
+            "runtime config container flag should match host detection"
+        );
+
+        fs::remove_dir_all(root).expect("cleanup");
     }
 }

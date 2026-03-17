@@ -138,7 +138,7 @@ interactions are absent.
 | HIS-028 | `/quicktunnel` endpoint | `metrics/metrics.go` | JSON `{"hostname":"..."}` with quick tunnel URL | cfdrs-his `metrics_server.rs` | audited, partial | local tests | blocked | quicktunnel response tests | medium | `QuickTunnelResponse` type with serialization tests; 1 parity test (`quick_tunnel_serializes`); no HTTP endpoint |
 | HIS-029 | `/config` endpoint | orchestrator serving versioned config | JSON `{"version":N,"config":{ingress, warp-routing, originRequest}}` | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | config endpoint tests | medium | runtime now serves `/config` with versioned JSON derived from the current normalized config; CDC-backed orchestrator semantics and remote-update parity remain open |
 | HIS-030 | `/debug/pprof/*` endpoints | `http.DefaultServeMux` pprof | binary pprof format, auth disabled (`trace.AuthRequest` returns true) | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | pprof endpoint tests | low | runtime now exposes an explicit deferred `501` boundary for `/debug/pprof/*`; real profiling payloads remain open |
-| HIS-031 | metrics bind address config | `metrics/metrics.go`, `--metrics` flag | `--metrics ADDRESS` flag overrides default | cfdrs-his `metrics_server.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | flag tests | high | `--metrics` now binds the runtime listener and accepts baseline-style `localhost:PORT` and `:PORT` forms; parity tests verify `:PORT` → localhost binding, `localhost:PORT` resolution, and explicit IP pass-through; container/runtime-class routing remains open |
+| HIS-031 | metrics bind address config | `metrics/metrics.go`, `--metrics` flag | `--metrics ADDRESS` flag overrides default | cfdrs-his `metrics_server.rs`, cfdrs-his `environment.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | local tests | closed | flag tests, container detection tests | high | `--metrics` binds the runtime listener and accepts baseline-style `localhost:PORT` and `:PORT` forms; container/runtime-class routing matches Go `CONTAINER_BUILD` compile-time flag plus runtime `/.dockerenv` and `/proc/self/cgroup` detection; `is_container_runtime()` wired through `RuntimeConfig` to `bind_metrics_listener()` selecting `0.0.0.0` vs `localhost`; parity tests verify address selection, marker detection, and startup wiring |
 
 ### Diagnostics Collection
 
@@ -344,7 +344,6 @@ High gaps (runtime-backed but incomplete):
 
 - HIS-016, HIS-023: SysV init (deferred, template exists)
 - HIS-026: `/healthcheck` (parity test confirms exact Go body; broader server parity still open)
-- HIS-031: metrics bind address (parity tests for `:PORT`, `localhost:PORT`, explicit IP; runtime-class/container routing still open)
 - HIS-032 through HIS-034: diagnostic command and collectors (stub)
 - HIS-039, HIS-040: diagnostic HTTP endpoints (stub)
 - HIS-046, HIS-047: update command and auto-update (stub)

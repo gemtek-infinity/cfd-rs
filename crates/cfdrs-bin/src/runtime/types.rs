@@ -55,6 +55,11 @@ impl RuntimeConfig {
         self
     }
 
+    pub(crate) fn with_container_runtime(mut self, is_container: bool) -> Self {
+        self.is_container_runtime = is_container;
+        self
+    }
+
     pub(crate) fn with_diagnostic_configuration(
         mut self,
         diagnostic_configuration: BTreeMap<String, String>,
@@ -91,7 +96,7 @@ impl RuntimeConfig {
         self.metrics_bind_address
     }
 
-    pub(super) fn is_container_runtime(&self) -> bool {
+    pub(crate) fn is_container_runtime(&self) -> bool {
         self.is_container_runtime
     }
 

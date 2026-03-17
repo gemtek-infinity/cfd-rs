@@ -466,4 +466,44 @@ mod tests {
             );
         }
     }
+
+    // --- HIS-031: container/runtime-class address routing ---
+
+    #[test]
+    fn container_runtime_binds_to_all_interfaces() {
+        // Go: `metrics.Runtime = "virtual"` → default address `0.0.0.0:0`,
+        //     known addresses use `0.0.0.0:2024x`.
+        let default = default_metrics_address(true);
+        assert!(
+            default.starts_with("0.0.0.0"),
+            "container runtime should bind to 0.0.0.0, got {default}"
+        );
+
+        let known = known_metrics_addresses(true);
+        for addr in &known {
+            assert!(
+                addr.ip().is_unspecified(),
+                "container known address should use 0.0.0.0, got {addr}"
+            );
+        }
+    }
+
+    #[test]
+    fn host_runtime_binds_to_localhost() {
+        // Go: `metrics.Runtime = "host"` (default) → `localhost:0`,
+        //     known addresses use `localhost:2024x` (resolved as 127.0.0.1).
+        let default = default_metrics_address(false);
+        assert!(
+            default.starts_with("localhost"),
+            "host runtime should bind to localhost, got {default}"
+        );
+
+        let known = known_metrics_addresses(false);
+        for addr in &known {
+            assert!(
+                addr.ip().is_loopback(),
+                "host known address should use 127.0.0.1, got {addr}"
+            );
+        }
+    }
 }
