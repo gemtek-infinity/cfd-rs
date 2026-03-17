@@ -105,9 +105,9 @@ fn execute_command(cli: Cli) -> CliOutput {
         // Bare `access` shows help (urfave/cli default for commands with
         // subcommands); each subcommand dispatches explicitly.
         Command::Access(AccessSubcommand::Bare) => CliOutput::success(render_access_help(PROGRAM_NAME)),
-        Command::Access(_) => CliOutput::failure(
+        Command::Access(sub) => CliOutput::failure(
             String::new(),
-            stub_not_implemented(&full_command_label(&cli.command)),
+            stub_not_implemented(&full_command_label(&Command::Access(sub.clone()))),
             1,
         ),
 

@@ -126,24 +126,114 @@ pub fn execute_tail(flags: &GlobalFlags) -> CliOutput {
         Err(msg) => return CliOutput::failure(String::new(), msg, 1),
     };
 
-    // Step 3–6: WebSocket streaming.
-    //
-    // The WebSocket client dial + streaming loop requires a WebSocket crate
-    // (e.g. tungstenite or tokio-tungstenite). No WebSocket client dependency
-    // is admitted in the workspace yet. The pre-connection logic (filter
-    // parsing, URL building, token acquisition) is fully wired.
-    //
-    // The start_streaming event that would be sent:
-    let _start_event = EventStartStreaming::new(filters);
+    // Step 3–6: WebSocket streaming inside a tokio runtime.
+    let rt = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return CliOutput::failure(String::new(), format!("failed to start runtime: {e}"), 1),
+    };
 
-    CliOutput::failure(
-        String::new(),
-        format!(
-            "tail streaming to {url} is structurally wired but WebSocket client dependency is not yet \
-             admitted — see dependency-policy.md"
-        ),
-        1,
-    )
+    rt.block_on(tail_streaming_loop(url, filters))
+}
+
+/// WebSocket streaming loop for `tail`.
+///
+/// Dials the management endpoint, sends `start_streaming` with filters,
+/// then reads `logs` events and prints each entry.
+async fn tail_streaming_loop(url: String, filters: Option<StreamingFilters>) -> CliOutput {
+    use cfdrs_cdc::log_streaming::EventLog;
+    use tokio_tungstenite::tungstenite;
+
+    // Step 3: Dial WebSocket.
+    let (mut ws, _response) = match tokio_tungstenite::connect_async(&url).await {
+        Ok(pair) => pair,
+        Err(e) => {
+            return CliOutput::failure(
+                String::new(),
+                format!("unable to start log streaming session: {e}"),
+                1,
+            );
+        }
+    };
+
+    // Step 4: Send start_streaming event.
+    let start = EventStartStreaming::new(filters);
+    let start_json = match serde_json::to_string(&start) {
+        Ok(j) => j,
+        Err(e) => return CliOutput::failure(String::new(), format!("json: {e}"), 1),
+    };
+
+    use tokio_tungstenite::tungstenite::Message as WsMessage;
+
+    if let Err(e) = futures_util::SinkExt::send(&mut ws, WsMessage::Text(start_json.into())).await {
+        return CliOutput::failure(
+            String::new(),
+            format!("unable to send start_streaming event: {e}"),
+            1,
+        );
+    }
+
+    // Step 5: Read logs events in a loop.
+    let mut output = String::new();
+
+    // Step 6: Handle SIGINT/SIGTERM for clean shutdown.
+    let shutdown = async {
+        let mut sigint = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
+            .expect("SIGINT handler");
+        let mut sigterm = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("SIGTERM handler");
+        tokio::select! {
+            _ = sigint.recv() => {}
+            _ = sigterm.recv() => {}
+        }
+    };
+    tokio::pin!(shutdown);
+
+    loop {
+        use futures_util::StreamExt;
+
+        tokio::select! {
+            msg = ws.next() => {
+                let msg = match msg {
+                    Some(Ok(m)) => m,
+                    Some(Err(e)) => {
+                        return CliOutput::failure(
+                            output,
+                            format!("connection error: {e}"),
+                            1,
+                        );
+                    }
+                    None => break,
+                };
+
+                match msg {
+                    WsMessage::Text(text) => {
+                        if let Ok(event) = serde_json::from_str::<EventLog>(&text) {
+                            for entry in &event.logs {
+                                let line = format_log_line(entry);
+                                output.push_str(&line);
+                                output.push('\n');
+                            }
+                        }
+                    }
+                    WsMessage::Close(_) => break,
+                    _ => {}
+                }
+            }
+            _ = &mut shutdown => {
+                // Clean shutdown: send close frame and exit.
+                let _ = futures_util::SinkExt::send(
+                    &mut ws,
+                    WsMessage::Close(Some(tungstenite::protocol::CloseFrame {
+                        code: tungstenite::protocol::frame::coding::CloseCode::Normal,
+                        reason: "client shutdown".into(),
+                    })),
+                ).await;
+                break;
+            }
+        }
+    }
+
+    CliOutput::success(output)
 }
 
 // ---------------------------------------------------------------------------
@@ -436,7 +526,6 @@ fn determine_management_hostname(token: &str, flags: &GlobalFlags) -> String {
 /// Go baseline: `printLine` in `tail/cmd.go`:
 /// `fmt.Printf("%s %s %s %s %s\n", log.Time, log.Level, log.Event, log.Message,
 /// fields)`
-#[allow(dead_code)] // Wired when WebSocket streaming is connected.
 fn format_log_line(entry: &LogEntry) -> String {
     let time = &entry.time;
     let level = entry.level.map(|l| l.as_str()).unwrap_or("");

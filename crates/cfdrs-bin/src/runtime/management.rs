@@ -1,26 +1,152 @@
-//! Management HTTP service (CDC-023, CDC-024).
+//! Management HTTP service (CDC-023, CDC-024, CDC-026).
 //!
 //! Axum router for the management service that the Cloudflare edge
 //! connects to for log streaming, host details, and diagnostics.
 //!
-//! See `baseline-2026.2.0/management/service.go` and
-//! `baseline-2026.2.0/management/middleware.go`.
+//! See `baseline-2026.2.0/management/service.go`,
+//! `baseline-2026.2.0/management/middleware.go`,
+//! `baseline-2026.2.0/management/session.go`, and
+//! `baseline-2026.2.0/management/events.go`.
 
 use std::net::TcpStream;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use axum::Router;
 use axum::body::Body;
+use axum::extract::ws::{CloseFrame, Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
 use axum::http::{Request, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
+use cfdrs_cdc::log_streaming::{
+    ClientEvent, EventLog, LOG_WINDOW, LogEntry, REASON_IDLE_LIMIT_EXCEEDED, REASON_INVALID_COMMAND,
+    REASON_SESSION_LIMIT_EXCEEDED, STATUS_IDLE_LIMIT_EXCEEDED, STATUS_INVALID_COMMAND,
+    STATUS_SESSION_LIMIT_EXCEEDED, StreamingFilters, parse_client_event,
+};
 use cfdrs_cdc::management::{
-    HostDetailsResponse, ManagementErrorResponse, ROUTE_HOST_DETAILS, ROUTE_LOGS, ROUTE_METRICS, ROUTE_PING,
+    HostDetailsResponse, ManagementErrorResponse, ManagementTokenClaims, ROUTE_HOST_DETAILS, ROUTE_LOGS,
+    ROUTE_METRICS, ROUTE_PING,
 };
 use serde::Deserialize;
+use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
+
+// ---------------------------------------------------------------------------
+// Log session manager (CDC-026)
+// ---------------------------------------------------------------------------
+
+/// Entry for a single active streaming session.
+struct SessionEntry {
+    actor_id: String,
+    active: Arc<AtomicBool>,
+    sender: mpsc::Sender<LogEntry>,
+    filters: StreamingFilters,
+    cancel: CancellationToken,
+}
+
+/// Tracks active log streaming sessions and distributes log entries.
+///
+/// Go baseline: `management.Logger` implements `LoggerListener` + `io.Writer`.
+/// Each `Write()` call dispatches log entries to all active sessions via
+/// bounded channels. Session preemption rules: at most one active session
+/// globally; same actor preempts, different actor is rejected with 4002.
+pub(super) struct LogSessionManager {
+    inner: std::sync::Mutex<Vec<SessionEntry>>,
+}
+
+impl LogSessionManager {
+    pub(super) fn new() -> Self {
+        Self {
+            inner: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    /// Check if a new session for `actor_id` can start, handling preemption.
+    ///
+    /// Go: `canStartStream()` — same actor preempts, different actor rejected.
+    fn can_start_stream(&self, actor_id: &str) -> bool {
+        let mut sessions = self.inner.lock().expect("session lock");
+        sessions.retain(|s| s.active.load(Ordering::Relaxed));
+
+        if sessions.is_empty() {
+            return true;
+        }
+
+        if let Some(existing) = sessions.iter().find(|s| s.actor_id == actor_id) {
+            // Same actor: preempt the old session.
+            existing.active.store(false, Ordering::Relaxed);
+            existing.cancel.cancel();
+            sessions.retain(|s| s.active.load(Ordering::Relaxed));
+            true
+        } else {
+            // Different actor: reject.
+            false
+        }
+    }
+
+    /// Register a new streaming session and return its log entry receiver.
+    ///
+    /// Go: `Logger.Listen(session)` — sets active, appends to slice.
+    fn listen(
+        &self,
+        actor_id: String,
+        filters: StreamingFilters,
+        cancel: CancellationToken,
+    ) -> mpsc::Receiver<LogEntry> {
+        let (tx, rx) = mpsc::channel(LOG_WINDOW);
+        let mut sessions = self.inner.lock().expect("session lock");
+
+        sessions.push(SessionEntry {
+            actor_id,
+            active: Arc::new(AtomicBool::new(true)),
+            sender: tx,
+            filters,
+            cancel,
+        });
+
+        rx
+    }
+
+    /// Stop and remove sessions for the given actor.
+    ///
+    /// Go: `session.Stop()` + `Logger.Remove(session)`.
+    fn remove(&self, actor_id: &str) {
+        let mut sessions = self.inner.lock().expect("session lock");
+
+        for s in sessions.iter() {
+            if s.actor_id == actor_id {
+                s.active.store(false, Ordering::Relaxed);
+            }
+        }
+
+        sessions.retain(|s| s.active.load(Ordering::Relaxed));
+    }
+
+    /// Insert a log entry to all active sessions that pass filters.
+    ///
+    /// Go: `Logger.Write()` → `session.Insert()`.
+    /// Non-blocking: drops the entry if the session's channel is full
+    /// (matches Go's `default` case in the non-blocking select).
+    #[allow(dead_code)] // Wired when tracing subscriber integration connects.
+    pub(super) fn insert(&self, entry: &LogEntry) {
+        let sessions = self.inner.lock().expect("session lock");
+
+        for session in sessions.iter() {
+            if !session.active.load(Ordering::Relaxed) {
+                continue;
+            }
+
+            if !session.filters.should_accept(entry) {
+                continue;
+            }
+
+            let _ = session.sender.try_send(entry.clone());
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Management service state
@@ -30,6 +156,7 @@ struct ManagementState {
     connector_id: uuid::Uuid,
     label: String,
     service_ip: String,
+    sessions: LogSessionManager,
 }
 
 // ---------------------------------------------------------------------------
@@ -52,11 +179,12 @@ pub(super) fn build_management_router(
         connector_id,
         label,
         service_ip,
+        sessions: LogSessionManager::new(),
     });
 
     let mut router = Router::new()
         .route(ROUTE_PING, get(handle_ping))
-        .route(ROUTE_LOGS, get(handle_logs_stub))
+        .route(ROUTE_LOGS, get(handle_logs))
         .route(ROUTE_HOST_DETAILS, get(handle_host_details));
 
     if enable_diag_services {
@@ -147,11 +275,159 @@ async fn handle_host_details(State(state): State<Arc<ManagementState>>) -> Respo
         .into_response()
 }
 
-/// GET `/logs` — WebSocket log streaming.
+/// GET `/logs` — WebSocket log streaming (CDC-026).
 ///
-/// Stub returning 501 until CDC-026 wires the WebSocket upgrade.
-async fn handle_logs_stub() -> StatusCode {
-    StatusCode::NOT_IMPLEMENTED
+/// Go: `logs()` in `service.go`. Upgrades to WebSocket, creates a session,
+/// and enters the main event/streaming loop. Close codes:
+/// - 4001 if first message is not `start_streaming`
+/// - 4002 if a different actor already holds the session
+/// - 4003 if the connection is idle for 5 minutes
+async fn handle_logs(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<ManagementState>>,
+    axum::Extension(claims): axum::Extension<ManagementTokenClaims>,
+) -> Response {
+    let actor_id = claims.actor.id.clone();
+    ws.on_upgrade(move |socket| handle_logs_session(socket, state, actor_id))
+}
+
+/// Idle timeout before the connection is closed (Go: 5 minutes).
+const IDLE_TIMEOUT: Duration = Duration::from_secs(300);
+
+/// Ping keepalive interval (Go: 15 seconds).
+const PING_INTERVAL: Duration = Duration::from_secs(15);
+
+/// WebSocket session lifecycle for `/logs`.
+///
+/// Go lifecycle in `logs()`:
+///   1. Reader goroutine reads client events → channel
+///   2. Main loop: select on events, ping (15s), idle (5min), context done
+///   3. `StartStreaming` → stop idle, create session, spawn log streamer
+///   4. `StopStreaming` → stop session, reset idle timer
+///   5. After stop, client can send another `StartStreaming`
+async fn handle_logs_session(mut socket: WebSocket, state: Arc<ManagementState>, actor_id: String) {
+    let session_cancel = CancellationToken::new();
+    let mut log_rx: Option<mpsc::Receiver<LogEntry>> = None;
+    let mut streaming = false;
+
+    let idle_deadline = tokio::time::sleep(IDLE_TIMEOUT);
+    tokio::pin!(idle_deadline);
+
+    let mut ping_interval = tokio::time::interval(PING_INTERVAL);
+    ping_interval.tick().await; // consume the initial immediate tick
+
+    loop {
+        let log_entry = async {
+            match &mut log_rx {
+                Some(rx) => rx.recv().await,
+                None => std::future::pending().await,
+            }
+        };
+
+        tokio::select! {
+            msg = socket.recv() => {
+                let msg = match msg {
+                    Some(Ok(m)) => m,
+                    _ => break,
+                };
+
+                match msg {
+                    Message::Text(text) => {
+                        match parse_client_event(&text) {
+                            Ok(ClientEvent::StartStreaming(start)) => {
+                                if !state.sessions.can_start_stream(&actor_id) {
+                                    let _ = send_close(
+                                        &mut socket,
+                                        STATUS_SESSION_LIMIT_EXCEEDED,
+                                        REASON_SESSION_LIMIT_EXCEEDED,
+                                    ).await;
+                                    break;
+                                }
+
+                                let filters = start.filters.unwrap_or_default();
+                                log_rx = Some(state.sessions.listen(
+                                    actor_id.clone(),
+                                    filters,
+                                    session_cancel.clone(),
+                                ));
+                                streaming = true;
+                            }
+
+                            Ok(ClientEvent::StopStreaming(_)) => {
+                                state.sessions.remove(&actor_id);
+                                log_rx = None;
+                                streaming = false;
+                                idle_deadline.as_mut().reset(
+                                    tokio::time::Instant::now() + IDLE_TIMEOUT,
+                                );
+                            }
+
+                            Err(_) if !streaming => {
+                                let _ = send_close(
+                                    &mut socket,
+                                    STATUS_INVALID_COMMAND,
+                                    REASON_INVALID_COMMAND,
+                                ).await;
+                                break;
+                            }
+
+                            Err(_) => {
+                                let _ = send_close(&mut socket, 1003, "unknown message type")
+                                    .await;
+                                break;
+                            }
+                        }
+                    }
+
+                    Message::Close(_) => break,
+                    _ => {}
+                }
+            }
+
+            entry = log_entry, if streaming => {
+                if let Some(entry) = entry {
+                    let event = EventLog::new(vec![entry]);
+
+                    if let Ok(json) = serde_json::to_string(&event)
+                        && socket.send(Message::Text(json.into())).await.is_err()
+                    {
+                        break;
+                    }
+                }
+            }
+
+            _ = ping_interval.tick() => {
+                if socket.send(Message::Ping(vec![].into())).await.is_err() {
+                    break;
+                }
+            }
+
+            _ = &mut idle_deadline, if !streaming => {
+                let _ = send_close(
+                    &mut socket,
+                    STATUS_IDLE_LIMIT_EXCEEDED,
+                    REASON_IDLE_LIMIT_EXCEEDED,
+                ).await;
+                break;
+            }
+
+            _ = session_cancel.cancelled() => {
+                break;
+            }
+        }
+    }
+
+    state.sessions.remove(&actor_id);
+}
+
+/// Send a close frame with a custom code and reason.
+async fn send_close(socket: &mut WebSocket, code: u16, reason: &str) -> Result<(), axum::Error> {
+    socket
+        .send(Message::Close(Some(CloseFrame {
+            code,
+            reason: reason.into(),
+        })))
+        .await
 }
 
 /// GET `/metrics` — Prometheus metrics (conditional diagnostic route).
@@ -271,12 +547,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn logs_route_returns_stub() {
+    async fn logs_route_rejects_non_websocket() {
         let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         let response = app.oneshot(authed_get("/logs")).await.expect("response");
 
-        assert_eq!(response.status(), StatusCode::NOT_IMPLEMENTED);
+        // Non-WebSocket GET to /logs returns an upgrade-required error,
+        // not 501 (stub was replaced with real WebSocket handler).
+        assert_ne!(response.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
@@ -550,6 +828,125 @@ mod tests {
                 StatusCode::BAD_REQUEST,
                 "{path} should require auth"
             );
+        }
+    }
+
+    // -- Log session manager (CDC-026) ------------------------------------
+
+    #[test]
+    fn session_manager_empty_allows_start() {
+        let mgr = LogSessionManager::new();
+        assert!(mgr.can_start_stream("actor-1"));
+    }
+
+    #[test]
+    fn session_manager_same_actor_preempts() {
+        let mgr = LogSessionManager::new();
+        let cancel = CancellationToken::new();
+        let _rx = mgr.listen("actor-1".to_owned(), StreamingFilters::default(), cancel.clone());
+
+        assert!(mgr.can_start_stream("actor-1"), "same actor should preempt");
+        assert!(cancel.is_cancelled(), "old session should be cancelled");
+    }
+
+    #[test]
+    fn session_manager_different_actor_rejected() {
+        let mgr = LogSessionManager::new();
+        let cancel = CancellationToken::new();
+        let _rx = mgr.listen("actor-1".to_owned(), StreamingFilters::default(), cancel.clone());
+
+        assert!(
+            !mgr.can_start_stream("actor-2"),
+            "different actor should be rejected"
+        );
+        assert!(!cancel.is_cancelled(), "existing session should not be cancelled");
+    }
+
+    #[test]
+    fn session_manager_remove_frees_slot() {
+        let mgr = LogSessionManager::new();
+        let cancel = CancellationToken::new();
+        let _rx = mgr.listen("actor-1".to_owned(), StreamingFilters::default(), cancel);
+
+        mgr.remove("actor-1");
+
+        assert!(
+            mgr.can_start_stream("actor-2"),
+            "slot should be free after remove"
+        );
+    }
+
+    #[tokio::test]
+    async fn session_manager_insert_delivers_to_session() {
+        let mgr = LogSessionManager::new();
+        let cancel = CancellationToken::new();
+        let mut rx = mgr.listen("actor-1".to_owned(), StreamingFilters::default(), cancel);
+
+        let entry = LogEntry {
+            time: "2026-01-01T00:00:00Z".to_owned(),
+            level: Some(cfdrs_cdc::log_streaming::LogLevel::Info),
+            message: "test".to_owned(),
+            event: None,
+            fields: None,
+        };
+
+        mgr.insert(&entry);
+
+        let received = rx.try_recv().expect("should receive entry");
+        assert_eq!(received.message, "test");
+    }
+
+    #[tokio::test]
+    async fn session_manager_insert_respects_level_filter() {
+        let mgr = LogSessionManager::new();
+        let cancel = CancellationToken::new();
+        let filters = StreamingFilters {
+            level: Some(cfdrs_cdc::log_streaming::LogLevel::Warn),
+            events: Vec::new(),
+            sampling: 0.0,
+        };
+        let mut rx = mgr.listen("actor-1".to_owned(), filters, cancel);
+
+        let info_entry = LogEntry {
+            time: String::new(),
+            level: Some(cfdrs_cdc::log_streaming::LogLevel::Info),
+            message: "info-msg".to_owned(),
+            event: None,
+            fields: None,
+        };
+        let warn_entry = LogEntry {
+            time: String::new(),
+            level: Some(cfdrs_cdc::log_streaming::LogLevel::Warn),
+            message: "warn-msg".to_owned(),
+            event: None,
+            fields: None,
+        };
+
+        mgr.insert(&info_entry);
+        mgr.insert(&warn_entry);
+
+        let received = rx.try_recv().expect("should receive warn entry");
+        assert_eq!(received.message, "warn-msg");
+        assert!(rx.try_recv().is_err(), "info entry should have been filtered");
+    }
+
+    #[test]
+    fn session_manager_insert_drops_when_full() {
+        let mgr = LogSessionManager::new();
+        let cancel = CancellationToken::new();
+        let _rx = mgr.listen("actor-1".to_owned(), StreamingFilters::default(), cancel);
+
+        let entry = LogEntry {
+            time: String::new(),
+            level: None,
+            message: "fill".to_owned(),
+            event: None,
+            fields: None,
+        };
+
+        // Fill beyond LOG_WINDOW — should not panic.
+        for _ in 0..LOG_WINDOW + 10 {
+            mgr.insert(&entry);
         }
     }
 }
