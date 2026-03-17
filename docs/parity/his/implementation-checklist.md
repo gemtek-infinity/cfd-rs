@@ -193,8 +193,8 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-056 | postinst.sh behavior | `postinst.sh` | create `/usr/local/bin/cloudflared` symlink, create `/usr/local/etc/cloudflared/`, touch `.installedFromPackageManager` | not applicable | not audited | not applicable | not applicable | packaging tests | low | packaging concern, not Rust binary behavior |
-| HIS-057 | postrm.sh behavior | `postrm.sh` | remove `/usr/local/bin/cloudflared` symlink, remove `.installedFromPackageManager` marker | not applicable | not audited | not applicable | not applicable | packaging tests | low | packaging concern, not Rust binary behavior |
+| HIS-056 | postinst.sh behavior | `postinst.sh` | create `/usr/local/bin/cloudflared` symlink, create `/usr/local/etc/cloudflared/`, touch `.installedFromPackageManager` | not applicable | audited, intentional divergence | not applicable | intentional divergence | not applicable | low | non-lane: packaging shell script, not Rust binary behavior; symlinks and marker files are installer concerns outside the binary scope |
+| HIS-057 | postrm.sh behavior | `postrm.sh` | remove `/usr/local/bin/cloudflared` symlink, remove `.installedFromPackageManager` marker | not applicable | audited, intentional divergence | not applicable | intentional divergence | not applicable | low | non-lane: packaging shell script, not Rust binary behavior; cleanup of installer artifacts is outside the binary scope |
 
 ### Signal Handling and Graceful Shutdown
 
@@ -309,16 +309,18 @@ cfdrs-his or cfdrs-shared. Runtime behavior for the remaining blocked items
 
 ### Divergence records
 
-One HIS item is classified as an intentional divergence:
+Three HIS items are classified as intentional divergences:
 
 - **HIS-053 (deployment evidence):** Rust deployment evidence is
   contract-level and honesty-oriented. It explicitly declares known gaps
   (`no-installer`, `no-systemd-unit`). This is intentional during alpha.
-
-HIS-053 is the only `intentional divergence` status.
+- **HIS-056 (postinst.sh):** packaging shell script, not Rust binary behavior;
+  symlinks and marker files are installer concerns outside the binary scope.
+- **HIS-057 (postrm.sh):** packaging shell script, not Rust binary behavior;
+  cleanup of installer artifacts is outside the binary scope.
 
 Blocked items use owned seams to define the API surface while keeping the
-remaining runtime gaps explicit (raw sockets, restart inheritance).
+remaining runtime gaps explicit (raw sockets and restart inheritance).
 
 ### Gap ranking by priority
 
@@ -333,12 +335,6 @@ High gaps (runtime-backed but incomplete):
 - HIS-071: ICMP source IP flags (auto-detect logic still open)
 - HIS-072: `hello_world` ingress listener (trait only)
 - HIS-073, HIS-074: gracenet socket inheritance and process restart (trait only)
-
-Low gaps:
-
-- HIS-030: pprof endpoints
-- HIS-054, HIS-055: deployment evidence details
-- HIS-056, HIS-057: package manager scripts
 
 ## Scope Classification
 

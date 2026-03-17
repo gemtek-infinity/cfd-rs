@@ -72,16 +72,16 @@ Counts from the `Rust status now` column in each domain ledger.
 | --- | --- | --- | --- | --- | --- |
 | CLI | 32 | 32 | 0 | 0 | 100% |
 | CDC | 44 | 44 | 0 | 0 | 100% |
-| HIS | 74 | 65 | 7 | 2 | 88% |
-| **Total** | **150** | **141** | **7** | **2** | **94%** |
+| HIS | 74 | 67 | 7 | 0 | 91% |
+| **Total** | **150** | **143** | **7** | **0** | **95%** |
 
 Closed breakdown:
 
 - CLI: 31 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
 - CDC: 44 `audited, parity-backed`
-- HIS: 63 `audited, parity-backed` +
-  1 `audited, intentional divergence` (`HIS-053`)
+- HIS: 64 `audited, parity-backed` +
+  3 `audited, intentional divergence` (`HIS-053`, `HIS-056`, `HIS-057`)
 
 ## Test Snapshot
 
