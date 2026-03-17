@@ -196,7 +196,6 @@ fn deployment_evidence_declares_known_gaps() {
     assert!(summary_contains(&execution, "no-systemd-unit"));
     assert!(summary_contains(&execution, "no-installer"));
     assert!(summary_contains(&execution, "no-container-image"));
-    assert!(summary_contains(&execution, "no-updater"));
     assert!(summary_contains(&execution, "no-log-rotation"));
 }
 

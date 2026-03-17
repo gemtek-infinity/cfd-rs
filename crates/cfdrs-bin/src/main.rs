@@ -626,10 +626,16 @@ fn execute_runtime_command(startup: StartupSurface, flags: &GlobalFlags) -> CliO
 
     let report = runtime::run(runtime_config);
     let stdout = render_run_output(&startup, &report);
+    let exit_code = report.exit.exit_code();
 
     match report.exit.stderr_message() {
-        Some(stderr) => CliOutput::failure(stdout, stderr, report.exit.exit_code()),
-        None => CliOutput::success(stdout),
+        Some(stderr) => CliOutput::failure(stdout, stderr, exit_code),
+        None if exit_code == 0 => CliOutput::success(stdout),
+        None => CliOutput {
+            stdout,
+            stderr: String::new(),
+            exit_code,
+        },
     }
 }
 

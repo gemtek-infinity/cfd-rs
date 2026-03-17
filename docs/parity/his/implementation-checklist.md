@@ -168,10 +168,10 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-046 | `update` CLI command | `cmd/cloudflared/updater/update.go` | manual update with `--beta`, `--staging`, `--force`, `--version` flags; HTTP check to `update.argotunnel.com` | cfdrs-his `updater.rs` | audited, parity-backed | local tests | closed | command tests, HTTP mock tests | high | `WorkersUpdater` now performs the Go-shaped check/apply flow with a 60s blocking HTTP client, `os`/`arch`/`clientVersion` query parameters, staging URL selection, SHA-256 validation, `.new`/`.old` binary swap, and package-manager short-circuit handling. Evidence: 16 updater tests covering request construction, staging URL selection, non-200 failure, no-update response, successful replacement, checksum mismatch, same-binary checksum rejection, and manual-update short-circuit behavior, plus CLI-facing exit-code tests in `cfdrs-bin` |
-| HIS-047 | auto-update timer | `cmd/cloudflared/updater/update.go` `AutoUpdater` | periodic check (default 24h), `--autoupdate-freq`, `--no-autoupdate` flags; disabled on Windows, terminal, package-managed | cfdrs-his `updater.rs` | audited, partial | local tests | open gap | timer tests, restriction tests | high | `AutoUpdater` trait + constants; `StubAutoUpdater` returns deferred; 1 parity test (`default_autoupdate_freq_is_24h`) |
-| HIS-048 | update exit codes | `cmd/cloudflared/updater/update.go` | exit 11 = success (restart), exit 10 = failure, exit 0 = no update | cfdrs-his `updater.rs` | audited, parity-backed | baseline-backed tests | closed | exit code tests | medium | `UPDATE_EXIT_SUCCESS = 11`, `UPDATE_EXIT_FAILURE = 10` constants match Go `statusSuccess.ExitCode()` / `statusError.ExitCode()` exactly; systemd update-service template maps exit 11 to `systemctl restart`; 2 parity constant tests; actual updater runtime deferred to HIS-046/047 |
-| HIS-049 | package manager detection | `cmd/cloudflared/updater/update.go` | `.installedFromPackageManager` marker file or `BuiltForPackageManager` build tag disables auto-update | cfdrs-his `updater.rs`, `environment.rs` | audited, parity-backed | baseline-backed tests | closed | marker detection tests | medium | `INSTALLED_FROM_PACKAGE_MARKER` path constant matches Go `postinst.sh`; `is_package_managed()` checks marker file existence; `should_skip_update()` delegates correctly; 2 parity tests in updater.rs, 2 in environment.rs; actual auto-update runtime deferred to HIS-046/047 |
+| HIS-046 | `update` CLI command | `cmd/cloudflared/updater/update.go` | manual update with `--beta`, `--staging`, `--force`, `--version` flags; HTTP check to `update.argotunnel.com` | cfdrs-his `updater/mod.rs` | audited, parity-backed | local tests | closed | command tests, HTTP mock tests | high | `WorkersUpdater` now performs the Go-shaped check/apply flow with a 60s blocking HTTP client, `os`/`arch`/`clientVersion` query parameters, staging URL selection, SHA-256 validation, `.new`/`.old` binary swap, and package-manager short-circuit handling. Evidence: 16 updater tests covering request construction, staging URL selection, non-200 failure, no-update response, successful replacement, checksum mismatch, same-binary checksum rejection, and manual-update short-circuit behavior, plus CLI-facing exit-code tests in `cfdrs-bin` |
+| HIS-047 | auto-update timer | `cmd/cloudflared/updater/update.go` `AutoUpdater` | periodic check (default 24h), `--autoupdate-freq`, `--no-autoupdate` flags; disabled on Windows, terminal, package-managed | cfdrs-his `updater/mod.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/tasks/autoupdate.rs` | audited, parity-backed | local tests | closed | timer tests, restriction tests | high | auto-update policy now parses Go-style `--autoupdate-freq` values, resolves Windows/package-managed/terminal restrictions, wires the policy into runtime startup, and runs a periodic `spawn_blocking` updater task that exits the runtime with code 11 after a successful replacement. Evidence: 7 updater-policy tests in `cfdrs-his`, 2 runtime-startup plumbing tests in `cfdrs-bin`, 1 timer-driven runtime integration test in `cfdrs-bin`, plus deployment evidence updated to remove the stale `no-updater` gap |
+| HIS-048 | update exit codes | `cmd/cloudflared/updater/update.go` | exit 11 = success (restart), exit 10 = failure, exit 0 = no update | cfdrs-his `updater/mod.rs` | audited, parity-backed | baseline-backed tests | closed | exit code tests | medium | `UPDATE_EXIT_SUCCESS = 11`, `UPDATE_EXIT_FAILURE = 10` constants match Go `statusSuccess.ExitCode()` / `statusError.ExitCode()` exactly; systemd update-service template maps exit 11 to `systemctl restart`; 2 parity constant tests; runtime-triggered exit-11 behavior is now exercised through the HIS-047 auto-update path |
+| HIS-049 | package manager detection | `cmd/cloudflared/updater/update.go` | `.installedFromPackageManager` marker file or `BuiltForPackageManager` build tag disables auto-update | cfdrs-his `updater/mod.rs`, `environment.rs` | audited, parity-backed | baseline-backed tests | closed | marker detection tests | medium | `INSTALLED_FROM_PACKAGE_MARKER` path constant matches Go `postinst.sh`; `is_package_managed()` checks marker file existence; `should_skip_update()` delegates correctly; 2 parity tests in `updater/mod.rs`, 2 in `environment.rs`; runtime auto-update policy now consumes this detection when deciding whether to start the periodic updater task |
 
 ### Environment and Privilege
 
@@ -297,15 +297,15 @@ path detection (HIS-054), glibc marker detection (HIS-055).
 
 Partial with runtime-backed seams: local HTTP metrics server (`/config` and
 `/debug/pprof/*` remain partial on top of the closed metrics/readiness/diag
-surface), updater (HIS-047 auto-update policy remains open; HIS-046, HIS-048,
-and HIS-049 are now closed), ICMP (HIS-069, HIS-071, raw-socket and
-source-selection work still open), `hello_world` (HIS-072, trait only),
-process restart (HIS-073, HIS-074, trait only), and deployment evidence
-(HIS-053, intentional divergence).
+surface), ICMP (HIS-069, HIS-071, raw-socket and source-selection work still
+open), `hello_world` (HIS-072, trait only), process restart (HIS-073,
+HIS-074, trait only), and deployment evidence (HIS-053, intentional
+divergence). Updater behavior is now closed through HIS-049; only the restart
+inheritance path remains open.
 
 No HIS rows remain fully absent. All 74 rows now have a Rust owner in
 cfdrs-his or cfdrs-shared. Runtime behavior for the remaining blocked items
-(updater, raw sockets, restart inheritance) is deferred behind owned seams.
+(raw sockets and restart inheritance) is deferred behind owned seams.
 
 ### Divergence records
 
@@ -318,13 +318,12 @@ One HIS item is classified as an intentional divergence:
 HIS-053 is the only `intentional divergence` status.
 
 Blocked items use owned seams to define the API surface while keeping the
-remaining runtime gaps explicit (updater, raw sockets, restart inheritance).
+remaining runtime gaps explicit (raw sockets, restart inheritance).
 
 ### Gap ranking by priority
 
 Critical gaps (runtime exists, parity breadth still open):
 
-- HIS-047: auto-update
 - HIS-069: ICMP raw socket proxy
 
 High gaps (runtime-backed but incomplete):
@@ -354,10 +353,6 @@ production-alpha lane.
 - HIS-057: `postrm.sh` behavior — packaging script, not Rust binary behavior
 
 ### Deferred (lane-relevant, post-alpha)
-
-Updater subsystem:
-
-- HIS-047: auto-update timer — depends on updater policy/runtime wiring
 
 Local HTTP convenience endpoints:
 

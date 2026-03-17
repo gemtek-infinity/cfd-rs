@@ -22,6 +22,7 @@ impl ApplicationRuntime {
             RuntimeCommand::ServiceExited(service_exit) => self.handle_service_exit(service_exit).await,
             RuntimeCommand::ShutdownRequested(reason) => self.handle_shutdown_requested(reason),
             RuntimeCommand::ControlPlaneFailure { detail } => self.handle_control_plane_failure(detail),
+            RuntimeCommand::AutoUpdateApplied { version } => self.handle_auto_update_applied(version),
             RuntimeCommand::ConfigFileChanged { path } => self.handle_config_file_changed(path),
         }
     }

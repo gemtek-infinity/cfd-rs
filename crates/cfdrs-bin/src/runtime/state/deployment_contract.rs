@@ -20,7 +20,6 @@ pub(super) const DEPLOY_KNOWN_GAPS: &[&str] = &[
     "no-systemd-unit",
     "no-installer",
     "no-container-image",
-    "no-updater",
     "no-log-rotation",
 ];
 

@@ -27,8 +27,8 @@ pub(crate) use self::logging::install_runtime_logging;
 use self::state::{LifecycleState, ReadinessState, RuntimeStatus};
 use self::types::RuntimePolicy;
 pub(crate) use self::types::{
-    ChildTask, HarnessBuilder, RuntimeCommand, RuntimeConfig, RuntimeExecution, RuntimeExit, RuntimeHarness,
-    ServiceExit, ShutdownReason,
+    ChildTask, HarnessBuilder, RuntimeAutoUpdate, RuntimeCommand, RuntimeConfig, RuntimeExecution,
+    RuntimeExit, RuntimeHarness, ServiceExit, ShutdownReason,
 };
 
 const PRIMARY_SERVICE_NAME: &str = "quic-tunnel-core";
@@ -157,6 +157,7 @@ impl ApplicationRuntime {
         self.spawn_signal_bridge();
         self.spawn_harness_shutdown();
         self.spawn_config_watcher();
+        self.spawn_auto_updater();
         self.spawn_proxy_seam();
         self.spawn_primary_service(0);
 
@@ -178,6 +179,7 @@ impl ApplicationRuntime {
     async fn finish(mut self, exit: RuntimeExit) -> RuntimeExecution {
         let stopping_reason = match &exit {
             RuntimeExit::Clean => "graceful shutdown requested".to_owned(),
+            RuntimeExit::Updated { version } => format!("auto-update applied: version {version}"),
             RuntimeExit::Deferred { detail, .. } => {
                 format!("deferred service boundary reached: {detail}")
             }
@@ -210,6 +212,16 @@ impl ApplicationRuntime {
                     .record_state(LifecycleState::Stopped, "runtime stopped cleanly");
                 self.status
                     .record_readiness(ReadinessState::Stopping, "runtime stopped after clean shutdown");
+            }
+            RuntimeExit::Updated { .. } => {
+                self.status.record_state(
+                    LifecycleState::Stopped,
+                    "runtime stopped after applying auto-update",
+                );
+                self.status.record_readiness(
+                    ReadinessState::Stopping,
+                    "runtime stopped after applying auto-update",
+                );
             }
             RuntimeExit::Deferred { .. } | RuntimeExit::Failed { .. } => {
                 self.status.record_state(

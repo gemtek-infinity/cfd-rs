@@ -6,10 +6,11 @@ use cfdrs_his::credentials::search_credential_by_id;
 use cfdrs_his::environment::{current_uid, is_container_runtime};
 use cfdrs_his::metrics_server::parse_metrics_address;
 use cfdrs_his::signal::parse_grace_period;
+use cfdrs_his::updater::{parse_auto_update_freq, resolve_auto_update_settings};
 use cfdrs_shared::{ConfigError, OriginCertLocator};
 use cfdrs_shared::{LogConfig, LogLevel, build_log_config};
 
-use crate::runtime::RuntimeConfig;
+use crate::runtime::{RuntimeAutoUpdate, RuntimeConfig};
 
 use super::StartupSurface;
 
@@ -32,12 +33,20 @@ pub(crate) fn prepare_runtime_startup(
     let transport_log_level = flags.transport_loglevel.as_deref().map(str::parse).transpose()?;
     let icmp_sources = resolve_icmp_sources(flags);
     let diagnostic_configuration = resolve_diagnostic_configuration(&log_config);
+    let auto_update_settings = resolve_auto_update_settings(
+        flags.no_autoupdate,
+        Some(parse_auto_update_freq(flags.autoupdate_freq.as_deref())?),
+        cfdrs_his::updater::should_skip_update(),
+        cfdrs_his::environment::is_terminal(),
+        cfdrs_his::environment::TARGET_OS,
+    );
 
     let mut runtime_config = RuntimeConfig::new(startup.discovery.clone(), startup.normalized.clone())
         .with_shutdown_grace_period(grace_period)
         .with_container_runtime(is_container_runtime())
         .with_icmp_sources(icmp_sources)
-        .with_diagnostic_configuration(diagnostic_configuration);
+        .with_diagnostic_configuration(diagnostic_configuration)
+        .with_auto_update(RuntimeAutoUpdate::new(auto_update_settings));
 
     if let Some(pidfile_path) = flags.pidfile.clone() {
         runtime_config = runtime_config.with_pidfile_path(pidfile_path);
@@ -388,5 +397,36 @@ mod tests {
         );
 
         fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
+    fn prepare_runtime_startup_wires_auto_update_configuration() {
+        let prepared = prepare_runtime_startup(startup_surface(None), &GlobalFlags::default())
+            .expect("runtime startup should prepare");
+
+        let auto_update = prepared
+            .runtime_config
+            .auto_update()
+            .expect("auto-update settings should be present");
+        assert_eq!(
+            auto_update.settings().frequency(),
+            cfdrs_his::updater::DEFAULT_AUTOUPDATE_FREQ
+        );
+    }
+
+    #[test]
+    fn prepare_runtime_startup_honors_no_autoupdate_flag() {
+        let flags = GlobalFlags {
+            no_autoupdate: true,
+            ..GlobalFlags::default()
+        };
+        let prepared =
+            prepare_runtime_startup(startup_surface(None), &flags).expect("runtime startup should prepare");
+
+        let auto_update = prepared
+            .runtime_config
+            .auto_update()
+            .expect("auto-update settings should be present");
+        assert!(!auto_update.settings().enabled());
     }
 }

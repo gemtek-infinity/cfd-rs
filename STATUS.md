@@ -7,7 +7,7 @@
 - workspace version: `2026.2.0-alpha.202603`
 - active milestone: `Proof Closure`
 - next milestone: `Performance Architecture Overhaul`
-- highest-risk blockers: `HIS-047`
+- highest-risk blockers: `HIS-073`
 - production-alpha logging blocker set: cleared
 - behavior truth: [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - parity routing: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
@@ -29,7 +29,7 @@ What exists now:
 
 What does not exist yet:
 
-- the remaining updater, ICMP, restart, and profiling rows mapped to
+- the remaining ICMP, restart, and profiling rows mapped to
   `Proof Closure`
 - final `Performance Architecture Overhaul`
 
@@ -42,7 +42,7 @@ What does not exist yet:
   record remaining deferments, non-lane items, and intentional divergences
   explicitly; rerun the full logging contract after CLI, CDC, and HIS closure
 - current front edge:
-  `HIS-047`
+  `HIS-073`
 - exit still requires:
   closure and evidence refresh for the remaining rows mapped to
   `Proof Closure` in the roadmap index
@@ -57,12 +57,12 @@ Next milestone after Proof Closure:
 
 Tier 1 lane-blocking rows, in implementation order:
 
-1. `HIS-047` —
-   updater proof-closure track
+1. `HIS-073`, `HIS-074` —
+   restart inheritance track
 2. `HIS-071`, `HIS-069`, `HIS-072` —
    remaining ICMP and local test-server host features
-3. `HIS-073`, `HIS-074`, `HIS-029`, `HIS-030` —
-   restart inheritance and remaining local convenience endpoints
+3. `HIS-029`, `HIS-030` —
+   remaining local convenience endpoints
 
 ## Parity Snapshot
 
@@ -72,15 +72,15 @@ Counts from the `Rust status now` column in each domain ledger.
 | --- | --- | --- | --- | --- | --- |
 | CLI | 32 | 32 | 0 | 0 | 100% |
 | CDC | 44 | 44 | 0 | 0 | 100% |
-| HIS | 74 | 64 | 8 | 2 | 86% |
-| **Total** | **150** | **140** | **8** | **2** | **93%** |
+| HIS | 74 | 65 | 7 | 2 | 88% |
+| **Total** | **150** | **141** | **7** | **2** | **94%** |
 
 Closed breakdown:
 
 - CLI: 31 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
 - CDC: 44 `audited, parity-backed`
-- HIS: 62 `audited, parity-backed` +
+- HIS: 63 `audited, parity-backed` +
   1 `audited, intentional divergence` (`HIS-053`)
 
 ## Test Snapshot

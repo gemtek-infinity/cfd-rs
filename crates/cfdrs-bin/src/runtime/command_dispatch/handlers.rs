@@ -108,6 +108,15 @@ impl ApplicationRuntime {
         Some(RuntimeExit::Clean)
     }
 
+    pub(super) fn handle_auto_update_applied(&mut self, version: String) -> Option<RuntimeExit> {
+        self.status.record_service_status(
+            "auto-updater",
+            format!("updated connector binary to {version}; runtime restart requested"),
+        );
+        self.status.record_shutdown_reason(&ShutdownReason::AutoUpdate);
+        Some(RuntimeExit::Updated { version })
+    }
+
     pub(super) fn handle_control_plane_failure(&mut self, detail: String) -> Option<RuntimeExit> {
         self.status
             .record_failure_boundary("runtime-control-plane", "fatal", &detail);

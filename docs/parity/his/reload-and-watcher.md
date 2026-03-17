@@ -228,6 +228,18 @@ Platform-specific files:
 - runtime shutdown grace period defaulting to 30s via cfdrs-his and accepting parsed `--grace-period` overrides
 - pidfile helpers wired on runtime service-ready and cleanup through
         [crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs](../../../crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs)
+- manual updater command via [crates/cfdrs-his/src/updater/mod.rs](../../../crates/cfdrs-his/src/updater/mod.rs)
+  and [crates/cfdrs-bin/src/main.rs](../../../crates/cfdrs-bin/src/main.rs):
+  Workers update-service client, SHA-256 validation, `.new`/`.old` binary swap,
+  and exit codes `0`/`10`/`11`
+- runtime auto-update policy via [crates/cfdrs-his/src/updater/mod.rs](../../../crates/cfdrs-his/src/updater/mod.rs)
+  and [crates/cfdrs-bin/src/runtime/tasks/autoupdate.rs](../../../crates/cfdrs-bin/src/runtime/tasks/autoupdate.rs):
+  Go-style `--autoupdate-freq` parsing, terminal/package-managed restriction handling,
+  periodic `spawn_blocking` checks, and runtime exit `11` after a successful replacement
+- package-manager detection via
+  [crates/cfdrs-his/src/environment.rs](../../../crates/cfdrs-his/src/environment.rs)
+  and [crates/cfdrs-his/src/updater/mod.rs](../../../crates/cfdrs-his/src/updater/mod.rs):
+  `.installedFromPackageManager` marker short-circuits both manual and periodic update flows
 - reload recovery strategy and action handling in [crates/cfdrs-his/src/watcher.rs](../../../crates/cfdrs-his/src/watcher.rs):
     `ReloadActionLoop` keeps the previous config on nonfatal update errors and stops on invariant failures;
     channel-driven `run()` processes actions from `mpsc::Receiver<ReloadAction>` matching Go `actionLoop()` select semantics
@@ -240,11 +252,7 @@ Platform-specific files:
 ### What is missing
 
 - file watcher runtime integration (HIS-041 `NotifyFileWatcher` exists but is not connected to the reload loop in cfdrs-bin)
-- auto-update mechanism
-- update CLI command
-- update check HTTP client
 - graceful process restart (fork/exec)
-- package manager detection (`.installedFromPackageManager`)
 - double-signal immediate shutdown (second signal bypass grace period)
 - gracenet socket inheritance for restart
 

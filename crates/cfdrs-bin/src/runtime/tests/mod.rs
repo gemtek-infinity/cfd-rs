@@ -7,3 +7,4 @@ mod lifecycle_primary;
 mod lifecycle_proxy;
 mod malformed_input;
 mod performance;
+mod updater;
