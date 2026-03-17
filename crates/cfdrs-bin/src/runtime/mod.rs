@@ -82,7 +82,12 @@ impl ApplicationRuntime {
     }
 
     fn build_management_service(&mut self) {
-        let router = management::build_management_router(self.config.connector_id(), String::new(), false);
+        let router = management::build_management_router(
+            self.config.connector_id(),
+            String::new(),
+            String::new(),
+            false,
+        );
         self.management_router = Some(router);
     }
 

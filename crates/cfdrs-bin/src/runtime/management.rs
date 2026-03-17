@@ -6,7 +6,9 @@
 //! See `baseline-2026.2.0/management/service.go` and
 //! `baseline-2026.2.0/management/middleware.go`.
 
+use std::net::TcpStream;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::Router;
 use axum::body::Body;
@@ -27,6 +29,7 @@ use serde::Deserialize;
 struct ManagementState {
     connector_id: uuid::Uuid,
     label: String,
+    service_ip: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -42,9 +45,14 @@ struct ManagementState {
 pub(super) fn build_management_router(
     connector_id: uuid::Uuid,
     label: String,
+    service_ip: String,
     enable_diag_services: bool,
 ) -> Router {
-    let state = Arc::new(ManagementState { connector_id, label });
+    let state = Arc::new(ManagementState {
+        connector_id,
+        label,
+        service_ip,
+    });
 
     let mut router = Router::new()
         .route(ROUTE_PING, get(handle_ping))
@@ -117,17 +125,17 @@ async fn handle_ping() -> StatusCode {
     StatusCode::OK
 }
 
-/// GET `/host_details` — connector identity.
+/// GET `/host_details` — connector identity (CDC-025).
 ///
 /// Matches `getHostDetails()` in Go. Returns `HostDetailsResponse` JSON
 /// with connector_id, hostname label, and local IP.
-/// Full IP detection is CDC-025 scope.
 async fn handle_host_details(State(state): State<Arc<ManagementState>>) -> Response {
     let hostname = get_host_label(&state.label);
+    let ip = get_private_ip(&state.service_ip).unwrap_or_default();
 
     let response = HostDetailsResponse {
         connector_id: state.connector_id.to_string(),
-        ip: String::new(),
+        ip,
         hostname,
     };
 
@@ -163,6 +171,20 @@ async fn handle_diag_pprof_stub() -> StatusCode {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/// Discover the machine's preferred private IP by dialing `service_ip`.
+///
+/// Matches Go `getPrivateIP(addr)`: establishes a short-lived TCP
+/// connection to the management service's own listen address and reads
+/// the local socket address chosen by the OS.
+fn get_private_ip(service_ip: &str) -> Option<String> {
+    if service_ip.is_empty() {
+        return None;
+    }
+    let stream = TcpStream::connect_timeout(&service_ip.parse().ok()?, Duration::from_secs(1)).ok()?;
+    let local = stream.local_addr().ok()?;
+    Some(local.ip().to_string())
+}
 
 /// Derive the hostname label for `/host_details`.
 ///
@@ -224,7 +246,7 @@ mod tests {
 
     #[tokio::test]
     async fn ping_route_returns_200() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         let response = app.oneshot(authed_get("/ping")).await.expect("response");
 
@@ -233,7 +255,7 @@ mod tests {
 
     #[tokio::test]
     async fn ping_head_returns_200() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
         let token = make_test_jwt();
 
         let response = app
@@ -250,7 +272,7 @@ mod tests {
 
     #[tokio::test]
     async fn logs_route_returns_stub() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         let response = app.oneshot(authed_get("/logs")).await.expect("response");
 
@@ -260,7 +282,7 @@ mod tests {
     #[tokio::test]
     async fn host_details_route_returns_json() {
         let id = uuid::Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").expect("uuid");
-        let app = build_management_router(id, "my-label".to_owned(), false);
+        let app = build_management_router(id, "my-label".to_owned(), String::new(), false);
 
         let response = app.oneshot(authed_get("/host_details")).await.expect("response");
 
@@ -285,7 +307,7 @@ mod tests {
 
     #[tokio::test]
     async fn diag_metrics_available_when_enabled() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), true);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), true);
 
         let response = app.oneshot(authed_get("/metrics")).await.expect("response");
 
@@ -295,7 +317,7 @@ mod tests {
 
     #[tokio::test]
     async fn diag_metrics_absent_when_disabled() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         let response = app.oneshot(authed_get("/metrics")).await.expect("response");
 
@@ -305,7 +327,7 @@ mod tests {
 
     #[tokio::test]
     async fn diag_pprof_available_when_enabled() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), true);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), true);
 
         let response = app
             .oneshot(authed_get("/debug/pprof/heap"))
@@ -317,7 +339,7 @@ mod tests {
 
     #[tokio::test]
     async fn diag_pprof_absent_when_disabled() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         let response = app
             .oneshot(authed_get("/debug/pprof/heap"))
@@ -331,7 +353,7 @@ mod tests {
 
     #[tokio::test]
     async fn missing_token_returns_400_with_error_code_1001() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         let response = app.oneshot(unauthed_get("/ping")).await.expect("response");
 
@@ -356,7 +378,7 @@ mod tests {
 
     #[tokio::test]
     async fn invalid_token_returns_400() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         let response = app
             .oneshot(
@@ -372,7 +394,7 @@ mod tests {
 
     #[tokio::test]
     async fn empty_token_returns_400() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         let response = app
             .oneshot(
@@ -388,14 +410,14 @@ mod tests {
 
     #[tokio::test]
     async fn valid_token_allows_request_through() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         let response = app.oneshot(authed_get("/ping")).await.expect("response");
 
         assert_eq!(response.status(), StatusCode::OK);
     }
 
-    // -- Host label (CDC-025 prep) ----------------------------------------
+    // -- Host label and private IP (CDC-025) --------------------------------
 
     #[test]
     fn get_host_label_with_custom_label() {
@@ -411,11 +433,68 @@ mod tests {
         assert!(!label.starts_with("custom:"));
     }
 
+    #[test]
+    fn get_private_ip_empty_addr_returns_none() {
+        assert!(get_private_ip("").is_none());
+    }
+
+    #[test]
+    fn get_private_ip_invalid_addr_returns_none() {
+        assert!(get_private_ip("not-an-address").is_none());
+    }
+
+    #[test]
+    fn get_private_ip_unreachable_returns_none() {
+        // Port 1 on loopback is not listening; connect should fail/timeout.
+        assert!(get_private_ip("127.0.0.1:1").is_none());
+    }
+
+    #[tokio::test]
+    async fn host_details_includes_ip_when_service_ip_reachable() {
+        // Bind a throwaway listener to get a real port, then build the
+        // management router with that address as service_ip.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind");
+        let addr = listener.local_addr().expect("local addr");
+
+        let id = uuid::Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").expect("uuid");
+        let app = build_management_router(id, "test".to_owned(), addr.to_string(), false);
+
+        let response = app.oneshot(authed_get("/host_details")).await.expect("response");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .expect("body");
+        let parsed: serde_json::Value = serde_json::from_slice(&body).expect("json");
+
+        // When service_ip is reachable, we expect a non-empty IP field.
+        assert_eq!(parsed["ip"], "127.0.0.1");
+        assert_eq!(parsed["hostname"], "custom:test");
+    }
+
+    #[tokio::test]
+    async fn host_details_omits_ip_when_service_ip_empty() {
+        let id = uuid::Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").expect("uuid");
+        let app = build_management_router(id, "label".to_owned(), String::new(), false);
+
+        let response = app.oneshot(authed_get("/host_details")).await.expect("response");
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .expect("body");
+        let parsed: serde_json::Value = serde_json::from_slice(&body).expect("json");
+
+        // ip should be omitted (skip_serializing_if = "String::is_empty")
+        assert!(parsed.get("ip").is_none(), "empty ip should be omitted from JSON");
+        assert_eq!(parsed["hostname"], "custom:label");
+    }
+
     // -- Route completeness audit (CDC-023) -------------------------------
 
     #[tokio::test]
     async fn all_default_routes_respond_when_authenticated() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), false);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
 
         for path in ["/ping", "/logs", "/host_details"] {
             let response = app
@@ -434,7 +513,7 @@ mod tests {
 
     #[tokio::test]
     async fn all_diag_routes_respond_when_enabled() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), true);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), true);
 
         let diag_paths = ["/metrics", "/debug/pprof/heap", "/debug/pprof/goroutine"];
 
@@ -455,7 +534,7 @@ mod tests {
 
     #[tokio::test]
     async fn auth_required_on_all_routes_including_diag() {
-        let app = build_management_router(uuid::Uuid::nil(), String::new(), true);
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), true);
 
         let all_paths = ["/ping", "/logs", "/host_details", "/metrics", "/debug/pprof/heap"];
 
