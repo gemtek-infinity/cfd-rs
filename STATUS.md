@@ -9,7 +9,7 @@
 - next milestone: `Proof Closure`
 - highest-risk blockers: `HIS-016`
 - production-alpha logging blocker set:
-  `CLI-023`, `CLI-024`, `CDC-026`, `HIS-036`
+  `CLI-023`, `CLI-024`, `HIS-036`
 - behavior truth: [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - parity routing: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - command surface: [`Justfile`](Justfile)
@@ -31,7 +31,7 @@ What exists now:
 What does not exist yet:
 
 - CLI Foundation milestone is complete; `Command Family Closure` is next
-- management service, log streaming, and Cloudflare REST API client
+- WebSocket client streaming for tail/management log streaming
 - final `Performance Architecture Overhaul`
 
 ## Active Milestone
@@ -43,7 +43,7 @@ What does not exist yet:
   finish the user-visible surface required for the declared Linux lane;
   close the remaining cross-domain logging surface
 - current front edge:
-  `HIS-016`, `CLI-023`, `CDC-026`
+  `HIS-016`, `CLI-023`
 - exit still requires:
   behavioral implementation for remaining partial CLI, CDC, and HIS rows
   mapped to `Command Family Closure` in the roadmap index
@@ -60,8 +60,8 @@ Tier 1 lane-blocking rows, in implementation order:
 
 1. `HIS-016` — SysV init script generation remains the last open Host and
    Runtime Foundation row and a proof-closure blocker
-2. `CLI-023`, `CLI-024`, `CDC-026`, `HIS-036` —
-   explicit cross-domain logging blocker set
+2. `CLI-023`, `CLI-024`, `HIS-036` —
+   remaining cross-domain logging blocker set (`CDC-026` closed)
 3. `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
    remaining command-linked host/runtime rows
 
@@ -86,7 +86,7 @@ Closed breakdown:
 
 ## Test Snapshot
 
-1070 tests passing across 5 app crates:
+1113 tests passing across 5 app crates:
 
 - `cfdrs-bin`
 - `cfdrs-cdc`
