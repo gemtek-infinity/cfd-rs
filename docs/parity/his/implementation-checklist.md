@@ -144,15 +144,15 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-032 | `tunnel diag` CLI command | `diagnostic/` package, `tunnel/subcommands.go` | collect diagnostics bundle as ZIP with 11 jobs, toggleable via `--no-diag-*` flags | cfdrs-his `diagnostics.rs` | audited, partial | local tests | open gap | command tests, ZIP output tests | high | `DiagnosticHandler` trait + `StubDiagnosticHandler`; types defined, no runtime collection; 1 contract test (`stub_handler_returns_deferred`) |
-| HIS-033 | system information collector | `diagnostic/system_collector_linux.go` | collect memory, file descriptors, OS info, disk volumes; return `SystemInformationResponse` JSON | cfdrs-his `diagnostics.rs` | audited, partial | local tests | open gap | system info tests, JSON shape tests | high | `SystemInformation`, `DiskVolumeInformation`, and `SystemInformationResponse` types match Go camelCase JSON tags with omitempty; 3 parity tests verify key names, omitempty behavior, and response wrapper shape; no runtime collection |
-| HIS-034 | tunnel state collector | `diagnostic/` and `/diag/tunnel` | collect tunnel ID, connector ID, active connections, ICMP sources; return `TunnelState` JSON | cfdrs-his `diagnostics.rs` | audited, partial | local tests | open gap | tunnel state tests | high | `TunnelState` and `IndexedConnectionInfo` types match Go JSON tags including `tunnelID`, `connectorID`, `icmp_sources` casing; 3 parity tests verify key names, omitempty, and empty-object serialization; no runtime state collection |
-| HIS-035 | CLI configuration collector | `diagnostic/handlers.go` `/diag/configuration` | return `map[string]string` with `uid`, `log_file`, `log_directory`; exclude secrets | cfdrs-his `diagnostics.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | handler tests, secret exclusion tests | medium | runtime now serves `/diag/configuration` with UID and active local log file/directory hints; broader CLI-flag coverage and secret filtering parity remain open |
-| HIS-036 | host log collector | `diagnostic/log_collector_host.go` | UID==0 and systemd: `journalctl -u cloudflared.service --since "2 weeks ago"`; otherwise: user log path; fallback `/var/log/cloudflared.err` | cfdrs-his `diagnostics.rs` | audited, partial | local tests | open gap | log collection tests, privilege-based behavior tests | medium | types defined; parity test confirms journalctl command, args, and fallback log path match Go baseline constants; no journalctl or log-file collection runtime |
-| HIS-037 | network traceroute collector | `diagnostic/` network collector | traceroute to `region{1,2}.v2.argotunnel.com` (IPv4/IPv6), default 5 hops, 5s timeout | cfdrs-his `diagnostics.rs` | audited, partial | local tests | open gap | traceroute tests | medium | `DIAGNOSTIC_REGIONS` constant matches Go baseline; parity test verifies both region hostnames; no traceroute collection |
-| HIS-038 | diagnostic instance discovery | `diagnostic/` metric port scanning | scan known ports 20241-20245 to find running instance | cfdrs-his `diagnostics.rs` | audited, partial | local tests | open gap | port scan tests | medium | `AddressableTunnelState` wraps (state, address). `DiscoveryError` enum: `MetricsServerNotFound`, `MultipleMetricsServersFound` matching Go error messages. `known_metrics_addresses(is_virtual)` builds host/virtual port lists. `find_metrics_server(addresses, probe)` implements Go `FindMetricsServer` logic with injectable probe. 8 tests: address generation (host + virtual), 0/1/N instance scenarios, scan order, error display, type fields. Real HTTP probe pending. |
-| HIS-039 | `/diag/system` HTTP endpoint | `diagnostic/handlers.go` | system info JSON served on metrics server | cfdrs-his `diagnostics.rs` | audited, partial | local tests | open gap | endpoint tests | high | types defined with Go-matching JSON shape; 3 JSON shape parity tests (`system_info_json_keys_match_go_baseline`, `system_info_response_json_shape_matches_go`, `disk_volume_json_keys_match_go_baseline`); no `/diag/system` HTTP handler |
-| HIS-040 | `/diag/tunnel` HTTP endpoint | `diagnostic/handlers.go` | tunnel state JSON served on metrics server | cfdrs-his `diagnostics.rs` | audited, partial | local tests | open gap | endpoint tests | high | types defined with Go-matching JSON shape; 3 JSON shape parity tests (`tunnel_state_json_keys_match_go_baseline`, `indexed_connection_info_json_keys_match_go_baseline`, `tunnel_state_omitempty_matches_go`); no `/diag/tunnel` HTTP handler |
+| HIS-032 | `tunnel diag` CLI command | `diagnostic/` package, `tunnel/subcommands.go` | collect diagnostics bundle as ZIP with 11 jobs, toggleable via `--no-diag-*` flags | cfdrs-his `diagnostics.rs`, cfdrs-bin `tunnel_local_commands.rs` | audited, parity-backed | local tests | closed | command tests, ZIP output tests | high | `run_diagnostic()` now discovers the target metrics listener (or uses `--metrics`), collects the Go-shaped 11-job bundle, writes `cloudflared-diag-*.zip`, and preserves CLI-facing semantics for no-instance, multiple-instance, and invalid-log-configuration cases. Evidence: 1 parse-dispatch test in `cfdrs-cli`, 5 behavioral integration tests in `cfdrs-bin`, and ZIP/report tests in `cfdrs-his` |
+| HIS-033 | system information collector | `diagnostic/system_collector_linux.go` | collect memory, file descriptors, OS info, disk volumes; return `SystemInformationResponse` JSON | cfdrs-his `diagnostics.rs`, `diagnostics/system.rs` | audited, parity-backed | local tests | closed | system info tests, JSON shape tests | high | `collect_system_information()` reads `/proc/meminfo`, `sysctl -n fs.file-nr`, `df -k`, and `uname -a`, then returns the Go-shaped `SystemInformationResponse`; success retains the Go quirk of serializing `errors` as `{}` rather than omitting it |
+| HIS-034 | tunnel state collector | `diagnostic/` and `/diag/tunnel` | collect tunnel ID, connector ID, active connections, ICMP sources; return `TunnelState` JSON | cfdrs-his `diagnostics.rs`, cfdrs-bin `runtime/metrics.rs`, cfdrs-bin `runtime/state/status.rs` | audited, parity-backed | local tests | closed | tunnel state tests | high | runtime now records tunnel ID, connector ID, active QUIC connection registrations, and configured ICMP sources into the metrics snapshot; `/diag/tunnel` and discovery both use the same `TunnelState` contract |
+| HIS-035 | CLI configuration collector | `diagnostic/handlers.go` `/diag/configuration` | return `map[string]string` with `uid`, `logfile`, `log-directory`; exclude secrets | cfdrs-his `diagnostics.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | local tests | closed | handler tests, secret exclusion tests | medium | runtime now serves `/diag/configuration` with the baseline key names `uid`, `logfile`, and `log-directory`; startup wiring only exposes the admitted safe logging fields, so secret-bearing CLI/config values stay out of the diagnostic surface |
+| HIS-036 | host log collector | `diagnostic/log_collector_host.go` | UID==0 and systemd: `journalctl -u cloudflared.service --since "2 weeks ago"`; otherwise: user log path; fallback `/var/log/cloudflared.err` | cfdrs-his `logging.rs`, cfdrs-his `diagnostics.rs` | audited, parity-backed | local tests | closed | log collection tests, privilege-based behavior tests | medium | host log collection now resolves root+systemd to `journalctl --since "2 weeks ago" -u cloudflared.service`, root fallback to the managed log file, and non-root to explicit logfile/log-directory settings; directory collection intentionally duplicates `cloudflared.log` to match the Go merge quirk, and bundle collection prefers Kubernetes then Docker then host logs |
+| HIS-037 | network traceroute collector | `diagnostic/` network collector | traceroute to `region{1,2}.v2.argotunnel.com` (IPv4/IPv6), default 5 hops, 5s timeout | cfdrs-his `diagnostics.rs`, `diagnostics/network.rs` | audited, parity-backed | local tests | closed | traceroute tests | medium | `collect_network_traces()` runs `traceroute -I -w 5 -m 5` and `traceroute6 -I -w 5 -m 5` for both diagnostic regions, then emits both structured JSON and raw text reports for the bundle |
+| HIS-038 | diagnostic instance discovery | `diagnostic/` metric port scanning | scan known ports 20241-20245 to find running instance | cfdrs-his `diagnostics.rs`, `diagnostics/http.rs` | audited, parity-backed | local tests | closed | port scan tests | medium | discovery now probes `/diag/tunnel` over real HTTP across the known metrics addresses, preserves scan order, and returns Go-matching `metrics server not found` / `multiple metrics server found` error semantics |
+| HIS-039 | `/diag/system` HTTP endpoint | `diagnostic/handlers.go` | system info JSON served on metrics server | cfdrs-his `diagnostics.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | local tests | closed | endpoint tests | high | runtime now serves `/diag/system` from the metrics listener via `spawn_blocking(collect_system_information)`, preserving the Go-shaped JSON response body on the local diagnostics surface |
+| HIS-040 | `/diag/tunnel` HTTP endpoint | `diagnostic/handlers.go` | tunnel state JSON served on metrics server | cfdrs-his `diagnostics.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | local tests | closed | endpoint tests | high | runtime now serves `/diag/tunnel` from the live metrics snapshot, including `tunnelID`, `connectorID`, connection indices/status, and `icmp_sources`; integration tests cover the endpoint payload shape |
 
 ### Watcher and Config Reload
 
@@ -295,24 +295,21 @@ template content (HIS-022), UID detection (HIS-050), terminal detection
 (HIS-061), token lock file (HIS-062), ping group range check (HIS-070), binary
 path detection (HIS-054), glibc marker detection (HIS-055).
 
-Partial with runtime-backed seams: local HTTP metrics server (HIS-024 through HIS-031,
-runtime listener plus partial endpoints including `/config`), all diagnostics
-(HIS-032 through HIS-040, types + stub), watcher/reload (HIS-041 through
-HIS-045, concrete reload/orchestrator seams plus runtime watcher wiring in cfdrs-bin), updater (HIS-046, HIS-047,
-traits; HIS-048 and HIS-049 exit codes and package detection now closed), grace period (HIS-059, 30s default plus CLI/runtime
-wiring, but connection-level graceful shutdown still open), double-signal
-(HIS-060, now closed — parity confirmed against actual Go behavior), logging (HIS-063 through HIS-068,
-runtime sink wiring plus config builder/types and bounded rotation; HIS-063/064/065/067 local sinks now parity-backed, HIS-066 permissions now closed), ICMP (HIS-069, HIS-071, traits + constants),
-`hello_world` (HIS-072, trait only), process restart (HIS-073, HIS-074,
-trait only), deployment evidence (HIS-053, intentional divergence).
+Partial with runtime-backed seams: local HTTP metrics server (`/config` and
+`/debug/pprof/*` remain partial on top of the closed metrics/readiness/diag
+surface), updater (HIS-046, HIS-047, traits; HIS-048 and HIS-049 exit codes
+and package detection now closed), ICMP (HIS-069, HIS-071, raw-socket and
+source-selection work still open), `hello_world` (HIS-072, trait only),
+process restart (HIS-073, HIS-074, trait only), and deployment evidence
+(HIS-053, intentional divergence).
 
 No HIS rows remain fully absent. All 74 rows now have a Rust owner in
-cfdrs-his or cfdrs-shared. Runtime behavior for blocked items (diagnostic HTTP
-breadth, inotify, rolling rotation, raw sockets) is deferred behind owned seams.
+cfdrs-his or cfdrs-shared. Runtime behavior for the remaining blocked items
+(updater, raw sockets, restart inheritance) is deferred behind owned seams.
 
 ### Divergence records
 
-Two HIS items are classified as intentional divergences:
+One HIS item is classified as an intentional divergence:
 
 - **HIS-053 (deployment evidence):** Rust deployment evidence is
   contract-level and honesty-oriented. It explicitly declares known gaps
@@ -321,32 +318,20 @@ Two HIS items are classified as intentional divergences:
 HIS-053 is the only `intentional divergence` status.
 
 Blocked items use owned seams to define the API surface while keeping the
-remaining runtime gaps explicit (diagnostic HTTP breadth, raw sockets).
-These include HIS-039, HIS-040 (remaining diagnostics routes).
+remaining runtime gaps explicit (updater, raw sockets, restart inheritance).
 
 ### Gap ranking by priority
 
 Critical gaps (runtime exists, parity breadth still open):
 
-- HIS-024: local HTTP metrics server (baseline-backed constant tests landed; container bind mode and startup ordering still open)
-- HIS-025: `/ready` JSON endpoint (baseline-backed JSON shape tests landed; full connection-tracker semantics still open)
-- HIS-027: `/metrics` Prometheus endpoint (config response shape test landed; full baseline registry still open)
+- HIS-046, HIS-047: update command and auto-update
+- HIS-069: ICMP raw socket proxy
 
 High gaps (runtime-backed but incomplete):
 
-- HIS-026: `/healthcheck` (parity test confirms exact Go body; broader server parity still open)
-- HIS-032 through HIS-034: diagnostic command and collectors (stub)
-- HIS-039, HIS-040: diagnostic HTTP endpoints (stub)
-- HIS-046, HIS-047: update command and auto-update (stub)
-- HIS-063: log file creation (parity-backed — file sink, permissions, journald layer, logfile-over-directory precedence)
-- HIS-064: log directory (parity-backed — rolling path join, default directory, precedence rule)
-- HIS-065: rolling log rotation (parity-backed — max-size/max-backups/max-age matching Go defaults; backup naming uses numeric suffixes, intentional local divergence)
-- HIS-069, HIS-070: ICMP raw socket and ping group check (stub + check)
-
-- HIS-029: `/config` endpoint (needs HTTP server)
-- HIS-035 through HIS-037: diagnostic sub-collectors (stub)
-- HIS-038: diagnostic instance discovery (local tests, real HTTP pending)
-- HIS-071: ICMP source IP flags (constants only)
+- HIS-029: `/config` endpoint (CDC-backed orchestrator semantics still open)
+- HIS-030: `/debug/pprof/*` endpoints (explicit `501` boundary only)
+- HIS-071: ICMP source IP flags (auto-detect logic still open)
 - HIS-072: `hello_world` ingress listener (trait only)
 - HIS-073, HIS-074: gracenet socket inheritance and process restart (trait only)
 
@@ -370,18 +355,6 @@ production-alpha lane.
 
 ### Deferred (lane-relevant, post-alpha)
 
-Diagnostics subsystem:
-
-- HIS-032: `tunnel diag` CLI command
-- HIS-033: system information collector
-- HIS-034: tunnel state collector
-- HIS-035: CLI configuration collector
-- HIS-036: host log collector
-- HIS-037: network traceroute collector
-- HIS-038: diagnostic instance discovery
-- HIS-039: `/diag/system` HTTP endpoint
-- HIS-040: `/diag/tunnel` HTTP endpoint
-
 Updater subsystem:
 
 - HIS-046: `update` CLI command — requires external infrastructure
@@ -392,20 +365,13 @@ Local HTTP convenience endpoints:
 - HIS-029: `/config` endpoint — debugging aid
 - HIS-030: `/debug/pprof/*` endpoints — runtime profiling
 
-Environment and privilege:
-
-- HIS-050: UID detection — gates deferred diagnostic log path
-- HIS-051: terminal detection — gates deferred updater behavior
-
 ICMP proxy:
 
 - HIS-069: ICMP proxy raw socket — specialized feature, CAP_NET_RAW
-- HIS-070: ping group range check — Linux privilege gate
 - HIS-071: ICMP source IP flags — ICMP configuration
 
 Miscellaneous:
 
-- HIS-061: `--pidfile` flag — optional systemd integration
 - HIS-072: `hello_world` ingress listener — test/demo server
 - HIS-073: gracenet socket inheritance — zero-downtime restart optimization
 - HIS-074: process self-restart on update — depends on updater

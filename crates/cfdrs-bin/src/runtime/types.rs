@@ -23,6 +23,7 @@ pub(crate) struct RuntimeConfig {
     /// Matches Go compile-time `metrics.Runtime` variable. When true,
     /// the metrics server binds to `0.0.0.0` instead of `localhost`.
     is_container_runtime: bool,
+    icmp_sources: Vec<String>,
     diagnostic_configuration: BTreeMap<String, String>,
 }
 
@@ -36,6 +37,7 @@ impl RuntimeConfig {
             pidfile_path: None,
             metrics_bind_address: None,
             is_container_runtime: false,
+            icmp_sources: Vec::new(),
             diagnostic_configuration: BTreeMap::new(),
         }
     }
@@ -57,6 +59,11 @@ impl RuntimeConfig {
 
     pub(crate) fn with_container_runtime(mut self, is_container: bool) -> Self {
         self.is_container_runtime = is_container;
+        self
+    }
+
+    pub(crate) fn with_icmp_sources(mut self, icmp_sources: Vec<String>) -> Self {
+        self.icmp_sources = icmp_sources;
         self
     }
 
@@ -106,6 +113,14 @@ impl RuntimeConfig {
             .iter()
             .filter_map(|rule| rule.matcher.hostname.clone())
             .find(|hostname| !hostname.is_empty())
+    }
+
+    pub(crate) fn tunnel_id(&self) -> Option<Uuid> {
+        self.normalized().tunnel.as_ref().and_then(|tunnel| tunnel.uuid)
+    }
+
+    pub(crate) fn icmp_sources(&self) -> &[String] {
+        &self.icmp_sources
     }
 
     pub(crate) fn diagnostic_configuration(&self) -> &BTreeMap<String, String> {
@@ -184,6 +199,11 @@ pub(crate) enum RuntimeCommand {
     ProxyState {
         state: ProxySeamState,
         detail: String,
+    },
+    TunnelConnectionObserved {
+        index: u8,
+        protocol: String,
+        edge_address: String,
     },
     ServiceExited(ServiceExit),
     ShutdownRequested(ShutdownReason),

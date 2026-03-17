@@ -31,6 +31,17 @@ fn expect_protocol_state(msg: RuntimeCommand, expected: ProtocolBridgeState) -> 
     }
 }
 
+fn expect_tunnel_connection_observed(msg: RuntimeCommand) -> (u8, String, String) {
+    match msg {
+        RuntimeCommand::TunnelConnectionObserved {
+            index,
+            protocol,
+            edge_address,
+        } => (index, protocol, edge_address),
+        other => panic!("expected TunnelConnectionObserved, got: {other:?}"),
+    }
+}
+
 fn http_status_rule(hostname: Option<&str>, code: u16) -> IngressRule {
     IngressRule {
         matcher: IngressMatch {
@@ -228,6 +239,7 @@ async fn proxy_seam_receives_protocol_registration() {
     protocol_sender
         .send(ProtocolEvent::Registered {
             peer: "127.0.0.1:7844".parse().expect("socket addr should parse"),
+            conn_index: 0,
         })
         .await
         .expect("protocol bridge should stay available during registration test");
@@ -238,6 +250,15 @@ async fn proxy_seam_receives_protocol_registration() {
         .expect("should receive protocol state update");
     let detail = expect_protocol_state(msg, ProtocolBridgeState::RegistrationObserved);
     assert!(detail.contains("127.0.0.1:7844"));
+
+    let msg = command_rx
+        .recv()
+        .await
+        .expect("should receive tunnel connection update");
+    let (index, protocol, edge_address) = expect_tunnel_connection_observed(msg);
+    assert_eq!(index, 0);
+    assert_eq!(protocol, "quic");
+    assert_eq!(edge_address, "127.0.0.1");
 
     let msg = command_rx
         .recv()

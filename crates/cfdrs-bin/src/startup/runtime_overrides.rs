@@ -30,11 +30,13 @@ pub(crate) fn prepare_runtime_startup(
     let grace_period = parse_grace_period(flags.grace_period.as_deref())?;
     let log_config = resolve_log_config(&startup, flags)?;
     let transport_log_level = flags.transport_loglevel.as_deref().map(str::parse).transpose()?;
+    let icmp_sources = resolve_icmp_sources(flags);
     let diagnostic_configuration = resolve_diagnostic_configuration(&log_config);
 
     let mut runtime_config = RuntimeConfig::new(startup.discovery.clone(), startup.normalized.clone())
         .with_shutdown_grace_period(grace_period)
         .with_container_runtime(is_container_runtime())
+        .with_icmp_sources(icmp_sources)
         .with_diagnostic_configuration(diagnostic_configuration);
 
     if let Some(pidfile_path) = flags.pidfile.clone() {
@@ -142,14 +144,22 @@ fn resolve_diagnostic_configuration(log_config: &LogConfig) -> BTreeMap<String, 
     let mut diagnostic_configuration = BTreeMap::from([("uid".to_owned(), current_uid().to_string())]);
 
     if let Some(file) = log_config.file.as_ref() {
-        diagnostic_configuration.insert("log_file".to_owned(), file.full_path().display().to_string());
+        diagnostic_configuration.insert("logfile".to_owned(), file.full_path().display().to_string());
     }
 
     if let Some(rolling) = log_config.rolling.as_ref() {
-        diagnostic_configuration.insert("log_directory".to_owned(), rolling.dirname.display().to_string());
+        diagnostic_configuration.insert("log-directory".to_owned(), rolling.dirname.display().to_string());
     }
 
     diagnostic_configuration
+}
+
+fn resolve_icmp_sources(flags: &GlobalFlags) -> Vec<String> {
+    [flags.icmpv4_src.as_ref(), flags.icmpv6_src.as_ref()]
+        .into_iter()
+        .flatten()
+        .cloned()
+        .collect()
 }
 
 fn path_str(path: &Path) -> Result<&str, ConfigError> {
@@ -259,7 +269,7 @@ mod tests {
             prepared
                 .runtime_config
                 .diagnostic_configuration()
-                .get("log_directory")
+                .get("log-directory")
                 .map(String::as_str),
             Some("/var/log/cloudflared")
         );

@@ -101,7 +101,7 @@ hand-written parser (no clap or structopt).
 | CLI-015 | tunnel token | `cmd/cloudflared/tunnel/subcommands.go` | `tunnel token TUNNEL` fetches credential token for existing tunnel by name or UUID | current CLI surface | audited, parity-backed | local tests | closed | help capture, token-output tests | high | `execute_tunnel_token()` resolves tunnel ID, calls `get_tunnel_token()` API, optionally writes to `--credentials-file` or prints encoded token to stdout; NArg=1 enforced; 1 parse-dispatch test, 2 NArg tests |
 | CLI-016 | tunnel info | `cmd/cloudflared/tunnel/subcommands.go` | `tunnel info TUNNEL` lists details about active connectors | current CLI surface | audited, parity-backed | local tests | closed | help capture, info-output tests | medium | `execute_tunnel_info()` resolves tunnel ID, calls `list_active_clients()` API, displays tunnel name/ID/creation header then tab-separated connector table (CONNECTOR ID/CREATED/ARCHITECTURE/VERSION/ORIGIN IP/EDGE with `fmt_connections()` per-colo counts); NArg=1 enforced; 1 parse-dispatch test, 2 NArg tests |
 | CLI-017 | tunnel ready | `cmd/cloudflared/tunnel/subcommands.go` | `tunnel ready` calls `/ready` endpoint; requires `--metrics` flag; returns proper exit code | current CLI surface | audited, parity-backed | local tests | closed | help capture, ready-endpoint tests, exit-code tests | medium | `execute_tunnel_ready()` issues `GET http://{metrics}/ready` via `reqwest::blocking`, returns exit 0 on HTTP 200, and matches Go error shape `http://{metrics}/ready endpoint returned status code {status}\n{body}` on non-200. `--metrics` remains required and exits 1 with the exact baseline message when absent. Evidence: 1 parse-dispatch test (`tunnel_ready_subcommand`) in `cfdrs-cli` and 3 behavioral integration tests in `cfdrs-bin` |
-| CLI-018 | tunnel diag | `cmd/cloudflared/tunnel/subcommands.go` | `tunnel diag` creates diagnostic report from local cloudflared instance | current CLI surface | audited, partial | local tests | open gap | help capture, diagnostic-output tests | medium | Rust parses `tunnel diag` and dispatches to stub; overlaps HIS diagnostics; 1 parse-dispatch test (`tunnel_diag_subcommand`) |
+| CLI-018 | tunnel diag | `cmd/cloudflared/tunnel/subcommands.go` | `tunnel diag` creates diagnostic report from local cloudflared instance | current CLI surface | audited, parity-backed | local tests | closed | help capture, diagnostic-output tests | medium | `execute_tunnel_diag()` now builds `DiagnosticOptions`, auto-discovers metrics listeners across the Go port range when `--metrics` is absent, writes the Go-shaped ZIP bundle, and preserves baseline-facing CLI output semantics including `No instances found`, multi-instance listing, and non-fatal invalid-log-configuration reporting. Evidence: 1 parse-dispatch test in `cfdrs-cli`, 5 behavioral integration tests in `cfdrs-bin`, and ZIP/report tests in `cfdrs-his` |
 | CLI-019 | tunnel route | `cmd/cloudflared/tunnel/subcommands.go` | `tunnel route` parent command with subcommands `dns`, `lb`, `ip`; `ip` has sub-subcommands `add`, `show`/`list`, `delete`, `get` | current CLI surface | audited, parity-backed | local tests | closed | — | high | `route_vnet_commands.rs`: `execute_route_dns()` calls `route_tunnel()` with `HostnameRoute::Dns`, `execute_route_lb()` with `HostnameRoute::Lb`, `execute_route_ip_add()` calls `add_route()` with `NewRoute`, `execute_route_ip_show()` builds `IpRouteFilter` from 6 flags and calls `list_routes()`, `execute_route_ip_delete()` resolves by UUID or CIDR filter then calls `delete_route()`, `execute_route_ip_get()` calls `get_route_by_ip()` with optional vnet; `resolve_optional_vnet()` resolves `--vnet` by name or UUID matching Go `getVnetId()`; `render_route_table()` tab-separated output; 14 parse-dispatch+NArg tests + 2 render tests |
 | CLI-020 | tunnel vnet | `cmd/cloudflared/tunnel/vnets_subcommands.go` | `tunnel vnet` with subcommands `add` (with `--default`), `list`, `delete` (with `--force`), `update` (with `--name`, `--comment`) | current CLI surface | audited, parity-backed | local tests | closed | — | medium | `route_vnet_commands.rs`: `execute_vnet_add()` calls `create_virtual_network()` with `NewVirtualNetwork` from name/comment/default flags, `execute_vnet_list()` builds `VnetFilter` and calls `list_virtual_networks()`, `execute_vnet_delete()` resolves by name or UUID via `resolve_vnet_id()` then calls `delete_virtual_network()` with `--force`, `execute_vnet_update()` resolves + calls `update_virtual_network()` with `UpdateVirtualNetwork` from `--name`/`--comment`/`--default`; `render_vnet_table()` tab-separated output; 9 parse-dispatch+NArg tests + 3 render/resolve tests |
 | CLI-021 | tunnel ingress | `cmd/cloudflared/tunnel/ingress_subcommands.go` | `tunnel ingress` (hidden) with subcommands `validate` and `rule`; `validate` validates ingress from config; `rule URL` shows which rule matches | current CLI surface | audited, parity-backed | local tests | closed | help capture, validate/rule tests, hidden-command tests | medium | Hidden `tunnel ingress` now routes `validate`, `rule`, and bare help through `tunnel_local_commands.rs`. `validate` accepts `--json`, prints `Validating rules from ...`, surfaces unknown-key warnings, rejects `--url` after strict ingress parsing, and fails empty/missing-ingress configs with Go-matching `Validation failed: The config file doesn't contain any ingress rules`. `rule URL` prints `Using rules from ...`, resolves the matching rule, and renders Go-style multi-line output without injecting the runtime default `http_status:503` fallback. Evidence: 3 parse-dispatch tests in `cfdrs-cli`, 3 NArg tests + 6 behavioral integration tests in `cfdrs-bin`, and 5 unit tests in `tunnel_local_commands` |
@@ -156,9 +156,11 @@ Parsed and dispatched commands: all 40+ baseline command paths including
 all 9 top-level commands, all tunnel subcommands (with nested route/vnet/ingress),
 access subcommands and aliases, tail/management (with hidden `token`),
 service install/uninstall, and compatibility paths (proxy-dns, db-connect,
-classic tunnels). All dispatch to stubs except `help`, `version`, `validate`
-(transitional), and `run`/`tunnel run` (alpha-limited with full token
-precedence chain) which have behavioral implementations. NArg validation at
+classic tunnels). Behavioral implementations now cover service management,
+tunnel CRUD/run/ready/diag/route/vnet/ingress, tail token plus streaming,
+management token/help, compatibility removals, and the admitted access
+subtree boundaries. Remaining admitted CLI behavior work is the top-level
+`update` command, which depends on the HIS updater rows. NArg validation at
 all dispatch entry points matches Go baseline argument count requirements.
 Per-subcommand help routing for `tunnel --help` and `access --help` matches
 Go `SubcommandHelpTemplate` format.
@@ -166,8 +168,7 @@ Go `SubcommandHelpTemplate` format.
 Parsed flags: `--config`, `--help`/`-h`, `--version`/`-V`, `--short`/`-s`,
 40+ tunnel/access/service/management flags stored into `GlobalFlags`
 
-Missing from baseline: behavioral implementation behind the parsed stubs,
-exact help format matching
+Missing from baseline: top-level `update` behavior (depends on HIS updater)
 
 ### Divergence records
 
@@ -214,9 +215,7 @@ High gaps (behavioral implementation behind stubs):
 
 - CLI-006: update command (parsed — needs HIS updater)
 
-Medium gaps (remaining behavior work):
-
-- CLI-018: tunnel diag (depends on HIS diagnostics)
+Medium gaps: none remaining in the admitted CLI surface.
 
 ## Scope Classification
 
@@ -228,7 +227,6 @@ production-alpha lane.
 ### Deferred (lane-relevant, post-alpha)
 
 - CLI-006: `update` command — requires external update infrastructure
-- CLI-018: `tunnel diag` — diagnostics subsystem deferred as a unit
 
 ### Compatibility-only (deprecated error stubs)
 

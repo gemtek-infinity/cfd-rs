@@ -7,6 +7,7 @@ use axum::extract::State;
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
+use cfdrs_his::diagnostics::{TunnelState, collect_system_information};
 use cfdrs_his::metrics_server::{
     self, BuildInfo, ConfigResponse, HEALTHCHECK_RESPONSE, PPROF_DEFERRED, QuickTunnelResponse,
     ReadinessResponse,
@@ -24,8 +25,11 @@ use super::state::RuntimeStatus;
 
 #[derive(Debug)]
 struct MetricsSnapshot {
+    tunnel_id: Option<String>,
     connector_id: uuid::Uuid,
     ready_connections: u32,
+    tunnel_connections: Vec<cfdrs_his::diagnostics::IndexedConnectionInfo>,
+    icmp_sources: Vec<String>,
     config_response: ConfigResponse,
     diagnostic_configuration: BTreeMap<String, String>,
     quick_tunnel_hostname: String,
@@ -77,8 +81,11 @@ impl RuntimeMetricsHandle {
 
         let state = Arc::new(AppState {
             snapshot: RwLock::new(MetricsSnapshot {
+                tunnel_id: config.tunnel_id().map(|id| id.to_string()),
                 connector_id: config.connector_id(),
                 ready_connections: 0,
+                tunnel_connections: Vec::new(),
+                icmp_sources: config.icmp_sources().to_vec(),
                 config_response: runtime_config_response(config),
                 diagnostic_configuration: config.diagnostic_configuration().clone(),
                 quick_tunnel_hostname: config.quick_tunnel_hostname().unwrap_or_default(),
@@ -119,6 +126,7 @@ impl RuntimeMetricsHandle {
 
         if let Ok(mut snapshot) = self.state.snapshot.try_write() {
             snapshot.ready_connections = ready_connections;
+            snapshot.tunnel_connections = status.active_tunnel_connections();
             self.state
                 .ready_connections_gauge
                 .set(i64::from(ready_connections));
@@ -142,6 +150,8 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/quicktunnel", get(handle_quicktunnel))
         .route("/config", get(handle_config))
         .route("/diag/configuration", get(handle_diag_configuration))
+        .route("/diag/system", get(handle_diag_system))
+        .route("/diag/tunnel", get(handle_diag_tunnel))
         .route("/debug/pprof/{*rest}", get(handle_pprof))
         .fallback(handle_not_found)
         .with_state(state)
@@ -217,6 +227,41 @@ async fn handle_diag_configuration(State(state): State<Arc<AppState>>) -> Respon
     match serde_json::to_string(&snapshot.diagnostic_configuration) {
         Ok(body) => (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], body).into_response(),
         Err(_) => internal_error("diagnostic configuration serialization failed"),
+    }
+}
+
+async fn handle_diag_system() -> Response {
+    let response = match tokio::task::spawn_blocking(collect_system_information).await {
+        Ok(response) => response,
+        Err(_) => return internal_error("diagnostic system collection failed"),
+    };
+
+    match serde_json::to_string(&response) {
+        Ok(body) => (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], body).into_response(),
+        Err(_) => internal_error("diagnostic system response serialization failed"),
+    }
+}
+
+async fn handle_diag_tunnel(State(state): State<Arc<AppState>>) -> Response {
+    let snapshot = state.snapshot.read().await;
+    let response = TunnelState {
+        tunnel_id: snapshot.tunnel_id.clone(),
+        connector_id: Some(snapshot.connector_id.to_string()),
+        connections: if snapshot.tunnel_connections.is_empty() {
+            None
+        } else {
+            Some(snapshot.tunnel_connections.clone())
+        },
+        icmp_sources: if snapshot.icmp_sources.is_empty() {
+            None
+        } else {
+            Some(snapshot.icmp_sources.clone())
+        },
+    };
+
+    match serde_json::to_string(&response) {
+        Ok(body) => (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], body).into_response(),
+        Err(_) => internal_error("diagnostic tunnel response serialization failed"),
     }
 }
 
@@ -341,8 +386,11 @@ mod tests {
 
         Arc::new(AppState {
             snapshot: RwLock::new(MetricsSnapshot {
+                tunnel_id: None,
                 connector_id: uuid::Uuid::nil(),
                 ready_connections: 0,
+                tunnel_connections: Vec::new(),
+                icmp_sources: Vec::new(),
                 config_response: ConfigResponse {
                     version: 1,
                     config: json!({}),
@@ -442,7 +490,7 @@ mod tests {
             let mut snapshot = state.snapshot.write().await;
             snapshot.diagnostic_configuration = BTreeMap::from([
                 ("uid".to_owned(), "1000".to_owned()),
-                ("log_directory".to_owned(), "/var/log/cloudflared".to_owned()),
+                ("log-directory".to_owned(), "/var/log/cloudflared".to_owned()),
             ]);
         }
 
@@ -462,7 +510,58 @@ mod tests {
             .expect("body");
         let text = String::from_utf8_lossy(&body);
         assert!(text.contains("\"uid\":\"1000\""));
-        assert!(text.contains("\"log_directory\":\"/var/log/cloudflared\""));
+        assert!(text.contains("\"log-directory\":\"/var/log/cloudflared\""));
+    }
+
+    #[tokio::test]
+    async fn diag_tunnel_endpoint_serializes_runtime_state() {
+        let state = test_state();
+        {
+            let mut snapshot = state.snapshot.write().await;
+            snapshot.tunnel_id = Some("00000000-0000-0000-0000-000000000000".to_owned());
+            snapshot.tunnel_connections = vec![cfdrs_his::diagnostics::IndexedConnectionInfo {
+                index: Some(0),
+                is_connected: Some(true),
+                protocol: Some("quic".to_owned()),
+                edge_address: Some("198.41.200.1".to_owned()),
+            }];
+            snapshot.icmp_sources = vec!["192.0.2.1".to_owned()];
+        }
+
+        let app = build_router(state);
+        let response = app
+            .oneshot(Request::get("/diag/tunnel").body(Body::empty()).expect("request"))
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .expect("body");
+        let text = String::from_utf8_lossy(&body);
+        assert!(text.contains("\"tunnelID\":\"00000000-0000-0000-0000-000000000000\""));
+        assert!(text.contains("\"connectorID\":\"00000000-0000-0000-0000-000000000000\""));
+        assert!(text.contains("\"edgeAddress\":\"198.41.200.1\""));
+        assert!(text.contains("\"icmp_sources\":[\"192.0.2.1\"]"));
+    }
+
+    #[tokio::test]
+    async fn diag_system_endpoint_returns_wrapper_shape() {
+        let state = test_state();
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(Request::get("/diag/system").body(Body::empty()).expect("request"))
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 8192)
+            .await
+            .expect("body");
+        let text = String::from_utf8_lossy(&body);
+        assert!(text.contains("\"info\":"));
+        assert!(text.contains("\"errors\":"));
     }
 
     #[tokio::test]

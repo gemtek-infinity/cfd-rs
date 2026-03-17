@@ -7,9 +7,8 @@
 - workspace version: `2026.2.0-alpha.202603`
 - active milestone: `Proof Closure`
 - next milestone: `Performance Architecture Overhaul`
-- highest-risk blockers: `HIS-036`
-- production-alpha logging blocker set:
-  `HIS-036`
+- highest-risk blockers: `HIS-046`
+- production-alpha logging blocker set: cleared
 - behavior truth: [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - parity routing: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - command surface: [`Justfile`](Justfile)
@@ -30,7 +29,8 @@ What exists now:
 
 What does not exist yet:
 
-- final proof reruns and remaining rows mapped to `Proof Closure`
+- the remaining updater, ICMP, restart, and profiling rows mapped to
+  `Proof Closure`
 - final `Performance Architecture Overhaul`
 
 ## Active Milestone
@@ -42,7 +42,7 @@ What does not exist yet:
   record remaining deferments, non-lane items, and intentional divergences
   explicitly; rerun the full logging contract after CLI, CDC, and HIS closure
 - current front edge:
-  `HIS-036`
+  `HIS-046`
 - exit still requires:
   closure and evidence refresh for the remaining rows mapped to
   `Proof Closure` in the roadmap index
@@ -57,14 +57,12 @@ Next milestone after Proof Closure:
 
 Tier 1 lane-blocking rows, in implementation order:
 
-1. `HIS-036` —
-   remaining production-alpha logging blocker
-2. `HIS-033`, `HIS-034`, `HIS-035`, `HIS-037`, `HIS-038`,
-   `HIS-039`, `HIS-040`, `HIS-032`, `CLI-018` —
-   diagnostics proof-closure track after the logging blocker
-3. `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074`,
-   `HIS-046`, `HIS-047`, `CLI-006` —
-   remaining host/runtime network and updater rows
+1. `HIS-046`, `HIS-047`, `CLI-006` —
+   updater proof-closure track
+2. `HIS-071`, `HIS-069`, `HIS-072` —
+   remaining ICMP and local test-server host features
+3. `HIS-073`, `HIS-074`, `HIS-029`, `HIS-030` —
+   restart inheritance and remaining local convenience endpoints
 
 ## Parity Snapshot
 
@@ -72,22 +70,22 @@ Counts from the `Rust status now` column in each domain ledger.
 
 | Domain | Total | Closed | Partial | Not audited | % Closed |
 | --- | --- | --- | --- | --- | --- |
-| CLI | 32 | 30 | 2 | 0 | 94% |
+| CLI | 32 | 31 | 1 | 0 | 97% |
 | CDC | 44 | 44 | 0 | 0 | 100% |
-| HIS | 74 | 54 | 18 | 2 | 73% |
-| **Total** | **150** | **128** | **20** | **2** | **85%** |
+| HIS | 74 | 63 | 9 | 2 | 85% |
+| **Total** | **150** | **138** | **10** | **2** | **92%** |
 
 Closed breakdown:
 
-- CLI: 29 `audited, parity-backed` + 1 `audited, intentional divergence`
+- CLI: 30 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
 - CDC: 44 `audited, parity-backed`
-- HIS: 53 `audited, parity-backed` +
+- HIS: 62 `audited, parity-backed` +
   1 `audited, intentional divergence` (`HIS-053`)
 
 ## Test Snapshot
 
-1150 tests passing across 5 app crates:
+1175 tests passing across 5 app crates:
 
 - `cfdrs-bin`
 - `cfdrs-cdc`

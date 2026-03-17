@@ -1,5 +1,9 @@
 use cfdrs_cli::{CliOutput, GlobalFlags};
+use cfdrs_his::diagnostics::{
+    DiagnosticOptions, DiagnosticRunError, DiagnosticToggles, known_metrics_addresses, run_diagnostic,
+};
 use cfdrs_his::discovery::find_default_config_path;
+use cfdrs_his::environment::is_container_runtime;
 use cfdrs_shared::{
     ConfigSource, DiscoveryRequest, IngressRule, IngressService, OriginRequestConfig, RawConfig,
     find_matching_rule,
@@ -14,6 +18,17 @@ const NO_CONFIG_FILE_MSG: &str = "No configuration file was found. Please create
 const NO_INGRESS_RULES_MSG: &str = "Validation failed: The config file doesn't contain any ingress rules";
 const URL_INCOMPATIBLE_WITH_INGRESS_MSG: &str =
     "You can't set the --url flag (or $TUNNEL_URL) when using multiple-origin ingress rules";
+const DIAG_PORT_FORWARDING_HINT: &str = "If your instance is running in a Docker/Kubernetes environment you \
+                                         need to setup port forwarding for your application.";
+const DIAG_NO_INSTANCES_MSG: &str = "No instances found";
+const DIAG_MULTIPLE_INSTANCES_MSG: &str = "Found multiple instances running:";
+const DIAG_SELECT_INSTANCE_MSG: &str = "To select one instance use the option --metrics";
+const DIAG_INVALID_LOG_CONFIGURATION_MSG: &str = "Couldn't extract logs from the instance. If the instance \
+                                                  is running in a containerized environment use the option \
+                                                  --diag-container-id or --diag-pod-id. If there is no \
+                                                  logging configuration use --no-diag-logs.";
+const DIAG_COMPLETED_MSG: &str = "Diagnostic completed";
+const DIAG_COMPLETED_WITH_ERRORS_MSG: &str = "Diagnostic completed with one or more errors";
 
 #[derive(Debug)]
 struct StrictIngressConfig {
@@ -54,6 +69,74 @@ pub fn execute_tunnel_ready(flags: &GlobalFlags) -> CliOutput {
         format!("http://{metrics_addr}/ready endpoint returned status code {status}\n{body}"),
         1,
     )
+}
+
+pub fn execute_tunnel_diag(flags: &GlobalFlags) -> CliOutput {
+    let mut stdout = String::new();
+    if flags.metrics.is_none() {
+        stdout.push_str(DIAG_PORT_FORWARDING_HINT);
+        stdout.push('\n');
+    }
+
+    let mut options = DiagnosticOptions::new(known_metrics_addresses(is_container_runtime()));
+    options.address = flags.metrics.clone();
+    options.container_id = flags.diag_container_id.clone();
+    options.pod_id = flags.diag_pod_id.clone();
+    options.toggles = DiagnosticToggles {
+        no_diag_logs: flags.no_diag_logs,
+        no_diag_metrics: flags.no_diag_metrics,
+        no_diag_system: flags.no_diag_system,
+        no_diag_runtime: flags.no_diag_runtime,
+        no_diag_network: flags.no_diag_network,
+    };
+
+    let bundle = match run_diagnostic(options) {
+        Ok(bundle) => bundle,
+        Err(DiagnosticRunError::MetricsServerNotFound) => {
+            stdout.push_str(DIAG_NO_INSTANCES_MSG);
+            stdout.push('\n');
+            return CliOutput::success(stdout);
+        }
+        Err(DiagnosticRunError::MultipleMetricsServersFound { instances }) => {
+            stdout.push_str(DIAG_MULTIPLE_INSTANCES_MSG);
+            stdout.push('\n');
+            for instance in instances {
+                stdout.push_str(&format!(
+                    "Instance: tunnel-id={} connector-id={} metrics-address={}\n",
+                    instance.state.tunnel_id.unwrap_or_default(),
+                    instance.state.connector_id.unwrap_or_default(),
+                    instance.address,
+                ));
+            }
+            stdout.push_str(DIAG_SELECT_INSTANCE_MSG);
+            stdout.push('\n');
+            return CliOutput::success(stdout);
+        }
+        Err(error) => return CliOutput::failure(stdout, error.to_string(), 1),
+    };
+
+    stdout.push_str(&format!(
+        "Selected server {} starting diagnostic...\n",
+        bundle.selected_address
+    ));
+    stdout.push_str(&format!(
+        "Diagnostic file written: {}\n",
+        bundle.zip_path.display()
+    ));
+
+    if bundle.contains_error_text("provided log configuration is invalid") {
+        stdout.push_str(DIAG_INVALID_LOG_CONFIGURATION_MSG);
+        stdout.push('\n');
+    }
+
+    if bundle.had_errors() {
+        stdout.push_str(DIAG_COMPLETED_WITH_ERRORS_MSG);
+    } else {
+        stdout.push_str(DIAG_COMPLETED_MSG);
+    }
+    stdout.push('\n');
+
+    CliOutput::success(stdout)
 }
 
 pub fn execute_ingress_validate(flags: &GlobalFlags) -> CliOutput {

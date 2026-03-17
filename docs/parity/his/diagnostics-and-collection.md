@@ -57,15 +57,18 @@ shutdown via context cancellation with 15s timeout.
 - `cfdrs-bin` now owns a local runtime listener that binds the host default
   metrics address and known fallback ports using the HIS timeout constants.
 - The current Rust listener serves `/ready`, `/healthcheck`, `/metrics`,
-  `/quicktunnel`, `/config`, and `/diag/configuration`.
+  `/quicktunnel`, `/config`, `/diag/configuration`, `/diag/system`, and
+  `/diag/tunnel`.
 - `/ready` emits the baseline JSON shape and derives `readyConnections` from
   admitted runtime readiness (`1` when ready, `0` otherwise).
 - `/metrics` emits Prometheus text with `build_info` plus a readiness gauge.
 - `/quicktunnel` emits the admitted JSON shape from the runtime snapshot.
 - `/config` emits versioned JSON from the current normalized config surface.
-- `/diag/configuration` emits UID and active local log path/directory hints.
+- `/diag/configuration` emits the baseline diagnostic keys `uid`, `logfile`,
+  and `log-directory`.
 - `/debug/pprof/*` now reports an explicit deferred `501` boundary.
-- `/diag/system` and `/diag/tunnel` remain deferred.
+- `tunnel diag` is wired end-to-end through the local metrics surface and ZIP
+  bundle generation.
 
 ## Readiness Endpoint (`/ready`)
 
@@ -103,10 +106,14 @@ Response:
     "fileDescriptorMaximum": 1024,
     "fileDescriptorCurrent": 42,
     "osSystem": "linux",
+    "hostName": "host",
     "osVersion": "...",
     "osRelease": "...",
     "architecture": "amd64",
-    "diskVolumes": [
+    "cloudflaredVersion": "2026.2.0-alpha.202603",
+    "goVersion": "rustc 1.x.y",
+    "goArch": "x86_64",
+    "disk": [
       {
         "name": "/",
         "sizeMaximum": 500000,
@@ -114,7 +121,7 @@ Response:
       }
     ]
   },
-  "err": null
+  "errors": {}
 }
 ```
 
@@ -134,13 +141,12 @@ Response:
   "connections": [
     {
       "index": 0,
-      "isActive": true,
+      "isConnected": true,
       "protocol": "quic",
-      "origin": "...",
-      "edge": "..."
+      "edgeAddress": "198.41.192.1"
     }
   ],
-  "icmpSources": ["..."]
+  "icmp_sources": ["192.0.2.1"]
 }
 ```
 
@@ -149,7 +155,7 @@ Response:
 Endpoint: `/diag/configuration`
 
 Response: `map[string]string` with keys including `uid` (from `os.Getuid()`),
-`log_file`, `log_directory`. Secret flags are excluded.
+`logfile`, `log-directory`. Secret flags are excluded.
 
 ### MetricsCollector
 
@@ -216,6 +222,14 @@ cloudflared tunnel diag [options]
 | `raw-network.txt` | raw traceroute output | `--no-diag-network` |
 | `cloudflared_logs.txt` | collected logs | `--no-diag-logs` |
 | `task-result.json` | per-job success/failure | auto-generated |
+
+Rust coverage: parity-backed. `execute_tunnel_diag()` auto-discovers a local
+instance on the known metrics ports when `--metrics` is absent, prints the Go
+port-forward hint, and preserves the baseline-facing success and partial-error
+messages. The bundle writer creates `cloudflared-diag-*.zip`, writes the same
+11 artifact names as the Go baseline, and keeps the Go quirk where
+`task-result.json` is written before the in-memory job-report entry marks
+itself successful.
 
 ### Instance Discovery
 
@@ -284,7 +298,8 @@ the tunnel:
 
 ### Rust State
 
-Not implemented. No raw ICMP socket handling or ping group privilege check.
+Raw ICMP socket handling and source auto-detection remain open. Ping group
+range privilege checks are parity-backed via `can_create_icmp_socket()`.
 
 ## Hello World Test Server
 
@@ -315,6 +330,18 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 - local HTTP server with runtime metrics binding and graceful shutdown
 - `/ready`, `/healthcheck`, `/metrics`, `/quicktunnel`, `/config`, and
   `/diag/configuration` local endpoints
+- `/diag/system` and `/diag/tunnel` local endpoints on the runtime metrics
+  listener
+- end-to-end `tunnel diag` bundle generation with instance discovery, ZIP
+  output, and `--no-diag-*` toggles
+- system information collection from `/proc/meminfo`, `sysctl`, `df`, and
+  `uname`
+- tunnel state collection from the live runtime snapshot
+- host log collection from journalctl, explicit logfile/log-directory, or
+  managed fallback paths
+- network traceroute collection for region1/region2 IPv4 and IPv6 targets
+- diagnostic instance discovery via real HTTP `/diag/tunnel` probes on the
+  known metrics ports
 - readiness state machine tracking lifecycle and subsystem gates
   ([crates/cfdrs-bin/src/runtime/state/readiness.rs](../../../crates/cfdrs-bin/src/runtime/state/readiness.rs))
 - operability reporting with status and metrics to stdout
@@ -328,18 +355,9 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 
 ### What is missing
 
-- `/diag/system` and `/diag/tunnel` diagnostic endpoints
 - full `/debug/pprof/*` profiling payloads
-- `tunnel diag` CLI command
-- diagnostic bundle ZIP generation
-- system information collection (memory, fd, disk)
-- tunnel state collection via HTTP
-- network traceroute diagnostics
-- log collection from journalctl or files
-- instance auto-discovery via known ports
 - host details endpoint
 - ICMP proxy raw socket handling
-- ping group privilege check
 - ICMP source IP auto-detection
 - `hello_world` listener and route handlers
 
@@ -370,16 +388,8 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 
 | Gap | Severity | Notes |
 | --- | --- | --- |
-| `tunnel diag` command absent | high | blocks operator diagnostics |
-| system info collector absent | high | diagnostic bundle dependency |
-| tunnel state HTTP collector absent | high | diagnostic bundle dependency |
-| diagnostic bundle ZIP generation absent | high | `tunnel diag` output |
 | ICMP proxy raw socket absent | high | proxied ICMP echo |
-| ping group privilege check absent | high | host capability gate |
 | `hello_world` listener/handler absent | medium | config parsed, handler deferred |
-| instance auto-discovery absent | medium | diagnostic client dependency |
-| log collection from journalctl absent | medium | host log diagnostics |
-| network traceroute absent | medium | network diagnostics |
 | ICMP source IP flags absent | medium | ICMP configuration |
 | `/config` orchestrator parity incomplete | medium | remote update semantics still deferred |
 | pprof profiling payloads absent | low | debugging aid |

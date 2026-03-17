@@ -1,7 +1,11 @@
 use super::*;
 use std::io::{Read, Write};
 use std::net::TcpListener;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Mutex, OnceLock};
 use std::thread;
+use std::time::Duration;
 
 use tempfile::TempDir;
 
@@ -42,6 +46,135 @@ fn serve_once(status_line: &str, body: &str) -> String {
     });
 
     address.to_string()
+}
+
+struct MockDiagnosticServer {
+    address: String,
+    running: Arc<AtomicBool>,
+    join: Option<thread::JoinHandle<()>>,
+}
+
+impl MockDiagnosticServer {
+    fn start(routes: std::collections::BTreeMap<String, (u16, String, &'static str)>) -> Self {
+        Self::start_on("127.0.0.1:0", routes)
+    }
+
+    fn start_on(bind: &str, routes: std::collections::BTreeMap<String, (u16, String, &'static str)>) -> Self {
+        let listener = TcpListener::bind(bind).expect("listener");
+        listener.set_nonblocking(true).expect("set nonblocking");
+        let address = listener.local_addr().expect("addr").to_string();
+        let running = Arc::new(AtomicBool::new(true));
+        let keep_running = Arc::clone(&running);
+
+        let join = thread::spawn(move || {
+            while keep_running.load(Ordering::Relaxed) {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        let mut buffer = [0_u8; 4096];
+                        let read = stream.read(&mut buffer).unwrap_or(0);
+                        let request = String::from_utf8_lossy(&buffer[..read]);
+                        let path = request
+                            .lines()
+                            .next()
+                            .and_then(|line| line.split_whitespace().nth(1))
+                            .unwrap_or("/");
+                        let (status, body, content_type) =
+                            routes
+                                .get(path)
+                                .cloned()
+                                .unwrap_or((404, "not found".to_owned(), "text/plain"));
+                        let response = format!(
+                            "HTTP/1.1 {status} OK\r\nContent-Length: {}\r\nContent-Type: \
+                             {content_type}\r\nConnection: close\r\n\r\n{body}",
+                            body.len()
+                        );
+                        let _ = stream.write_all(response.as_bytes());
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(5));
+                    }
+                    Err(_) => break,
+                }
+            }
+        });
+
+        Self {
+            address,
+            running,
+            join: Some(join),
+        }
+    }
+}
+
+impl Drop for MockDiagnosticServer {
+    fn drop(&mut self) {
+        self.running.store(false, Ordering::Relaxed);
+        let _ = std::net::TcpStream::connect(&self.address);
+        if let Some(join) = self.join.take() {
+            let _ = join.join();
+        }
+    }
+}
+
+fn diagnostic_routes(
+    diag_configuration: &str,
+) -> std::collections::BTreeMap<String, (u16, String, &'static str)> {
+    std::collections::BTreeMap::from([
+        (
+            "/diag/tunnel".to_owned(),
+            (
+                200,
+                "{\"tunnelID\":\"00000000-0000-0000-0000-000000000000\",\"connectorID\":\"\
+                 11111111-1111-1111-1111-111111111111\"}"
+                    .to_owned(),
+                "application/json",
+            ),
+        ),
+        (
+            "/diag/system".to_owned(),
+            (
+                200,
+                "{\"info\":{\"osSystem\":\"Linux\"},\"errors\":{}}".to_owned(),
+                "application/json",
+            ),
+        ),
+        (
+            "/debug/pprof/goroutine".to_owned(),
+            (501, "pprof deferred\n".to_owned(), "text/plain"),
+        ),
+        (
+            "/debug/pprof/heap".to_owned(),
+            (501, "pprof deferred\n".to_owned(), "text/plain"),
+        ),
+        (
+            "/metrics".to_owned(),
+            (200, "build_info 1\n".to_owned(), "text/plain"),
+        ),
+        (
+            "/diag/configuration".to_owned(),
+            (200, diag_configuration.to_owned(), "application/json"),
+        ),
+        (
+            "/config".to_owned(),
+            (
+                200,
+                "{\"version\":1,\"config\":{}}".to_owned(),
+                "application/json",
+            ),
+        ),
+    ])
+}
+
+fn extract_diagnostic_zip_path(stdout: &str) -> Option<String> {
+    stdout.lines().find_map(|line| {
+        line.strip_prefix("Diagnostic file written: ")
+            .map(|path| path.trim().to_owned())
+    })
+}
+
+fn diag_test_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
 }
 
 fn write_config(tempdir: &TempDir, contents: &str) -> String {
@@ -453,6 +586,109 @@ fn tunnel_ready_reports_non_200_body() {
             .contains("endpoint returned status code 503\nnot ready"),
         "non-200 ready must include status and body: {:?}",
         out.stderr,
+    );
+}
+
+#[test]
+fn tunnel_diag_creates_zip_and_reports_completion() {
+    let _guard = diag_test_lock().lock().expect("diag lock");
+    let log_path = std::env::temp_dir().join("cfdrs-cli-diag.log");
+    std::fs::write(&log_path, "logs\n").expect("write log");
+    let server = MockDiagnosticServer::start(diagnostic_routes(&format!(
+        "{{\"uid\":\"1000\",\"logfile\":\"{}\"}}",
+        log_path.display()
+    )));
+
+    let out = exec(&["cloudflared", "tunnel", "diag", "--metrics", &server.address]);
+    assert_eq!(out.exit_code, 0);
+    assert!(
+        out.stdout.contains(&format!(
+            "Selected server http://{} starting diagnostic...",
+            server.address
+        )),
+        "diag should announce selected server: {:?}",
+        out.stdout
+    );
+    assert!(
+        out.stdout.contains("Diagnostic completed"),
+        "diag should report completion: {:?}",
+        out.stdout
+    );
+
+    let zip_path = extract_diagnostic_zip_path(&out.stdout).expect("zip path");
+    let zip_path = std::env::current_dir().expect("cwd").join(zip_path);
+    assert!(zip_path.exists(), "zip must exist: {:?}", out.stdout);
+
+    let _ = std::fs::remove_file(zip_path);
+    let _ = std::fs::remove_file(log_path);
+}
+
+#[test]
+fn tunnel_diag_invalid_log_configuration_is_nonfatal() {
+    let _guard = diag_test_lock().lock().expect("diag lock");
+    let server = MockDiagnosticServer::start(diagnostic_routes("{\"uid\":\"1000\"}"));
+
+    let out = exec(&["cloudflared", "tunnel", "diag", "--metrics", &server.address]);
+    assert_eq!(out.exit_code, 0);
+    assert!(
+        out.stdout.contains("Couldn't extract logs from the instance."),
+        "diag should surface invalid log configuration hint: {:?}",
+        out.stdout
+    );
+    assert!(
+        out.stdout
+            .contains("Diagnostic completed with one or more errors"),
+        "diag should remain nonfatal on log config mismatch: {:?}",
+        out.stdout
+    );
+
+    if let Some(zip_path) = extract_diagnostic_zip_path(&out.stdout) {
+        let _ = std::fs::remove_file(std::env::current_dir().expect("cwd").join(zip_path));
+    }
+}
+
+#[test]
+fn tunnel_diag_no_instances_found_is_success() {
+    let _guard = diag_test_lock().lock().expect("diag lock");
+    let out = exec(&["cloudflared", "tunnel", "diag"]);
+    assert_eq!(out.exit_code, 0);
+    assert!(out.stdout.contains("No instances found"), "{:?}", out.stdout);
+}
+
+#[test]
+fn tunnel_diag_reports_multiple_instances() {
+    let _guard = diag_test_lock().lock().expect("diag lock");
+    let _first = MockDiagnosticServer::start_on(
+        "127.0.0.1:20241",
+        diagnostic_routes("{\"uid\":\"1000\",\"logfile\":\"/tmp/a.log\"}"),
+    );
+    let _second = MockDiagnosticServer::start_on(
+        "127.0.0.1:20242",
+        diagnostic_routes("{\"uid\":\"1000\",\"logfile\":\"/tmp/b.log\"}"),
+    );
+
+    let out = exec(&["cloudflared", "tunnel", "diag"]);
+    assert_eq!(out.exit_code, 0);
+    assert!(
+        out.stdout.contains("Found multiple instances running:"),
+        "{:?}",
+        out.stdout
+    );
+    assert!(
+        out.stdout.contains("metrics-address=localhost:20241"),
+        "{:?}",
+        out.stdout
+    );
+    assert!(
+        out.stdout.contains("metrics-address=localhost:20242"),
+        "{:?}",
+        out.stdout
+    );
+    assert!(
+        out.stdout
+            .contains("To select one instance use the option --metrics"),
+        "{:?}",
+        out.stdout
     );
 }
 

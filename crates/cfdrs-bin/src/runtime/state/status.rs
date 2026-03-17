@@ -1,4 +1,7 @@
+use std::collections::BTreeMap;
 use std::fmt;
+
+use cfdrs_his::diagnostics::IndexedConnectionInfo;
 
 use crate::protocol::ProtocolBridgeState;
 use crate::proxy::ProxySeamState;
@@ -84,6 +87,7 @@ pub(in crate::runtime) struct RuntimeStatus {
     /// incremented on `RegistrationObserved`, decremented on
     /// `Reconnecting`, `Unregistering`, or `BridgeClosed`.
     pub(in crate::runtime) active_connections: u32,
+    pub(in crate::runtime) connection_info: BTreeMap<u8, IndexedConnectionInfo>,
     pub(in crate::runtime) transport_failures: u32,
     pub(in crate::runtime) failure_events: u32,
     pub(in crate::runtime) restart_budget_max: u32,
@@ -116,6 +120,7 @@ impl RuntimeStatus {
             proxy_admissions: 0,
             protocol_registrations: 0,
             active_connections: 0,
+            connection_info: BTreeMap::new(),
             transport_failures: 0,
             failure_events: 0,
             restart_budget_max: 0,
@@ -160,6 +165,14 @@ impl RuntimeStatus {
 
     pub(in crate::runtime) fn increment_transport_failures(&mut self) {
         self.transport_failures += 1;
+    }
+
+    pub(in crate::runtime) fn active_tunnel_connections(&self) -> Vec<IndexedConnectionInfo> {
+        self.connection_info
+            .values()
+            .filter(|info| info.is_connected == Some(true))
+            .cloned()
+            .collect()
     }
 }
 

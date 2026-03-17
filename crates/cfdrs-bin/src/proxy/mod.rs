@@ -193,9 +193,9 @@ async fn handle_protocol_bridge(
             biased;
             event = rx.recv() => {
                 match event {
-                    Some(ProtocolEvent::Registered { peer }) => {
+                    Some(ProtocolEvent::Registered { peer, conn_index }) => {
                         registration_observed = true;
-                        send_registration_observed(&peer, command_tx).await;
+                        send_registration_observed(conn_index, &peer, command_tx).await;
                     }
                     Some(ProtocolEvent::IncomingStream { stream_id, request }) => {
                         let response = seam.handle_connect_request(&request).await;
@@ -263,11 +263,22 @@ async fn handle_protocol_bridge(
     }
 }
 
-async fn send_registration_observed(peer: &SocketAddr, command_tx: &mpsc::Sender<RuntimeCommand>) {
+async fn send_registration_observed(
+    conn_index: u8,
+    peer: &SocketAddr,
+    command_tx: &mpsc::Sender<RuntimeCommand>,
+) {
     let _ = command_tx
         .send(RuntimeCommand::ProtocolState {
             state: ProtocolBridgeState::RegistrationObserved,
             detail: format!("proxy observed transport registration from {peer}"),
+        })
+        .await;
+    let _ = command_tx
+        .send(RuntimeCommand::TunnelConnectionObserved {
+            index: conn_index,
+            protocol: "quic".to_owned(),
+            edge_address: peer.ip().to_string(),
         })
         .await;
     let _ = command_tx

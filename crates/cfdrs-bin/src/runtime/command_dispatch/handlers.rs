@@ -66,6 +66,8 @@ impl ApplicationRuntime {
     ) -> Option<RuntimeExit> {
         if state == ProtocolBridgeState::RegistrationObserved {
             self.status.record_timing_protocol_registration();
+        } else {
+            self.status.clear_active_tunnel_connections();
         }
         self.status.record_protocol_state(state, detail);
         self.status
@@ -85,6 +87,18 @@ impl ApplicationRuntime {
         self.status.record_proxy_state(state, detail);
         self.status
             .refresh_readiness(format!("proxy seam reached {state}"));
+        self.sync_metrics_snapshot();
+        None
+    }
+
+    pub(super) fn handle_tunnel_connection_observed(
+        &mut self,
+        index: u8,
+        protocol: String,
+        edge_address: String,
+    ) -> Option<RuntimeExit> {
+        self.status
+            .record_tunnel_connection_observed(index, protocol, edge_address);
         self.sync_metrics_snapshot();
         None
     }

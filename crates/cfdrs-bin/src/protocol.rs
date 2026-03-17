@@ -81,7 +81,7 @@ impl std::fmt::Display for ProtocolBridgeState {
 pub(crate) enum ProtocolEvent {
     /// The transport has opened the control stream and reached the
     /// protocol registration boundary.
-    Registered { peer: SocketAddr },
+    Registered { peer: SocketAddr, conn_index: u8 },
 
     /// An incoming QUIC data stream carries a request from the edge.
     ///
@@ -203,6 +203,7 @@ mod tests {
         sender
             .send(ProtocolEvent::Registered {
                 peer: "127.0.0.1:7844".parse().expect("socket addr should parse"),
+                conn_index: 0,
             })
             .await
             .expect("bridge sender should deliver event while receiver is alive");
@@ -211,6 +212,7 @@ mod tests {
             receiver.recv().await,
             Some(ProtocolEvent::Registered {
                 peer: "127.0.0.1:7844".parse().expect("socket addr should parse"),
+                conn_index: 0,
             })
         );
     }
@@ -232,6 +234,7 @@ mod tests {
         sender_clone
             .send(ProtocolEvent::Registered {
                 peer: "10.0.0.1:7844".parse().expect("socket addr should parse"),
+                conn_index: 1,
             })
             .await
             .expect("bridge sender clone should deliver event while receiver is alive");
@@ -240,6 +243,7 @@ mod tests {
             receiver.recv().await,
             Some(ProtocolEvent::Registered {
                 peer: "10.0.0.1:7844".parse().expect("socket addr should parse"),
+                conn_index: 1,
             })
         );
     }
@@ -301,6 +305,7 @@ mod tests {
         let events = vec![
             ProtocolEvent::Registered {
                 peer: "127.0.0.1:7844".parse().expect("valid addr"),
+                conn_index: 0,
             },
             ProtocolEvent::RegistrationComplete {
                 conn_uuid: Uuid::nil(),
@@ -349,6 +354,7 @@ mod tests {
         let lifecycle_sequence = vec![
             ProtocolEvent::Registered {
                 peer: "198.41.200.1:7844".parse().expect("valid addr"),
+                conn_index: 0,
             },
             ProtocolEvent::RegistrationComplete {
                 conn_uuid: Uuid::new_v4(),

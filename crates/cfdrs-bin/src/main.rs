@@ -209,6 +209,7 @@ fn dispatch_tunnel_subcommand(cli: Cli) -> CliOutput {
         }
 
         Command::Tunnel(TunnelSubcommand::Ready) => tunnel_local_commands::execute_tunnel_ready(&cli.flags),
+        Command::Tunnel(TunnelSubcommand::Diag) => tunnel_local_commands::execute_tunnel_diag(&cli.flags),
 
         // Everything else is recognized but not yet implemented.
         other => CliOutput::failure(String::new(), stub_not_implemented(&full_command_label(other)), 1),
