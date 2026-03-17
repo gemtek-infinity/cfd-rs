@@ -7,6 +7,7 @@ mod proxy;
 mod route_vnet_commands;
 mod runtime;
 mod startup;
+mod tail_management;
 mod transport;
 mod tunnel_commands;
 mod tunnel_login;
@@ -23,16 +24,17 @@ use std::process::ExitCode;
 use cfdrs_cli::{
     AccessSubcommand, CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command,
     DB_CONNECT_REMOVED_MSG, GlobalFlags, HelpTarget, INGRESS_RULE_NARG_ERROR_MSG, IngressSubcommand,
-    IpRouteSubcommand, PROGRAM_NAME, PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG,
+    IpRouteSubcommand, ManagementSubcommand, PROGRAM_NAME, PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG,
     ROUTE_DNS_NARG_ERROR_MSG, ROUTE_IP_ADD_NARG_ERROR_MSG, ROUTE_IP_DELETE_NARG_ERROR_MSG,
     ROUTE_IP_GET_NARG_ERROR_MSG, ROUTE_LB_NARG_ERROR_MSG, RouteSubcommand, ServiceAction,
     TUNNEL_CLEANUP_NARG_ERROR_MSG, TUNNEL_CMD_ERROR_MSG, TUNNEL_CREATE_NARG_ERROR_MSG,
     TUNNEL_DELETE_NARG_ERROR_MSG, TUNNEL_INFO_NARG_ERROR_MSG, TUNNEL_RUN_HOSTNAME_WARNING_MSG,
     TUNNEL_RUN_IDENTITY_ERROR_MSG, TUNNEL_RUN_NARG_ERROR_MSG, TUNNEL_TOKEN_FILE_READ_ERROR_PREFIX,
-    TUNNEL_TOKEN_INVALID_MSG, TUNNEL_TOKEN_NARG_ERROR_MSG, TunnelSubcommand, VNET_ADD_NARG_ERROR_MSG,
-    VNET_DELETE_NARG_ERROR_MSG, VNET_UPDATE_NARG_ERROR_MSG, VnetSubcommand, parse_args, render_access_help,
-    render_help, render_short_version, render_subcommand_help, render_tunnel_help, render_version_output,
-    stub_not_implemented, subcommand_usage_error, tunnel_run_usage_error,
+    TUNNEL_TOKEN_INVALID_MSG, TUNNEL_TOKEN_NARG_ERROR_MSG, TailSubcommand, TunnelSubcommand,
+    VNET_ADD_NARG_ERROR_MSG, VNET_DELETE_NARG_ERROR_MSG, VNET_UPDATE_NARG_ERROR_MSG, VnetSubcommand,
+    parse_args, render_access_help, render_help, render_short_version, render_subcommand_help,
+    render_tunnel_help, render_version_output, stub_not_implemented, subcommand_usage_error,
+    tunnel_run_usage_error,
 };
 use cfdrs_his::environment::current_executable;
 use cfdrs_his::service::{
@@ -112,15 +114,15 @@ fn execute_command(cli: Cli) -> CliOutput {
         // Go baseline: `tail` command family from `tail/cmd.go`.
         // Bare `tail [TUNNEL-ID]` runs the streaming action; `tail token`
         // is a hidden subcommand that fetches a management JWT.
-        Command::Tail(_) => CliOutput::failure(
-            String::new(),
-            stub_not_implemented(&full_command_label(&cli.command)),
-            1,
-        ),
+        Command::Tail(TailSubcommand::Token) => tail_management::execute_tail_token(&cli.flags),
+        Command::Tail(TailSubcommand::Bare) => tail_management::execute_tail(&cli.flags),
 
         // Go baseline: `management` command family from `management/cmd.go`.
         // Entirely hidden; `management token` fetches a management JWT.
-        Command::Management(_) => CliOutput::failure(
+        Command::Management(ManagementSubcommand::Token) => {
+            tail_management::execute_management_token(&cli.flags)
+        }
+        Command::Management(ManagementSubcommand::Bare) => CliOutput::failure(
             String::new(),
             stub_not_implemented(&full_command_label(&cli.command)),
             1,

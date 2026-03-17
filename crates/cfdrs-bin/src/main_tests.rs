@@ -833,23 +833,28 @@ fn access_ssh_gen_dispatches_to_stub() {
 // --- CLI-023: tail command dispatch ---
 
 #[test]
-fn tail_bare_dispatches_to_stub() {
+fn tail_bare_dispatches_to_behavioral_implementation() {
+    // Bare `tail` without a tunnel ID or token falls through to URL building
+    // which needs either `--token` or origin cert for API token acquisition.
+    // Without either, the error from build_client is expected.
     let out = exec(&["cloudflared", "tail"]);
     assert_eq!(out.exit_code, 1);
+    // The tail streaming path needs a management URL which requires cert/token.
     assert!(
-        out.stderr.contains("tail"),
-        "tail stub must name the command: {:?}",
+        out.stderr.contains("cert") || out.stderr.contains("tunnel"),
+        "tail dispatch reached behavioral code: {:?}",
         out.stderr,
     );
 }
 
 #[test]
-fn tail_token_dispatches_to_stub() {
+fn tail_token_dispatches_to_behavioral_implementation() {
+    // `tail token` without origin cert fails at build_client.
     let out = exec(&["cloudflared", "tail", "token"]);
     assert_eq!(out.exit_code, 1);
     assert!(
-        out.stderr.contains("tail token"),
-        "tail token stub must name the command: {:?}",
+        out.stderr.contains("cert") || out.stderr.contains("tunnel"),
+        "tail token dispatch reached behavioral code: {:?}",
         out.stderr,
     );
 }
@@ -868,12 +873,13 @@ fn management_bare_dispatches_to_stub() {
 }
 
 #[test]
-fn management_token_dispatches_to_stub() {
+fn management_token_dispatches_to_behavioral_implementation() {
+    // `management token` without origin cert fails at build_client.
     let out = exec(&["cloudflared", "management", "token"]);
     assert_eq!(out.exit_code, 1);
     assert!(
-        out.stderr.contains("management token"),
-        "management token stub must name the command: {:?}",
+        out.stderr.contains("cert") || out.stderr.contains("tunnel"),
+        "management token dispatch reached behavioral code: {:?}",
         out.stderr,
     );
 }
