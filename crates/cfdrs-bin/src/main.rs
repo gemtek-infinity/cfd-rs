@@ -11,6 +11,7 @@ mod startup;
 mod tail_management;
 mod transport;
 mod tunnel_commands;
+mod tunnel_local_commands;
 mod tunnel_login;
 
 // Admitted for non-blocking file writer layer; not yet wired (hand-rolled
@@ -194,12 +195,20 @@ fn dispatch_tunnel_subcommand(cli: Cli) -> CliOutput {
         Command::Tunnel(TunnelSubcommand::Vnet(sub)) => dispatch_vnet_subcommand(sub, &cli.flags),
 
         // Ingress subcommands.
+        Command::Tunnel(TunnelSubcommand::Ingress(IngressSubcommand::Validate)) => {
+            tunnel_local_commands::execute_ingress_validate(&cli.flags)
+        }
         Command::Tunnel(TunnelSubcommand::Ingress(IngressSubcommand::Rule)) => {
-            if cli.flags.rest_args.is_empty() {
+            if cli.flags.rest_args.len() != 1 {
                 return CliOutput::failure(String::new(), INGRESS_RULE_NARG_ERROR_MSG.to_owned(), 1);
             }
-            CliOutput::failure(String::new(), stub_not_implemented("tunnel ingress rule"), 1)
+            tunnel_local_commands::execute_ingress_rule(&cli.flags)
         }
+        Command::Tunnel(TunnelSubcommand::Ingress(IngressSubcommand::Bare)) => {
+            CliOutput::success(render_subcommand_help(&HelpTarget::TunnelIngress))
+        }
+
+        Command::Tunnel(TunnelSubcommand::Ready) => tunnel_local_commands::execute_tunnel_ready(&cli.flags),
 
         // Everything else is recognized but not yet implemented.
         other => CliOutput::failure(String::new(), stub_not_implemented(&full_command_label(other)), 1),

@@ -1,4 +1,9 @@
 use super::*;
+use std::io::{Read, Write};
+use std::net::TcpListener;
+use std::thread;
+
+use tempfile::TempDir;
 
 fn encoded_tunnel_token() -> String {
     TunnelToken {
@@ -16,6 +21,33 @@ fn service_install_cli() -> Cli {
         command: Command::Service(ServiceAction::Install),
         flags: GlobalFlags::default(),
     }
+}
+
+fn serve_once(status_line: &str, body: &str) -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    let address = listener.local_addr().expect("local addr");
+    let status_line = status_line.to_owned();
+    let body = body.to_owned();
+
+    thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept");
+        let mut buffer = [0_u8; 1024];
+        let _ = stream.read(&mut buffer);
+        let response = format!(
+            "HTTP/1.1 {status_line}\r\nContent-Length: {}\r\nContent-Type: text/plain\r\nConnection: \
+             close\r\n\r\n{body}",
+            body.len()
+        );
+        stream.write_all(response.as_bytes()).expect("write response");
+    });
+
+    address.to_string()
+}
+
+fn write_config(tempdir: &TempDir, contents: &str) -> String {
+    let path = tempdir.path().join("config.yml");
+    std::fs::write(&path, contents).expect("write config");
+    path.display().to_string()
 }
 
 #[test]
@@ -392,6 +424,38 @@ fn ingress_rule_accepts_one_arg() {
     assert!(!out.stderr.contains(INGRESS_RULE_NARG_ERROR_MSG));
 }
 
+#[test]
+fn tunnel_ready_requires_metrics_flag() {
+    let out = exec(&["cloudflared", "tunnel", "ready"]);
+    assert_eq!(out.exit_code, 1);
+    assert!(out.stderr.contains("--metrics has to be provided"));
+}
+
+#[test]
+fn tunnel_ready_returns_success_on_200() {
+    let metrics_addr = serve_once("200 OK", "");
+    let out = exec(&["cloudflared", "tunnel", "ready", "--metrics", &metrics_addr]);
+    assert_eq!(out.exit_code, 0);
+    assert!(
+        out.stderr.is_empty(),
+        "ready success should not emit stderr: {:?}",
+        out.stderr
+    );
+}
+
+#[test]
+fn tunnel_ready_reports_non_200_body() {
+    let metrics_addr = serve_once("503 Service Unavailable", "not ready");
+    let out = exec(&["cloudflared", "tunnel", "ready", "--metrics", &metrics_addr]);
+    assert_eq!(out.exit_code, 1);
+    assert!(
+        out.stderr
+            .contains("endpoint returned status code 503\nnot ready"),
+        "non-200 ready must include status and body: {:?}",
+        out.stderr,
+    );
+}
+
 // --- Subcommands with NO NArg validation in Go baseline ---
 
 #[test]
@@ -427,6 +491,120 @@ fn vnet_list_accepts_zero_args() {
 fn ingress_validate_accepts_zero_args() {
     let out = exec(&["cloudflared", "tunnel", "ingress", "validate"]);
     assert_ne!(out.exit_code, 255, "ingress validate has no NArg constraint");
+}
+
+#[test]
+fn ingress_validate_with_json_reports_ok() {
+    let out = exec(&[
+        "cloudflared",
+        "tunnel",
+        "ingress",
+        "validate",
+        "--json",
+        "{\"ingress\":[{\"hostname\":\"app.example.com\",\"service\":\"https://localhost:8080\"},{\"service\":\"http_status:404\"}]}",
+    ]);
+    assert_eq!(out.exit_code, 0);
+    assert!(out.stdout.contains("Validating rules from cmdline flag --json"));
+    assert!(out.stdout.contains("OK"));
+}
+
+#[test]
+fn ingress_validate_rejects_url_flag_with_rules() {
+    let temp = TempDir::new().expect("tempdir");
+    let config_path = write_config(
+        &temp,
+        "ingress:\n  - hostname: app.example.com\n    service: https://localhost:8080\n  - service: \
+         http_status:404\n",
+    );
+    let out = exec(&[
+        "cloudflared",
+        "tunnel",
+        "--config",
+        &config_path,
+        "--url",
+        "http://localhost:9000",
+        "ingress",
+        "validate",
+    ]);
+    assert_eq!(out.exit_code, 1);
+    assert!(out.stdout.contains("Validating rules from"));
+    assert!(out.stderr.contains("You can't set the --url flag"));
+}
+
+#[test]
+fn ingress_validate_rejects_empty_config() {
+    let temp = TempDir::new().expect("tempdir");
+    let config_path = write_config(&temp, "");
+    let out = exec(&[
+        "cloudflared",
+        "tunnel",
+        "--config",
+        &config_path,
+        "ingress",
+        "validate",
+    ]);
+    assert_eq!(out.exit_code, 1);
+    assert!(out.stdout.contains("Validating rules from"));
+    assert!(
+        out.stderr
+            .contains("Validation failed: The config file doesn't contain any ingress rules")
+    );
+}
+
+#[test]
+fn ingress_rule_reports_matching_rule_from_config() {
+    let temp = TempDir::new().expect("tempdir");
+    let config_path = write_config(
+        &temp,
+        "ingress:\n  - hostname: app.example.com\n    path: /health\n    service: https://localhost:8080\n  \
+         - service: http_status:404\n",
+    );
+    let out = exec(&[
+        "cloudflared",
+        "tunnel",
+        "--config",
+        &config_path,
+        "ingress",
+        "rule",
+        "https://app.example.com/health",
+    ]);
+    assert_eq!(out.exit_code, 0);
+    assert!(out.stdout.contains("Using rules from"));
+    assert!(out.stdout.contains("Matched rule #0"));
+    assert!(out.stdout.contains("\thostname: app.example.com"));
+    assert!(out.stdout.contains("\tpath: /health"));
+    assert!(out.stdout.contains("\tservice: https://localhost:8080"));
+}
+
+#[test]
+fn ingress_rule_rejects_empty_config() {
+    let temp = TempDir::new().expect("tempdir");
+    let config_path = write_config(&temp, "");
+    let out = exec(&[
+        "cloudflared",
+        "tunnel",
+        "--config",
+        &config_path,
+        "ingress",
+        "rule",
+        "https://app.example.com/health",
+    ]);
+    assert_eq!(out.exit_code, 1);
+    assert!(out.stdout.contains("Using rules from"));
+    assert!(
+        out.stderr
+            .contains("Validation failed: The config file doesn't contain any ingress rules")
+    );
+}
+
+#[test]
+fn ingress_rule_suggests_scheme_for_bare_hostname() {
+    let out = exec(&["cloudflared", "tunnel", "ingress", "rule", "app.example.com"]);
+    assert_eq!(out.exit_code, 1);
+    assert!(
+        out.stderr
+            .contains("doesn't have a hostname, consider adding a scheme")
+    );
 }
 
 // --- exit 255 help suffix verification ---

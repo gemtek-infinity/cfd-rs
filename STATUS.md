@@ -42,7 +42,7 @@ What does not exist yet:
   record remaining deferments, non-lane items, and intentional divergences
   explicitly; rerun the full logging contract after CLI, CDC, and HIS closure
 - current front edge:
-  `HIS-036`, `CLI-017`
+  `HIS-036`
 - exit still requires:
   closure and evidence refresh for the remaining rows mapped to
   `Proof Closure` in the roadmap index
@@ -59,10 +59,12 @@ Tier 1 lane-blocking rows, in implementation order:
 
 1. `HIS-036` —
    remaining production-alpha logging blocker
-2. `CLI-017`, `CLI-021` —
-   remaining quick CLI closures
-3. `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
-   remaining command-linked host/runtime rows
+2. `HIS-033`, `HIS-034`, `HIS-035`, `HIS-037`, `HIS-038`,
+   `HIS-039`, `HIS-040`, `HIS-032`, `CLI-018` —
+   diagnostics proof-closure track after the logging blocker
+3. `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074`,
+   `HIS-046`, `HIS-047`, `CLI-006` —
+   remaining host/runtime network and updater rows
 
 ## Parity Snapshot
 
@@ -70,14 +72,14 @@ Counts from the `Rust status now` column in each domain ledger.
 
 | Domain | Total | Closed | Partial | Not audited | % Closed |
 | --- | --- | --- | --- | --- | --- |
-| CLI | 32 | 28 | 4 | 0 | 88% |
+| CLI | 32 | 30 | 2 | 0 | 94% |
 | CDC | 44 | 44 | 0 | 0 | 100% |
 | HIS | 74 | 54 | 18 | 2 | 73% |
-| **Total** | **150** | **126** | **22** | **2** | **84%** |
+| **Total** | **150** | **128** | **20** | **2** | **85%** |
 
 Closed breakdown:
 
-- CLI: 27 `audited, parity-backed` + 1 `audited, intentional divergence`
+- CLI: 29 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
 - CDC: 44 `audited, parity-backed`
 - HIS: 53 `audited, parity-backed` +
@@ -85,7 +87,7 @@ Closed breakdown:
 
 ## Test Snapshot
 
-1126 tests passing across 5 app crates:
+1150 tests passing across 5 app crates:
 
 - `cfdrs-bin`
 - `cfdrs-cdc`

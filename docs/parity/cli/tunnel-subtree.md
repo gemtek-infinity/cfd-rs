@@ -188,7 +188,13 @@ from parent tunnel command.
 
 No subcommand-specific flags.
 
-Rust coverage: absent.
+Rust coverage: parity-backed via `execute_tunnel_ready()` in
+[`tunnel_local_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_local_commands.rs).
+The command requires an
+explicit `--metrics` flag, performs `GET http://{metrics}/ready`, exits 0 on
+HTTP 200, and returns the Go-shaped non-200 error including status code and
+response body. Evidence: 1 parse-dispatch test in `cfdrs-cli` and 3 behavioral
+integration tests in `cfdrs-bin`.
 
 ### `tunnel diag` (CLI-018)
 
@@ -313,9 +319,14 @@ Usage: `tunnel ingress rule URL`
 
 No flags. Shows which ingress rule matches the given URL.
 
-Rust coverage: absent for entire ingress subtree. The current Rust `validate`
-command has partial overlap with `tunnel ingress validate` but is a
-transitional alpha command, not a parity target.
+Rust coverage: parity-backed. Bare `tunnel ingress` now renders hidden-command
+help, `validate` supports `--json` and file discovery, surfaces unknown-key
+warnings, and rejects empty configs or `--url` with Go-matching behavior.
+`rule URL` resolves the matching rule using strict ingress parsing instead of
+the runtime's default `http_status:503` fallback, then renders the Go-style
+multi-line rule body. Evidence: 3 parse-dispatch tests in `cfdrs-cli`, 3 NArg
+tests + 6 behavioral integration tests in `cfdrs-bin`, and 5 unit tests in
+[`tunnel_local_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_local_commands.rs).
 
 ## Removed/deprecated subcommands
 
@@ -330,7 +341,8 @@ Removed via `cliutil.RemovedCommand("db-connect")`.
 
 ## Coverage summary
 
-- Total tunnel subcommands: 13 active + 2 removed
-- Total with Rust coverage: 0 (partial overlap via `run` only)
-- Total subcommand-specific flags: approximately 40
-- Multi-level nesting depth: 4 (`tunnel route ip add`)
+- Remaining admitted active tunnel gap: `tunnel diag` (`CLI-018`)
+- `tunnel ready` and hidden `tunnel ingress` are now parity-backed
+- Removed subcommands `proxy-dns` and `db-connect` match baseline removal
+  behavior
+- Multi-level nesting depth remains 4 (`tunnel route ip add`)
