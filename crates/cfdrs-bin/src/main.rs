@@ -94,6 +94,7 @@ fn execute_command(cli: Cli) -> CliOutput {
             cli.flags.fedramp,
             cli.flags.login_url.as_deref(),
             cli.flags.callback_url.as_deref(),
+            &tunnel_login::XdgOpenLauncher,
         ),
 
         Command::Tunnel(_) => dispatch_tunnel_subcommand(cli),
@@ -154,6 +155,7 @@ fn dispatch_tunnel_subcommand(cli: Cli) -> CliOutput {
             cli.flags.fedramp,
             cli.flags.login_url.as_deref(),
             cli.flags.callback_url.as_deref(),
+            &tunnel_login::XdgOpenLauncher,
         ),
 
         // Removed features — exact error messages from Go baseline.

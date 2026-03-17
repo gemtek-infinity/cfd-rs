@@ -383,7 +383,11 @@ fn login_at_root_is_recognized() {
     // Go baseline: `login` at root falls through to tunnel login behavior
     // Pass --callbackURL to a dead address so the login flow fails fast
     // instead of long-polling the real Cloudflare endpoint.
-    let output = run_cloudflared(&["login", "--callbackURL", "http://127.0.0.1:1/"]);
+    let output = Command::new(env!("CARGO_BIN_EXE_cloudflared"))
+        .args(["login", "--callbackURL", "http://127.0.0.1:1/"])
+        .env("CFDRS_NO_BROWSER", "1")
+        .output()
+        .expect("cloudflared binary should run");
     let stderr = String::from_utf8_lossy(&output.stderr);
 
     // The command should be recognized (not "unknown command") and dispatch
@@ -427,11 +431,13 @@ fn login_and_tunnel_login_both_dispatch() {
     // endpoint.  The test validates dispatch recognition, not auth flow.
     let root_login = Command::new(env!("CARGO_BIN_EXE_cloudflared"))
         .args(["login", "--callbackURL", "http://127.0.0.1:1/"])
+        .env("CFDRS_NO_BROWSER", "1")
         .output()
         .expect("cloudflared binary should run");
 
     let tunnel_login = Command::new(env!("CARGO_BIN_EXE_cloudflared"))
         .args(["tunnel", "login", "--callbackURL", "http://127.0.0.1:1/"])
+        .env("CFDRS_NO_BROWSER", "1")
         .output()
         .expect("cloudflared binary should run");
 
