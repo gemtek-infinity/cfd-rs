@@ -133,7 +133,7 @@ HIS-055,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/cmd/cl
 HIS-056,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/postinst.sh,/usr/local/bin/cloudflared;/usr/local/etc/cloudflared/;.installedFromPackageManager
 HIS-057,HIS,docs/parity/his/implementation-checklist.md,baseline-2026.2.0/postrm.sh,/usr/local/bin/cloudflared;.installedFromPackageManager
 HIS-058,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/signal/safe_signal.go;baseline-2026.2.0/cmd/cloudflared/tunnel/signal.go,/SIGINT;/safe_signal.go;/cloudflared/tunnel/signal.go;signal.Notify();graceShutdownC
-HIS-059,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,--grace-period;/cloudflared/tunnel/cmd.go;GracefulShutdown();DEFAULT_GRACE_PERIOD = 30s;/runtime;/whitespace
+HIS-059,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,--grace-period;/cloudflared/tunnel/cmd.go;GracefulShutdown();DEFAULT_GRACE_PERIOD = 30s;drain_child_tasks();shutdown_grace_period;/runtime;/whitespace
 HIS-060,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/signal.go,/cloudflared/tunnel/signal.go;waitForSignal();signal.Stop();/SIGINT;ShutdownSignal
 HIS-061,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/cmd/cloudflared/tunnel/cmd.go,--pidfile;/cloudflared/tunnel/cmd.go;connectedSignal;ConnectedSignal;std::sync::Once;signal.Signal;sync.Once;write_pidfile();~/;expand_pidfile_path()
 HIS-062,HIS,docs/parity/his/reload-and-watcher.md,baseline-2026.2.0/token/token.go,"/token.go;<token-path>.lock;/SIGTERM;TokenLock;acquire();release();signal_cleanup();Drop;retry.NewBackoff(uint(7), DefaultBaseTime, false);acquire_token_lock()"

@@ -274,10 +274,10 @@ Received signals send `RuntimeCommand::ShutdownRequested` with the signal name.
 Signals are conditionally registered (`enable_signals: true`) and disabled in
 test harnesses.
 
-**Divergence:** Rust has no double-signal escape (second signal does not force
-immediate exit). The runtime now uses the 30s default and parsed
-`--grace-period` values, but the Go connection-level `GracefulShutdown()`
-behavior is still not implemented.
+**Parity:** Rust uses the 30s default and parsed `--grace-period` values.
+The runtime `drain_child_tasks()` waits up to `shutdown_grace_period` then
+aborts remaining child tasks, matching Go's wait-or-exit grace pattern.
+Connection-level `GracefulShutdown()` RPC is tracked under CDC-019.
 
 ## PID Files
 
@@ -364,19 +364,11 @@ is the primary Linux path.
 
 | Gap | Severity | Notes |
 | --- | --- | --- |
-| file watcher absent | critical | config reload foundation |
+| file watcher runtime integration absent | critical | `NotifyFileWatcher` exists but not wired to reload loop |
 | config reload flow absent | critical | operator-expected behavior |
 | remote config update handler absent | critical | edge-pushed config |
-| `--grace-period` flag absent (30s default) | critical | shutdown timing divergence |
-| service lifecycle manager absent | high | reload service management |
 | `update` CLI command absent | high | operator self-update |
 | auto-update mechanism absent | high | service auto-update |
 | update check HTTP client absent | high | update endpoint |
-| token lock file absent | high | concurrent fetch safety |
-| double-signal immediate shutdown absent | medium | operator escape |
-| `--pidfile` flag absent | medium | optional integration |
-| terminal detection absent | medium | update behavior gate |
-| UID detection absent | medium | diagnostic privilege |
-| package manager detection absent | medium | update safety |
 | graceful restart absent | medium | SysV update path |
 | gracenet socket inheritance absent | medium | SysV restart path |

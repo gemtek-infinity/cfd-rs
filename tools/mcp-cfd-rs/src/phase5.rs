@@ -944,11 +944,14 @@ mod tests {
 
     #[test]
     fn blocked_rows_are_skipped_unless_requested() {
-        let default_ticket =
-            next_parity_ticket(&repo_root(), Some("HIS"), false).expect("default HIS ticket");
-        assert!(default_ticket.row_id.starts_with("HIS-"));
-        assert!(default_ticket.actionable_now);
+        // All remaining partial HIS rows are deferred — none are actionable
+        let no_ticket = next_parity_ticket(&repo_root(), Some("HIS"), false);
+        assert!(
+            no_ticket.is_err(),
+            "all HIS partial rows are deferred; none should be returned without include_blocked"
+        );
 
+        // With include_blocked=true, deferred HIS rows become visible
         let blocked_ticket = next_parity_ticket(&repo_root(), Some("HIS"), true).expect("blocked HIS ticket");
         assert!(blocked_ticket.row_id.starts_with("HIS-"));
         assert!(!blocked_ticket.actionable_now);

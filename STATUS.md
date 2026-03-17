@@ -62,7 +62,7 @@ Tier 1 lane-blocking rows, in implementation order:
    Runtime Foundation row and a proof-closure blocker
 2. `CLI-023`, `CLI-024`, `CDC-026`, `HIS-036` —
    explicit cross-domain logging blocker set
-3. `HIS-059`, `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
+3. `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
    remaining command-linked host/runtime rows
 
 ## Parity Snapshot
@@ -73,15 +73,15 @@ Counts from the `Rust status now` column in each domain ledger.
 | --- | --- | --- | --- | --- | --- |
 | CLI | 32 | 25 | 7 | 0 | 78% |
 | CDC | 44 | 41 | 3 | 0 | 93% |
-| HIS | 74 | 50 | 22 | 2 | 68% |
-| **Total** | **150** | **116** | **32** | **2** | **77%** |
+| HIS | 74 | 51 | 21 | 2 | 69% |
+| **Total** | **150** | **117** | **31** | **2** | **78%** |
 
 Closed breakdown:
 
 - CLI: 24 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
 - CDC: 41 `audited, parity-backed`
-- HIS: 49 `audited, parity-backed` +
+- HIS: 50 `audited, parity-backed` +
   1 `audited, intentional divergence` (`HIS-053`)
 
 ## Test Snapshot
