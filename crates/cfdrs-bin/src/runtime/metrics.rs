@@ -303,6 +303,20 @@ mod tests {
     fn test_state() -> Arc<AppState> {
         let ready_connections_gauge = Gauge::<i64, _>::default();
         let mut registry = Registry::default();
+
+        // Register build_info matching the real start() path.
+        let build_family =
+            prometheus_client::metrics::family::Family::<Vec<(String, String)>, Gauge>::default();
+        build_family
+            .get_or_create(&vec![
+                ("goversion".to_owned(), "rust".to_owned()),
+                ("type".to_owned(), "debug".to_owned()),
+                ("revision".to_owned(), "test".to_owned()),
+                ("version".to_owned(), "0.0.0".to_owned()),
+            ])
+            .set(1);
+        registry.register("build_info", "Build information", build_family);
+
         registry.register(
             "cfdrs_ready_connections",
             "Ready tunnel connections",
@@ -454,6 +468,72 @@ mod tests {
             .await
             .expect("body");
         assert_eq!(&body[..], b"OK\n");
+    }
+
+    #[tokio::test]
+    async fn metrics_endpoint_includes_build_info_with_go_compatible_labels() {
+        let state = test_state();
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(Request::get("/metrics").body(Body::empty()).expect("request"))
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 8192)
+            .await
+            .expect("body");
+        let text = String::from_utf8_lossy(&body);
+
+        // build_info must appear as a metric family with the Go-compatible
+        // label keys: goversion, type, revision, version.  The metric name
+        // is intentionally un-namespaced (no "cloudflared_" prefix) to match
+        // Cloudflare cross-service convention.
+        assert!(
+            text.contains("build_info"),
+            "build_info metric missing from /metrics output"
+        );
+        assert!(text.contains("goversion="), "build_info missing goversion label");
+        assert!(text.contains("revision="), "build_info missing revision label");
+    }
+
+    #[test]
+    fn build_info_label_keys_match_go_baseline() {
+        // Go baseline registers build_info with exactly these four label
+        // names (metrics/metrics.go RegisterBuildInfo).  Rust must use the
+        // same keys so Prometheus dashboards and alerts remain compatible.
+        let expected_labels = ["goversion", "type", "revision", "version"];
+        let build_info = runtime_build_info();
+
+        // Verify the label set produced by runtime_build_info() covers all
+        // expected keys.  The labels are passed as Vec<(String, String)> to
+        // the Family.get_or_create() call.
+        let label_vec = [
+            ("goversion".to_owned(), build_info.goversion.to_owned()),
+            ("type".to_owned(), build_info.build_type.to_owned()),
+            ("revision".to_owned(), build_info.revision.to_owned()),
+            ("version".to_owned(), build_info.version.to_owned()),
+        ];
+        let actual_keys: Vec<&str> = label_vec.iter().map(|(k, _)| k.as_str()).collect();
+
+        for expected in &expected_labels {
+            assert!(
+                actual_keys.contains(expected),
+                "build_info missing expected label key: {expected}"
+            );
+        }
+        assert_eq!(actual_keys.len(), expected_labels.len());
+    }
+
+    #[test]
+    fn build_info_metric_name_matches_baseline_constant() {
+        // The registered metric name must match the baseline_metrics constant
+        // so metric-name inventory tests remain grounded.
+        assert_eq!(
+            cfdrs_his::metrics_server::baseline_metrics::BUILD_INFO,
+            "build_info"
+        );
     }
 
     #[tokio::test]

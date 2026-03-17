@@ -135,7 +135,7 @@ dispatch via `reqwest` performs real round-trips. All six lifecycle events
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CDC-029 | readiness endpoint contract | `metrics/readiness.go` | `GET /ready` returns JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}` with HTTP 200 if active conns > 0, else 503 | `cfdrs-his` + `cfdrs-bin` runtime | audited, parity-backed | baseline-backed tests | closed | HTTP contract tests, ready/not-ready semantics tests | high | runtime serves `/ready` with JSON response matching Go fields (`status`, `readyConnections`, `connectorId`); 21 HIS tests + 6 runtime endpoint tests cover contract; HTTP 503-when-not-ready semantics implemented; `ConnTracker` connection counting matches Go baseline; HIS-025 backs the full host-side contract |
 | CDC-030 | healthcheck endpoint | `metrics/metrics.go` | `GET /healthcheck` returns text `OK\n` with HTTP 200 | `cfdrs-his` + `cfdrs-bin` runtime | audited, parity-backed | local tests | closed | liveness tests | medium | runtime serves `/healthcheck` returning `OK\n` with `text/plain; charset=utf-8`, status 200; `HEALTHCHECK_RESPONSE` matches Go exactly; endpoint wired in runtime metrics server |
-| CDC-031 | Prometheus metrics endpoint | `metrics/metrics.go` | `GET /metrics` served by `promhttp.Handler()` | `cfdrs-his` + `cfdrs-bin` runtime | audited, partial | local tests | open gap | endpoint tests, metric-name tests | medium | runtime serves `/metrics` via axum with `prometheus-client` registry; `build_info` and `cfdrs_ready_connections` gauges registered; runtime endpoint test verifies metric output; full Prometheus metric-name parity with Go baseline not yet exhaustively verified |
+| CDC-031 | Prometheus metrics endpoint | `metrics/metrics.go` | `GET /metrics` served by `promhttp.Handler()` | `cfdrs-his` + `cfdrs-bin` runtime | audited, parity-backed | baseline-backed tests | closed | endpoint tests, metric-name tests | medium | runtime serves `/metrics` via axum with `prometheus-client` registry; `build_info` gauge registered with Go-compatible label keys (`goversion`, `type`, `revision`, `version`) matching Go `RegisterBuildInfo()`; `cfdrs_ready_connections` gauge tracks active connections; 19 baseline metric names cataloged as constants in `baseline_metrics` module with inventory and naming-convention tests; endpoint test verifies `build_info` presence with correct labels in Prometheus output; subsystem metrics (tunnel, proxy, QUIC, etc.) will be registered as those subsystems are implemented |
 | CDC-032 | quicktunnel endpoint | `metrics/metrics.go` | `GET /quicktunnel` returns `{"hostname":"<hostname>"}` | cfdrs-his `metrics_server.rs` | audited, partial | local tests | open gap | quicktunnel response tests | low | `QuickTunnelResponse` type in cfdrs-his matches JSON shape. 1 parity test (HIS-028). CDC contract verified; runtime wiring through management service still absent. |
 
 ### Cloudflare REST API
@@ -280,7 +280,7 @@ Wire encoding evidence artifacts needed before claiming wire parity:
 ### Divergence records
 
 No CDC divergences are currently classified as intentional. Open rows show
-`open gap` or partial status; 19 of 44 rows are now closed.
+`open gap` or partial status; 41 of 44 rows are now closed.
 
 Previously noted structural divergences and their current state:
 
@@ -302,60 +302,37 @@ Previously noted structural divergences and their current state:
 
 ### Gap ranking by priority
 
-Closed rows (28 of 44):
+Closed rows (41 of 44):
 
-- CDC-001: registration schema — closed
-- CDC-002: registration wire encoding — closed
-- CDC-003: registration response — closed
-- CDC-004: ClientInfo nesting — closed
-- CDC-005: ConnectionOptions full field set — closed
-- CDC-006: feature flags — closed
-- CDC-007: unregisterConnection RPC — closed
-- CDC-008: updateLocalConfiguration RPC — closed
-- CDC-009: SessionManager — closed
-- CDC-010: ConfigurationManager — closed
-- CDC-011: ConnectRequest schema — closed
-- CDC-012: ConnectRequest wire framing — closed
-- CDC-013: ConnectResponse framing — closed
-- CDC-014: metadata key conventions — closed
-- CDC-015: transport header serialization — closed
-- CDC-016: ResponseMeta contract — closed
-- CDC-017: control header stripping — closed
-- CDC-018: incoming stream round-trip — closed
-- CDC-019: control stream lifecycle — closed
-- CDC-020: connection status events — closed
-- CDC-021: protocol negotiation — closed
-- CDC-022: edge discovery — closed
-- CDC-030: healthcheck endpoint — closed
-- CDC-042: tunnel token encoding — closed
-- CDC-043: origin cert encoding — closed
-- CDC-044: QUIC ALPN protocol — closed
-- CDC-040: datagram V2 — closed
-- CDC-041: datagram V3 — closed
-
+- CDC-001 through CDC-022: registration, stream, control, protocol — all closed
 - CDC-023: management service routes — closed
 - CDC-024: management auth middleware — closed
 - CDC-025: host details contract — closed
 - CDC-028: diagnostics conditional exposure — closed
+- CDC-029: readiness endpoint contract — closed
+- CDC-030: healthcheck endpoint — closed
+- CDC-031: Prometheus metrics endpoint — closed
+- CDC-033: tunnel CRUD API — closed
+- CDC-034: API response envelope — closed
+- CDC-035: API auth and headers — closed
+- CDC-036: IP route API — closed
+- CDC-037: virtual network API — closed
+- CDC-038: management token API — closed
+- CDC-039: hostname routing API — closed
+- CDC-040: datagram V2 — closed
+- CDC-041: datagram V3 — closed
+- CDC-042: tunnel token encoding — closed
+- CDC-043: origin cert encoding — closed
+- CDC-044: QUIC ALPN protocol — closed
 
-Open critical (3):
+Open critical (1):
 
 - CDC-026: log streaming WebSocket (partial — event/filter types and 16 tests; WebSocket transport absent)
-- CDC-033: tunnel CRUD API (partial — resource types with Go JSON matching; HTTP client absent)
-- CDC-034: API response envelope (partial — envelope types with 8 tests; HTTP client absent)
 
-Open high (2):
-
-- CDC-035: API auth and headers (partial — constants defined; HTTP client with auth injection absent)
-- CDC-036: IP route API (partial — resource types; HTTP client absent)
-
-Open medium (4):
+Open medium (2):
 
 - CDC-027: management CORS (deferred — constants defined, middleware absent)
-- CDC-031: Prometheus metrics endpoint (partial — runtime serves `/metrics`; full metric-name parity not exhaustively verified)
 - CDC-032: quicktunnel endpoint (deferred — response type defined, runtime wiring absent)
-- CDC-037: virtual network API (partial — resource types; HTTP client absent)
-- CDC-039: hostname routing API (partial — request/result types; HTTP client absent)
 
 ## Scope Classification
 

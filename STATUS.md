@@ -72,21 +72,21 @@ Counts from the `Rust status now` column in each domain ledger.
 | Domain | Total | Closed | Partial | Not audited | % Closed |
 | --- | --- | --- | --- | --- | --- |
 | CLI | 32 | 25 | 7 | 0 | 78% |
-| CDC | 44 | 40 | 4 | 0 | 91% |
+| CDC | 44 | 41 | 3 | 0 | 93% |
 | HIS | 74 | 49 | 23 | 2 | 66% |
-| **Total** | **150** | **114** | **34** | **2** | **76%** |
+| **Total** | **150** | **115** | **33** | **2** | **77%** |
 
 Closed breakdown:
 
 - CLI: 24 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
-- CDC: 40 `audited, parity-backed`
+- CDC: 41 `audited, parity-backed`
 - HIS: 48 `audited, parity-backed` +
   1 `audited, intentional divergence` (`HIS-053`)
 
 ## Test Snapshot
 
-1058 tests passing across 5 app crates:
+1061 tests passing across 5 app crates:
 
 - `cfdrs-bin`
 - `cfdrs-cdc`
