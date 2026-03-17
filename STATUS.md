@@ -9,7 +9,7 @@
 - next milestone: `Proof Closure`
 - highest-risk blockers: `HIS-016`
 - production-alpha logging blocker set:
-  `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `CDC-038`, `HIS-036`
+  `CLI-023`, `CLI-024`, `CDC-026`, `HIS-036`
 - behavior truth: [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - parity routing: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - command surface: [`Justfile`](Justfile)
@@ -43,7 +43,7 @@ What does not exist yet:
   finish the user-visible surface required for the declared Linux lane;
   close the remaining cross-domain logging surface
 - current front edge:
-  `HIS-016`, `CLI-023`, `CDC-023`
+  `HIS-016`, `CLI-023`, `CDC-026`
 - exit still requires:
   behavioral implementation for remaining partial CLI, CDC, and HIS rows
   mapped to `Command Family Closure` in the roadmap index
@@ -60,7 +60,7 @@ Tier 1 lane-blocking rows, in implementation order:
 
 1. `HIS-016` — SysV init script generation remains the last open Host and
    Runtime Foundation row and a proof-closure blocker
-2. `CLI-023`, `CLI-024`, `CDC-023`, `CDC-024`, `CDC-026`, `HIS-036` —
+2. `CLI-023`, `CLI-024`, `CDC-026`, `HIS-036` —
    explicit cross-domain logging blocker set
 3. `HIS-059`, `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
    remaining command-linked host/runtime rows
@@ -72,21 +72,21 @@ Counts from the `Rust status now` column in each domain ledger.
 | Domain | Total | Closed | Partial | Not audited | % Closed |
 | --- | --- | --- | --- | --- | --- |
 | CLI | 32 | 25 | 7 | 0 | 78% |
-| CDC | 44 | 36 | 8 | 0 | 82% |
+| CDC | 44 | 39 | 5 | 0 | 89% |
 | HIS | 74 | 49 | 23 | 2 | 66% |
-| **Total** | **150** | **110** | **38** | **2** | **73%** |
+| **Total** | **150** | **113** | **35** | **2** | **75%** |
 
 Closed breakdown:
 
 - CLI: 24 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
-- CDC: 36 `audited, parity-backed`
+- CDC: 39 `audited, parity-backed`
 - HIS: 48 `audited, parity-backed` +
   1 `audited, intentional divergence` (`HIS-053`)
 
 ## Test Snapshot
 
-1036 tests passing across 5 app crates:
+1053 tests passing across 5 app crates:
 
 - `cfdrs-bin`
 - `cfdrs-cdc`

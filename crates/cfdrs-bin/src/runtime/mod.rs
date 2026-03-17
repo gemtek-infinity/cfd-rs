@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use axum::Router;
 use cfdrs_his::signal::remove_pidfile;
 
 use crate::protocol::{self, ProtocolReceiver, StreamResponseSender};
@@ -13,6 +14,7 @@ use tokio_util::sync::CancellationToken;
 mod command_dispatch;
 mod deployment;
 mod logging;
+mod management;
 mod metrics;
 mod state;
 mod tasks;
@@ -54,6 +56,7 @@ struct ApplicationRuntime {
     protocol_receiver: Option<ProtocolReceiver>,
     stream_response_tx: Option<StreamResponseSender>,
     metrics: Option<metrics::RuntimeMetricsHandle>,
+    management_router: Option<Router>,
     /// Guards pidfile write so it fires exactly once, matching Go
     /// `connectedSignal` + `sync.Once` pattern in `writePidFile`.
     pidfile_written: bool,
@@ -76,6 +79,11 @@ impl ApplicationRuntime {
         if let Some(metrics) = self.metrics.as_ref() {
             metrics.sync_from_status(&self.status);
         }
+    }
+
+    fn build_management_service(&mut self) {
+        let router = management::build_management_router(self.config.connector_id(), String::new(), false);
+        self.management_router = Some(router);
     }
 
     fn new(
@@ -105,6 +113,7 @@ impl ApplicationRuntime {
             protocol_receiver,
             stream_response_tx,
             metrics: None,
+            management_router: None,
             pidfile_written: false,
         }
     }
@@ -113,6 +122,8 @@ impl ApplicationRuntime {
         if let Err(detail) = self.start_metrics_server().await {
             return self.finish(RuntimeExit::Failed { detail }).await;
         }
+
+        self.build_management_service();
 
         self.status.record_runtime_owner();
         self.status.record_runtime_config(self.config.as_ref());
