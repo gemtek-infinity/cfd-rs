@@ -691,10 +691,14 @@ fn evaluate_actionability(
             format!("status bucket {} is not actionable work", roadmap.status_bucket),
         )
     } else if roadmap.status_bucket == "deferred" {
-        (
-            false,
-            format!("status bucket deferred until {}", roadmap.blocked_by),
-        )
+        if blocked_by_satisfied {
+            (true, blocked_reason)
+        } else {
+            (
+                false,
+                format!("status bucket deferred until {}", roadmap.blocked_by),
+            )
+        }
     } else if roadmap.status_bucket == "non_lane" {
         (
             false,
@@ -990,9 +994,10 @@ mod tests {
 
     #[test]
     fn blocked_rows_are_skipped_unless_requested() {
-        // Find at least one domain that has deferred rows, then verify
-        // the include_blocked filter works.  Which domain has deferred rows
-        // changes as parity work progresses, so we scan all three.
+        // If any domain currently has blocked deferred rows, verify the
+        // include_blocked filter works. Once prerequisite milestones are
+        // complete it is also valid for every open row to be actionable, so
+        // the test must tolerate an all-unblocked state.
         let domains = ["CLI", "CDC", "HIS"];
         let mut found_blocked = false;
 
@@ -1017,10 +1022,16 @@ mod tests {
             }
         }
 
-        assert!(
-            found_blocked,
-            "at least one domain should have deferred partial rows",
-        );
+        if !found_blocked {
+            for domain in &domains {
+                if let Ok(ticket) = next_parity_ticket(&repo_root(), Some(domain), false) {
+                    assert!(
+                        ticket.actionable_now,
+                        "without blocked rows, returned rows must be actionable",
+                    );
+                }
+            }
+        }
     }
 
     #[test]

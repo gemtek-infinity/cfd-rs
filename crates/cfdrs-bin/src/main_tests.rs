@@ -740,45 +740,50 @@ fn access_bare_and_forward_produce_same_output() {
 }
 
 #[test]
-fn access_login_dispatches_to_stub() {
+fn access_login_reaches_explicit_deferred_boundary() {
     let out = exec(&["cloudflared", "access", "login"]);
     assert_eq!(out.exit_code, 1);
     assert!(
-        out.stderr.contains("access login"),
-        "access login stub must name the command: {:?}",
+        out.stderr.contains("browser-based Access token flow"),
+        "access login must explain the deferred browser flow: {:?}",
+        out.stderr,
+    );
+    assert!(
+        !out.stderr.contains("not yet implemented in the Rust rewrite"),
+        "access login should no longer use the generic placeholder stub: {:?}",
         out.stderr,
     );
 }
 
 #[test]
-fn access_curl_dispatches_to_stub() {
+fn access_curl_reaches_explicit_deferred_boundary() {
     let out = exec(&["cloudflared", "access", "curl"]);
     assert_eq!(out.exit_code, 1);
     assert!(
-        out.stderr.contains("access curl"),
-        "access curl stub must name the command: {:?}",
+        out.stderr.contains("JWT header injection path"),
+        "access curl must explain the deferred JWT wrapper path: {:?}",
         out.stderr,
     );
 }
 
 #[test]
-fn access_token_dispatches_to_stub() {
+fn access_token_reaches_explicit_deferred_boundary() {
     let out = exec(&["cloudflared", "access", "token"]);
     assert_eq!(out.exit_code, 1);
     assert!(
-        out.stderr.contains("access token"),
-        "access token stub must name the command: {:?}",
+        out.stderr.contains("token storage and retrieval"),
+        "access token must explain the deferred token path: {:?}",
         out.stderr,
     );
 }
 
 #[test]
-fn access_tcp_dispatches_to_stub() {
+fn access_tcp_reaches_explicit_deferred_boundary() {
     let out = exec(&["cloudflared", "access", "tcp"]);
     assert_eq!(out.exit_code, 1);
     assert!(
-        out.stderr.contains("access tcp"),
-        "access tcp stub must name the command: {:?}",
+        out.stderr.contains("carrier WebSocket proxy/client path"),
+        "access tcp must explain the deferred carrier path: {:?}",
         out.stderr,
     );
 }
@@ -809,23 +814,51 @@ fn access_smb_alias_dispatches_same_as_tcp() {
 }
 
 #[test]
-fn access_ssh_config_dispatches_to_stub() {
+fn access_ssh_config_renders_real_output() {
     let out = exec(&["cloudflared", "access", "ssh-config"]);
-    assert_eq!(out.exit_code, 1);
+    assert_eq!(out.exit_code, 0);
     assert!(
-        out.stderr.contains("access ssh-config"),
-        "access ssh-config stub must name the command: {:?}",
-        out.stderr,
+        out.stdout.contains("ProxyCommand"),
+        "access ssh-config must render an SSH config snippet: {:?}",
+        out.stdout,
+    );
+    assert!(
+        out.stdout.contains("access ssh --hostname %h"),
+        "access ssh-config must reference the access ssh ProxyCommand: {:?}",
+        out.stdout,
     );
 }
 
 #[test]
-fn access_ssh_gen_dispatches_to_stub() {
+fn access_ssh_config_supports_short_lived_cert_flag() {
+    let out = exec(&[
+        "cloudflared",
+        "access",
+        "ssh-config",
+        "--hostname",
+        "ssh.example.com",
+        "--short-lived-cert",
+    ]);
+    assert_eq!(out.exit_code, 0);
+    assert!(
+        out.stdout.contains("Match host ssh.example.com"),
+        "short-lived cert mode must use Match host template: {:?}",
+        out.stdout,
+    );
+    assert!(
+        out.stdout.contains("access ssh-gen --hostname %h"),
+        "short-lived cert mode must reference ssh-gen: {:?}",
+        out.stdout,
+    );
+}
+
+#[test]
+fn access_ssh_gen_reaches_explicit_deferred_boundary() {
     let out = exec(&["cloudflared", "access", "ssh-gen"]);
     assert_eq!(out.exit_code, 1);
     assert!(
-        out.stderr.contains("access ssh-gen"),
-        "access ssh-gen stub must name the command: {:?}",
+        out.stderr.contains("short-lived SSH certificate generation"),
+        "access ssh-gen must explain the deferred SSH cert path: {:?}",
         out.stderr,
     );
 }

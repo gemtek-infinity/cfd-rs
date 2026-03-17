@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+mod access_commands;
 #[allow(dead_code)] // Wired incrementally during CLI Foundation closure.
 mod api_client;
 mod protocol;
@@ -105,11 +106,14 @@ fn execute_command(cli: Cli) -> CliOutput {
         // Bare `access` shows help (urfave/cli default for commands with
         // subcommands); each subcommand dispatches explicitly.
         Command::Access(AccessSubcommand::Bare) => CliOutput::success(render_access_help(PROGRAM_NAME)),
-        Command::Access(sub) => CliOutput::failure(
-            String::new(),
-            stub_not_implemented(&full_command_label(&Command::Access(sub.clone()))),
-            1,
-        ),
+        Command::Access(AccessSubcommand::Login) => access_commands::execute_access_login(&cli.flags),
+        Command::Access(AccessSubcommand::Curl) => access_commands::execute_access_curl(&cli.flags),
+        Command::Access(AccessSubcommand::Token) => access_commands::execute_access_token(&cli.flags),
+        Command::Access(AccessSubcommand::Tcp) => access_commands::execute_access_tcp(&cli.flags),
+        Command::Access(AccessSubcommand::SshConfig) => {
+            access_commands::execute_access_ssh_config(&cli.flags)
+        }
+        Command::Access(AccessSubcommand::SshGen) => access_commands::execute_access_ssh_gen(&cli.flags),
 
         // Go baseline: `tail` command family from `tail/cmd.go`.
         // Bare `tail [TUNNEL-ID]` runs the streaming action; `tail token`

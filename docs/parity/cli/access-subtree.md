@@ -19,8 +19,9 @@ The `forward` alias means `cloudflared forward login` is equivalent to
 
 Rust coverage: parse, dispatch, and help complete. Bare `access`
 and `forward` alias both show access help text. All subcommands
-parsed and dispatched explicitly; behavioral implementations are stubs
-pending CDC/HIS runtime infrastructure.
+dispatch explicitly through `cfdrs-bin`; `login`, `curl`, `token`,
+`tcp`, and `ssh-gen` now return command-specific deferred-boundary
+errors, while `ssh-config` renders a real SSH config snippet.
 
 ## Subcommand inventory
 
@@ -38,7 +39,8 @@ Flags:
 | `--app` | | string | | application URL |
 
 Rust coverage: parsed as `AccessSubcommand::Login`; dispatch to
-explicit stub.
+an explicit deferred boundary that names the missing browser auth
+and token-storage runtime.
 
 ### `access curl`
 
@@ -51,7 +53,8 @@ Passes requests through Access with JWT injection.
 No formally defined flags due to flag-parsing skip.
 
 Rust coverage: parsed as `AccessSubcommand::Curl`; dispatch to
-explicit stub.
+an explicit deferred boundary that names the missing curl wrapper,
+token flow, and JWT injection runtime.
 
 ### `access token`
 
@@ -64,7 +67,8 @@ Flags:
 | `--app` | string | application URL |
 
 Rust coverage: parsed as `AccessSubcommand::Token`; dispatch to
-explicit stub.
+an explicit deferred boundary that names the missing token-storage
+runtime.
 
 ### `access tcp` (aliases: `rdp`, `ssh`, `smb`)
 
@@ -97,7 +101,8 @@ Flags:
 
 Rust coverage: parsed as `AccessSubcommand::Tcp`; all four names
 (`tcp`, `rdp`, `ssh`, `smb`) parse to the same variant; dispatch to
-explicit stub. Integration tests verify alias equivalence.
+an explicit deferred boundary that names the missing carrier proxy
+runtime. Integration tests verify alias equivalence.
 
 ### `access ssh-config`
 
@@ -111,7 +116,8 @@ Flags:
 | `--short-lived-cert` | bool | false | generate short-lived certs |
 
 Rust coverage: parsed as `AccessSubcommand::SshConfig`; dispatch to
-explicit stub.
+real output. Rust renders the SSH config snippet locally, including
+the `--short-lived-cert` variant and `--hostname` aliases.
 
 ### `access ssh-gen`
 
@@ -124,32 +130,44 @@ Flags:
 | `--hostname` | string | hostname of your application |
 
 Rust coverage: parsed as `AccessSubcommand::SshGen`; dispatch to
-explicit stub.
+an explicit deferred boundary that names the missing short-lived
+certificate runtime.
 
 ## Coverage summary
 
 - Total access subcommands: 6 (login, curl, token, tcp, ssh-config, ssh-gen)
 - Plus 3 TCP aliases: rdp, ssh, smb
 - CLI surface coverage: complete (parse, dispatch, help, aliases)
-- Behavioral coverage: 0 (all subcommands dispatch to explicit stubs)
+- Behavioral coverage: 5 explicit deferred boundaries + 1 real
+  implementation (`ssh-config`)
 - Total subcommand-specific flags: approximately 20 (not yet parsed
   per-subcommand; Go baseline handles these inside handler functions)
 
 ## Test evidence
 
-- 6 parse-dispatch tests in `cfdrs-cli` (access_bare, access_login,
-  access_tcp, access_rdp_alias, access_ssh_config,
-  forward_alias_is_access)
-- 12 integration tests in `cfdrs-bin`:
+- 14 access/help-surface tests in `cfdrs-cli` covering parse dispatch,
+  alias routing, help routing, access-help rendering, and root-help alias
+  visibility
+- 13 integration tests in `cfdrs-bin`:
   - `access_bare_shows_help` — bare `access` shows help text, exit 0
   - `forward_alias_shows_access_help` — `forward` shows access help
   - `access_bare_and_forward_produce_same_output` — alias equivalence
-  - `access_login_dispatches_to_stub` — dispatch verified
-  - `access_curl_dispatches_to_stub` — dispatch verified
-  - `access_token_dispatches_to_stub` — dispatch verified
-  - `access_tcp_dispatches_to_stub` — dispatch verified
+  - `access_login_reaches_explicit_deferred_boundary` — deferred
+    browser-flow message verified
+  - `access_curl_reaches_explicit_deferred_boundary` — deferred curl/JWT
+    message verified
+  - `access_token_reaches_explicit_deferred_boundary` — deferred
+    token-storage message verified
+  - `access_tcp_reaches_explicit_deferred_boundary` — deferred carrier
+    message verified
   - `access_rdp_alias_dispatches_same_as_tcp` — alias equivalence
   - `access_ssh_alias_dispatches_same_as_tcp` — alias equivalence
   - `access_smb_alias_dispatches_same_as_tcp` — alias equivalence
-  - `access_ssh_config_dispatches_to_stub` — dispatch verified
-  - `access_ssh_gen_dispatches_to_stub` — dispatch verified
+  - `access_ssh_config_renders_real_output` — SSH config snippet verified
+  - `access_ssh_config_supports_short_lived_cert_flag` — short-lived cert
+    template verified
+  - `access_ssh_gen_reaches_explicit_deferred_boundary` — deferred SSH cert
+    message verified
+- 4 unit tests in [`crates/cfdrs-bin/src/access_commands.rs`](../../../crates/cfdrs-bin/src/access_commands.rs)
+  covering deferred messaging, default hostname rendering, short-lived
+  cert output, and hostname alias parsing

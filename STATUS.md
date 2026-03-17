@@ -5,8 +5,8 @@
 - lane: Linux only, `x86_64-unknown-linux-gnu`, quiche + BoringSSL,
   0-RTT required
 - workspace version: `2026.2.0-alpha.202603`
-- active milestone: `Command Family Closure`
-- next milestone: `Proof Closure`
+- active milestone: `Proof Closure`
+- next milestone: `Performance Architecture Overhaul`
 - highest-risk blockers: `HIS-016`
 - production-alpha logging blocker set:
   `CLI-024`, `HIS-036`
@@ -22,48 +22,47 @@ This repository is a real but partial Rust rewrite of `cloudflared`.
 
 What exists now:
 
-- `Program Reset`, `CDC Contract Foundation`, and `Host and Runtime Foundation`
-  are complete
+- `Program Reset`, `CDC Contract Foundation`, `Host and Runtime Foundation`,
+  `CLI Foundation`, and `Command Family Closure` are complete
 - live parity ledgers and source routing under [`docs/parity/`](docs/parity/)
 - debtmap-enabled MCP server surface for bounded repo truth and routing
 - repo-wide task entry through [`Justfile`](Justfile)
 
 What does not exist yet:
 
-- CLI Foundation milestone is complete; `Command Family Closure` is next
-- WebSocket client streaming for tail/management log streaming
+- final proof reruns and remaining rows mapped to `Proof Closure`
 - final `Performance Architecture Overhaul`
 
 ## Active Milestone
 
-### Command Family Closure
+### Proof Closure
 
 - objective:
-  close remaining command families and the CDC/HIS surfaces they depend on;
-  finish the user-visible surface required for the declared Linux lane;
-  close the remaining cross-domain logging surface
+  rerun admitted parity and contract evidence after functional closure;
+  record remaining deferments, non-lane items, and intentional divergences
+  explicitly; rerun the full logging contract after CLI, CDC, and HIS closure
 - current front edge:
   `HIS-016`, `CLI-024`
 - exit still requires:
-  behavioral implementation for remaining partial CLI, CDC, and HIS rows
-  mapped to `Command Family Closure` in the roadmap index
+  closure and evidence refresh for the remaining rows mapped to
+  `Proof Closure` in the roadmap index
 
-Previous milestone (`CLI Foundation`) is complete.
+Previous milestone (`Command Family Closure`) is complete.
 
-Next milestone after Command Family Closure:
+Next milestone after Proof Closure:
 
-- `Proof Closure`
+- `Performance Architecture Overhaul`
 
 ## Priority Rows
 
 Tier 1 lane-blocking rows, in implementation order:
 
-1. `CLI-022` — access subtree behavioral implementation for Command Family
-   Closure
-2. `HIS-016` — SysV init script generation remains the last open Host and
-   Runtime Foundation row and a proof-closure blocker
-3. `CLI-024`, `HIS-036` —
+1. `HIS-016` — SysV init script generation remains the highest-risk
+   proof-closure row
+2. `CLI-024`, `HIS-036` —
    remaining cross-domain logging blocker set (`CDC-026`, `CLI-023` closed)
+3. `CLI-017`, `CLI-021`, `CDC-027`, `CDC-032` —
+   remaining quick CLI and management closures
 4. `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
    remaining command-linked host/runtime rows
 
@@ -73,14 +72,14 @@ Counts from the `Rust status now` column in each domain ledger.
 
 | Domain | Total | Closed | Partial | Not audited | % Closed |
 | --- | --- | --- | --- | --- | --- |
-| CLI | 32 | 26 | 6 | 0 | 81% |
+| CLI | 32 | 27 | 5 | 0 | 84% |
 | CDC | 44 | 42 | 2 | 0 | 95% |
 | HIS | 74 | 51 | 21 | 2 | 69% |
-| **Total** | **150** | **119** | **29** | **2** | **79%** |
+| **Total** | **150** | **120** | **28** | **2** | **80%** |
 
 Closed breakdown:
 
-- CLI: 25 `audited, parity-backed` + 1 `audited, intentional divergence`
+- CLI: 26 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
 - CDC: 42 `audited, parity-backed`
 - HIS: 50 `audited, parity-backed` +
@@ -88,7 +87,7 @@ Closed breakdown:
 
 ## Test Snapshot
 
-1120 tests passing across 5 app crates:
+1126 tests passing across 5 app crates:
 
 - `cfdrs-bin`
 - `cfdrs-cdc`
