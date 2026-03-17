@@ -113,7 +113,7 @@ interactions are absent.
 | HIS-013 | `service install` command (token-based) | `cmd/cloudflared/linux_service.go`, `common_service.go` | parse token, validate, build args `["tunnel", "run", "--token", token]` | cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | command tests, token validation tests | critical | same function handles token path |
 | HIS-014 | systemd unit file generation | `cmd/cloudflared/linux_service.go` `installSystemd()` | write `cloudflared.service`, `cloudflared-update.service`, `cloudflared-update.timer` from Go templates to `/etc/systemd/system/` | cfdrs-his `service/systemd.rs` | audited, parity-backed | local tests | none recorded | template generation tests, file write tests | critical | `render_service_unit()` and `install()` with templates matching Go exactly |
 | HIS-015 | systemd service enablement | `cmd/cloudflared/linux_service.go` | `systemctl enable cloudflared.service`, optionally `systemctl start cloudflared-update.timer`, then `daemon-reload`, then `start cloudflared.service` | cfdrs-his `service/systemd.rs` | audited, parity-backed | local tests | none recorded | systemctl command tests | critical | systemd enablement via `CommandRunner` trait; Rust follows the exact Go sequence |
-| HIS-016 | SysV init script generation | `cmd/cloudflared/linux_service.go` `installSysv()` | write init script to `/etc/init.d/cloudflared`, create start/stop symlinks in `/etc/rc*.d/` | cfdrs-his `service/sysv.rs` | audited, partial | local tests | open gap | template tests, symlink tests | high | template renders correctly; install/uninstall are deferred stubs |
+| HIS-016 | SysV init script generation | `cmd/cloudflared/linux_service.go` `installSysv()` | write init script to `/etc/init.d/cloudflared`, create start/stop symlinks in `/etc/rc*.d/`, and start the service | cfdrs-his `service/sysv.rs` | audited, parity-backed | local tests | closed | template tests, install/uninstall tests | high | install now writes `/etc/init.d/cloudflared` with the runtime args, sets `755`, symlinks `S50et/K02et`, and runs `service cloudflared start`; uninstall stops the service and removes all artifacts; tests cover script content, symlink creation/removal, and start/stop invocation |
 | HIS-017 | `service uninstall` command | `cmd/cloudflared/linux_service.go` `uninstallLinuxService()` | detect init system, stop + disable service, remove unit files or init script, daemon-reload; preserve config and credentials | cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | uninstall tests, file removal tests, preservation tests | critical | `uninstall_linux_service()` full implementation |
 | HIS-018 | `--no-update-service` flag | `cmd/cloudflared/linux_service.go` | skip generation of `cloudflared-update.service` and timer during install | cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | flag tests | medium | `auto_update` parameter controls update service/timer generation |
 | HIS-019 | service config directory | `cmd/cloudflared/linux_service.go` `ensureConfigDirExists()` | create `/etc/cloudflared/` if not present during install | cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | directory creation tests | high | `ensure_config_dir_exists()` full implementation |
@@ -125,7 +125,7 @@ interactions are absent.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-021 | systemd detection | `cmd/cloudflared/linux_service.go` `isSystemd()` | check `/run/systemd/system` existence | cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | host-detection tests | high | `is_systemd()` checks `/run/systemd/system` matching Go exactly |
 | HIS-022 | systemd service template exact content | `cmd/cloudflared/linux_service.go` templates | `Type=notify`, `TimeoutStartSec=15`, `Restart=on-failure`, `RestartSec=5s`, `--no-autoupdate` in ExecStart, `After=network-online.target` | cfdrs-his `service/systemd.rs`, cfdrs-his `service/mod.rs` | audited, parity-backed | local tests | none recorded | template content assertion tests | critical | templates match Go exactly (tested); `notify_ready()` uses `sd_notify::notify` to send `READY=1` matching Go `daemon.SdNotify(false, "READY=1")` |
-| HIS-023 | SysV init script exact content | `cmd/cloudflared/linux_service.go` template | pidfile at `/var/run/$name.pid`, stdout to `/var/log/$name.log`, stderr to `/var/log/$name.err`, sources `/etc/sysconfig/$name` | cfdrs-his `service/sysv.rs` | audited, partial | local tests | open gap | script content tests | high | template renders correctly; install/uninstall deferred |
+| HIS-023 | SysV init script exact content | `cmd/cloudflared/linux_service.go` template | pidfile at `/var/run/$name.pid`, stdout to `/var/log/$name.log`, stderr to `/var/log/$name.err`, sources `/etc/sysconfig/$name` | cfdrs-his `service/sysv.rs` | audited, parity-backed | local tests | closed | script content tests plus install/uninstall tests | high | template now lives at `/etc/init.d/cloudflared` and is exercised by the new install/uninstall tests that assert the generated script, symlink creation, and cleanup semantics |
 
 ### Local HTTP Endpoints
 
@@ -135,7 +135,7 @@ interactions are absent.
 | HIS-025 | `/ready` JSON endpoint | `metrics/readiness.go` `ReadyServer` | JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}`, HTTP 200 if connections > 0, HTTP 503 otherwise | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs`, cfdrs-bin `runtime/state/status.rs` | audited, parity-backed | parity-backed | none recorded | readiness HTTP tests, response shape tests, connection tracker tests | critical | runtime serves `/ready` with baseline JSON shape and 200/503 semantics; `active_connections` tracks per-connection state with Go `ConnTracker` semantics: increment on `RegistrationObserved`, decrement on `Reconnecting`/`Unregistering`/`BridgeClosed` with saturating arithmetic; 6 parity tests verify increment, decrement, underflow safety, and register/disconnect cycles |
 | HIS-026 | `/healthcheck` endpoint | `metrics/metrics.go` | return `OK\n` as text/plain | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | parity-backed | none recorded | liveness probe tests | high | runtime serves `/healthcheck` as `text/plain; charset=utf-8` with body `OK\n`; parity test confirms exact status 200, content-type header, and response body matching Go baseline |
 | HIS-027 | `/metrics` Prometheus endpoint | `metrics/metrics.go` `promhttp.Handler()` | Prometheus text format, `build_info` gauge with goversion/type/revision/version labels | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | parity-backed | none recorded | metrics format tests, build_info label tests, metric name inventory tests | critical | runtime serves Prometheus text via axum with `prometheus-client` registry; `build_info` and readiness gauges registered; `baseline_metrics` module inventories all 19 Go Prometheus metric names with grouping (`cloudflared_tunnel_*`, `cloudflared_config_*`, `cloudflared_tcp_*`, `cloudflared_proxy_*`, plus `build_info` and `tunnel_ids` without namespace); 5 parity tests verify count, uniqueness, and namespace prefix consistency |
-| HIS-028 | `/quicktunnel` endpoint | `metrics/metrics.go` | JSON `{"hostname":"..."}` with quick tunnel URL | cfdrs-his `metrics_server.rs` | audited, partial | local tests | blocked | quicktunnel response tests | medium | `QuickTunnelResponse` type with serialization tests; 1 parity test (`quick_tunnel_serializes`); no HTTP endpoint |
+| HIS-028 | `/quicktunnel` endpoint | `metrics/metrics.go` | JSON `{"hostname":"..."}` with quick tunnel URL | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | baseline-backed tests | none recorded | quicktunnel response tests | medium | `QuickTunnelResponse` JSON is emitted by `runtime/metrics.rs` `handle_quicktunnel()`, pulling the hostname from `RuntimeConfig::quick_tunnel_hostname()` (first ingress host). Tests now assert the `Content-Type: application/json` header and the exact payload, matching the Go contract. |
 | HIS-029 | `/config` endpoint | orchestrator serving versioned config | JSON `{"version":N,"config":{ingress, warp-routing, originRequest}}` | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | config endpoint tests | medium | runtime now serves `/config` with versioned JSON derived from the current normalized config; CDC-backed orchestrator semantics and remote-update parity remain open |
 | HIS-030 | `/debug/pprof/*` endpoints | `http.DefaultServeMux` pprof | binary pprof format, auth disabled (`trace.AuthRequest` returns true) | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | pprof endpoint tests | low | runtime now exposes an explicit deferred `501` boundary for `/debug/pprof/*`; real profiling payloads remain open |
 | HIS-031 | metrics bind address config | `metrics/metrics.go`, `--metrics` flag | `--metrics ADDRESS` flag overrides default | cfdrs-his `metrics_server.rs`, cfdrs-his `environment.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | local tests | closed | flag tests, container detection tests | high | `--metrics` binds the runtime listener and accepts baseline-style `localhost:PORT` and `:PORT` forms; container/runtime-class routing matches Go `CONTAINER_BUILD` compile-time flag plus runtime `/.dockerenv` and `/proc/self/cgroup` detection; `is_container_runtime()` wired through `RuntimeConfig` to `bind_metrics_listener()` selecting `0.0.0.0` vs `localhost`; parity tests verify address selection, marker detection, and startup wiring |
@@ -295,8 +295,7 @@ template content (HIS-022), UID detection (HIS-050), terminal detection
 (HIS-061), token lock file (HIS-062), ping group range check (HIS-070), binary
 path detection (HIS-054), glibc marker detection (HIS-055).
 
-Partial with runtime-backed seams: SysV init script (HIS-016,
-HIS-023, template only), local HTTP metrics server (HIS-024 through HIS-031,
+Partial with runtime-backed seams: local HTTP metrics server (HIS-024 through HIS-031,
 runtime listener plus partial endpoints including `/config`), all diagnostics
 (HIS-032 through HIS-040, types + stub), watcher/reload (HIS-041 through
 HIS-045, concrete reload/orchestrator seams plus runtime watcher wiring in cfdrs-bin), updater (HIS-046, HIS-047,
@@ -323,7 +322,7 @@ HIS-053 is the only `intentional divergence` status.
 
 Blocked items use owned seams to define the API surface while keeping the
 remaining runtime gaps explicit (diagnostic HTTP breadth, raw sockets).
-These include HIS-028, HIS-039, HIS-040 (remaining diagnostics routes).
+These include HIS-039, HIS-040 (remaining diagnostics routes).
 
 ### Gap ranking by priority
 
@@ -335,7 +334,6 @@ Critical gaps (runtime exists, parity breadth still open):
 
 High gaps (runtime-backed but incomplete):
 
-- HIS-016, HIS-023: SysV init (deferred, template exists)
 - HIS-026: `/healthcheck` (parity test confirms exact Go body; broader server parity still open)
 - HIS-032 through HIS-034: diagnostic command and collectors (stub)
 - HIS-039, HIS-040: diagnostic HTTP endpoints (stub)
@@ -345,9 +343,7 @@ High gaps (runtime-backed but incomplete):
 - HIS-065: rolling log rotation (parity-backed — max-size/max-backups/max-age matching Go defaults; backup naming uses numeric suffixes, intentional local divergence)
 - HIS-069, HIS-070: ICMP raw socket and ping group check (stub + check)
 
-Medium gaps (trait-defined or constants only):
-
-- HIS-028, HIS-029: quicktunnel and config endpoints (needs HTTP server)
+- HIS-029: `/config` endpoint (needs HTTP server)
 - HIS-035 through HIS-037: diagnostic sub-collectors (stub)
 - HIS-038: diagnostic instance discovery (local tests, real HTTP pending)
 - HIS-071: ICMP source IP flags (constants only)
@@ -374,11 +370,6 @@ production-alpha lane.
 
 ### Deferred (lane-relevant, post-alpha)
 
-SysV init:
-
-- HIS-016: SysV init script generation — ADR-0005 states systemd governs alpha
-- HIS-023: SysV init script exact content — same rationale
-
 Diagnostics subsystem:
 
 - HIS-032: `tunnel diag` CLI command
@@ -398,7 +389,6 @@ Updater subsystem:
 
 Local HTTP convenience endpoints:
 
-- HIS-028: `/quicktunnel` endpoint — convenience feature
 - HIS-029: `/config` endpoint — debugging aid
 - HIS-030: `/debug/pprof/*` endpoints — runtime profiling
 

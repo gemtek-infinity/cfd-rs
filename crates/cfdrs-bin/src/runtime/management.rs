@@ -17,7 +17,7 @@ use axum::Router;
 use axum::body::Body;
 use axum::extract::ws::{CloseFrame, Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Query, State};
-use axum::http::{Request, StatusCode, header};
+use axum::http::{Method, Request, StatusCode, header};
 use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
@@ -26,6 +26,7 @@ use cfdrs_cdc::log_streaming::{
     REASON_SESSION_LIMIT_EXCEEDED, STATUS_IDLE_LIMIT_EXCEEDED, STATUS_INVALID_COMMAND,
     STATUS_SESSION_LIMIT_EXCEEDED, StreamingFilters, parse_client_event,
 };
+use cfdrs_cdc::management::{CORS_ALLOW_CREDENTIALS, CORS_ALLOWED_ORIGIN, CORS_MAX_AGE_SECS};
 use cfdrs_cdc::management::{
     HostDetailsResponse, ManagementErrorResponse, ManagementTokenClaims, ROUTE_HOST_DETAILS, ROUTE_LOGS,
     ROUTE_METRICS, ROUTE_PING,
@@ -33,6 +34,9 @@ use cfdrs_cdc::management::{
 use serde::Deserialize;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
+
+const CORS_ALLOW_METHODS: &str = "GET, POST, OPTIONS";
+const CORS_ALLOW_HEADERS: &str = "Authorization, Content-Type";
 
 // ---------------------------------------------------------------------------
 // Log session manager (CDC-026)
@@ -195,7 +199,49 @@ pub(super) fn build_management_router(
 
     router
         .layer(middleware::from_fn(auth_middleware))
+        .layer(middleware::from_fn(cors_middleware))
         .with_state(state)
+}
+
+async fn cors_middleware(request: Request<Body>, next: Next) -> Response {
+    if request.method() == Method::OPTIONS {
+        return cors_preflight_response();
+    }
+
+    let mut response = next.run(request).await;
+    apply_cors_headers(response.headers_mut());
+    response
+}
+
+fn cors_preflight_response() -> Response {
+    let mut headers = header::HeaderMap::new();
+    apply_cors_headers(&mut headers);
+
+    (StatusCode::NO_CONTENT, headers, "").into_response()
+}
+
+fn apply_cors_headers(headers: &mut header::HeaderMap) {
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_ORIGIN,
+        header::HeaderValue::from_static(CORS_ALLOWED_ORIGIN),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_METHODS,
+        header::HeaderValue::from_static(CORS_ALLOW_METHODS),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_HEADERS,
+        header::HeaderValue::from_static(CORS_ALLOW_HEADERS),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_CREDENTIALS,
+        header::HeaderValue::from_static(if CORS_ALLOW_CREDENTIALS { "true" } else { "false" }),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_MAX_AGE,
+        header::HeaderValue::from_str(&CORS_MAX_AGE_SECS.to_string())
+            .unwrap_or_else(|_| header::HeaderValue::from_static("300")),
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -483,7 +529,7 @@ fn get_host_label(label: &str) -> String {
 #[cfg(test)]
 mod tests {
     use axum::body::Body;
-    use axum::http::Request;
+    use axum::http::{Method, Request, header};
     use tower::ServiceExt;
 
     use super::*;
@@ -527,6 +573,65 @@ mod tests {
         let response = app.oneshot(authed_get("/ping")).await.expect("response");
 
         assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn cors_headers_present_on_success() {
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
+        let response = app.oneshot(authed_get("/ping")).await.expect("response");
+        assert_eq!(
+            response
+                .headers()
+                .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+                .and_then(|value| value.to_str().ok()),
+            Some(CORS_ALLOWED_ORIGIN),
+        );
+        assert_eq!(
+            response
+                .headers()
+                .get(header::ACCESS_CONTROL_ALLOW_METHODS)
+                .and_then(|value| value.to_str().ok()),
+            Some(CORS_ALLOW_METHODS),
+        );
+        assert_eq!(
+            response
+                .headers()
+                .get(header::ACCESS_CONTROL_ALLOW_HEADERS)
+                .and_then(|value| value.to_str().ok()),
+            Some(CORS_ALLOW_HEADERS),
+        );
+        assert_eq!(
+            response
+                .headers()
+                .get(header::ACCESS_CONTROL_ALLOW_CREDENTIALS)
+                .and_then(|value| value.to_str().ok()),
+            Some(if CORS_ALLOW_CREDENTIALS { "true" } else { "false" }),
+        );
+        assert_eq!(
+            response
+                .headers()
+                .get(header::ACCESS_CONTROL_MAX_AGE)
+                .and_then(|value| value.to_str().ok()),
+            Some(CORS_MAX_AGE_SECS.to_string().as_str()),
+        );
+    }
+
+    #[tokio::test]
+    async fn cors_preflight_returns_headers() {
+        let app = build_management_router(uuid::Uuid::nil(), String::new(), String::new(), false);
+        let request = Request::builder()
+            .method(Method::OPTIONS)
+            .uri("/ping")
+            .body(Body::empty())
+            .expect("request");
+
+        let response = app.oneshot(request).await.expect("response");
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        assert!(
+            response
+                .headers()
+                .contains_key(header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        );
     }
 
     #[tokio::test]

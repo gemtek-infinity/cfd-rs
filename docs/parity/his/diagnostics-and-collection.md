@@ -56,14 +56,16 @@ shutdown via context cancellation with 15s timeout.
 
 - `cfdrs-bin` now owns a local runtime listener that binds the host default
   metrics address and known fallback ports using the HIS timeout constants.
-- The current Rust listener serves `/ready`, `/healthcheck`, `/metrics`, `/config`, and `/diag/configuration`.
+- The current Rust listener serves `/ready`, `/healthcheck`, `/metrics`,
+  `/quicktunnel`, `/config`, and `/diag/configuration`.
 - `/ready` emits the baseline JSON shape and derives `readyConnections` from
   admitted runtime readiness (`1` when ready, `0` otherwise).
 - `/metrics` emits Prometheus text with `build_info` plus a readiness gauge.
+- `/quicktunnel` emits the admitted JSON shape from the runtime snapshot.
 - `/config` emits versioned JSON from the current normalized config surface.
 - `/diag/configuration` emits UID and active local log path/directory hints.
 - `/debug/pprof/*` now reports an explicit deferred `501` boundary.
-- `/quicktunnel`, `/diag/system`, and `/diag/tunnel` remain deferred.
+- `/diag/system` and `/diag/tunnel` remain deferred.
 
 ## Readiness Endpoint (`/ready`)
 
@@ -310,6 +312,9 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 
 ### What exists
 
+- local HTTP server with runtime metrics binding and graceful shutdown
+- `/ready`, `/healthcheck`, `/metrics`, `/quicktunnel`, `/config`, and
+  `/diag/configuration` local endpoints
 - readiness state machine tracking lifecycle and subsystem gates
   ([crates/cfdrs-bin/src/runtime/state/readiness.rs](../../../crates/cfdrs-bin/src/runtime/state/readiness.rs))
 - operability reporting with status and metrics to stdout
@@ -323,14 +328,8 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 
 ### What is missing
 
-- local HTTP server (no metrics listener)
-- `/metrics` Prometheus endpoint
-- `/healthcheck` liveness endpoint
-- `/ready` readiness HTTP endpoint (state machine exists but not HTTP-exposed)
-- `/quicktunnel` endpoint
-- `/config` endpoint
-- all `/diag/*` diagnostic endpoints
-- `/debug/pprof/*` profiling endpoints
+- `/diag/system` and `/diag/tunnel` diagnostic endpoints
+- full `/debug/pprof/*` profiling payloads
 - `tunnel diag` CLI command
 - diagnostic bundle ZIP generation
 - system information collection (memory, fd, disk)
@@ -371,10 +370,6 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 
 | Gap | Severity | Notes |
 | --- | --- | --- |
-| local HTTP metrics server absent | critical | no observability surface |
-| `/ready` endpoint absent | critical | blocks Kubernetes readiness |
-| `/healthcheck` endpoint absent | high | blocks liveness probes |
-| `/metrics` Prometheus endpoint absent | critical | blocks monitoring |
 | `tunnel diag` command absent | high | blocks operator diagnostics |
 | system info collector absent | high | diagnostic bundle dependency |
 | tunnel state HTTP collector absent | high | diagnostic bundle dependency |
@@ -386,6 +381,5 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 | log collection from journalctl absent | medium | host log diagnostics |
 | network traceroute absent | medium | network diagnostics |
 | ICMP source IP flags absent | medium | ICMP configuration |
-| `/config` endpoint absent | medium | remote config visibility |
-| `/quicktunnel` endpoint absent | medium | quick tunnel flow |
-| pprof endpoints absent | low | debugging aid |
+| `/config` orchestrator parity incomplete | medium | remote update semantics still deferred |
+| pprof profiling payloads absent | low | debugging aid |

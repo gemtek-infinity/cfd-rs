@@ -8,7 +8,8 @@ use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use cfdrs_his::metrics_server::{
-    self, BuildInfo, ConfigResponse, HEALTHCHECK_RESPONSE, PPROF_DEFERRED, ReadinessResponse,
+    self, BuildInfo, ConfigResponse, HEALTHCHECK_RESPONSE, PPROF_DEFERRED, QuickTunnelResponse,
+    ReadinessResponse,
 };
 use prometheus_client::encoding::text::encode;
 use prometheus_client::metrics::gauge::Gauge;
@@ -27,6 +28,7 @@ struct MetricsSnapshot {
     ready_connections: u32,
     config_response: ConfigResponse,
     diagnostic_configuration: BTreeMap<String, String>,
+    quick_tunnel_hostname: String,
 }
 
 struct AppState {
@@ -79,6 +81,7 @@ impl RuntimeMetricsHandle {
                 ready_connections: 0,
                 config_response: runtime_config_response(config),
                 diagnostic_configuration: config.diagnostic_configuration().clone(),
+                quick_tunnel_hostname: config.quick_tunnel_hostname().unwrap_or_default(),
             }),
             registry: RwLock::new(registry),
             ready_connections_gauge,
@@ -136,6 +139,7 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/ready", get(handle_ready))
         .route("/healthcheck", get(handle_healthcheck))
         .route("/metrics", get(handle_metrics))
+        .route("/quicktunnel", get(handle_quicktunnel))
         .route("/config", get(handle_config))
         .route("/diag/configuration", get(handle_diag_configuration))
         .route("/debug/pprof/{*rest}", get(handle_pprof))
@@ -184,6 +188,18 @@ async fn handle_metrics(State(state): State<Arc<AppState>>) -> Response {
         body,
     )
         .into_response()
+}
+
+async fn handle_quicktunnel(State(state): State<Arc<AppState>>) -> Response {
+    let snapshot = state.snapshot.read().await;
+    let response = QuickTunnelResponse {
+        hostname: snapshot.quick_tunnel_hostname.clone(),
+    };
+
+    match serde_json::to_string(&response) {
+        Ok(body) => (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], body).into_response(),
+        Err(_) => internal_error("quicktunnel response serialization failed"),
+    }
 }
 
 async fn handle_config(State(state): State<Arc<AppState>>) -> Response {
@@ -332,6 +348,7 @@ mod tests {
                     config: json!({}),
                 },
                 diagnostic_configuration: BTreeMap::new(),
+                quick_tunnel_hostname: String::new(),
             }),
             registry: RwLock::new(registry),
             ready_connections_gauge,
@@ -468,6 +485,36 @@ mod tests {
             .await
             .expect("body");
         assert_eq!(&body[..], b"OK\n");
+    }
+
+    #[tokio::test]
+    async fn quicktunnel_endpoint_returns_hostname() {
+        let state = test_state();
+        {
+            let mut snapshot = state.snapshot.write().await;
+            snapshot.quick_tunnel_hostname = "example.trycloudflare.com".to_owned();
+        }
+
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(Request::get("/quicktunnel").body(Body::empty()).expect("request"))
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok()),
+            Some("application/json"),
+        );
+
+        let body = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .expect("body");
+        assert_eq!(&body[..], b"{\"hostname\":\"example.trycloudflare.com\"}");
     }
 
     #[tokio::test]

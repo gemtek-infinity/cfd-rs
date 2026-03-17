@@ -202,32 +202,27 @@ From `VnetFilter`:
 
 ### Readiness
 
-**Status: absent.** No readiness endpoint, no ready server, no connection
-tracker. The current Rust runtime tracks connection state internally but does
-not expose the baseline external endpoint contract.
+**Status: parity-backed.** `cfdrs-bin` serves `/ready` with the baseline JSON
+shape, connector UUID, and HTTP 200/503 semantics derived from the admitted
+runtime connection tracker.
 
 ### Metrics
 
-**Status: absent.** No Prometheus metrics endpoint, no registered metrics, no
-local healthcheck or quicktunnel endpoints.
+**Status: parity-backed for the admitted local HTTP contract.**
+
+- `/metrics` serves Prometheus text from the runtime registry.
+- `/healthcheck` returns exact Go text `OK\n`.
+- `/quicktunnel` returns `{"hostname":"..."}` JSON.
+- `/config` returns the versioned runtime config snapshot.
 
 ### Cloudflare REST API Client
 
-**Status: absent.** No API client, no API request/response types, no tunnel
-CRUD, no route management, no vnet management.
+**Status: parity-backed for admitted CLI flows.** `cfdrs-bin::api_client`
+implements the tunnel CRUD, route, virtual-network, cleanup, list-filter, and
+management-token request surfaces used by the closed CLI rows.
 
 ## Gap Summary
 
 | Gap | Severity | Detail |
 | --- | --- | --- |
-| readiness endpoint absent | high | no `/ready` contract; needed for k8s probes |
-| metrics endpoint absent | medium | no Prometheus scrape surface |
-| healthcheck endpoint absent | medium | no `/healthcheck` liveness probe |
-| quicktunnel endpoint absent | low | only relevant for quick tunnels |
-| config endpoint absent | medium | no `/config` runtime inspect |
-| Cloudflare API client absent | critical | blocks all tunnel CRUD CLI commands |
-| API response envelope parsing | critical | no error mapping or pagination |
-| tunnel filter query construction | high | blocks `tunnel list` with filters |
-| route and vnet API methods | high | blocks route and vnet CLI commands |
-| management token request | high | blocks management CLI workflows |
-| Prometheus metric registration | medium | no `cloudflared_build_info` or RPC counters |
+| no open readiness or local metrics contract gaps in this feature group | low | remaining Proof Closure API work is tracked in other rows (for example CDC-039) |

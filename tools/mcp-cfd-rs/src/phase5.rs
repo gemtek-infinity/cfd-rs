@@ -964,7 +964,11 @@ mod tests {
 
         assert_eq!(ranked.domain, "CDC");
         assert!(ranked.total_open_rows >= ranked.rows.len());
-        assert!(!ranked.rows.is_empty());
+        if ranked.total_open_rows == 0 {
+            assert!(ranked.rows.is_empty());
+        } else {
+            assert!(!ranked.rows.is_empty());
+        }
         assert_eq!(ranked.partial_rows + ranked.absent_rows, ranked.total_open_rows);
         assert!(ranked.rows.iter().all(|row| !row.actionability_reason.is_empty()));
     }

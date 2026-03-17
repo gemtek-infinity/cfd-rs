@@ -100,6 +100,14 @@ impl RuntimeConfig {
         self.is_container_runtime
     }
 
+    pub(crate) fn quick_tunnel_hostname(&self) -> Option<String> {
+        self.normalized()
+            .ingress
+            .iter()
+            .filter_map(|rule| rule.matcher.hostname.clone())
+            .find(|hostname| !hostname.is_empty())
+    }
+
     pub(crate) fn diagnostic_configuration(&self) -> &BTreeMap<String, String> {
         &self.diagnostic_configuration
     }
