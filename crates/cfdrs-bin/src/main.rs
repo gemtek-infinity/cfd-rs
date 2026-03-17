@@ -21,11 +21,12 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use cfdrs_cli::{
-    CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command, DB_CONNECT_REMOVED_MSG, GlobalFlags,
-    HelpTarget, INGRESS_RULE_NARG_ERROR_MSG, IngressSubcommand, IpRouteSubcommand, PROGRAM_NAME,
-    PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG, ROUTE_DNS_NARG_ERROR_MSG, ROUTE_IP_ADD_NARG_ERROR_MSG,
-    ROUTE_IP_DELETE_NARG_ERROR_MSG, ROUTE_IP_GET_NARG_ERROR_MSG, ROUTE_LB_NARG_ERROR_MSG, RouteSubcommand,
-    ServiceAction, TUNNEL_CLEANUP_NARG_ERROR_MSG, TUNNEL_CMD_ERROR_MSG, TUNNEL_CREATE_NARG_ERROR_MSG,
+    AccessSubcommand, CLASSIC_TUNNEL_DEPRECATED_MSG, Cli, CliError, CliOutput, Command,
+    DB_CONNECT_REMOVED_MSG, GlobalFlags, HelpTarget, INGRESS_RULE_NARG_ERROR_MSG, IngressSubcommand,
+    IpRouteSubcommand, PROGRAM_NAME, PROXY_DNS_REMOVED_LOG_MSG, PROXY_DNS_REMOVED_MSG,
+    ROUTE_DNS_NARG_ERROR_MSG, ROUTE_IP_ADD_NARG_ERROR_MSG, ROUTE_IP_DELETE_NARG_ERROR_MSG,
+    ROUTE_IP_GET_NARG_ERROR_MSG, ROUTE_LB_NARG_ERROR_MSG, RouteSubcommand, ServiceAction,
+    TUNNEL_CLEANUP_NARG_ERROR_MSG, TUNNEL_CMD_ERROR_MSG, TUNNEL_CREATE_NARG_ERROR_MSG,
     TUNNEL_DELETE_NARG_ERROR_MSG, TUNNEL_INFO_NARG_ERROR_MSG, TUNNEL_RUN_HOSTNAME_WARNING_MSG,
     TUNNEL_RUN_IDENTITY_ERROR_MSG, TUNNEL_RUN_NARG_ERROR_MSG, TUNNEL_TOKEN_FILE_READ_ERROR_PREFIX,
     TUNNEL_TOKEN_INVALID_MSG, TUNNEL_TOKEN_NARG_ERROR_MSG, TunnelSubcommand, VNET_ADD_NARG_ERROR_MSG,
@@ -96,6 +97,16 @@ fn execute_command(cli: Cli) -> CliOutput {
         ),
 
         Command::Tunnel(_) => dispatch_tunnel_subcommand(cli),
+
+        // Go baseline: `access` command family from `access/cmd.go`.
+        // Bare `access` shows help (urfave/cli default for commands with
+        // subcommands); each subcommand dispatches explicitly.
+        Command::Access(AccessSubcommand::Bare) => CliOutput::success(render_access_help(PROGRAM_NAME)),
+        Command::Access(_) => CliOutput::failure(
+            String::new(),
+            stub_not_implemented(&full_command_label(&cli.command)),
+            1,
+        ),
 
         // Go baseline: handleServiceMode() in main.go — daemon-style
         // config-watcher loop when invoked with zero args and zero flags.
@@ -1337,5 +1348,131 @@ mod tests {
             "bare invocation and tunnel run must produce same exit code"
         );
         let _ = std::fs::remove_file(config_path);
+    }
+
+    // --- CLI-022: access subtree dispatch ---
+
+    #[test]
+    fn access_bare_shows_help() {
+        // Go baseline: bare `access` with no subcommand shows access help
+        // (urfave/cli default for commands with subcommands).
+        let out = exec(&["cloudflared", "access"]);
+        assert_eq!(out.exit_code, 0);
+        assert!(
+            out.stdout.contains("access"),
+            "bare access must show access help text: {:?}",
+            out.stdout,
+        );
+    }
+
+    #[test]
+    fn forward_alias_shows_access_help() {
+        // Go baseline: `forward` is an alias for `access`.
+        let out = exec(&["cloudflared", "forward"]);
+        assert_eq!(out.exit_code, 0);
+        assert!(
+            out.stdout.contains("access"),
+            "forward alias must show access help text: {:?}",
+            out.stdout,
+        );
+    }
+
+    #[test]
+    fn access_bare_and_forward_produce_same_output() {
+        let out_access = exec(&["cloudflared", "access"]);
+        let out_forward = exec(&["cloudflared", "forward"]);
+        assert_eq!(out_access.stdout, out_forward.stdout);
+        assert_eq!(out_access.exit_code, out_forward.exit_code);
+    }
+
+    #[test]
+    fn access_login_dispatches_to_stub() {
+        let out = exec(&["cloudflared", "access", "login"]);
+        assert_eq!(out.exit_code, 1);
+        assert!(
+            out.stderr.contains("access login"),
+            "access login stub must name the command: {:?}",
+            out.stderr,
+        );
+    }
+
+    #[test]
+    fn access_curl_dispatches_to_stub() {
+        let out = exec(&["cloudflared", "access", "curl"]);
+        assert_eq!(out.exit_code, 1);
+        assert!(
+            out.stderr.contains("access curl"),
+            "access curl stub must name the command: {:?}",
+            out.stderr,
+        );
+    }
+
+    #[test]
+    fn access_token_dispatches_to_stub() {
+        let out = exec(&["cloudflared", "access", "token"]);
+        assert_eq!(out.exit_code, 1);
+        assert!(
+            out.stderr.contains("access token"),
+            "access token stub must name the command: {:?}",
+            out.stderr,
+        );
+    }
+
+    #[test]
+    fn access_tcp_dispatches_to_stub() {
+        let out = exec(&["cloudflared", "access", "tcp"]);
+        assert_eq!(out.exit_code, 1);
+        assert!(
+            out.stderr.contains("access tcp"),
+            "access tcp stub must name the command: {:?}",
+            out.stderr,
+        );
+    }
+
+    #[test]
+    fn access_rdp_alias_dispatches_same_as_tcp() {
+        // Go baseline: rdp/ssh/smb are aliases for tcp.
+        let out_tcp = exec(&["cloudflared", "access", "tcp"]);
+        let out_rdp = exec(&["cloudflared", "access", "rdp"]);
+        assert_eq!(out_tcp.exit_code, out_rdp.exit_code);
+        assert_eq!(out_tcp.stderr, out_rdp.stderr);
+    }
+
+    #[test]
+    fn access_ssh_alias_dispatches_same_as_tcp() {
+        let out_tcp = exec(&["cloudflared", "access", "tcp"]);
+        let out_ssh = exec(&["cloudflared", "access", "ssh"]);
+        assert_eq!(out_tcp.exit_code, out_ssh.exit_code);
+        assert_eq!(out_tcp.stderr, out_ssh.stderr);
+    }
+
+    #[test]
+    fn access_smb_alias_dispatches_same_as_tcp() {
+        let out_tcp = exec(&["cloudflared", "access", "tcp"]);
+        let out_smb = exec(&["cloudflared", "access", "smb"]);
+        assert_eq!(out_tcp.exit_code, out_smb.exit_code);
+        assert_eq!(out_tcp.stderr, out_smb.stderr);
+    }
+
+    #[test]
+    fn access_ssh_config_dispatches_to_stub() {
+        let out = exec(&["cloudflared", "access", "ssh-config"]);
+        assert_eq!(out.exit_code, 1);
+        assert!(
+            out.stderr.contains("access ssh-config"),
+            "access ssh-config stub must name the command: {:?}",
+            out.stderr,
+        );
+    }
+
+    #[test]
+    fn access_ssh_gen_dispatches_to_stub() {
+        let out = exec(&["cloudflared", "access", "ssh-gen"]);
+        assert_eq!(out.exit_code, 1);
+        assert!(
+            out.stderr.contains("access ssh-gen"),
+            "access ssh-gen stub must name the command: {:?}",
+            out.stderr,
+        );
     }
 }

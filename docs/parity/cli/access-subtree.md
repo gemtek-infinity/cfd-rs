@@ -17,7 +17,10 @@ Authoritative checklist row: CLI-022.
 The `forward` alias means `cloudflared forward login` is equivalent to
 `cloudflared access login`.
 
-Rust coverage: absent for entire access subtree.
+Rust coverage: parse, dispatch, and help complete. Bare `access`
+and `forward` alias both show access help text. All subcommands
+parsed and dispatched explicitly; behavioral implementations are stubs
+pending CDC/HIS runtime infrastructure.
 
 ## Subcommand inventory
 
@@ -34,7 +37,8 @@ Flags:
 | `--auto-close` | | bool | false | automatically close the auth interstitial after action |
 | `--app` | | string | | application URL |
 
-Rust coverage: absent.
+Rust coverage: parsed as `AccessSubcommand::Login`; dispatch to
+explicit stub.
 
 ### `access curl`
 
@@ -46,7 +50,8 @@ Passes requests through Access with JWT injection.
 
 No formally defined flags due to flag-parsing skip.
 
-Rust coverage: absent.
+Rust coverage: parsed as `AccessSubcommand::Curl`; dispatch to
+explicit stub.
 
 ### `access token`
 
@@ -58,7 +63,8 @@ Flags:
 | --- | --- | --- |
 | `--app` | string | application URL |
 
-Rust coverage: absent.
+Rust coverage: parsed as `AccessSubcommand::Token`; dispatch to
+explicit stub.
 
 ### `access tcp` (aliases: `rdp`, `ssh`, `smb`)
 
@@ -89,7 +95,9 @@ Flags:
 | `--connect-to` | | string | | yes | alternate connection for testing |
 | `--debug-stream` | | uint64 | | yes | max stream payloads to log as debug |
 
-Rust coverage: absent.
+Rust coverage: parsed as `AccessSubcommand::Tcp`; all four names
+(`tcp`, `rdp`, `ssh`, `smb`) parse to the same variant; dispatch to
+explicit stub. Integration tests verify alias equivalence.
 
 ### `access ssh-config`
 
@@ -102,7 +110,8 @@ Flags:
 | `--hostname` | string | | hostname of your application |
 | `--short-lived-cert` | bool | false | generate short-lived certs |
 
-Rust coverage: absent.
+Rust coverage: parsed as `AccessSubcommand::SshConfig`; dispatch to
+explicit stub.
 
 ### `access ssh-gen`
 
@@ -114,11 +123,33 @@ Flags:
 | --- | --- | --- |
 | `--hostname` | string | hostname of your application |
 
-Rust coverage: absent.
+Rust coverage: parsed as `AccessSubcommand::SshGen`; dispatch to
+explicit stub.
 
 ## Coverage summary
 
 - Total access subcommands: 6 (login, curl, token, tcp, ssh-config, ssh-gen)
 - Plus 3 TCP aliases: rdp, ssh, smb
-- Total with Rust coverage: 0
-- Total subcommand-specific flags: approximately 20
+- CLI surface coverage: complete (parse, dispatch, help, aliases)
+- Behavioral coverage: 0 (all subcommands dispatch to explicit stubs)
+- Total subcommand-specific flags: approximately 20 (not yet parsed
+  per-subcommand; Go baseline handles these inside handler functions)
+
+## Test evidence
+
+- 6 parse-dispatch tests in `cfdrs-cli` (access_bare, access_login,
+  access_tcp, access_rdp_alias, access_ssh_config,
+  forward_alias_is_access)
+- 12 integration tests in `cfdrs-bin`:
+  - `access_bare_shows_help` — bare `access` shows help text, exit 0
+  - `forward_alias_shows_access_help` — `forward` shows access help
+  - `access_bare_and_forward_produce_same_output` — alias equivalence
+  - `access_login_dispatches_to_stub` — dispatch verified
+  - `access_curl_dispatches_to_stub` — dispatch verified
+  - `access_token_dispatches_to_stub` — dispatch verified
+  - `access_tcp_dispatches_to_stub` — dispatch verified
+  - `access_rdp_alias_dispatches_same_as_tcp` — alias equivalence
+  - `access_ssh_alias_dispatches_same_as_tcp` — alias equivalence
+  - `access_smb_alias_dispatches_same_as_tcp` — alias equivalence
+  - `access_ssh_config_dispatches_to_stub` — dispatch verified
+  - `access_ssh_gen_dispatches_to_stub` — dispatch verified
