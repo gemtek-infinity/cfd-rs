@@ -16,7 +16,10 @@ pub enum HelpTarget {
     Tunnel,
     /// `cloudflared access --help` or `cloudflared help access`.
     Access,
+    /// `cloudflared management --help` or `cloudflared help management`.
+    Management,
     // --- Per-subcommand targets ---
+    ManagementToken,
     TunnelCreate,
     TunnelList,
     TunnelRun,

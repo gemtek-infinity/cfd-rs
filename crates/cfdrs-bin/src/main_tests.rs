@@ -895,13 +895,14 @@ fn tail_token_dispatches_to_behavioral_implementation() {
 // --- CLI-024: management command dispatch ---
 
 #[test]
-fn management_bare_dispatches_to_stub() {
+fn management_bare_shows_help() {
     let out = exec(&["cloudflared", "management"]);
-    assert_eq!(out.exit_code, 1);
+    assert_eq!(out.exit_code, 0);
     assert!(
-        out.stderr.contains("management"),
-        "management stub must name the command: {:?}",
-        out.stderr,
+        out.stdout
+            .contains("cloudflared management - Monitor cloudflared tunnels via management API"),
+        "management help must describe the hidden command: {:?}",
+        out.stdout,
     );
 }
 
@@ -914,5 +915,16 @@ fn management_token_dispatches_to_behavioral_implementation() {
         out.stderr.contains("cert") || out.stderr.contains("tunnel"),
         "management token dispatch reached behavioral code: {:?}",
         out.stderr,
+    );
+}
+
+#[test]
+fn management_token_help_shows_hidden_subcommand_flags() {
+    let out = exec(&["cloudflared", "management", "token", "--help"]);
+    assert_eq!(out.exit_code, 0);
+    assert!(
+        out.stdout.contains("--resource value"),
+        "management token help must list the required resource flag: {:?}",
+        out.stdout,
     );
 }

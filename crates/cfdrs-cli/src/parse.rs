@@ -4,7 +4,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
 use self::value_flags::try_parse_value_flag;
-use super::types::{GlobalFlags, HelpTarget, RouteSubcommand, TunnelSubcommand};
+use super::types::{GlobalFlags, HelpTarget, ManagementSubcommand, RouteSubcommand, TunnelSubcommand};
 use super::{Cli, Command, surface_contract};
 
 /// Short-circuit builder for value-flag matching.
@@ -513,6 +513,8 @@ fn finalize_cli(state: ParseState) -> Cli {
                 _ => HelpTarget::Tunnel,
             },
             Some(Command::Access(_)) => HelpTarget::Access,
+            Some(Command::Management(ManagementSubcommand::Token)) => HelpTarget::ManagementToken,
+            Some(Command::Management(_)) => HelpTarget::Management,
             _ => HelpTarget::Root,
         };
         return Cli {

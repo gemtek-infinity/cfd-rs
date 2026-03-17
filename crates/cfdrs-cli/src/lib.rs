@@ -15,7 +15,10 @@ mod surface_contract;
 mod types;
 
 pub use self::error::CliError;
-pub use self::help::{render_access_help, render_help, render_subcommand_help, render_tunnel_help};
+pub use self::help::{
+    render_access_help, render_help, render_management_help, render_management_token_help,
+    render_subcommand_help, render_tunnel_help,
+};
 pub use self::output::CliOutput;
 pub use self::parse::parse_args;
 pub use self::surface_contract::{

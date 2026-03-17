@@ -7,9 +7,9 @@
 - workspace version: `2026.2.0-alpha.202603`
 - active milestone: `Proof Closure`
 - next milestone: `Performance Architecture Overhaul`
-- highest-risk blockers: `CLI-024`, `HIS-036`
+- highest-risk blockers: `HIS-036`
 - production-alpha logging blocker set:
-  `CLI-024`, `HIS-036`
+  `HIS-036`
 - behavior truth: [`baseline-2026.2.0/`](baseline-2026.2.0/)
 - parity routing: [`docs/parity/source-map.csv`](docs/parity/source-map.csv)
 - command surface: [`Justfile`](Justfile)
@@ -42,7 +42,7 @@ What does not exist yet:
   record remaining deferments, non-lane items, and intentional divergences
   explicitly; rerun the full logging contract after CLI, CDC, and HIS closure
 - current front edge:
-  `CLI-024`, `HIS-036`
+  `HIS-036`, `CLI-017`
 - exit still requires:
   closure and evidence refresh for the remaining rows mapped to
   `Proof Closure` in the roadmap index
@@ -57,8 +57,8 @@ Next milestone after Proof Closure:
 
 Tier 1 lane-blocking rows, in implementation order:
 
-1. `CLI-024`, `HIS-036` —
-   remaining cross-domain logging blocker set (`CDC-026`, `CLI-023` closed)
+1. `HIS-036` —
+   remaining production-alpha logging blocker
 2. `CLI-017`, `CLI-021` —
    remaining quick CLI closures
 3. `HIS-069`, `HIS-071`, `HIS-072`, `HIS-073`, `HIS-074` —
@@ -70,14 +70,14 @@ Counts from the `Rust status now` column in each domain ledger.
 
 | Domain | Total | Closed | Partial | Not audited | % Closed |
 | --- | --- | --- | --- | --- | --- |
-| CLI | 32 | 27 | 5 | 0 | 84% |
+| CLI | 32 | 28 | 4 | 0 | 88% |
 | CDC | 44 | 44 | 0 | 0 | 100% |
 | HIS | 74 | 54 | 18 | 2 | 73% |
-| **Total** | **150** | **125** | **23** | **2** | **83%** |
+| **Total** | **150** | **126** | **22** | **2** | **84%** |
 
 Closed breakdown:
 
-- CLI: 26 `audited, parity-backed` + 1 `audited, intentional divergence`
+- CLI: 27 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
 - CDC: 44 `audited, parity-backed`
 - HIS: 53 `audited, parity-backed` +

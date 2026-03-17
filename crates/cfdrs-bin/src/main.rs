@@ -33,9 +33,9 @@ use cfdrs_cli::{
     TUNNEL_RUN_IDENTITY_ERROR_MSG, TUNNEL_RUN_NARG_ERROR_MSG, TUNNEL_TOKEN_FILE_READ_ERROR_PREFIX,
     TUNNEL_TOKEN_INVALID_MSG, TUNNEL_TOKEN_NARG_ERROR_MSG, TailSubcommand, TunnelSubcommand,
     VNET_ADD_NARG_ERROR_MSG, VNET_DELETE_NARG_ERROR_MSG, VNET_UPDATE_NARG_ERROR_MSG, VnetSubcommand,
-    parse_args, render_access_help, render_help, render_short_version, render_subcommand_help,
-    render_tunnel_help, render_version_output, stub_not_implemented, subcommand_usage_error,
-    tunnel_run_usage_error,
+    parse_args, render_access_help, render_help, render_management_help, render_management_token_help,
+    render_short_version, render_subcommand_help, render_tunnel_help, render_version_output,
+    stub_not_implemented, subcommand_usage_error, tunnel_run_usage_error,
 };
 use cfdrs_his::environment::current_executable;
 use cfdrs_his::service::{
@@ -83,6 +83,10 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::Help(HelpTarget::Root) => CliOutput::success(render_help(PROGRAM_NAME)),
         Command::Help(HelpTarget::Tunnel) => CliOutput::success(render_tunnel_help(PROGRAM_NAME)),
         Command::Help(HelpTarget::Access) => CliOutput::success(render_access_help(PROGRAM_NAME)),
+        Command::Help(HelpTarget::Management) => CliOutput::success(render_management_help(PROGRAM_NAME)),
+        Command::Help(HelpTarget::ManagementToken) => {
+            CliOutput::success(render_management_token_help(PROGRAM_NAME))
+        }
         Command::Help(target) => CliOutput::success(render_subcommand_help(target)),
         Command::Version { short: true } => CliOutput::success(render_short_version()),
         Command::Version { short: false } => CliOutput::success(render_version_output(PROGRAM_NAME)),
@@ -126,11 +130,9 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::Management(ManagementSubcommand::Token) => {
             tail_management::execute_management_token(&cli.flags)
         }
-        Command::Management(ManagementSubcommand::Bare) => CliOutput::failure(
-            String::new(),
-            stub_not_implemented(&full_command_label(&cli.command)),
-            1,
-        ),
+        Command::Management(ManagementSubcommand::Bare) => {
+            CliOutput::success(render_management_help(PROGRAM_NAME))
+        }
 
         // Go baseline: handleServiceMode() in main.go — daemon-style
         // config-watcher loop when invoked with zero args and zero flags.

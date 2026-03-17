@@ -968,3 +968,15 @@ fn tunnel_bare_help_routes_to_tunnel() {
     let cli = parse(&["tunnel", "--help"]);
     assert_eq!(cli.command, Command::Help(HelpTarget::Tunnel));
 }
+
+#[test]
+fn management_help_routes_correctly() {
+    let cli = parse(&["management", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::Management));
+}
+
+#[test]
+fn management_token_help_routes_correctly() {
+    let cli = parse(&["management", "token", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::ManagementToken));
+}
