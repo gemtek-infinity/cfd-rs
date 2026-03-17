@@ -6,8 +6,10 @@ pub(super) fn try_parse_value_flag(
     args: &mut impl Iterator<Item = OsString>,
     state: &mut ParseState,
 ) -> Result<bool, String> {
+    let in_update_command = matches!(state.command, Some(crate::Command::Update));
     let matcher = &mut FlagMatcher::new(arg, args, &mut state.flags);
 
+    try_update_flags(matcher, in_update_command)?;
     try_config_and_credential_flags(matcher)?;
     try_logging_flags(matcher)?;
     try_metrics_and_process_flags(matcher)?;
@@ -24,6 +26,17 @@ pub(super) fn try_parse_value_flag(
     }
 
     Ok(matcher.matched())
+}
+
+fn try_update_flags<I: Iterator<Item = OsString>>(
+    matcher: &mut FlagMatcher<'_, I>,
+    in_update_command: bool,
+) -> Result<(), String> {
+    if in_update_command {
+        matcher.string(surface_contract::VERSION_FLAG, |flags| &mut flags.update_version)?;
+    }
+
+    Ok(())
 }
 
 fn try_config_and_credential_flags<I: Iterator<Item = OsString>>(

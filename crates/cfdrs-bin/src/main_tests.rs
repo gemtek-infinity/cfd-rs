@@ -295,6 +295,107 @@ fn exec(args: &[&str]) -> CliOutput {
     execute(args.iter().map(OsString::from))
 }
 
+struct TestUpdater {
+    check: Option<cfdrs_his::updater::UpdateCheck>,
+    check_error: Option<&'static str>,
+    apply_error: Option<&'static str>,
+}
+
+impl cfdrs_his::updater::Updater for TestUpdater {
+    fn check(&self) -> cfdrs_shared::Result<cfdrs_his::updater::UpdateCheck> {
+        if let Some(message) = self.check_error {
+            return Err(ConfigError::invariant(message));
+        }
+
+        Ok(self.check.clone().expect("test updater check result"))
+    }
+
+    fn apply(&self, _info: &cfdrs_his::updater::UpdateInfo) -> cfdrs_shared::Result<()> {
+        if let Some(message) = self.apply_error {
+            return Err(ConfigError::invariant(message));
+        }
+
+        Ok(())
+    }
+}
+
+#[test]
+fn update_command_reports_package_managed_skip_with_exit_zero() {
+    let updater = TestUpdater {
+        check: None,
+        check_error: Some("should not check"),
+        apply_error: None,
+    };
+
+    let out = execute_update_with_updater(&updater, true);
+    assert_eq!(out.exit_code, 0);
+    assert!(out.stderr.contains("installed by a package manager"));
+}
+
+#[test]
+fn update_command_reports_no_update_with_exit_zero() {
+    let updater = TestUpdater {
+        check: Some(cfdrs_his::updater::UpdateCheck {
+            update: None,
+            user_message: Some("already current".to_owned()),
+        }),
+        check_error: None,
+        apply_error: None,
+    };
+
+    let out = execute_update_with_updater(&updater, false);
+    assert_eq!(out.exit_code, 0);
+    assert!(out.stdout.contains("already current"));
+    assert!(out.stdout.contains("cloudflared is up to date"));
+}
+
+#[test]
+fn update_command_returns_exit_11_on_success() {
+    let updater = TestUpdater {
+        check: Some(cfdrs_his::updater::UpdateCheck {
+            update: Some(cfdrs_his::updater::UpdateInfo {
+                version: "2026.2.1".to_owned(),
+                url: "https://example.com/cloudflared".to_owned(),
+                checksum: "deadbeef".to_owned(),
+                compressed: false,
+                user_message: None,
+            }),
+            user_message: None,
+        }),
+        check_error: None,
+        apply_error: None,
+    };
+
+    let out = execute_update_with_updater(&updater, false);
+    assert_eq!(out.exit_code, 11);
+    assert!(out.stdout.contains("updated to version 2026.2.1"));
+}
+
+#[test]
+fn update_command_returns_exit_10_on_failure() {
+    let updater = TestUpdater {
+        check: Some(cfdrs_his::updater::UpdateCheck {
+            update: Some(cfdrs_his::updater::UpdateInfo {
+                version: "2026.2.1".to_owned(),
+                url: "https://example.com/cloudflared".to_owned(),
+                checksum: "deadbeef".to_owned(),
+                compressed: false,
+                user_message: None,
+            }),
+            user_message: None,
+        }),
+        check_error: None,
+        apply_error: Some("download failed"),
+    };
+
+    let out = execute_update_with_updater(&updater, false);
+    assert_eq!(out.exit_code, 10);
+    assert!(
+        out.stderr
+            .contains("failed to update cloudflared: download failed")
+    );
+}
+
 // tunnel create: NArg != 1 → 255
 #[test]
 fn tunnel_create_rejects_zero_args() {

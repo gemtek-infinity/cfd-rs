@@ -43,6 +43,10 @@ use cfdrs_his::service::{
     ProcessRunner, SERVICE_CONFIG_PATH, ServiceTemplateArgs, build_args_for_config, build_args_for_token,
     copy_file, install_linux_service, uninstall_linux_service,
 };
+use cfdrs_his::updater::{
+    ManualUpdateOutcome, UPDATE_EXIT_FAILURE, UPDATE_EXIT_SUCCESS, Updater, WorkersUpdateRequest,
+    WorkersUpdater, run_manual_update,
+};
 use cfdrs_shared::{ConfigError, TunnelToken};
 use mimalloc::MiMalloc;
 
@@ -92,6 +96,7 @@ fn execute_command(cli: Cli) -> CliOutput {
         Command::Version { short: true } => CliOutput::success(render_short_version()),
         Command::Version { short: false } => CliOutput::success(render_version_output(PROGRAM_NAME)),
         Command::Validate => execute_startup_command(&cli, CliMode::Validate),
+        Command::Update => execute_update(&cli.flags),
 
         Command::Service(ServiceAction::Install) => execute_service_install(&cli),
         Command::Service(ServiceAction::Uninstall) => execute_service_uninstall(),
@@ -146,9 +151,6 @@ fn execute_command(cli: Cli) -> CliOutput {
             eprintln!("{PROXY_DNS_REMOVED_LOG_MSG}");
             CliOutput::failure(String::new(), PROXY_DNS_REMOVED_MSG.to_owned(), 1)
         }
-
-        // Everything else is recognized but not yet implemented.
-        other => CliOutput::failure(String::new(), stub_not_implemented(&full_command_label(other)), 1),
     }
 }
 
@@ -348,6 +350,68 @@ fn execute_startup_command(cli: &Cli, mode: CliMode) -> CliOutput {
         },
         Err(error) => CliError::config(error).into_output(),
     }
+}
+
+fn execute_update(flags: &GlobalFlags) -> CliOutput {
+    let target_path = match current_executable() {
+        Ok(path) => path,
+        Err(error) => return CliError::config(error).into_output(),
+    };
+
+    let request = WorkersUpdateRequest::new(
+        env!("CARGO_PKG_VERSION"),
+        target_path,
+        flags.update_beta,
+        flags.update_staging,
+        flags.force,
+        flags.update_version.clone(),
+    );
+    let updater = match WorkersUpdater::new(request) {
+        Ok(updater) => updater,
+        Err(error) => return CliError::config(error).into_output(),
+    };
+
+    execute_update_with_updater(&updater, cfdrs_his::updater::should_skip_update())
+}
+
+fn execute_update_with_updater(updater: &dyn Updater, package_managed: bool) -> CliOutput {
+    match run_manual_update(updater, package_managed) {
+        Ok(ManualUpdateOutcome::PackageManaged { message }) => CliOutput {
+            stdout: String::new(),
+            stderr: format!("{message}\n"),
+            exit_code: 0,
+        },
+        Ok(ManualUpdateOutcome::NoUpdate { user_message }) => {
+            CliOutput::success(render_update_stdout(user_message, "cloudflared is up to date"))
+        }
+        Ok(ManualUpdateOutcome::Updated {
+            version,
+            user_message,
+        }) => CliOutput {
+            stdout: render_update_stdout(
+                user_message,
+                &format!("cloudflared has been updated to version {version}"),
+            ),
+            stderr: String::new(),
+            exit_code: UPDATE_EXIT_SUCCESS as u8,
+        },
+        Err(error) => CliOutput::failure(
+            String::new(),
+            format!("failed to update cloudflared: {error}\n"),
+            UPDATE_EXIT_FAILURE as u8,
+        ),
+    }
+}
+
+fn render_update_stdout(user_message: Option<String>, status_line: &str) -> String {
+    let mut lines = Vec::new();
+    if let Some(message) = user_message
+        && !message.is_empty()
+    {
+        lines.push(message);
+    }
+    lines.push(status_line.to_owned());
+    lines.join("\n") + "\n"
 }
 
 /// Go baseline: `runCommand()` in subcommands.go lines 748–788.

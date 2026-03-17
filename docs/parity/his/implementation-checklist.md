@@ -168,7 +168,7 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-046 | `update` CLI command | `cmd/cloudflared/updater/update.go` | manual update with `--beta`, `--staging`, `--force`, `--version` flags; HTTP check to `update.argotunnel.com` | cfdrs-his `updater.rs` | audited, partial | local tests | open gap | command tests, HTTP mock tests | high | `Updater` trait + constants; `StubUpdater` returns deferred; 6 parity tests (`stub_updater_returns_deferred`, `update_exit_success_is_11`, `update_exit_failure_is_10`, `marker_path_matches_go_postinst`, `should_skip_update_delegates_to_package_managed`, `update_server_matches_go`) |
+| HIS-046 | `update` CLI command | `cmd/cloudflared/updater/update.go` | manual update with `--beta`, `--staging`, `--force`, `--version` flags; HTTP check to `update.argotunnel.com` | cfdrs-his `updater.rs` | audited, parity-backed | local tests | closed | command tests, HTTP mock tests | high | `WorkersUpdater` now performs the Go-shaped check/apply flow with a 60s blocking HTTP client, `os`/`arch`/`clientVersion` query parameters, staging URL selection, SHA-256 validation, `.new`/`.old` binary swap, and package-manager short-circuit handling. Evidence: 16 updater tests covering request construction, staging URL selection, non-200 failure, no-update response, successful replacement, checksum mismatch, same-binary checksum rejection, and manual-update short-circuit behavior, plus CLI-facing exit-code tests in `cfdrs-bin` |
 | HIS-047 | auto-update timer | `cmd/cloudflared/updater/update.go` `AutoUpdater` | periodic check (default 24h), `--autoupdate-freq`, `--no-autoupdate` flags; disabled on Windows, terminal, package-managed | cfdrs-his `updater.rs` | audited, partial | local tests | open gap | timer tests, restriction tests | high | `AutoUpdater` trait + constants; `StubAutoUpdater` returns deferred; 1 parity test (`default_autoupdate_freq_is_24h`) |
 | HIS-048 | update exit codes | `cmd/cloudflared/updater/update.go` | exit 11 = success (restart), exit 10 = failure, exit 0 = no update | cfdrs-his `updater.rs` | audited, parity-backed | baseline-backed tests | closed | exit code tests | medium | `UPDATE_EXIT_SUCCESS = 11`, `UPDATE_EXIT_FAILURE = 10` constants match Go `statusSuccess.ExitCode()` / `statusError.ExitCode()` exactly; systemd update-service template maps exit 11 to `systemctl restart`; 2 parity constant tests; actual updater runtime deferred to HIS-046/047 |
 | HIS-049 | package manager detection | `cmd/cloudflared/updater/update.go` | `.installedFromPackageManager` marker file or `BuiltForPackageManager` build tag disables auto-update | cfdrs-his `updater.rs`, `environment.rs` | audited, parity-backed | baseline-backed tests | closed | marker detection tests | medium | `INSTALLED_FROM_PACKAGE_MARKER` path constant matches Go `postinst.sh`; `is_package_managed()` checks marker file existence; `should_skip_update()` delegates correctly; 2 parity tests in updater.rs, 2 in environment.rs; actual auto-update runtime deferred to HIS-046/047 |
@@ -297,8 +297,8 @@ path detection (HIS-054), glibc marker detection (HIS-055).
 
 Partial with runtime-backed seams: local HTTP metrics server (`/config` and
 `/debug/pprof/*` remain partial on top of the closed metrics/readiness/diag
-surface), updater (HIS-046, HIS-047, traits; HIS-048 and HIS-049 exit codes
-and package detection now closed), ICMP (HIS-069, HIS-071, raw-socket and
+surface), updater (HIS-047 auto-update policy remains open; HIS-046, HIS-048,
+and HIS-049 are now closed), ICMP (HIS-069, HIS-071, raw-socket and
 source-selection work still open), `hello_world` (HIS-072, trait only),
 process restart (HIS-073, HIS-074, trait only), and deployment evidence
 (HIS-053, intentional divergence).
@@ -324,7 +324,7 @@ remaining runtime gaps explicit (updater, raw sockets, restart inheritance).
 
 Critical gaps (runtime exists, parity breadth still open):
 
-- HIS-046, HIS-047: update command and auto-update
+- HIS-047: auto-update
 - HIS-069: ICMP raw socket proxy
 
 High gaps (runtime-backed but incomplete):
@@ -357,8 +357,7 @@ production-alpha lane.
 
 Updater subsystem:
 
-- HIS-046: `update` CLI command — requires external infrastructure
-- HIS-047: auto-update timer — depends on updater
+- HIS-047: auto-update timer — depends on updater policy/runtime wiring
 
 Local HTTP convenience endpoints:
 
