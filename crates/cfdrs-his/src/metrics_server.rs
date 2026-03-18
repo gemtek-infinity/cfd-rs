@@ -107,14 +107,28 @@ pub struct QuickTunnelResponse {
 
 // --- HIS-029: config endpoint ---
 
-/// Stub for the `/config` endpoint response.
+/// Response shape for the `/config` endpoint.
 ///
-/// The real implementation depends on the CDC orchestrator contract
-/// (`CDC-044`). This type captures the shape.
+/// Go: `Orchestrator.GetVersionedConfigJSON()` returns
+/// `{"version": currentVersion, "config": {...}}` where `currentVersion`
+/// is an `int32` starting at `-1` and incrementing on each remote config push.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigResponse {
-    pub version: u32,
+    pub version: i32,
     pub config: serde_json::Value,
+}
+
+/// Build a `ConfigResponse` from a `ConfigOrchestrator`.
+///
+/// Go: `Orchestrator.GetVersionedConfigJSON()` — combines the monotonic
+/// version counter with the current config snapshot.
+pub fn versioned_config_response(
+    orchestrator: &dyn crate::watcher::ConfigOrchestrator,
+) -> cfdrs_shared::Result<ConfigResponse> {
+    Ok(ConfigResponse {
+        version: orchestrator.current_version(),
+        config: orchestrator.get_config_json()?,
+    })
 }
 
 // --- HIS-031: --metrics flag ---
@@ -404,6 +418,52 @@ mod tests {
         assert!(config.get("ingress").is_some());
         assert!(config.get("warp-routing").is_some());
         assert!(config.get("originRequest").is_some());
+    }
+
+    // --- HIS-029: versioned config response from orchestrator ---
+
+    #[test]
+    fn versioned_config_response_reflects_initial_version() {
+        use crate::watcher::InMemoryConfigOrchestrator;
+
+        let orchestrator = InMemoryConfigOrchestrator::new(
+            serde_json::json!({"ingress": [], "warp-routing": {}, "originRequest": {}}),
+        );
+
+        let response = versioned_config_response(&orchestrator).expect("should build response");
+        assert_eq!(response.version, -1, "Go initial version is -1");
+        assert!(response.config.get("ingress").is_some());
+    }
+
+    #[test]
+    fn versioned_config_response_tracks_version_after_update() {
+        use crate::watcher::{ConfigOrchestrator, InMemoryConfigOrchestrator};
+
+        let orchestrator = InMemoryConfigOrchestrator::new(serde_json::json!({}));
+
+        orchestrator.update_config(
+            0,
+            serde_json::json!({"ingress": [{"service": "http://localhost:8080"}]}),
+        );
+
+        let response = versioned_config_response(&orchestrator).expect("should build response");
+
+        assert_eq!(response.version, 0);
+        assert!(response.config.get("ingress").is_some());
+    }
+
+    #[test]
+    fn versioned_config_response_shows_latest_version_after_multiple_updates() {
+        use crate::watcher::{ConfigOrchestrator, InMemoryConfigOrchestrator};
+
+        let orchestrator = InMemoryConfigOrchestrator::new(serde_json::json!({}));
+
+        orchestrator.update_config(0, serde_json::json!({"v": 0}));
+        orchestrator.update_config(1, serde_json::json!({"v": 1}));
+        orchestrator.update_config(5, serde_json::json!({"v": 5}));
+
+        let response = versioned_config_response(&orchestrator).expect("should build response");
+        assert_eq!(response.version, 5);
     }
 
     // --- HIS-027: Go baseline Prometheus metric name inventory ---

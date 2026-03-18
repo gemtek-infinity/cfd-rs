@@ -59,10 +59,8 @@ Tier 1 lane-blocking rows, in implementation order:
 
 1. `HIS-073`, `HIS-074` —
    restart inheritance track
-2. `HIS-071`, `HIS-069`, `HIS-072` —
-   remaining ICMP and local test-server host features
-3. `HIS-029`, `HIS-030` —
-   remaining local convenience endpoints
+2. `HIS-069` —
+   ICMP raw-socket proxy (CAP_NET_RAW)
 
 ## Parity Snapshot
 
@@ -72,20 +70,21 @@ Counts from the `Rust status now` column in each domain ledger.
 | --- | --- | --- | --- | --- | --- |
 | CLI | 32 | 32 | 0 | 0 | 100% |
 | CDC | 44 | 44 | 0 | 0 | 100% |
-| HIS | 74 | 67 | 7 | 0 | 91% |
-| **Total** | **150** | **143** | **7** | **0** | **95%** |
+| HIS | 74 | 71 | 3 | 0 | 96% |
+| **Total** | **150** | **147** | **3** | **0** | **98%** |
 
 Closed breakdown:
 
 - CLI: 31 `audited, parity-backed` + 1 `audited, intentional divergence`
   (`CLI-031`)
 - CDC: 44 `audited, parity-backed`
-- HIS: 64 `audited, parity-backed` +
-  3 `audited, intentional divergence` (`HIS-053`, `HIS-056`, `HIS-057`)
+- HIS: 67 `audited, parity-backed` +
+  4 `audited, intentional divergence` (`HIS-030`, `HIS-053`, `HIS-056`,
+  `HIS-057`)
 
 ## Test Snapshot
 
-1194 tests passing across 5 app crates:
+1224 tests passing across 5 app crates:
 
 - `cfdrs-bin`
 - `cfdrs-cdc`

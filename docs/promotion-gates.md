@@ -52,18 +52,19 @@ Promotion rule:
 
 Current milestone:
 
-- `Command Family Closure`
+- `Proof Closure`
 
 Next milestone:
 
-- `Proof Closure`
+- `Performance Architecture Overhaul`
 
 Current gate requires:
 
-- remaining partial CLI, CDC, and HIS rows mapped to `Command Family Closure` in the roadmap index need behavioral implementations
+- closure and evidence refresh for the remaining rows mapped to
+  `Proof Closure` in the roadmap index
 - the cross-domain logging blocker set stays explicit and cannot be treated as a post-alpha cleanup item
 
-Previous milestone (`CLI Foundation`) is complete.
+Previous milestone (`Command Family Closure`) is complete.
 
 ## Production-Alpha Gate
 

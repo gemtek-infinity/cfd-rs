@@ -136,8 +136,8 @@ interactions are absent.
 | HIS-026 | `/healthcheck` endpoint | `metrics/metrics.go` | return `OK\n` as text/plain | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | parity-backed | none recorded | liveness probe tests | high | runtime serves `/healthcheck` as `text/plain; charset=utf-8` with body `OK\n`; parity test confirms exact status 200, content-type header, and response body matching Go baseline |
 | HIS-027 | `/metrics` Prometheus endpoint | `metrics/metrics.go` `promhttp.Handler()` | Prometheus text format, `build_info` gauge with goversion/type/revision/version labels | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | parity-backed | none recorded | metrics format tests, build_info label tests, metric name inventory tests | critical | runtime serves Prometheus text via axum with `prometheus-client` registry; `build_info` and readiness gauges registered; `baseline_metrics` module inventories all 19 Go Prometheus metric names with grouping (`cloudflared_tunnel_*`, `cloudflared_config_*`, `cloudflared_tcp_*`, `cloudflared_proxy_*`, plus `build_info` and `tunnel_ids` without namespace); 5 parity tests verify count, uniqueness, and namespace prefix consistency |
 | HIS-028 | `/quicktunnel` endpoint | `metrics/metrics.go` | JSON `{"hostname":"..."}` with quick tunnel URL | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | baseline-backed tests | none recorded | quicktunnel response tests | medium | `QuickTunnelResponse` JSON is emitted by `runtime/metrics.rs` `handle_quicktunnel()`, pulling the hostname from `RuntimeConfig::quick_tunnel_hostname()` (first ingress host). Tests now assert the `Content-Type: application/json` header and the exact payload, matching the Go contract. |
-| HIS-029 | `/config` endpoint | orchestrator serving versioned config | JSON `{"version":N,"config":{ingress, warp-routing, originRequest}}` | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | config endpoint tests | medium | runtime now serves `/config` with versioned JSON derived from the current normalized config; CDC-backed orchestrator semantics and remote-update parity remain open |
-| HIS-030 | `/debug/pprof/*` endpoints | `http.DefaultServeMux` pprof | binary pprof format, auth disabled (`trace.AuthRequest` returns true) | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, partial | local tests | open gap | pprof endpoint tests | low | runtime now exposes an explicit deferred `501` boundary for `/debug/pprof/*`; real profiling payloads remain open |
+| HIS-029 | `/config` endpoint | orchestrator serving versioned config | JSON `{"version":N,"config":{ingress, warp-routing, originRequest}}` | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | baseline-backed tests | none recorded | config endpoint tests | medium | `ConfigResponse` with `version: i32` matches Go `int32` starting at `-1`; `versioned_config_response()` builds response from `ConfigOrchestrator` trait (`current_version()` + `get_config_json()`); runtime serves `/config` via axum handler reading from `MetricsSnapshot`; 3 orchestrator round-trip tests prove version tracking through `InMemoryConfigOrchestrator`; CDC remote-update path uses `ConfigOrchestrator.update_config()` which increments the version monotonically |
+| HIS-030 | `/debug/pprof/*` endpoints | `http.DefaultServeMux` pprof | binary pprof format, auth disabled (`trace.AuthRequest` returns true) | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, intentional divergence | local tests | intentional divergence | pprof endpoint tests | low | Go pprof uses `net/http/pprof` which exposes Go runtime internals (goroutines, heap, CPU profile, trace) via `DefaultServeMux` side-effect import; Rust has no equivalent runtime introspection surface; explicit `501 Not Implemented` boundary with route registration proves the endpoint is known and intentionally deferred; Rust profiling uses external tools (`perf`, `flamegraph`, `pprof-rs`); production profiling is a Performance Architecture Overhaul concern |
 | HIS-031 | metrics bind address config | `metrics/metrics.go`, `--metrics` flag | `--metrics ADDRESS` flag overrides default | cfdrs-his `metrics_server.rs`, cfdrs-his `environment.rs`, cfdrs-bin `startup/runtime_overrides.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | local tests | closed | flag tests, container detection tests | high | `--metrics` binds the runtime listener and accepts baseline-style `localhost:PORT` and `:PORT` forms; container/runtime-class routing matches Go `CONTAINER_BUILD` compile-time flag plus runtime `/.dockerenv` and `/proc/self/cgroup` detection; `is_container_runtime()` wired through `RuntimeConfig` to `bind_metrics_listener()` selecting `0.0.0.0` vs `localhost`; parity tests verify address selection, marker detection, and startup wiring |
 
 ### Diagnostics Collection
@@ -223,13 +223,13 @@ interactions are absent.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | HIS-069 | ICMP proxy raw socket | `ingress/icmp_linux.go` | `net.ListenPacket()` for ICMP/ICMPv6; creates raw socket for proxied ICMP echo requests | cfdrs-his `icmp.rs` | audited, partial | local tests | open gap | raw socket tests, privilege tests | high | `IcmpProxy` trait + `StubIcmpProxy`; no raw socket creation; 2 contract tests (`can_create_icmp_socket_does_not_panic`, `stub_icmp_returns_deferred`) + 4 ICMP constant parity tests (flag + env names) |
 | HIS-070 | ping group range check | `ingress/icmp_linux.go` | reads `/proc/sys/net/ipv4/ping_group_range`; verifies process GID is within range; logs warning if denied; silently disables ICMP if check fails | cfdrs-his `icmp.rs` | audited, parity-backed | local tests | none recorded | privilege check tests, fallback tests | high | `can_create_icmp_socket()` reads `/proc/sys/net/ipv4/ping_group_range` |
-| HIS-071 | ICMP source IP flags | `cmd/cloudflared/tunnel/configuration.go` | `--icmpv4-src` and `--icmpv6-src` flags (env: `TUNNEL_ICMPV4_SRC`, `TUNNEL_ICMPV6_SRC`); auto-detect by dialing 192.168.0.1:53 if unset | cfdrs-his `icmp.rs` | audited, partial | local tests | open gap | flag tests, auto-detection tests | medium | flag and env var constants match Go baseline exactly; 4 parity assertion tests; auto-detect logic not implemented |
+| HIS-071 | ICMP source IP flags | `cmd/cloudflared/tunnel/configuration.go` | `--icmpv4-src` and `--icmpv6-src` flags (env: `TUNNEL_ICMPV4_SRC`, `TUNNEL_ICMPV6_SRC`); auto-detect by dialing 192.168.0.1:53 if unset | cfdrs-his `icmp.rs` | audited, parity-backed | local tests | none recorded | flag tests, auto-detection tests | medium | `find_local_addr()` UDP-connect trick matches Go `findLocalAddr()`; `determine_icmpv4_src()` parses user input or auto-detects via `find_local_addr("192.168.0.1", 53)` with `Ipv4Addr::UNSPECIFIED` fallback; `determine_icmpv6_src()` parses user input or enumerates `/proc/net/if_inet6` for first non-loopback IPv6 with zone; `parse_if_inet6_content()` deterministic parser with 5 coverage tests; 13 auto-detect unit tests total |
 
 ### Local Test Server
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-072 | `hello_world` ingress service | `hello/hello.go`, `ingress/origin_service.go` | localhost TLS listener on auto-port (127.0.0.1:0); self-signed cert; routes `/`, `/uptime`, `/ws`, `/sse`, `/_health`; stops on `shutdownC` | cfdrs-his `hello.rs` | audited, partial | local tests | open gap | listener tests, route tests, TLS cert tests | medium | `HelloServer` trait + `StubHelloServer` + route constants; no listener/handler; 1 parity test (`hello_routes_match_go`) |
+| HIS-072 | `hello_world` ingress service | `hello/hello.go`, `ingress/origin_service.go` | localhost TLS listener on auto-port (127.0.0.1:0); self-signed cert; routes `/`, `/uptime`, `/ws`, `/sse`, `/_health`; stops on `shutdownC` | cfdrs-his `hello.rs` | audited, parity-backed | local tests | none recorded | listener tests, route tests, TLS cert tests | medium | `HelloServer` trait + `StubHelloServer`; per-route constants (`UPTIME_ROUTE`, `WS_ROUTE`, `SSE_ROUTE`, `HEALTH_ROUTE`) match Go exactly; `UptimeResponse` struct with `#[serde(rename_all = "camelCase")]` matches Go JSON field names (`startTime`, `uptime`); `DEFAULT_SERVER_NAME`, `DEFAULT_SSE_FREQ_SECS`, `HEALTH_RESPONSE` constants match Go; 8 contract tests; runtime TLS listener and axum handler wiring deferred to `cfdrs-bin` |
 
 ### Process Restart
 
@@ -295,13 +295,10 @@ template content (HIS-022), UID detection (HIS-050), terminal detection
 (HIS-061), token lock file (HIS-062), ping group range check (HIS-070), binary
 path detection (HIS-054), glibc marker detection (HIS-055).
 
-Partial with runtime-backed seams: local HTTP metrics server (`/config` and
-`/debug/pprof/*` remain partial on top of the closed metrics/readiness/diag
-surface), ICMP (HIS-069, HIS-071, raw-socket and source-selection work still
-open), `hello_world` (HIS-072, trait only), process restart (HIS-073,
-HIS-074, trait only), and deployment evidence (HIS-053, intentional
-divergence). Updater behavior is now closed through HIS-049; only the restart
-inheritance path remains open.
+Partial with runtime-backed seams: ICMP (HIS-069, raw-socket work still
+open), process restart (HIS-073, HIS-074, trait only), and deployment evidence
+(HIS-053, intentional divergence). Updater behavior is now closed through
+HIS-049; only the restart inheritance path remains open.
 
 No HIS rows remain fully absent. All 74 rows now have a Rust owner in
 cfdrs-his or cfdrs-shared. Runtime behavior for the remaining blocked items
@@ -319,6 +316,13 @@ Three HIS items are classified as intentional divergences:
 - **HIS-057 (postrm.sh):** packaging shell script, not Rust binary behavior;
   cleanup of installer artifacts is outside the binary scope.
 
+One HIS item is classified as an intentional divergence with an explicit
+deferred boundary:
+
+- **HIS-030 (pprof endpoints):** Go `net/http/pprof` exposes Go runtime
+  internals with no Rust equivalent. The explicit `501` boundary proves the
+  endpoint is known. Production profiling is a Performance Architecture concern.
+
 Blocked items use owned seams to define the API surface while keeping the
 remaining runtime gaps explicit (raw sockets and restart inheritance).
 
@@ -330,10 +334,6 @@ Critical gaps (runtime exists, parity breadth still open):
 
 High gaps (runtime-backed but incomplete):
 
-- HIS-029: `/config` endpoint (CDC-backed orchestrator semantics still open)
-- HIS-030: `/debug/pprof/*` endpoints (explicit `501` boundary only)
-- HIS-071: ICMP source IP flags (auto-detect logic still open)
-- HIS-072: `hello_world` ingress listener (trait only)
 - HIS-073, HIS-074: gracenet socket inheritance and process restart (trait only)
 
 ## Scope Classification
@@ -350,19 +350,12 @@ production-alpha lane.
 
 ### Deferred (lane-relevant, post-alpha)
 
-Local HTTP convenience endpoints:
-
-- HIS-029: `/config` endpoint — debugging aid
-- HIS-030: `/debug/pprof/*` endpoints — runtime profiling
-
 ICMP proxy:
 
 - HIS-069: ICMP proxy raw socket — specialized feature, CAP_NET_RAW
-- HIS-071: ICMP source IP flags — ICMP configuration
 
 Miscellaneous:
 
-- HIS-072: `hello_world` ingress listener — test/demo server
 - HIS-073: gracenet socket inheritance — zero-downtime restart optimization
 - HIS-074: process self-restart on update — depends on updater
 

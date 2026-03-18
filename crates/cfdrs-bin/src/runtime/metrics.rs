@@ -342,9 +342,13 @@ fn runtime_build_info() -> BuildInfo {
     }
 }
 
+/// Build the initial `/config` response from startup config.
+///
+/// Go: `Orchestrator.currentVersion` starts at `-1`; version `0` is the
+/// first remote config push. Static startup state uses version `-1`.
 fn runtime_config_response(config: &RuntimeConfig) -> ConfigResponse {
     ConfigResponse {
-        version: 1,
+        version: -1,
         config: json!({
             "ingress": config.normalized().ingress,
             "warp-routing": config.normalized().warp_routing,
