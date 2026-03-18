@@ -6,7 +6,7 @@
   0-RTT required
 - workspace version: `2026.2.0-alpha.202603`
 - active milestone: `Proof Closure`
-- next milestone: `Performance Architecture Overhaul`
+- next milestone: `Parity Revalidation`
 - highest-risk blockers: `HIS-073`
 - production-alpha logging blocker set: cleared
 - behavior truth: [`baseline-2026.2.0/`](baseline-2026.2.0/)
@@ -29,9 +29,11 @@ What exists now:
 
 What does not exist yet:
 
-- the remaining ICMP, restart, and profiling rows mapped to
-  `Proof Closure`
-- final `Performance Architecture Overhaul`
+- the remaining ICMP row (`HIS-069`) mapped to `Parity Revalidation`;
+  `socket2` is admitted for ICMP socket creation in `cfdrs-his`
+- `HIS-073` and `HIS-074` (gracenet restart) are closed as intentional
+  divergences with trait seams preserved for post-alpha
+- `Parity Revalidation` and final `Performance Architecture Overhaul`
 
 ## Active Milestone
 
@@ -42,7 +44,7 @@ What does not exist yet:
   record remaining deferments, non-lane items, and intentional divergences
   explicitly; rerun the full logging contract after CLI, CDC, and HIS closure
 - current front edge:
-  `HIS-073`
+  `HIS-069`
 - exit still requires:
   closure and evidence refresh for the remaining rows mapped to
   `Proof Closure` in the roadmap index
@@ -51,15 +53,13 @@ Previous milestone (`Command Family Closure`) is complete.
 
 Next milestone after Proof Closure:
 
-- `Performance Architecture Overhaul`
+- `Parity Revalidation`
 
 ## Priority Rows
 
 Tier 1 lane-blocking rows, in implementation order:
 
-1. `HIS-073`, `HIS-074` —
-   restart inheritance track
-2. `HIS-069` —
+1. `HIS-069` —
    ICMP raw-socket proxy (CAP_NET_RAW)
 
 ## Parity Snapshot
@@ -70,8 +70,8 @@ Counts from the `Rust status now` column in each domain ledger.
 | --- | --- | --- | --- | --- | --- |
 | CLI | 32 | 32 | 0 | 0 | 100% |
 | CDC | 44 | 44 | 0 | 0 | 100% |
-| HIS | 74 | 71 | 3 | 0 | 96% |
-| **Total** | **150** | **147** | **3** | **0** | **98%** |
+| HIS | 74 | 73 | 1 | 0 | 99% |
+| **Total** | **150** | **149** | **1** | **0** | **99%** |
 
 Closed breakdown:
 
@@ -79,8 +79,8 @@ Closed breakdown:
   (`CLI-031`)
 - CDC: 44 `audited, parity-backed`
 - HIS: 67 `audited, parity-backed` +
-  4 `audited, intentional divergence` (`HIS-030`, `HIS-053`, `HIS-056`,
-  `HIS-057`)
+  6 `audited, intentional divergence` (`HIS-030`, `HIS-053`, `HIS-056`,
+  `HIS-057`, `HIS-073`, `HIS-074`)
 
 ## Test Snapshot
 

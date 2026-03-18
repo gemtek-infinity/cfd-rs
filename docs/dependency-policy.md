@@ -121,8 +121,8 @@ That means:
 
 The current manifests admit only the dependencies needed by the binary runtime
 baseline, the active shared config/credentials/ingress implementation, the
-active QUIC tunnel core, the admitted Pingora and observability seams, and the
-existing workspace tool surface:
+active QUIC tunnel core, the admitted Pingora and observability seams, the
+ICMP proxy socket layer, and the existing workspace tool surface:
 
 - `mimalloc`, `tokio`, `tokio-util`, `quiche`, `pingora-http`, `tracing`, and
   `tracing-subscriber` in `cfdrs-bin`
@@ -220,6 +220,29 @@ Rules:
 
 - admission must be tied to exact wire and schema preservation work
 - do not add protocol libraries speculatively because the crate name exists
+
+### ICMP Proxy (admitted)
+
+Slice is active. `socket2` is in `[workspace.dependencies]`:
+
+- `socket2`
+
+Owner crate: `cfdrs-his`
+
+Admission justification:
+
+- HIS-069 requires non-privileged ICMP socket creation via
+  `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)` on Linux
+- the standard library provides no raw or ICMP socket API
+- `socket2` is the mature, minimal, widely-adopted crate for safe socket
+  creation and configuration (pre-`std::net::TcpListener` level sockets)
+- it does not pull in async runtimes, allocators, or unrelated subsystems
+
+Ongoing rules:
+
+- `socket2` must remain confined to `cfdrs-his` ICMP proxy code
+- do not use `socket2` as a general-purpose networking crate across the
+  workspace; standard library sockets suffice elsewhere
 
 ### Logging And Observability (admitted)
 

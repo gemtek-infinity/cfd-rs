@@ -221,7 +221,7 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-069 | ICMP proxy raw socket | `ingress/icmp_linux.go` | `net.ListenPacket()` for ICMP/ICMPv6; creates raw socket for proxied ICMP echo requests | cfdrs-his `icmp.rs` | audited, partial | local tests | open gap | raw socket tests, privilege tests | high | `IcmpProxy` trait + `StubIcmpProxy`; no raw socket creation; 2 contract tests (`can_create_icmp_socket_does_not_panic`, `stub_icmp_returns_deferred`) + 4 ICMP constant parity tests (flag + env names) |
+| HIS-069 | ICMP proxy raw socket | `ingress/icmp_linux.go` | `net.ListenPacket()` for ICMP/ICMPv6; creates raw socket for proxied ICMP echo requests | cfdrs-his `icmp.rs` | audited, partial | local tests | open gap | raw socket tests, privilege tests | high | `IcmpProxy` trait + `StubIcmpProxy`; `socket2` admitted for ICMP socket creation; no runtime proxy yet (per-flow tracking, echo-ID rewrite, idle cleanup); 2 contract tests (`can_create_icmp_socket_does_not_panic`, `stub_icmp_returns_deferred`) + 4 ICMP constant parity tests (flag + env names) + 13 source-address auto-detect tests |
 | HIS-070 | ping group range check | `ingress/icmp_linux.go` | reads `/proc/sys/net/ipv4/ping_group_range`; verifies process GID is within range; logs warning if denied; silently disables ICMP if check fails | cfdrs-his `icmp.rs` | audited, parity-backed | local tests | none recorded | privilege check tests, fallback tests | high | `can_create_icmp_socket()` reads `/proc/sys/net/ipv4/ping_group_range` |
 | HIS-071 | ICMP source IP flags | `cmd/cloudflared/tunnel/configuration.go` | `--icmpv4-src` and `--icmpv6-src` flags (env: `TUNNEL_ICMPV4_SRC`, `TUNNEL_ICMPV6_SRC`); auto-detect by dialing 192.168.0.1:53 if unset | cfdrs-his `icmp.rs` | audited, parity-backed | local tests | none recorded | flag tests, auto-detection tests | medium | `find_local_addr()` UDP-connect trick matches Go `findLocalAddr()`; `determine_icmpv4_src()` parses user input or auto-detects via `find_local_addr("192.168.0.1", 53)` with `Ipv4Addr::UNSPECIFIED` fallback; `determine_icmpv6_src()` parses user input or enumerates `/proc/net/if_inet6` for first non-loopback IPv6 with zone; `parse_if_inet6_content()` deterministic parser with 5 coverage tests; 13 auto-detect unit tests total |
 
@@ -235,8 +235,8 @@ interactions are absent.
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| HIS-073 | gracenet socket inheritance | `metrics/metrics.go`, `vendor/github.com/facebookgo/grace/gracenet/net.go` | metrics listeners registered via `gracenet.Net`; on auto-update restart, passes listener FDs to new process via `os.StartProcess()` with inherited environment | cfdrs-his `process.rs` | audited, partial | local tests | open gap | socket inheritance tests | medium | `GracefulRestart` trait + `StubGracefulRestart`; deferred; 1 contract test (`stub_restart_returns_deferred`) |
-| HIS-074 | process self-restart on update | `cmd/cloudflared/updater/update.go` | on exit code 11 with SysV: `gracenet.Net.StartProcess()` forks new process inheriting listener sockets; on systemd: service restart handled by unit config | cfdrs-his `process.rs` | audited, partial | local tests | open gap | restart tests | medium | depends on updater; `StubGracefulRestart` returns deferred error; 1 contract test (`stub_restart_returns_deferred`) |
+| HIS-073 | gracenet socket inheritance | `metrics/metrics.go`, `vendor/github.com/facebookgo/grace/gracenet/net.go` | metrics listeners registered via `gracenet.Net`; on auto-update restart, passes listener FDs to new process via `os.StartProcess()` with inherited environment | cfdrs-his `process.rs` | audited, intentional divergence | local tests | intentional divergence | socket inheritance tests | medium | `GracefulRestart` trait + `StubGracefulRestart`; auto-update system disabled for production-alpha; gracenet FD inheritance only applies under SysV init (systemd handles restart natively via unit config); trait seam preserved for post-alpha implementation; 1 contract test (`stub_restart_returns_deferred`) |
+| HIS-074 | process self-restart on update | `cmd/cloudflared/updater/update.go` | on exit code 11 with SysV: `gracenet.Net.StartProcess()` forks new process inheriting listener sockets; on systemd: service restart handled by unit config | cfdrs-his `process.rs` | audited, intentional divergence | local tests | intentional divergence | restart tests | medium | auto-update system disabled for production-alpha; `StartProcess()` is SysV-only — Go code never calls it under systemd; trait seam preserved for post-alpha implementation; 1 contract test (`stub_restart_returns_deferred`) |
 
 ## Audit Summary
 
@@ -295,14 +295,15 @@ template content (HIS-022), UID detection (HIS-050), terminal detection
 (HIS-061), token lock file (HIS-062), ping group range check (HIS-070), binary
 path detection (HIS-054), glibc marker detection (HIS-055).
 
-Partial with runtime-backed seams: ICMP (HIS-069, raw-socket work still
-open), process restart (HIS-073, HIS-074, trait only), and deployment evidence
-(HIS-053, intentional divergence). Updater behavior is now closed through
-HIS-049; only the restart inheritance path remains open.
+Partial with runtime-backed seams: ICMP proxy (HIS-069, `socket2` admitted,
+runtime proxy not yet wired). Process restart (HIS-073, HIS-074) and
+deployment evidence (HIS-053) are intentional divergences. Updater behavior is
+closed through HIS-049.
 
 No HIS rows remain fully absent. All 74 rows now have a Rust owner in
-cfdrs-his or cfdrs-shared. Runtime behavior for the remaining blocked items
-(raw sockets and restart inheritance) is deferred behind owned seams.
+cfdrs-his or cfdrs-shared. HIS-069 (ICMP proxy) is the only remaining partial
+row; HIS-073 and HIS-074 are intentional divergences with trait seams preserved
+for post-alpha implementation.
 
 ### Divergence records
 
@@ -316,25 +317,23 @@ Three HIS items are classified as intentional divergences:
 - **HIS-057 (postrm.sh):** packaging shell script, not Rust binary behavior;
   cleanup of installer artifacts is outside the binary scope.
 
-One HIS item is classified as an intentional divergence with an explicit
-deferred boundary:
+Three HIS items are classified as intentional divergences with explicit
+deferred boundaries:
 
 - **HIS-030 (pprof endpoints):** Go `net/http/pprof` exposes Go runtime
   internals with no Rust equivalent. The explicit `501` boundary proves the
   endpoint is known. Production profiling is a Performance Architecture concern.
-
-Blocked items use owned seams to define the API surface while keeping the
-remaining runtime gaps explicit (raw sockets and restart inheritance).
+- **HIS-073 (gracenet socket inheritance):** Auto-update system disabled for
+  production-alpha. gracenet FD inheritance only applies under SysV init;
+  systemd handles restart natively via unit config. Trait seam preserved.
+- **HIS-074 (process self-restart):** Downstream of HIS-073. `StartProcess()`
+  is SysV-only — Go code never calls it under systemd. Trait seam preserved.
 
 ### Gap ranking by priority
 
 Critical gaps (runtime exists, parity breadth still open):
 
-- HIS-069: ICMP raw socket proxy
-
-High gaps (runtime-backed but incomplete):
-
-- HIS-073, HIS-074: gracenet socket inheritance and process restart (trait only)
+- HIS-069: ICMP raw socket proxy (`socket2` admitted, runtime wiring pending)
 
 ## Scope Classification
 
@@ -348,16 +347,18 @@ production-alpha lane.
 - HIS-056: `postinst.sh` behavior — packaging script, not Rust binary behavior
 - HIS-057: `postrm.sh` behavior — packaging script, not Rust binary behavior
 
-### Deferred (lane-relevant, post-alpha)
+### Deferred (lane-relevant, active implementation)
 
 ICMP proxy:
 
-- HIS-069: ICMP proxy raw socket — specialized feature, CAP_NET_RAW
+- HIS-069: ICMP proxy raw socket — `socket2` admitted, runtime wiring pending
 
-Miscellaneous:
+### Deferred (intentional divergence, post-alpha)
 
-- HIS-073: gracenet socket inheritance — zero-downtime restart optimization
-- HIS-074: process self-restart on update — depends on updater
+Auto-update and restart:
+
+- HIS-073: gracenet socket inheritance — SysV-only; systemd handles restart natively
+- HIS-074: process self-restart on update — downstream of HIS-073; SysV-only
 
 ## Immediate Work Queue
 

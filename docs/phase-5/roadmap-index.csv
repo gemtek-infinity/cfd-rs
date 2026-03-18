@@ -143,9 +143,9 @@ HIS-065,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foun
 HIS-066,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-066
 HIS-067,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-067
 HIS-068,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-068
-HIS-069,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-069
+HIS-069,HIS,Parity Revalidation,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-069
 HIS-070,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-070
 HIS-071,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-071
 HIS-072,HIS,Proof Closure,cfdrs-shared,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-072
-HIS-073,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-073
-HIS-074,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-074
+HIS-073,HIS,Parity Revalidation,cfdrs-his,intentional_divergence,Command Family Closure,docs/parity/his/implementation-checklist.md#his-073
+HIS-074,HIS,Parity Revalidation,cfdrs-his,intentional_divergence,Command Family Closure,docs/parity/his/implementation-checklist.md#his-074

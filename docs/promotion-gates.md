@@ -40,7 +40,8 @@ Phase 5 advances in this exact order:
 4. `CLI Foundation`
 5. `Command Family Closure`
 6. `Proof Closure`
-7. `Performance Architecture Overhaul`
+7. `Parity Revalidation`
+8. `Performance Architecture Overhaul`
 
 Promotion rule:
 
@@ -56,7 +57,7 @@ Current milestone:
 
 Next milestone:
 
-- `Performance Architecture Overhaul`
+- `Parity Revalidation`
 
 Current gate requires:
 
@@ -70,7 +71,7 @@ Previous milestone (`Command Family Closure`) is complete.
 
 Production-alpha is not claimed at `Proof Closure`.
 
-Production-alpha readiness requires all of the following after `Performance Architecture Overhaul`:
+Production-alpha readiness requires all of the following after `Parity Revalidation` and `Performance Architecture Overhaul`:
 
 - no parity regressions across the admitted lane
 - architecture boundaries still satisfy the crate-dependency contract in [`STATUS.md`](../STATUS.md)
