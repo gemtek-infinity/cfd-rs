@@ -208,20 +208,29 @@ sequence:
 
 Source: [crates/cfdrs-bin/src/transport/quic/lifecycle.rs](../../../crates/cfdrs-bin/src/transport/quic/lifecycle.rs)
 
-The Rust control stream follows a simplified version of this lifecycle:
+The Rust control stream now uses the CDC-owned Cap'n Proto codec in the live
+runtime path:
 
-- opens first QUIC stream (bidirectional)
-- sends registration request as JSON (Cap'n Proto codec exists in
-  `registration_codec.rs` but is not yet wired into the runtime path)
-- reads registration response as JSON
-- emits `ProtocolEvent::Registered` and `ProtocolEvent::RegistrationComplete`
-- then enters the stream-accept loop
+- opens the first QUIC stream (bidirectional)
+- encodes `RegisterConnectionRequest` with
+  `encode_registration_request()` and writes the Cap'n Proto payload on
+  stream 0
+- decodes `ConnectionResponse` with `decode_registration_response()`
+- emits `ProtocolEvent::Registered` and
+  `ProtocolEvent::RegistrationComplete`
+- when `connIndex == 0` and the edge reports
+  `tunnelIsRemotelyManaged == false`, serializes
+  `UpdateLocalConfigurationRequest` and pushes it on the same control stream
+- on graceful shutdown, emits `Unregistering`, encodes
+  `unregisterConnection`, and sends the final control-stream message with
+  `fin=true`
 
-Missing lifecycle stages in Rust:
+Remaining differences from Go:
 
-- no local config push (step 4)
-- no graceful shutdown / unregister RPC (steps 5-6)
-- no `connectedFuse` / fuse-based readiness signaling
+- no `connectedFuse` / channel-style readiness fuse; the Rust runtime uses
+  `ProtocolEvent` delivery and runtime status recording instead
+- origin-cert-backed registration content remains a bounded runtime gap; the
+  admitted live path is credential-file-backed registration auth
 
 ## Current Rust Registration Surface
 
@@ -331,9 +340,10 @@ Cap'n Proto binary codec implemented in `registration_codec.rs` with
 `ConnectionError`, `ConnectionResponse`. 17 round-trip tests including
 wire serialization pass. Codec matches Go `pogs` field mapping.
 
-Runtime integration to replace the JSON path in `lifecycle.rs` remains
-pending. The QUIC control stream currently sends JSON for registration;
-the Cap'n Proto codec exists but is not yet wired into the runtime path.
+Runtime integration is live: `lifecycle.rs` now calls
+`encode_registration_request()` for the outbound register path and
+`decode_registration_response()` for the inbound response path on the QUIC
+control stream. The earlier JSON control-stream path is gone.
 
 QUIC connection ALPN `argotunnel` is correctly set in Rust
 ([crates/cfdrs-bin/src/transport/quic/session.rs](../../../crates/cfdrs-bin/src/transport/quic/session.rs)
@@ -343,6 +353,6 @@ QUIC connection ALPN `argotunnel` is correctly set in Rust
 
 | Gap | Severity | Detail |
 | --- | --- | --- |
-| missing `unregisterConnection` runtime call-site | medium | `RegistrationClient::unregister_connection()` exists; runtime call during graceful shutdown pending |
-| missing `updateLocalConfiguration` connIndex guard | medium | `RegistrationClient::update_local_configuration()` exists; connIndex==0 enforcement at call-site pending |
-| feature flags runtime wiring | high | feature list built by `features.rs`; selector integration pending CDC-040/041 |
+| origin-cert registration content remains bounded | medium | `build_registration_request()` only emits live registration auth for the admitted credential-file-backed path |
+| no `connectedFuse`-style readiness signal | low | runtime uses bridge/status machinery instead of Go's channel-style fuse |
+| capnp-rpc client/server wrappers are not the live transport path | low | runtime uses raw `capnp::serialize` on the control stream; `rpc_dispatch.rs` remains the local-dispatch and future-maintenance surface |

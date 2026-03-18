@@ -12,23 +12,21 @@ pub(super) const DEPLOY_EVIDENCE_SCOPE_KEY: &str = "deploy-evidence-scope";
 pub(super) const DEPLOY_CONTRACT_VALUE: &str = "linux-x86_64-gnu-glibc bare-metal-first systemd-expected";
 pub(super) const DEPLOY_FILESYSTEM_CONTRACT_VALUE: &str =
     "operator-managed (executable, config, credentials, and logs are explicit host-path concerns)";
-pub(super) const DEPLOY_EVIDENCE_SCOPE_VALUE: &str = "in-process-contract-validation (real systemd \
-                                                      integration, package-manager delivery, container \
-                                                      support, and log-rotation are deferred)";
+pub(super) const DEPLOY_EVIDENCE_SCOPE_VALUE: &str =
+    "in-process-contract-validation (service-install and control-stream contracts exist; package-manager \
+     delivery, container support, and post-connectresponse stream piping are deferred)";
 
 pub(super) const DEPLOY_KNOWN_GAPS: &[&str] = &[
-    "no-systemd-unit",
-    "no-installer",
+    "no-package-installer",
+    "no-prebuilt-service-units",
     "no-container-image",
-    "no-log-rotation",
 ];
 
 pub(super) const DEPLOY_OPERATIONAL_CAVEATS: &[&str] = &[
     "alpha-only",
-    "limited-origin-dispatch(http_status+hello_world+http-wired-no-proxy)",
-    "no-capnp-registration-rpc",
+    "limited-origin-dispatch(http_status+hello_world+http-status-headers-only)",
     "no-origin-cert-registration-content",
-    "no-stream-roundtrip",
+    "no-post-connectresponse-stream-pipe",
     "config-watcher-notify-only",
 ];
 

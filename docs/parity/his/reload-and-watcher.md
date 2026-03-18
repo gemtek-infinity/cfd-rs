@@ -215,10 +215,15 @@ Platform-specific files:
 
 ### What exists
 
+- config watcher runtime integration in
+  [crates/cfdrs-bin/src/runtime/tasks/watcher.rs](../../../crates/cfdrs-bin/src/runtime/tasks/watcher.rs):
+  `spawn_config_watcher()` creates `NotifyFileWatcher`, bridges the blocking
+  watch loop through `spawn_blocking`, emits `RuntimeCommand::ConfigFileChanged`
+  on write events, and cancels the watcher via `shutdown_flag()`
+- deployment/failure evidence explicitly declares the current watcher-only
+  scope (`config-watcher-notify-only`, `failure-config-reload: watcher-only`)
 - systemd detection via environment variables (`INVOCATION_ID`,
   `NOTIFY_SOCKET`, `JOURNAL_STREAM`) in deployment evidence
-- explicit declaration that config reload is not supported
-- SIGHUP detection exists but handler returns "not supported" error
 - restart budget tracking in failure evidence
 - SIGTERM/SIGINT signal handling via `tokio::signal::unix` in
     [crates/cfdrs-bin/src/runtime/tasks/bridges.rs](../../../crates/cfdrs-bin/src/runtime/tasks/bridges.rs): sends `RuntimeCommand::ShutdownRequested`
@@ -251,7 +256,9 @@ Platform-specific files:
 
 ### What is missing
 
-- file watcher runtime integration (HIS-041 `NotifyFileWatcher` exists but is not connected to the reload loop in cfdrs-bin)
+- end-to-end runtime re-apply path from `ConfigFileChanged` into
+  `ReloadActionLoop` / orchestrator-backed service replacement
+- SIGHUP-triggered reload parity
 - graceful process restart (fork/exec)
 - double-signal immediate shutdown (second signal bypass grace period)
 - gracenet socket inheritance for restart
@@ -285,7 +292,9 @@ test harnesses.
 **Parity:** Rust uses the 30s default and parsed `--grace-period` values.
 The runtime `drain_child_tasks()` waits up to `shutdown_grace_period` then
 aborts remaining child tasks, matching Go's wait-or-exit grace pattern.
-Connection-level `GracefulShutdown()` RPC is tracked under CDC-019.
+Connection-level `GracefulShutdown()` RPC is wired under CDC-019/CDC-007.
+The current admitted runtime path does not register SIGHUP as a reload trigger
+and does not implement Go's second-signal immediate-exit behavior yet.
 
 ## PID Files
 

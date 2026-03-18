@@ -24,7 +24,7 @@ What exists now:
 - `Program Reset`, `CDC Contract Foundation`, `Host and Runtime Foundation`,
   `CLI Foundation`, `Command Family Closure`, and `Proof Closure` are complete
 - all 150 parity rows are closed with current evidence in domain ledgers
-- roadmap index fully reconciled: 143 `already_proven`, 5 `intentional_divergence`,
+- roadmap index fully reconciled: 142 `already_proven`, 6 `intentional_divergence`,
   2 `non_lane`
 - live parity ledgers and source routing under [`docs/parity/`](docs/parity/)
 - debtmap-enabled MCP server surface for bounded repo truth and routing
@@ -74,8 +74,8 @@ Counts from the `Rust status now` column in each domain ledger.
 
 Closed breakdown:
 
-- CLI: 31 `audited, parity-backed` + 1 `audited, intentional divergence`
-  (`CLI-031`)
+- CLI: 30 `audited, parity-backed` + 2 `audited, intentional divergence`
+  (`CLI-030`, `CLI-031`)
 - CDC: 44 `audited, parity-backed`
 - HIS: 68 `audited, parity-backed` +
   4 `audited, intentional divergence` (`HIS-030`, `HIS-053`,
@@ -84,7 +84,7 @@ Closed breakdown:
 
 ## Test Snapshot
 
-1252 tests passing across 5 app crates:
+1253 tests passing across 5 app crates:
 
 - `cfdrs-bin`
 - `cfdrs-cdc`

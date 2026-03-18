@@ -13,10 +13,9 @@
 //! - evidence scope is honestly bounded
 //!
 //! What this does not validate:
-//! - real systemd unit integration
 //! - real package manager delivery
 //! - container deployment flows
-//! - log rotation or journal integration
+//! - post-ConnectResponse stream piping
 
 use std::time::Duration;
 
@@ -193,10 +192,9 @@ fn deployment_evidence_declares_known_gaps() {
         "should declare known deployment gaps, summary: {:?}",
         execution.summary_lines
     );
-    assert!(summary_contains(&execution, "no-systemd-unit"));
-    assert!(summary_contains(&execution, "no-installer"));
+    assert!(summary_contains(&execution, "no-package-installer"));
+    assert!(summary_contains(&execution, "no-prebuilt-service-units"));
     assert!(summary_contains(&execution, "no-container-image"));
-    assert!(summary_contains(&execution, "no-log-rotation"));
 }
 
 #[test]
@@ -220,14 +218,16 @@ fn deployment_evidence_declares_operational_caveats() {
     assert!(summary_contains(&execution, "alpha-only"));
     assert!(summary_contains(
         &execution,
-        "limited-origin-dispatch(http_status+hello_world+http-wired-no-proxy)"
+        "limited-origin-dispatch(http_status+hello_world+http-status-headers-only)"
     ));
-    assert!(summary_contains(&execution, "no-capnp-registration-rpc"));
     assert!(summary_contains(
         &execution,
         "no-origin-cert-registration-content"
     ));
-    assert!(summary_contains(&execution, "no-stream-roundtrip"));
+    assert!(summary_contains(
+        &execution,
+        "no-post-connectresponse-stream-pipe"
+    ));
     assert!(summary_contains(&execution, "config-watcher-notify-only"));
 }
 

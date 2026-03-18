@@ -249,25 +249,29 @@ Not implemented. No file-based token locking exists in any crate.
 - config discovery search order matches frozen baseline exactly (5 directories,
   2 filenames, same priority)
 - config auto-create behavior implemented with correct paths and minimal YAML
+- credential search-by-ID across discovery directories plus origin-cert-dir
+  precedence
+- origin cert search across default discovery directories
 - origin cert PEM parsing implemented (ARGO TUNNEL TOKEN blocks)
+- tunnel token compact format parsing for `--token`
 - tunnel credentials JSON parsing implemented (all 4 fields)
+- credential file creation with mode `0400`
+- token lock file creation, exponential-backoff cleanup, and signal-safe
+  removal
+- pidfile write/remove helpers with `~` expansion and connected-signal timing
+- service config directory handling plus service-install filesystem writes
+  (systemd and SysV) in the owned HIS service surface
+- local logging filesystem surface: `--logfile`, `--log-directory`, rolling
+  rotation, default `/var/log/cloudflared`, and Go-matching permission modes
 - default path constants match: `/usr/local/etc/cloudflared/config.yml` and
   `/var/log/cloudflared`
 
 ### What is missing
 
-- credential file search-by-ID logic (searching directories for `{uuid}.json`)
-- origin cert search across discovery directories
-- tunnel token compact format parsing for `--token` flag
-- service config directory handling (`/etc/cloudflared/`)
-- all service-related filesystem operations
-- all package manager script behavior
-- credential file creation with mode `0400`
-- token lock file creation and cleanup
-- PID file creation (`--pidfile`)
-- log file writer (file or rolling mode)
-- rolling log rotation
-- `--logfile`, `--loglevel`, `--transport-loglevel`, `--log-format-output` flags
+- package-manager shell-script behavior (`postinst` / `postrm`) remains
+  non-lane and outside the Rust binary surface
+- repo-owned preview artifacts still do not provide package-manager installers
+  or package scripts; operators use the binary plus `service install`
 
 ## Lane Classification
 
@@ -295,14 +299,5 @@ Not implemented. No file-based token locking exists in any crate.
 
 | Gap | Severity | Notes |
 | --- | --- | --- |
-| credential search-by-ID across discovery dirs | high | blocks `tunnel run` without explicit path |
-| origin cert search across discovery dirs | high | blocks cert-based flows |
-| service config directory handling | critical | blocks service install |
-| tunnel token compact format (`--token`) | high | needed for token-based service install |
-| credential write with mode 0400 | medium | needed for `tunnel create` |
-| all systemd/SysV file operations | critical | see service-installation.md |
-| log file writer absent | high | no file-based logging in Rust |
-| rolling log rotation absent | high | production log management |
-| `--logfile` and `--loglevel` flags absent | high | operator observability |
-| token lock file absent | high | concurrent fetch safety |
-| PID file (`--pidfile`) absent | medium | optional integration |
+| package-manager shell scripts | low | non-lane package-manager cleanup/install behavior lives outside the Rust binary |
+| package-managed artifact delivery | deployment | preview tarballs exist, but deb/rpm-style installers remain outside this repo slice |

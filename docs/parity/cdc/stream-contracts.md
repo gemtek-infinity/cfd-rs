@@ -200,8 +200,10 @@ baseline (`ToPogs()`/`FromPogs()` in `quic_metadata_protocol.go`).
   entry codec shared by both request and response
 
 10 tests: 7 wire roundtrip tests + 3 builder→reader marshal/unmarshal tests.
-Runtime integration to wire the Cap'n Proto codec into `lifecycle.rs` (replacing
-the custom binary format) is pending.
+Runtime integration is live for both directions: `lifecycle.rs` now parses
+incoming `ConnectRequest` values with `decode_connect_request()`, and the
+proxy/runtime path encodes outbound `ConnectResponse` values with
+`encode_connect_response()`.
 
 ## Incoming Stream Round-Trip Path
 
@@ -250,24 +252,30 @@ Source: [crates/cfdrs-bin/src/proxy/origin.rs](../../../crates/cfdrs-bin/src/pro
    (Cap'n Proto binary codec via `decode_connect_request`)
 3. `dispatch_to_origin(request, config)` matches ingress rules and dispatches:
    - `HttpStatus(code)` → returns status code response (**wired**)
-   - `HelloWorld` → returns 200 with HTML body (**wired**)
-   - `Http(url)` → dispatch path wired but actual HTTP origin connection
-     returns 502 with `X-Cloudflared-Origin-Status: dispatch-wired`
-     (**dispatch only, no origin round-trip**)
+   - `HelloWorld` → returns the Go-shaped 200/connect-response metadata path;
+     the standalone quick-tunnel hello server remains HIS-owned and deferred
+   - `Http(url)` → performs a real `reqwest` round-trip to the configured
+     origin and forwards origin status plus response headers into the
+     `ConnectResponse`
    - `TcpOverWebsocket`, `UnixSocket`, `UnixSocketTls`, `Bastion`,
      `SocksProxy`, `NamedToken` → explicit `Unimplemented` stubs
+4. `proxy::origin::to_connect_response()` converts the dispatch result into
+   CDC-owned response metadata
+5. `proxy/mod.rs` queues the encoded response and `lifecycle.rs` writes it
+   back to the QUIC stream with `fin=true`
 
 ### Key Differences
 
-- Go: full origin round-trip through ingress→proxy→origin→response for all
-  connection types
-- Rust: dispatch path exists but only `HttpStatus` and `HelloWorld` produce
-  real responses; `Http(url)` is wired but returns 502 without actual origin
-  connection
-- Go: response metadata flows back via Cap'n Proto
-  (`WriteConnectResponseData`)
-- Rust: `ConnectResponse` type and Cap'n Proto codec exist in `stream_codec.rs`
-  but are not yet wired into the response path in `lifecycle.rs`
+- Go: after `ConnectResponse`, the stream stays open as a bidirectional pipe
+  and HTTP/TCP payload bytes continue flowing
+- Rust: request parsing and `ConnectResponse` encoding are wired, including
+  real HTTP origin status/header round-trips, but the stream currently closes
+  immediately after the `ConnectResponse` (`fin=true`), so post-response body
+  piping and long-lived TCP/WebSocket forwarding remain deferred
+- Go: full origin round-trip exists across the supported connection types
+- Rust: `HttpStatus`, `HelloWorld`, and HTTP origin status/header dispatch are
+  wired; TCP/WebSocket/Unix/bastion/named-token flows still report honest
+  unimplemented boundaries
 
 ## Protocol Event Model
 
@@ -342,10 +350,11 @@ Fallback order: QUIC → HTTP/2 (on QUIC failure)
 
 | Gap | Severity | Detail |
 | --- | --- | --- |
-| ~~wire encoding mismatch (ConnectRequest)~~ | ~~critical~~ resolved | Cap'n Proto binary codec implemented in CDC-owned `stream_codec.rs`; runtime integration pending |
-| ConnectResponse not wired | high | Cap'n Proto codec exists in `stream_codec.rs`; response path integration pending |
+| ~~wire encoding mismatch (ConnectRequest)~~ | ~~critical~~ resolved | Cap'n Proto binary codec implemented in CDC-owned `stream_codec.rs` and live request parsing uses it |
+| ~~ConnectResponse not wired~~ | ~~high~~ resolved | proxy/runtime now encode outbound `ConnectResponse` values with the CDC-owned Cap'n Proto codec |
+| post-ConnectResponse stream piping absent | critical | `lifecycle.rs` writes the encoded response with `fin=true`, so HTTP bodies and long-lived TCP/WebSocket streams do not stay open after the response |
 | ~~transport header serialization absent~~ | ~~high~~ resolved | `serialize_headers()` / `deserialize_headers()` implemented in `stream_contract.rs` with base64 STANDARD_NO_PAD; 7 tests |
-| origin HTTP round-trip absent | critical | `Http(url)` dispatch returns 502; actual origin connection not implemented |
+| post-response HTTP body streaming absent | critical | reachable HTTP origins contribute status and headers to `ConnectResponse`, but response body bytes are not piped after that response |
 | TCP/WebSocket/Unix dispatch absent | high | all non-HTTP connection types return `Unimplemented` |
 | ~~ResponseMeta not implemented~~ | ~~medium~~ resolved | `RESPONSE_META_ORIGIN`, `RESPONSE_META_CLOUDFLARED`, `RESPONSE_META_CLOUDFLARED_FLOW_LIMITED` constants match baseline; JSON-validated by tests |
 | ~~control header stripping absent~~ | ~~medium~~ resolved | `is_control_response_header()` + `is_websocket_client_header()` implemented in `stream_contract.rs`; 3 tests |
@@ -360,11 +369,13 @@ The Rust `ConnectRequest` and `ConnectResponse` wire codecs now use Cap'n Proto
 binary encoding via CDC-owned `stream_codec.rs`, matching the Go baseline's
 `ToPogs()`/`FromPogs()` codec in `quic_metadata_protocol.go`.
 
-The custom big-endian binary format that was previously used has been replaced.
-10 round-trip tests verify schema-level marshaling and wire-level
-serialization. The codec uses the generated Cap'n Proto bindings from the
-frozen baseline `quic_metadata_protocol.capnp` schema.
+The custom big-endian binary format that was previously used has been
+replaced, and the live QUIC stream path now uses the CDC codec for both
+request parsing and response emission. 10 round-trip tests verify
+schema-level marshaling and wire-level serialization. The codec uses the
+generated Cap'n Proto bindings from the frozen baseline
+`quic_metadata_protocol.capnp` schema.
 
-**Remaining gap:** Runtime integration in `lifecycle.rs` to wire the CDC codec
-into the actual stream accept/dispatch path. The codec itself is
-schema-correct; what remains is plumbing it into the live QUIC stream handler.
+**Remaining gap:** the runtime still closes the QUIC stream immediately after
+the encoded `ConnectResponse`, so the post-response bidirectional pipe
+contract is not yet implemented.

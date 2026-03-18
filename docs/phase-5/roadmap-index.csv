@@ -28,7 +28,7 @@ CLI-026,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implemen
 CLI-027,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-027
 CLI-028,CLI,Command Family Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-028
 CLI-029,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-029
-CLI-030,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-030
+CLI-030,CLI,CLI Foundation,cfdrs-cli,intentional_divergence,none,docs/parity/cli/implementation-checklist.md#cli-030
 CLI-031,CLI,Program Reset,cfdrs-cli,intentional_divergence,none,docs/parity/cli/implementation-checklist.md#cli-031
 CLI-032,CLI,CLI Foundation,cfdrs-bin,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-032
 CDC-001,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-001

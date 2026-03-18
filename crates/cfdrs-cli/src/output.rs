@@ -32,8 +32,10 @@ mod tests {
     use super::*;
 
     // --- CLI-030: usage failure behavior ---
-    // Go: urfave/cli returns exit code 2 for usage errors (unknown commands, bad
-    // flags). Errors go to stderr; stdout is empty on usage failures.
+    // Deliberate divergence from the Linux Go baseline: urfave/cli prints bad-flag
+    // usage text to stdout, and `runApp` drops the returned `app.Run()` error so
+    // shells usually observe exit 0. Unknown top-level tokens also fall through to
+    // `tunnel.TunnelCommand(c)` instead of becoming explicit usage failures.
 
     #[test]
     fn usage_failure_exit_code_is_2() {

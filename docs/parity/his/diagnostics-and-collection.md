@@ -298,8 +298,10 @@ the tunnel:
 
 ### Rust State
 
-Raw ICMP socket handling and source auto-detection remain open. Ping group
-range privilege checks are parity-backed via `can_create_icmp_socket()`.
+`cfdrs-his::icmp` now owns the raw-socket ICMP contract: `IcmpConn`,
+`LinuxIcmpProxy`, flow tracking, checksum rewrite, ping-group-range checks,
+and source-address resolution helpers all exist with local tests. The
+remaining gap is runtime composition into the admitted live tunnel path.
 
 ## Hello World Test Server
 
@@ -319,9 +321,11 @@ connectivity verification:
 
 ### Rust State
 
-Config parsing recognizes `hello_world` as `IngressService::HelloWorld` and
-`--hello-world` flag is parsed. The actual listener, TLS cert generation,
-and route handlers are not implemented yet (deferred to the later HIS runtime closure work).
+Config parsing recognizes `hello_world` as `IngressService::HelloWorld`, the
+shared/HIS crate set carries the standalone hello-server contract surface, and
+the admitted proxy path already routes `IngressService::HelloWorld` to the
+Go-shaped 200/connect-response boundary. The remaining gap is the standalone
+quick-tunnel `--hello-world` / local TLS listener path.
 
 ## Current Rust State
 
@@ -332,6 +336,9 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
   `/diag/configuration` local endpoints
 - `/diag/system` and `/diag/tunnel` local endpoints on the runtime metrics
   listener
+- management service `/host_details` route plus `/logs` WebSocket surface,
+  with diagnostics-gated `/metrics` and `/debug/pprof/*` exposure on the
+  management listener
 - end-to-end `tunnel diag` bundle generation with instance discovery, ZIP
   output, and `--no-diag-*` toggles
 - system information collection from `/proc/meminfo`, `sysctl`, `df`, and
@@ -340,6 +347,8 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 - host log collection from journalctl, explicit logfile/log-directory, or
   managed fallback paths
 - network traceroute collection for region1/region2 IPv4 and IPv6 targets
+- ICMP raw-socket helpers, flow tracking, ping-group permission checks, and
+  source-address resolution in `cfdrs-his::icmp`
 - diagnostic instance discovery via real HTTP `/diag/tunnel` probes on the
   known metrics ports
 - readiness state machine tracking lifecycle and subsystem gates
@@ -356,10 +365,9 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 ### What is missing
 
 - full `/debug/pprof/*` profiling payloads
-- host details endpoint
-- ICMP proxy raw socket handling
-- ICMP source IP auto-detection
-- `hello_world` listener and route handlers
+- admitted runtime composition of the ICMP proxy surface into the live tunnel
+  data path
+- standalone quick-tunnel `--hello-world` / local TLS hello server path
 
 ## Lane Classification
 
@@ -373,23 +381,22 @@ and route handlers are not implemented yet (deferred to the later HIS runtime cl
 | tunnel state collector | yes | diagnostics |
 | `tunnel diag` CLI command | yes | operator diagnostics |
 | host log collection | yes | diagnostics |
-| ICMP proxy raw socket | yes | proxied ICMP echo through tunnel |
+| ICMP proxy raw socket | yes | HIS contract exists; admitted runtime composition is still pending |
 | ping group privilege check | yes | host capability gate |
 | ICMP source IP flags | medium | ICMP proxy configuration |
-| `hello_world` ingress listener | medium | test/verification service |
+| standalone `hello_world` listener | medium | quick-tunnel verification service |
 | network traceroute | medium | useful but not critical path |
 | `/quicktunnel` endpoint | medium | quick tunnel flow |
 | `/config` endpoint | medium | remote config visibility |
 | pprof profiling | low | debugging aid |
 | Docker/K8s log collectors | low | container diagnostics |
-| host details endpoint | medium | management service dependency |
+| host details endpoint | medium | implemented through the management service |
 
 ## Gap Summary
 
 | Gap | Severity | Notes |
 | --- | --- | --- |
-| ICMP proxy raw socket absent | high | proxied ICMP echo |
-| `hello_world` listener/handler absent | medium | config parsed, handler deferred |
-| ICMP source IP flags absent | medium | ICMP configuration |
+| ICMP runtime composition absent | high | HIS raw-socket/flow helpers exist, but the admitted live tunnel path does not yet compose them end-to-end |
+| standalone quick-tunnel hello server absent | medium | proxy `IngressService::HelloWorld` exists, but the local TLS verification server / `--hello-world` branch remains deferred |
 | `/config` orchestrator parity incomplete | medium | remote update semantics still deferred |
 | pprof profiling payloads absent | low | debugging aid |
