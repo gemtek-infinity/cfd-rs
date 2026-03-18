@@ -11,6 +11,7 @@ cfdrs-shared = { path = "../cfdrs-shared" }
 flate2.workspace = true
 notify.workspace = true
 reqwest.workspace = true
+nix.workspace = true
 sd-notify.workspace = true
 serde.workspace = true
 serde_json.workspace = true

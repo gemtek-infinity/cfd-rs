@@ -223,9 +223,9 @@ Rules:
 
 ### ICMP Proxy (admitted)
 
-Slice is active. `socket2` is in `[workspace.dependencies]`:
+Slice is active. `nix` is in `[workspace.dependencies]`:
 
-- `socket2`
+- `nix` (features: `net`, `user`)
 
 Owner crate: `cfdrs-his`
 
@@ -234,15 +234,19 @@ Admission justification:
 - HIS-069 requires non-privileged ICMP socket creation via
   `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)` on Linux
 - the standard library provides no raw or ICMP socket API
-- `socket2` is the mature, minimal, widely-adopted crate for safe socket
-  creation and configuration (pre-`std::net::TcpListener` level sockets)
+- `nix` provides safe Rust wrappers over POSIX socket calls with
+  feature-gated modules (`net` for sockets, `user` for `getegid()`)
+- `nix::unistd::getegid()` replaces the `/proc/self/status` GID parsing hack
+  needed for `checkInPingGroup()` permission verification
+- `nix::sys::socket::SockProtocol::Icmp` and `IcmpV6` are available without
+  platform-specific cfg gates
 - it does not pull in async runtimes, allocators, or unrelated subsystems
 
 Ongoing rules:
 
-- `socket2` must remain confined to `cfdrs-his` ICMP proxy code
-- do not use `socket2` as a general-purpose networking crate across the
-  workspace; standard library sockets suffice elsewhere
+- `nix` must remain confined to `cfdrs-his` ICMP proxy code
+- do not use `nix` as a general-purpose system crate across the
+  workspace; standard library APIs suffice elsewhere
 
 ### Logging And Observability (admitted)
 
