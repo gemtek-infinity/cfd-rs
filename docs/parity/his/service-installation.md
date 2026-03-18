@@ -143,6 +143,11 @@ It creates a pidfile at `/var/run/$name.pid`, writes stdout to
 `/var/log/$name.log` and stderr to `/var/log/$name.err`, and optionally
 sources `/etc/sysconfig/$name` for environment overrides.
 
+Rust tests `sysv::tests::install_writes_script_and_symlinks` verify the
+generated script contains the expected markers, toggles `--no-autoupdate`
+vs `--autoupdate-freq 24h0m0s`, produces every runlevel symlink, and
+records the `service cloudflared start` command.
+
 ## Uninstall Flow
 
 ### Systemd Uninstall
@@ -158,6 +163,10 @@ sources `/etc/sysconfig/$name` for environment overrides.
 1. `service cloudflared stop`
 2. remove `/etc/init.d/cloudflared`
 3. remove all symlinks from `/etc/rc*.d/`
+
+`sysv::tests::uninstall_removes_script_and_links` asserts that cleanup
+invokes `service cloudflared stop` and deletes the init script plus every
+`S50et`/`K02et` symlink.
 
 ### Preservation
 

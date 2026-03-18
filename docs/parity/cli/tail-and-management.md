@@ -35,7 +35,9 @@ Category: `Tunnel`
 Gets management JWT for a tunnel. Inherits parent `tail` flags, no additional
 flags.
 
-Rust coverage: absent for entire tail subtree.
+Rust coverage: `tail` and hidden `tail token` are parity-backed. Bare `tail`
+opens the management WebSocket and streams log events; `tail token` acquires a
+management JWT and prints the Go-compatible JSON envelope.
 
 ### Ownership note
 
@@ -64,7 +66,13 @@ Flags:
 | `--loglevel` | string | `info` | `TUNNEL_LOGLEVEL` | no | application logging level |
 | `--output` | string | | | no | log output format |
 
-Rust coverage: absent for entire management subtree.
+Rust coverage: parity-backed for the hidden management subtree.
+
+- bare `management` now renders the hidden command help text with exit 0,
+  matching urfave/cli command behavior
+- `management token` acquires the JWT through the admitted API client path
+- `management --help`, `help management`, and `management token --help`
+  route to hidden help text rather than falling through to root help
 
 ### Visibility note
 
@@ -76,5 +84,6 @@ internal callers and tooling.
 
 - Total tail flags: 10
 - Total management token flags: 4
-- Total with Rust coverage: 0
+- Total with Rust coverage: all 3 hidden command paths (`tail`, `tail token`,
+  `management token`) plus bare `management` help routing
 - Hidden commands: 3 (management, management token, tail token)

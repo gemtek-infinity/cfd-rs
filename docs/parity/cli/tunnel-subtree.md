@@ -17,9 +17,12 @@ Authoritative checklist rows: CLI-008 through CLI-021, CLI-032.
 - usage: `Use Cloudflare Tunnel to expose private services to the Internet or
   to Cloudflare connected private users.`
 
-Rust coverage: the current `run` command partially overlaps `tunnel run` but
-does not cover the `tunnel` root runnable behavior, and the `tunnel` command
-namespace does not exist in Rust.
+Rust coverage: parity-backed via
+[`tunnel_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_commands.rs).
+`execute_tunnel_bare()` now implements the Go `TunnelCommand()` five-branch
+decision surface: adhoc named tunnel, quick tunnel, config-driven named
+tunnel handoff, classic tunnel deprecation error, and the final runnable
+error. Evidence: 6 integration tests in `cfdrs-bin`.
 
 ## Subcommand inventory
 
@@ -40,7 +43,12 @@ Flags:
 | `--callbackURL` | | string | `https://login.cloudflareaccess.org/` | The URL used for the callback |
 | `--fedramp` | `-f` | bool | false | Login with FedRAMP High environment |
 
-Rust coverage: absent.
+Rust coverage: parity-backed via
+[`tunnel_login.rs`](../../../crates/cfdrs-bin/src/tunnel_login.rs).
+`execute_tunnel_login()` runs the browser-auth flow, supports FedRAMP URLs,
+polls the callback store, decodes the origin cert, and writes `cert.pem`
+with mode `0600`. Evidence: 8 unit tests in `cfdrs-bin` plus root/tunnel
+dispatch integration coverage.
 
 ### `tunnel create` (CLI-010)
 
@@ -58,7 +66,11 @@ Flags:
 | `--credentials-file` | `--cred-file` | string | Filepath to write tunnel credentials |
 | `--secret` | `-s` | string | Base64 encoded secret (min 32 bytes decoded) |
 
-Rust coverage: absent.
+Rust coverage: parity-backed via
+[`tunnel_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_commands.rs).
+`execute_tunnel_create()` loads the origin cert, creates the tunnel through
+the API, writes the credential file, and renders JSON/YAML output. Evidence:
+1 parse-dispatch test, 2 NArg tests, and 8 unit tests.
 
 ### `tunnel list` (CLI-011)
 
@@ -82,7 +94,11 @@ Flags:
 | `--invert-sort` | | bool | | `TUNNEL_LIST_INVERT_SORT` | Invert sort order |
 | `--max-fetch-size` | | int | | | Max results to fetch |
 
-Rust coverage: absent.
+Rust coverage: parity-backed via
+[`tunnel_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_commands.rs).
+`execute_tunnel_list()` builds the Go-shaped filter set, calls the API, and
+renders the tabular listing with per-colo connection formatting. Evidence:
+1 parse-dispatch test, 1 NArg test, and 4 formatter unit tests.
 
 ### `tunnel run` (CLI-012)
 
@@ -108,8 +124,13 @@ Inherits all tunnel-level flags plus:
 | `--max-active-flows` | | uint64 | `TUNNEL_MAX_ACTIVE_FLOWS` | Max private network flows |
 | `--dns-resolver-addrs` | | string slice | `TUNNEL_DNS_RESOLVER_ADDRS` | DNS resolver overrides |
 
-Rust coverage: current `run` command partially overlaps but is not equivalent.
-See CLI-032.
+Rust coverage: parity-backed via
+[`tunnel_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_commands.rs).
+`execute_tunnel_run()` implements the Go precedence chain
+`--token` > `--token-file` > positional tunnel > config `tunnel`, handles
+inline credentials contents, and hands the resolved identity into the runtime.
+Evidence: 2 parse-dispatch tests, 12 unit tests, 3 NArg integration tests,
+and 2 credential-discovery tests.
 
 ### `tunnel delete` (CLI-013)
 
@@ -126,7 +147,12 @@ Flags:
 | `--credentials-file` | `--cred-file` | string | `TUNNEL_CRED_FILE` | Credentials filepath |
 | `--force` | `-f` | bool | `TUNNEL_RUN_FORCE_OVERWRITE` | Delete even if connected |
 
-Rust coverage: absent.
+Rust coverage: parity-backed via
+[`tunnel_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_commands.rs).
+`execute_tunnel_delete()` resolves by UUID or name, enforces the deleted-state
+checks, deletes the tunnel through the API, and removes the local credential
+file as a non-fatal cleanup step. Evidence: 1 parse-dispatch test and 2 NArg
+tests.
 
 ### `tunnel cleanup` (CLI-014)
 
@@ -142,7 +168,10 @@ Flags:
 | --- | --- | --- | --- | --- |
 | `--connector-id` | `-c` | string | `TUNNEL_CLEANUP_CONNECTOR` | Filter to single connector |
 
-Rust coverage: absent.
+Rust coverage: parity-backed via
+[`tunnel_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_commands.rs).
+`execute_tunnel_cleanup()` resolves tunnel IDs, honors `--connector-id`, and
+calls the API cleanup path. Evidence: 1 parse-dispatch test and 2 NArg tests.
 
 ### `tunnel token` (CLI-015)
 
@@ -158,7 +187,11 @@ Flags:
 | --- | --- | --- | --- |
 | `--credentials-file` | `--cred-file` | string | Credentials filepath |
 
-Rust coverage: absent.
+Rust coverage: parity-backed via
+[`tunnel_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_commands.rs).
+`execute_tunnel_token()` resolves the tunnel ID, fetches the token, and either
+prints it or writes it to `--credentials-file`. Evidence: 1 parse-dispatch
+test and 2 NArg tests.
 
 ### `tunnel info` (CLI-016)
 
@@ -177,7 +210,11 @@ Flags:
 | `--invert-sort` | | bool | | `TUNNEL_INFO_INVERT_SORT` | Invert sort order |
 | `--show-recently-disconnected` | `-rd` | bool | | | Include disconnected |
 
-Rust coverage: absent.
+Rust coverage: parity-backed via
+[`tunnel_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_commands.rs).
+`execute_tunnel_info()` resolves the tunnel, fetches active clients, and
+renders the Go-style header plus connector table. Evidence: 1 parse-dispatch
+test and 2 NArg tests.
 
 ### `tunnel ready` (CLI-017)
 
@@ -188,7 +225,13 @@ from parent tunnel command.
 
 No subcommand-specific flags.
 
-Rust coverage: absent.
+Rust coverage: parity-backed via `execute_tunnel_ready()` in
+[`tunnel_local_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_local_commands.rs).
+The command requires an
+explicit `--metrics` flag, performs `GET http://{metrics}/ready`, exits 0 on
+HTTP 200, and returns the Go-shaped non-200 error including status code and
+response body. Evidence: 1 parse-dispatch test in `cfdrs-cli` and 3 behavioral
+integration tests in `cfdrs-bin`.
 
 ### `tunnel diag` (CLI-018)
 
@@ -209,7 +252,15 @@ Flags:
 | `--no-diag-runtime` | bool | false | Skip runtime info collection |
 | `--no-diag-network` | bool | false | Skip network diagnostics |
 
-Rust coverage: absent.
+Rust coverage: parity-backed via
+[`tunnel_local_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_local_commands.rs)
+plus `cfdrs-his` diagnostics. `execute_tunnel_diag()` builds the Go-shaped
+diagnostic bundle, supports all `--no-diag-*` toggles, auto-discovers
+instances on the known metrics ports when `--metrics` is absent, and
+preserves the baseline-facing CLI messages for the no-instance,
+multi-instance, success, and partial-success paths. Evidence: 1
+parse-dispatch test in `cfdrs-cli`, 5 behavioral integration tests in
+`cfdrs-bin`, and ZIP/report tests in `cfdrs-his`.
 
 ### `tunnel route` (CLI-019)
 
@@ -257,7 +308,12 @@ Plus IP route filter flags from `cfapi.IpRouteFilterFlags`.
 | --- | --- | --- | --- |
 | `--vnet` | `-vn` | string | Virtual network to query |
 
-Rust coverage: absent for entire route subtree.
+Rust coverage: parity-backed via
+[`route_vnet_commands.rs`](../../../crates/cfdrs-bin/src/route_vnet_commands.rs).
+`tunnel route dns`, `lb`, and `ip` subcommands now resolve vnets, build the
+Go-shaped API payloads, and render the expected tabular outputs. Evidence:
+14 parse-dispatch and NArg tests in `cfdrs-cli` plus render/resolve unit
+tests in `cfdrs-bin`.
 
 ### `tunnel vnet` (CLI-020)
 
@@ -293,7 +349,12 @@ Plus virtual network filter flags from `cfapi.VnetFilterFlags`.
 | `--comment` | `-c` | string | New comment |
 | `--default` | `-d` | bool | Set as default |
 
-Rust coverage: absent for entire vnet subtree.
+Rust coverage: parity-backed via
+[`route_vnet_commands.rs`](../../../crates/cfdrs-bin/src/route_vnet_commands.rs).
+`tunnel vnet add`, `list`, `delete`, and `update` now resolve names/UUIDs,
+pass through `--default` and `--force`, and render the expected table output.
+Evidence: 9 parse-dispatch and NArg tests in `cfdrs-cli` plus 3 render and
+resolver tests in `cfdrs-bin`.
 
 ### `tunnel ingress` (CLI-021)
 
@@ -313,9 +374,14 @@ Usage: `tunnel ingress rule URL`
 
 No flags. Shows which ingress rule matches the given URL.
 
-Rust coverage: absent for entire ingress subtree. The current Rust `validate`
-command has partial overlap with `tunnel ingress validate` but is a
-transitional alpha command, not a parity target.
+Rust coverage: parity-backed. Bare `tunnel ingress` now renders hidden-command
+help, `validate` supports `--json` and file discovery, surfaces unknown-key
+warnings, and rejects empty configs or `--url` with Go-matching behavior.
+`rule URL` resolves the matching rule using strict ingress parsing instead of
+the runtime's default `http_status:503` fallback, then renders the Go-style
+multi-line rule body. Evidence: 3 parse-dispatch tests in `cfdrs-cli`, 3 NArg
+tests + 6 behavioral integration tests in `cfdrs-bin`, and 5 unit tests in
+[`tunnel_local_commands.rs`](../../../crates/cfdrs-bin/src/tunnel_local_commands.rs).
 
 ## Removed/deprecated subcommands
 
@@ -330,7 +396,8 @@ Removed via `cliutil.RemovedCommand("db-connect")`.
 
 ## Coverage summary
 
-- Total tunnel subcommands: 13 active + 2 removed
-- Total with Rust coverage: 0 (partial overlap via `run` only)
-- Total subcommand-specific flags: approximately 40
-- Multi-level nesting depth: 4 (`tunnel route ip add`)
+- All admitted tunnel subcommands are now parity-backed, including `ready`,
+  `diag`, hidden `ingress`, `route`, and `vnet`
+- Removed subcommands `proxy-dns` and `db-connect` match baseline removal
+  behavior
+- Multi-level nesting depth remains 4 (`tunnel route ip add`)

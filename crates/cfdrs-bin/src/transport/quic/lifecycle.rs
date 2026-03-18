@@ -244,6 +244,7 @@ impl QuicTunnelService {
         self.protocol_sender
             .send(ProtocolEvent::Registered {
                 peer: target.connect_addr,
+                conn_index: u8::try_from(self.attempt).unwrap_or(u8::MAX),
             })
             .await
             .map_err(|detail| {

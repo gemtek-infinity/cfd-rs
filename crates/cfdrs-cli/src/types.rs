@@ -12,11 +12,16 @@ use crate::surface_contract;
 pub enum HelpTarget {
     /// Root-level help — `cloudflared --help` or `cloudflared help`.
     Root,
+    /// `cloudflared update --help`
+    Update,
     /// `cloudflared tunnel --help` or `cloudflared help tunnel`.
     Tunnel,
     /// `cloudflared access --help` or `cloudflared help access`.
     Access,
+    /// `cloudflared management --help` or `cloudflared help management`.
+    Management,
     // --- Per-subcommand targets ---
+    ManagementToken,
     TunnelCreate,
     TunnelList,
     TunnelRun,
@@ -334,6 +339,9 @@ pub struct GlobalFlags {
     pub autoupdate_freq: Option<String>,
     pub metrics: Option<String>,
     pub pidfile: Option<PathBuf>,
+    pub update_beta: bool,
+    pub update_staging: bool,
+    pub update_version: Option<String>,
 
     // --- Credentials ---
     pub credentials_file: Option<PathBuf>,

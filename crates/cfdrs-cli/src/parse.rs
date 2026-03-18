@@ -4,7 +4,7 @@ use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
 
 use self::value_flags::try_parse_value_flag;
-use super::types::{GlobalFlags, HelpTarget, RouteSubcommand, TunnelSubcommand};
+use super::types::{GlobalFlags, HelpTarget, ManagementSubcommand, RouteSubcommand, TunnelSubcommand};
 use super::{Cli, Command, surface_contract};
 
 /// Short-circuit builder for value-flag matching.
@@ -245,7 +245,7 @@ fn handle_priority_flag(token_str: &str, state: &mut ParseState) -> bool {
         return true;
     }
 
-    if surface_contract::is_version_token(token_str) {
+    if surface_contract::is_version_token(token_str) && !is_update_version_flag(token_str, state) {
         state.version_requested = true;
         return true;
     }
@@ -256,6 +256,10 @@ fn handle_priority_flag(token_str: &str, state: &mut ParseState) -> bool {
     }
 
     false
+}
+
+fn is_update_version_flag(token_str: &str, state: &ParseState) -> bool {
+    token_str == surface_contract::VERSION_FLAG && matches!(state.command, Some(Command::Update))
 }
 
 fn dispatch_command_token(token_str: &str, state: &mut ParseState) -> Result<bool, String> {
@@ -428,6 +432,8 @@ fn try_parse_bool_flag(arg: &OsStr, state: &mut ParseState) -> bool {
 
     match arg_str.as_ref() {
         "--no-autoupdate" => state.flags.no_autoupdate = true,
+        "--beta" => state.flags.update_beta = true,
+        "--staging" => state.flags.update_staging = true,
         "--hello-world" => state.flags.hello_world = true,
         "--no-tls-verify" => state.flags.no_tls_verify = true,
         "--no-chunked-encoding" => state.flags.no_chunked_encoding = true,
@@ -512,7 +518,10 @@ fn finalize_cli(state: ParseState) -> Cli {
                 TunnelSubcommand::Ingress(_) => HelpTarget::TunnelIngress,
                 _ => HelpTarget::Tunnel,
             },
+            Some(Command::Update) => HelpTarget::Update,
             Some(Command::Access(_)) => HelpTarget::Access,
+            Some(Command::Management(ManagementSubcommand::Token)) => HelpTarget::ManagementToken,
+            Some(Command::Management(_)) => HelpTarget::Management,
             _ => HelpTarget::Root,
         };
         return Cli {

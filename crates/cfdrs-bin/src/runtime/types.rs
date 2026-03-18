@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::time::Duration;
 
+use cfdrs_his::updater::AutoUpdateSettings;
 use cfdrs_shared::{ConfigSource, DiscoveryOutcome, NormalizedConfig};
 use uuid::Uuid;
 
@@ -23,7 +24,50 @@ pub(crate) struct RuntimeConfig {
     /// Matches Go compile-time `metrics.Runtime` variable. When true,
     /// the metrics server binds to `0.0.0.0` instead of `localhost`.
     is_container_runtime: bool,
+    icmp_sources: Vec<String>,
     diagnostic_configuration: BTreeMap<String, String>,
+    auto_update: Option<RuntimeAutoUpdate>,
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) struct RuntimeAutoUpdate {
+    settings: AutoUpdateSettings,
+    target_path_override: Option<PathBuf>,
+    base_url_override: Option<String>,
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+impl RuntimeAutoUpdate {
+    pub(crate) fn new(settings: AutoUpdateSettings) -> Self {
+        Self {
+            settings,
+            target_path_override: None,
+            base_url_override: None,
+        }
+    }
+
+    pub(crate) fn with_target_path_override(mut self, target_path: PathBuf) -> Self {
+        self.target_path_override = Some(target_path);
+        self
+    }
+
+    pub(crate) fn with_base_url_override(mut self, base_url: String) -> Self {
+        self.base_url_override = Some(base_url);
+        self
+    }
+
+    pub(crate) fn settings(&self) -> &AutoUpdateSettings {
+        &self.settings
+    }
+
+    pub(crate) fn target_path_override(&self) -> Option<&PathBuf> {
+        self.target_path_override.as_ref()
+    }
+
+    pub(crate) fn base_url_override(&self) -> Option<&str> {
+        self.base_url_override.as_deref()
+    }
 }
 
 impl RuntimeConfig {
@@ -36,7 +80,9 @@ impl RuntimeConfig {
             pidfile_path: None,
             metrics_bind_address: None,
             is_container_runtime: false,
+            icmp_sources: Vec::new(),
             diagnostic_configuration: BTreeMap::new(),
+            auto_update: None,
         }
     }
 
@@ -55,11 +101,26 @@ impl RuntimeConfig {
         self
     }
 
+    pub(crate) fn with_container_runtime(mut self, is_container: bool) -> Self {
+        self.is_container_runtime = is_container;
+        self
+    }
+
+    pub(crate) fn with_icmp_sources(mut self, icmp_sources: Vec<String>) -> Self {
+        self.icmp_sources = icmp_sources;
+        self
+    }
+
     pub(crate) fn with_diagnostic_configuration(
         mut self,
         diagnostic_configuration: BTreeMap<String, String>,
     ) -> Self {
         self.diagnostic_configuration = diagnostic_configuration;
+        self
+    }
+
+    pub(crate) fn with_auto_update(mut self, auto_update: RuntimeAutoUpdate) -> Self {
+        self.auto_update = Some(auto_update);
         self
     }
 
@@ -91,12 +152,32 @@ impl RuntimeConfig {
         self.metrics_bind_address
     }
 
-    pub(super) fn is_container_runtime(&self) -> bool {
+    pub(crate) fn is_container_runtime(&self) -> bool {
         self.is_container_runtime
+    }
+
+    pub(crate) fn quick_tunnel_hostname(&self) -> Option<String> {
+        self.normalized()
+            .ingress
+            .iter()
+            .filter_map(|rule| rule.matcher.hostname.clone())
+            .find(|hostname| !hostname.is_empty())
+    }
+
+    pub(crate) fn tunnel_id(&self) -> Option<Uuid> {
+        self.normalized().tunnel.as_ref().and_then(|tunnel| tunnel.uuid)
+    }
+
+    pub(crate) fn icmp_sources(&self) -> &[String] {
+        &self.icmp_sources
     }
 
     pub(crate) fn diagnostic_configuration(&self) -> &BTreeMap<String, String> {
         &self.diagnostic_configuration
+    }
+
+    pub(crate) fn auto_update(&self) -> Option<&RuntimeAutoUpdate> {
+        self.auto_update.as_ref()
     }
 }
 
@@ -126,6 +207,7 @@ pub(crate) struct RuntimeExecution {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum RuntimeExit {
     Clean,
+    Updated { version: String },
     Deferred { phase: &'static str, detail: String },
     Failed { detail: String },
 }
@@ -134,6 +216,7 @@ impl RuntimeExit {
     pub(crate) fn exit_code(&self) -> u8 {
         match self {
             Self::Clean => 0,
+            Self::Updated { .. } => cfdrs_his::updater::UPDATE_EXIT_SUCCESS as u8,
             Self::Deferred { .. } | Self::Failed { .. } => 1,
         }
     }
@@ -141,6 +224,7 @@ impl RuntimeExit {
     pub(crate) fn stderr_message(&self) -> Option<String> {
         match self {
             Self::Clean => None,
+            Self::Updated { .. } => None,
             Self::Deferred { phase, detail } => Some(format!(
                 "error: runtime ownership is active, but later slice work is still deferred in {phase}: \
                  {detail}\n"
@@ -172,10 +256,18 @@ pub(crate) enum RuntimeCommand {
         state: ProxySeamState,
         detail: String,
     },
+    TunnelConnectionObserved {
+        index: u8,
+        protocol: String,
+        edge_address: String,
+    },
     ServiceExited(ServiceExit),
     ShutdownRequested(ShutdownReason),
     ControlPlaneFailure {
         detail: String,
+    },
+    AutoUpdateApplied {
+        version: String,
     },
     ConfigFileChanged {
         path: std::path::PathBuf,
@@ -186,6 +278,7 @@ pub(crate) enum RuntimeCommand {
 pub(crate) enum ShutdownReason {
     Signal(&'static str),
     Harness,
+    AutoUpdate,
     ServiceFailure(&'static str),
 }
 
@@ -194,6 +287,7 @@ impl std::fmt::Display for ShutdownReason {
         match self {
             Self::Signal(name) => write!(f, "signal:{name}"),
             Self::Harness => f.write_str("harness"),
+            Self::AutoUpdate => f.write_str("auto-update"),
             Self::ServiceFailure(name) => write!(f, "service-failure:{name}"),
         }
     }
@@ -227,6 +321,7 @@ pub(crate) enum ChildTask {
     SignalBridge,
     HarnessBridge,
     ConfigWatcher,
+    AutoUpdater,
 }
 
 #[derive(Debug, Clone)]
@@ -299,6 +394,7 @@ mod tests {
     fn shutdown_reason_display() {
         assert_eq!(ShutdownReason::Signal("SIGTERM").to_string(), "signal:SIGTERM");
         assert_eq!(ShutdownReason::Harness.to_string(), "harness");
+        assert_eq!(ShutdownReason::AutoUpdate.to_string(), "auto-update");
         assert_eq!(
             ShutdownReason::ServiceFailure("quic-transport").to_string(),
             "service-failure:quic-transport"
@@ -329,7 +425,12 @@ mod tests {
         .with_shutdown_grace_period(Duration::from_secs(45))
         .with_pidfile_path(PathBuf::from("/tmp/cloudflared.pid"))
         .with_diagnostic_configuration(BTreeMap::from([("uid".to_owned(), "1000".to_owned())]))
-        .with_metrics_bind_address("127.0.0.1:8080".parse().expect("socket address"));
+        .with_metrics_bind_address("127.0.0.1:8080".parse().expect("socket address"))
+        .with_auto_update(
+            RuntimeAutoUpdate::new(AutoUpdateSettings::new(true, Duration::from_secs(15), None))
+                .with_target_path_override(PathBuf::from("/tmp/cloudflared"))
+                .with_base_url_override("http://127.0.0.1:8787".to_owned()),
+        );
 
         assert_eq!(config.shutdown_grace_period(), Some(Duration::from_secs(45)));
         assert_eq!(
@@ -344,5 +445,6 @@ mod tests {
             config.diagnostic_configuration().get("uid"),
             Some(&"1000".to_owned())
         );
+        assert!(config.auto_update().is_some());
     }
 }

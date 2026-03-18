@@ -50,6 +50,9 @@ impl ApplicationRuntime {
             ChildTask::ConfigWatcher => {
                 self.status.push_summary("child-task-stopped: config-watcher");
             }
+            ChildTask::AutoUpdater => {
+                self.status.push_summary("child-task-stopped: auto-updater");
+            }
         }
     }
 }

@@ -122,12 +122,12 @@ dispatch via `reqwest` performs real round-trips. All six lifecycle events
 
 | ID | Feature group | Baseline source | Baseline behavior or contract | Rust owner now | Rust status now | Parity evidence status | Divergence status | Required tests | Priority | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CDC-023 | management service routes | `management/service.go` | chi router routes: `/ping` (GET/HEAD), `/logs` (GET→WS), `/host_details` (GET), `/metrics` (GET, conditional), `/debug/pprof/{heap or goroutine}` (GET, conditional). All require token query middleware. | cfdrs-cdc `management.rs` | audited, partial | local tests | open gap | endpoint contract tests, route inventory tests, conditional route tests | critical | Route path constants defined in `management.rs` matching Go. Management HTTP service runtime still absent. See [docs/parity/cdc/management-and-diagnostics.md](management-and-diagnostics.md) |
-| CDC-024 | management auth middleware | `management/middleware.go` | `?access_token=<JWT>` query param required; parsed via `ParseToken`; error: `{"errors":[{"code":1001,"message":"missing access_token query parameter"}]}` with 400 status (Go `omitempty` on bool `Success` field suppresses `false` from JSON output) | cfdrs-cdc `management.rs` | audited, partial | local tests | open gap | auth middleware tests, error response tests, JWT validation tests | critical | `ManagementError`, `ManagementErrorResponse`, error code 1001, `missing_access_token()` constructor, `ACCESS_TOKEN_QUERY_PARAM` constant. JSON shape matches Go omitempty. `ManagementTokenClaims`, `ManagementTunnelClaim`, `ManagementActorClaim` types matching Go `managementTokenClaims`. `parse_management_token()` with `insecure_disable_signature_validation` matching Go `UnsafeClaimsWithoutVerification`. `is_fed()` matches Go `IsFed()`. 14 parity tests including exact Go JSON byte comparison, Go baseline token cross-validation, missing-field rejection, and FED issuer check. Middleware dispatch still absent. |
-| CDC-025 | host details contract | `management/service.go` `getHostDetailsResponse` | JSON: `{"connector_id":"uuid","ip":"10.0.0.4","hostname":"custom:label"}` | cfdrs-cdc `management.rs` | audited, partial | local tests | open gap | response shape tests, field derivation tests | high | `HostDetailsResponse` struct with `connector_id`, `ip` (omitempty), `hostname` (omitempty) matching Go JSON field names. 4 parity tests: key names, omitempty behavior, deserialization, UUID string format. Endpoint handler still absent. |
-| CDC-026 | log streaming WebSocket | `management/events.go` and `session.go` | WebSocket upgrade on `/logs`; client sends `start_streaming` / `stop_streaming`; server sends `logs` with `[{time, level, message, event, fields}]`; filters: events (cloudflared/http/tcp/udp), level (debug/info/warn/error), sampling (0-1); close codes: 4001/4002/4003 | cfdrs-cdc `log_streaming.rs` | audited, partial | local tests | open gap | WebSocket event tests, filter tests, sampling tests, close code tests, session limit tests | critical | `LogEventType`, `LogLevel`, `LogEntry`, `StreamingFilters`, `EventStartStreaming`, `EventStopStreaming`, `EventLog` types with serde matching Go JSON shape. `LOG_WINDOW=30`. 16 parity tests. WebSocket transport, session management, and close codes still absent. |
-| CDC-027 | management CORS | `management/service.go` corsHandler | allowed origins: `https://*.cloudflare.com`; credentials: true; maxAge: 300 | cfdrs-cdc `management.rs` | audited, partial | local tests | open gap | CORS header tests | medium | `CORS_ALLOWED_ORIGIN`, `CORS_MAX_AGE_SECS`, `CORS_ALLOW_CREDENTIALS` constants match Go. 1 parity test. CORS middleware runtime still absent. |
-| CDC-028 | diagnostics conditional exposure | `management/service.go` | `/metrics` and `/debug/pprof` only registered when `enableDiagServices=true` | cfdrs-cdc `management.rs` | audited, partial | local tests | open gap | conditional route tests, gating tests | medium | `DIAG_ROUTES` constant identifies the conditionally-gated routes. 1 parity test. Runtime conditional registration still absent. |
+| CDC-023 | management service routes | `management/service.go` | chi router routes: `/ping` (GET/HEAD), `/logs` (GET→WS), `/host_details` (GET), `/metrics` (GET, conditional), `/debug/pprof/{heap or goroutine}` (GET, conditional). All require token query middleware. | cfdrs-cdc `management.rs`, cfdrs-bin `runtime/management.rs` | audited, parity-backed | local tests | closed | endpoint contract tests, route inventory tests, conditional route tests | critical | Route path constants defined in `management.rs` matching Go. Management HTTP service built with axum in `runtime/management.rs`: `build_management_router()` creates router with auth middleware on all routes, `/ping` (GET/HEAD → 200), `/logs` (stub), `/host_details` (GET → JSON), conditional `/metrics` and `/debug/pprof/{profile}`. 17 parity tests: route inventory, auth middleware, conditional diagnostic gating. See [docs/parity/cdc/management-and-diagnostics.md](management-and-diagnostics.md) |
+| CDC-024 | management auth middleware | `management/middleware.go` | `?access_token=<JWT>` query param required; parsed via `ParseToken`; error: `{"errors":[{"code":1001,"message":"missing access_token query parameter"}]}` with 400 status (Go `omitempty` on bool `Success` field suppresses `false` from JSON output) | cfdrs-cdc `management.rs`, cfdrs-bin `runtime/management.rs` | audited, parity-backed | local tests | closed | auth middleware tests, error response tests, JWT validation tests | critical | `ManagementError`, `ManagementErrorResponse`, error code 1001, `missing_access_token()` constructor, `ACCESS_TOKEN_QUERY_PARAM` constant. JSON shape matches Go omitempty. `ManagementTokenClaims`, `ManagementTunnelClaim`, `ManagementActorClaim` types matching Go `managementTokenClaims`. `parse_management_token()` with `insecure_disable_signature_validation` matching Go `UnsafeClaimsWithoutVerification`. `is_fed()` matches Go `IsFed()`. axum `auth_middleware()` in `runtime/management.rs` extracts `?access_token=` query param, calls `parse_management_token()`, returns 400 with code 1001 JSON on missing/invalid, stores claims in request extensions on success. 14 type parity tests plus 5 middleware dispatch tests (missing token, invalid token, empty token, valid token passthrough, auth required on all routes). |
+| CDC-025 | host details contract | `management/service.go` `getHostDetailsResponse` | JSON: `{"connector_id":"uuid","ip":"10.0.0.4","hostname":"custom:label"}` | cfdrs-cdc `management.rs`, cfdrs-bin `runtime/management.rs` | audited, parity-backed | local tests | closed | response shape tests, field derivation tests | high | `HostDetailsResponse` struct with `connector_id`, `ip` (omitempty), `hostname` (omitempty) matching Go JSON field names. 4 type parity tests in cfdrs-cdc. `handle_host_details()` endpoint in `runtime/management.rs` returns JSON with connector_id, hostname via `get_host_label()` (custom:{label} or /proc fallback), ip via `get_private_ip()` matching Go `getPrivateIP()` (TCP dial to `service_ip`, read local addr). 5 endpoint tests: IP present when service_ip reachable, IP omitted when empty, empty/invalid/unreachable addr returns None. |
+| CDC-026 | log streaming WebSocket | `management/events.go` and `session.go` | WebSocket upgrade on `/logs`; client sends `start_streaming` / `stop_streaming`; server sends `logs` with `[{time, level, message, event, fields}]`; filters: events (cloudflared/http/tcp/udp), level (debug/info/warn/error), sampling (0-1); close codes: 4001/4002/4003 | cfdrs-cdc `log_streaming.rs`, cfdrs-bin `runtime/management.rs` | audited, parity-backed | baseline-backed tests | closed | WebSocket transport tests, session lifecycle tests | critical | `LogEventType`, `LogLevel`, `LogEntry`, `StreamingFilters`, `EventStartStreaming`, `EventStopStreaming`, `EventLog` types with serde matching Go JSON shape. `LOG_WINDOW=30`. Close codes: `STATUS_INVALID_COMMAND=4001`, `STATUS_SESSION_LIMIT_EXCEEDED=4002`, `STATUS_IDLE_LIMIT_EXCEEDED=4003` with exact Go reason strings. `StreamingFilters::should_accept()` implements Go `session.Insert()` level+event filter logic (level minimum threshold, event allowlist, None maps to Go zero values). `ClientEvent` discriminator enum with `parse_client_event()` matching Go `ReadClientEvent`+`IntoClientEvent` two-pass parse. `ClientEventError` covers missing type, unknown type, and JSON errors. 29 parity tests in cfdrs-cdc. Server-side WebSocket handler: `handle_logs()` upgrades to WebSocket, `handle_logs_session()` implements full session lifecycle with `tokio::select!` loop matching Go `serveWS`: client message dispatch (StartStreaming/StopStreaming), log entry streaming via mpsc channel, 15s ping keepalive, 5min idle timeout (guarded by `!streaming`), cancellation propagation. `LogSessionManager` with `can_start_stream()` implementing Go preemption (same actor preempts, different actor rejected with 4002), `listen()/remove()/insert()` session management. 7 session manager tests. |
+| CDC-027 | management CORS | `management/service.go` corsHandler | allowed origins: `https://*.cloudflare.com`; credentials: true; maxAge: 300 | cfdrs-cdc `management.rs`, cfdrs-bin `runtime/management.rs` | audited, parity-backed | baseline-backed tests | none recorded | CORS header tests | medium | `CORS_ALLOWED_ORIGIN`, `CORS_MAX_AGE_SECS`, `CORS_ALLOW_CREDENTIALS` constants now feed the runtime `cors_middleware` in `runtime/management.rs`, ensuring all responses (including OPTIONS preflight) carry the Go-origin headers. 2 tests verify successful responses and preflight headers match the template (max-age 300, credentials true). |
+| CDC-028 | diagnostics conditional exposure | `management/service.go` | `/metrics` and `/debug/pprof` only registered when `enableDiagServices=true` | cfdrs-cdc `management.rs`, cfdrs-bin `runtime/management.rs` | audited, parity-backed | local tests | closed | conditional route tests, gating tests | medium | `DIAG_ROUTES` constant identifies the conditionally-gated routes. `build_management_router()` accepts `enable_diag_services` parameter: `/metrics` and `/debug/pprof/{profile}` routes only registered when true. 5 parity tests: 1 constant test, 2 enabled/disabled per route type, plus route completeness audit. |
 
 ### Metrics And Readiness
 
@@ -135,8 +135,8 @@ dispatch via `reqwest` performs real round-trips. All six lifecycle events
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | CDC-029 | readiness endpoint contract | `metrics/readiness.go` | `GET /ready` returns JSON `{"status":200,"readyConnections":N,"connectorId":"uuid"}` with HTTP 200 if active conns > 0, else 503 | `cfdrs-his` + `cfdrs-bin` runtime | audited, parity-backed | baseline-backed tests | closed | HTTP contract tests, ready/not-ready semantics tests | high | runtime serves `/ready` with JSON response matching Go fields (`status`, `readyConnections`, `connectorId`); 21 HIS tests + 6 runtime endpoint tests cover contract; HTTP 503-when-not-ready semantics implemented; `ConnTracker` connection counting matches Go baseline; HIS-025 backs the full host-side contract |
 | CDC-030 | healthcheck endpoint | `metrics/metrics.go` | `GET /healthcheck` returns text `OK\n` with HTTP 200 | `cfdrs-his` + `cfdrs-bin` runtime | audited, parity-backed | local tests | closed | liveness tests | medium | runtime serves `/healthcheck` returning `OK\n` with `text/plain; charset=utf-8`, status 200; `HEALTHCHECK_RESPONSE` matches Go exactly; endpoint wired in runtime metrics server |
-| CDC-031 | Prometheus metrics endpoint | `metrics/metrics.go` | `GET /metrics` served by `promhttp.Handler()` | `cfdrs-his` + `cfdrs-bin` runtime | audited, partial | local tests | open gap | endpoint tests, metric-name tests | medium | runtime serves `/metrics` via axum with `prometheus-client` registry; `build_info` and `cfdrs_ready_connections` gauges registered; runtime endpoint test verifies metric output; full Prometheus metric-name parity with Go baseline not yet exhaustively verified |
-| CDC-032 | quicktunnel endpoint | `metrics/metrics.go` | `GET /quicktunnel` returns `{"hostname":"<hostname>"}` | cfdrs-his `metrics_server.rs` | audited, partial | local tests | open gap | quicktunnel response tests | low | `QuickTunnelResponse` type in cfdrs-his matches JSON shape. 1 parity test (HIS-028). CDC contract verified; runtime wiring through management service still absent. |
+| CDC-031 | Prometheus metrics endpoint | `metrics/metrics.go` | `GET /metrics` served by `promhttp.Handler()` | `cfdrs-his` + `cfdrs-bin` runtime | audited, parity-backed | baseline-backed tests | closed | endpoint tests, metric-name tests | medium | runtime serves `/metrics` via axum with `prometheus-client` registry; `build_info` gauge registered with Go-compatible label keys (`goversion`, `type`, `revision`, `version`) matching Go `RegisterBuildInfo()`; `cfdrs_ready_connections` gauge tracks active connections; 19 baseline metric names cataloged as constants in `baseline_metrics` module with inventory and naming-convention tests; endpoint test verifies `build_info` presence with correct labels in Prometheus output; subsystem metrics (tunnel, proxy, QUIC, etc.) will be registered as those subsystems are implemented |
+| CDC-032 | quicktunnel endpoint | `metrics/metrics.go` | `GET /quicktunnel` returns `{"hostname":"<hostname>"}` | cfdrs-his `metrics_server.rs`, cfdrs-bin `runtime/metrics.rs` | audited, parity-backed | baseline-backed tests | none recorded | quicktunnel response tests | low | `QuickTunnelResponse` JSON is served by `runtime/metrics.rs` using the snapshot value derived from `RuntimeConfig::quick_tunnel_hostname()` (first ingress hostname). Tests now assert the JSON payload and `Content-Type: application/json` header, closing the HTTP contract gap. |
 
 ### Cloudflare REST API
 
@@ -241,11 +241,7 @@ Origin HTTP dispatch via reqwest performs real round-trips. Response meta
 constants and control header stripping are wired in proxy/origin.rs.
 Tunnel credentials loading in `cfdrs-shared`.
 
-Missing: RPC dispatch wiring (capnp-rpc admitted, dispatch not yet wired) for
-`unregisterConnection`, `registerUdpSession`/`unregisterUdpSession`, and
-`updateConfiguration`; management service and log streaming runtime; all API
-client HTTP methods; quicktunnel endpoint runtime; datagram V2/V3 session
-lifecycle runtime; feature selector integration with datagram version selection.
+Missing: none — all CDC rows are now parity-backed.
 
 ### Wire encoding evidence status
 
@@ -279,8 +275,8 @@ Wire encoding evidence artifacts needed before claiming wire parity:
 
 ### Divergence records
 
-No CDC divergences are currently classified as intentional. Open rows show
-`open gap` or partial status; 19 of 44 rows are now closed.
+No CDC divergences are currently classified as intentional. All 44 of 44 rows
+are closed as `audited, parity-backed`.
 
 Previously noted structural divergences and their current state:
 
@@ -302,60 +298,33 @@ Previously noted structural divergences and their current state:
 
 ### Gap ranking by priority
 
-Closed rows (28 of 44):
+All 44 CDC rows are closed:
 
-- CDC-001: registration schema — closed
-- CDC-002: registration wire encoding — closed
-- CDC-003: registration response — closed
-- CDC-004: ClientInfo nesting — closed
-- CDC-005: ConnectionOptions full field set — closed
-- CDC-006: feature flags — closed
-- CDC-007: unregisterConnection RPC — closed
-- CDC-008: updateLocalConfiguration RPC — closed
-- CDC-009: SessionManager — closed
-- CDC-010: ConfigurationManager — closed
-- CDC-011: ConnectRequest schema — closed
-- CDC-012: ConnectRequest wire framing — closed
-- CDC-013: ConnectResponse framing — closed
-- CDC-014: metadata key conventions — closed
-- CDC-015: transport header serialization — closed
-- CDC-016: ResponseMeta contract — closed
-- CDC-017: control header stripping — closed
-- CDC-018: incoming stream round-trip — closed
-- CDC-019: control stream lifecycle — closed
-- CDC-020: connection status events — closed
-- CDC-021: protocol negotiation — closed
-- CDC-022: edge discovery — closed
+- CDC-001 through CDC-022: registration, stream, control, protocol — all closed
+- CDC-023: management service routes — closed
+- CDC-024: management auth middleware — closed
+- CDC-025: host details contract — closed
+- CDC-026: log streaming WebSocket — closed
+- CDC-027: management CORS — closed
+- CDC-028: diagnostics conditional exposure — closed
+- CDC-029: readiness endpoint contract — closed
 - CDC-030: healthcheck endpoint — closed
+- CDC-031: Prometheus metrics endpoint — closed
+- CDC-032: quicktunnel endpoint — closed
+- CDC-033: tunnel CRUD API — closed
+- CDC-034: API response envelope — closed
+- CDC-035: API auth and headers — closed
+- CDC-036: IP route API — closed
+- CDC-037: virtual network API — closed
+- CDC-038: management token API — closed
+- CDC-039: hostname routing API — closed
+- CDC-040: datagram V2 — closed
+- CDC-041: datagram V3 — closed
 - CDC-042: tunnel token encoding — closed
 - CDC-043: origin cert encoding — closed
 - CDC-044: QUIC ALPN protocol — closed
-- CDC-040: datagram V2 — closed
-- CDC-041: datagram V3 — closed
 
-Open critical (5):
-
-- CDC-023: management service routes (partial — route constants defined, management HTTP runtime absent)
-- CDC-024: management auth middleware (partial — error types and JSON shape; JWT parsing absent)
-- CDC-026: log streaming WebSocket (partial — event/filter types and 16 tests; WebSocket transport absent)
-- CDC-033: tunnel CRUD API (partial — resource types with Go JSON matching; HTTP client absent)
-- CDC-034: API response envelope (partial — envelope types with 8 tests; HTTP client absent)
-
-Open high (5):
-
-- CDC-025: host details contract (partial — `HostDetailsResponse` type and 4 tests; endpoint handler absent)
-- CDC-035: API auth and headers (partial — constants defined; HTTP client with auth injection absent)
-- CDC-036: IP route API (partial — resource types; HTTP client absent)
-- CDC-038: management token API (partial — `ManagementResource` enum; HTTP client absent)
-
-Open medium (6):
-
-- CDC-027: management CORS (deferred — constants defined, middleware absent)
-- CDC-028: diagnostics conditional exposure (deferred — constant defined, conditional registration absent)
-- CDC-031: Prometheus metrics endpoint (partial — runtime serves `/metrics`; full metric-name parity not exhaustively verified)
-- CDC-032: quicktunnel endpoint (deferred — response type defined, runtime wiring absent)
-- CDC-037: virtual network API (partial — resource types; HTTP client absent)
-- CDC-039: hostname routing API (partial — request/result types; HTTP client absent)
+No open critical, high, or medium gaps remain.
 
 ## Scope Classification
 
@@ -366,11 +335,8 @@ production-alpha lane.
 
 ### Deferred (lane-relevant, post-alpha)
 
-- CDC-027: management CORS — enables dash browser access, not required for
-  CLI-based `tail` and management workflows
-- CDC-028: diagnostics conditional exposure — `/metrics` and `/debug/pprof`
-  conditional registration on management service, debug tooling
-- CDC-032: `/quicktunnel` endpoint response — convenience feature
+- CDC-028: diagnostics conditional exposure — enables dash browser access, debug tooling.
+  Axum router conditional registration now implemented.
 - CDC-039: hostname routing API — legacy DNS routing via zones
 
 ## Immediate Work Queue

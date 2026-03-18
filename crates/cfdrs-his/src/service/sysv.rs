@@ -5,6 +5,23 @@
 //! operational entry points return `ConfigError::deferred`.
 
 use cfdrs_shared::{ConfigError, Result};
+use std::env;
+use std::fs;
+use std::os::unix::fs::{PermissionsExt, symlink};
+use std::path::{Path, PathBuf};
+
+const SYSV_ROOT_ENV: &str = "CFDRS_SYSV_ROOT";
+const START_RUNLEVELS: &[&str] = &["2", "3", "4", "5"];
+const STOP_RUNLEVELS: &[&str] = &["0", "1", "6"];
+const START_TARGET: &str = "S50et";
+const STOP_TARGET: &str = "K02et";
+const AUTO_UPDATE_ARG: &str = "--autoupdate-freq 24h0m0s";
+const NO_AUTO_UPDATE_ARG: &str = "--no-autoupdate";
+
+#[cfg(test)]
+static SYSV_ROOT_OVERRIDE: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+#[cfg(test)]
+static SYSV_TEST_GUARD: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 use super::{CommandRunner, ServiceTemplateArgs};
 
@@ -111,19 +128,108 @@ exit 0
     )
 }
 
-/// SysV install — deferred per roadmap-index.
-pub fn install(_args: &ServiceTemplateArgs, _auto_update: bool, _runner: &dyn CommandRunner) -> Result<()> {
-    Err(ConfigError::deferred("service install (SysV)"))
+fn sysv_root() -> PathBuf {
+    #[cfg(test)]
+    {
+        if let Some(root) = SYSV_ROOT_OVERRIDE
+            .lock()
+            .expect("sysv test override lock should not be poisoned")
+            .as_ref()
+            .cloned()
+        {
+            return root;
+        }
+    }
+
+    env::var(SYSV_ROOT_ENV)
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/"))
 }
 
-/// SysV uninstall — deferred per roadmap-index.
-pub fn uninstall(_runner: &dyn CommandRunner) -> Result<()> {
-    Err(ConfigError::deferred("service uninstall (SysV)"))
+fn init_script_path() -> PathBuf {
+    sysv_root().join("etc").join("init.d").join("cloudflared")
+}
+
+fn rc_dir(level: &str) -> PathBuf {
+    sysv_root().join("etc").join(format!("rc{}.d", level))
+}
+
+fn create_rc_symlink(target: &Path, level: &str, name: &str) -> Result<()> {
+    let dir = rc_dir(level);
+    fs::create_dir_all(&dir).map_err(|e| ConfigError::create_directory(&dir, e))?;
+    let link = dir.join(name);
+    let _ = fs::remove_file(&link);
+    symlink(target, &link)
+        .map_err(|e| ConfigError::invariant(format!("failed to create {}: {e}", link.display())))?;
+    Ok(())
+}
+
+fn remove_rc_symlink(level: &str, name: &str) {
+    let link = rc_dir(level).join(name);
+    let _ = fs::remove_file(link);
+}
+
+/// HIS-016: install SysV init script, create runlevel symlinks, and start.
+pub fn install(args: &ServiceTemplateArgs, auto_update: bool, runner: &dyn CommandRunner) -> Result<()> {
+    let mut template_args = args.clone();
+    let update_arg = if auto_update {
+        AUTO_UPDATE_ARG
+    } else {
+        NO_AUTO_UPDATE_ARG
+    };
+    template_args.extra_args.insert(0, update_arg.to_string());
+
+    let script = render_init_script(&template_args);
+    let script_path = init_script_path();
+
+    if let Some(parent) = script_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| ConfigError::create_directory(parent, e))?;
+    }
+    fs::write(&script_path, script).map_err(|e| ConfigError::write_file(&script_path, e))?;
+    fs::set_permissions(&script_path, fs::Permissions::from_mode(0o755))
+        .map_err(|e| ConfigError::invariant(format!("failed to chmod {}: {e}", script_path.display())))?;
+
+    for level in START_RUNLEVELS {
+        create_rc_symlink(&script_path, level, START_TARGET)?;
+    }
+    for level in STOP_RUNLEVELS {
+        create_rc_symlink(&script_path, level, STOP_TARGET)?;
+    }
+
+    runner.run("service", &["cloudflared", "start"])?;
+    Ok(())
+}
+
+/// HIS-023: uninstall SysV init script and remove runlevel symlinks.
+pub fn uninstall(runner: &dyn CommandRunner) -> Result<()> {
+    runner.run("service", &["cloudflared", "stop"])?;
+    remove_rc_symlinks();
+
+    let script_path = init_script_path();
+    if script_path.exists() {
+        fs::remove_file(&script_path).map_err(|e| {
+            ConfigError::invariant(format!("failed to remove {}: {e}", script_path.display()))
+        })?;
+    }
+
+    Ok(())
+}
+
+fn remove_rc_symlinks() {
+    for level in START_RUNLEVELS {
+        remove_rc_symlink(level, START_TARGET);
+    }
+    for level in STOP_RUNLEVELS {
+        remove_rc_symlink(level, STOP_TARGET);
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::path::Path;
+    use std::sync::{Mutex, MutexGuard};
+
+    use tempfile::TempDir;
 
     use super::*;
 
@@ -154,5 +260,159 @@ mod tests {
         let script = render_init_script(&args);
         assert!(script.contains("/opt/custom/cloudflared"));
         assert!(script.contains("--token abc"));
+    }
+
+    struct RecordingRunner {
+        calls: Mutex<Vec<String>>,
+    }
+
+    impl RecordingRunner {
+        fn new() -> Self {
+            Self {
+                calls: Mutex::new(Vec::new()),
+            }
+        }
+
+        fn calls(&self) -> Vec<String> {
+            self.calls
+                .lock()
+                .expect("recording runner lock should not be poisoned")
+                .clone()
+        }
+    }
+
+    impl CommandRunner for RecordingRunner {
+        fn run(&self, program: &str, args: &[&str]) -> Result<()> {
+            self.calls
+                .lock()
+                .expect("recording runner lock should not be poisoned")
+                .push(format!("{program} {}", args.join(" ")));
+            Ok(())
+        }
+    }
+
+    struct SysvRootGuard {
+        _serial: MutexGuard<'static, ()>,
+    }
+
+    impl SysvRootGuard {
+        fn new(path: &Path) -> Self {
+            let serial = SYSV_TEST_GUARD
+                .lock()
+                .expect("sysv test guard lock should not be poisoned");
+            set_sysv_root_override(path);
+            Self { _serial: serial }
+        }
+    }
+
+    impl Drop for SysvRootGuard {
+        fn drop(&mut self) {
+            clear_sysv_root_override();
+        }
+    }
+
+    #[cfg(test)]
+    fn set_sysv_root_override(path: &Path) {
+        let mut override_lock = SYSV_ROOT_OVERRIDE
+            .lock()
+            .expect("sysv test override lock should not be poisoned");
+        *override_lock = Some(path.to_path_buf());
+    }
+
+    #[cfg(test)]
+    fn clear_sysv_root_override() {
+        let mut override_lock = SYSV_ROOT_OVERRIDE
+            .lock()
+            .expect("sysv test override lock should not be poisoned");
+        *override_lock = None;
+    }
+
+    #[test]
+    fn install_writes_script_and_symlinks() {
+        let temp = TempDir::new().expect("tempdir");
+        let _guard = SysvRootGuard::new(temp.path());
+
+        let args = ServiceTemplateArgs {
+            path: temp.path().join("bin/cloudflared"),
+            extra_args: vec![],
+        };
+        let runner = RecordingRunner::new();
+
+        install(&args, false, &runner).expect("install succeeds");
+
+        let script_path = init_script_path();
+        assert!(script_path.exists());
+        let contents = fs::read_to_string(&script_path).expect("read script");
+        assert!(contents.contains("--no-autoupdate"));
+
+        for level in START_RUNLEVELS {
+            assert!(rc_dir(level).join(START_TARGET).exists());
+        }
+        for level in STOP_RUNLEVELS {
+            assert!(rc_dir(level).join(STOP_TARGET).exists());
+        }
+
+        assert_eq!(runner.calls(), vec!["service cloudflared start".to_string()]);
+    }
+
+    #[test]
+    fn install_with_auto_update_sets_autoupdate_arg() {
+        let temp = TempDir::new().expect("tempdir");
+        let _guard = SysvRootGuard::new(temp.path());
+
+        let args = ServiceTemplateArgs {
+            path: temp.path().join("bin/cloudflared"),
+            extra_args: vec!["tunnel".to_string(), "run".to_string()],
+        };
+        let runner = RecordingRunner::new();
+
+        install(&args, true, &runner).expect("install succeeds");
+
+        let script_path = init_script_path();
+        assert!(script_path.exists());
+        let contents = fs::read_to_string(&script_path).expect("read script");
+        assert!(contents.contains("--autoupdate-freq 24h0m0s tunnel run"));
+        assert!(!contents.contains("--no-autoupdate"));
+
+        for level in START_RUNLEVELS {
+            assert!(rc_dir(level).join(START_TARGET).exists());
+        }
+        for level in STOP_RUNLEVELS {
+            assert!(rc_dir(level).join(STOP_TARGET).exists());
+        }
+
+        assert_eq!(runner.calls(), vec!["service cloudflared start".to_string()]);
+    }
+
+    #[test]
+    fn uninstall_removes_script_and_links() {
+        let temp = TempDir::new().expect("tempdir");
+        let _guard = SysvRootGuard::new(temp.path());
+
+        let script_path = init_script_path();
+        if let Some(parent) = script_path.parent() {
+            fs::create_dir_all(parent).expect("create parent");
+        }
+        fs::write(&script_path, "binary").expect("write script");
+
+        for level in START_RUNLEVELS {
+            create_rc_symlink(&script_path, level, START_TARGET).expect("create start link");
+        }
+        for level in STOP_RUNLEVELS {
+            create_rc_symlink(&script_path, level, STOP_TARGET).expect("create stop link");
+        }
+
+        let runner = RecordingRunner::new();
+        uninstall(&runner).expect("uninstall succeeds");
+
+        assert!(!script_path.exists());
+        for level in START_RUNLEVELS {
+            assert!(!rc_dir(level).join(START_TARGET).exists());
+        }
+        for level in STOP_RUNLEVELS {
+            assert!(!rc_dir(level).join(STOP_TARGET).exists());
+        }
+
+        assert_eq!(runner.calls(), vec!["service cloudflared stop".to_string()]);
     }
 }

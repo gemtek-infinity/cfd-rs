@@ -107,14 +107,28 @@ pub struct QuickTunnelResponse {
 
 // --- HIS-029: config endpoint ---
 
-/// Stub for the `/config` endpoint response.
+/// Response shape for the `/config` endpoint.
 ///
-/// The real implementation depends on the CDC orchestrator contract
-/// (`CDC-044`). This type captures the shape.
+/// Go: `Orchestrator.GetVersionedConfigJSON()` returns
+/// `{"version": currentVersion, "config": {...}}` where `currentVersion`
+/// is an `int32` starting at `-1` and incrementing on each remote config push.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigResponse {
-    pub version: u32,
+    pub version: i32,
     pub config: serde_json::Value,
+}
+
+/// Build a `ConfigResponse` from a `ConfigOrchestrator`.
+///
+/// Go: `Orchestrator.GetVersionedConfigJSON()` — combines the monotonic
+/// version counter with the current config snapshot.
+pub fn versioned_config_response(
+    orchestrator: &dyn crate::watcher::ConfigOrchestrator,
+) -> cfdrs_shared::Result<ConfigResponse> {
+    Ok(ConfigResponse {
+        version: orchestrator.current_version(),
+        config: orchestrator.get_config_json()?,
+    })
 }
 
 // --- HIS-031: --metrics flag ---
@@ -406,6 +420,52 @@ mod tests {
         assert!(config.get("originRequest").is_some());
     }
 
+    // --- HIS-029: versioned config response from orchestrator ---
+
+    #[test]
+    fn versioned_config_response_reflects_initial_version() {
+        use crate::watcher::InMemoryConfigOrchestrator;
+
+        let orchestrator = InMemoryConfigOrchestrator::new(
+            serde_json::json!({"ingress": [], "warp-routing": {}, "originRequest": {}}),
+        );
+
+        let response = versioned_config_response(&orchestrator).expect("should build response");
+        assert_eq!(response.version, -1, "Go initial version is -1");
+        assert!(response.config.get("ingress").is_some());
+    }
+
+    #[test]
+    fn versioned_config_response_tracks_version_after_update() {
+        use crate::watcher::{ConfigOrchestrator, InMemoryConfigOrchestrator};
+
+        let orchestrator = InMemoryConfigOrchestrator::new(serde_json::json!({}));
+
+        orchestrator.update_config(
+            0,
+            serde_json::json!({"ingress": [{"service": "http://localhost:8080"}]}),
+        );
+
+        let response = versioned_config_response(&orchestrator).expect("should build response");
+
+        assert_eq!(response.version, 0);
+        assert!(response.config.get("ingress").is_some());
+    }
+
+    #[test]
+    fn versioned_config_response_shows_latest_version_after_multiple_updates() {
+        use crate::watcher::{ConfigOrchestrator, InMemoryConfigOrchestrator};
+
+        let orchestrator = InMemoryConfigOrchestrator::new(serde_json::json!({}));
+
+        orchestrator.update_config(0, serde_json::json!({"v": 0}));
+        orchestrator.update_config(1, serde_json::json!({"v": 1}));
+        orchestrator.update_config(5, serde_json::json!({"v": 5}));
+
+        let response = versioned_config_response(&orchestrator).expect("should build response");
+        assert_eq!(response.version, 5);
+    }
+
     // --- HIS-027: Go baseline Prometheus metric name inventory ---
 
     #[test]
@@ -463,6 +523,46 @@ mod tests {
             assert!(
                 name.starts_with("cloudflared_"),
                 "expected cloudflared_ prefix on {name}"
+            );
+        }
+    }
+
+    // --- HIS-031: container/runtime-class address routing ---
+
+    #[test]
+    fn container_runtime_binds_to_all_interfaces() {
+        // Go: `metrics.Runtime = "virtual"` → default address `0.0.0.0:0`,
+        //     known addresses use `0.0.0.0:2024x`.
+        let default = default_metrics_address(true);
+        assert!(
+            default.starts_with("0.0.0.0"),
+            "container runtime should bind to 0.0.0.0, got {default}"
+        );
+
+        let known = known_metrics_addresses(true);
+        for addr in &known {
+            assert!(
+                addr.ip().is_unspecified(),
+                "container known address should use 0.0.0.0, got {addr}"
+            );
+        }
+    }
+
+    #[test]
+    fn host_runtime_binds_to_localhost() {
+        // Go: `metrics.Runtime = "host"` (default) → `localhost:0`,
+        //     known addresses use `localhost:2024x` (resolved as 127.0.0.1).
+        let default = default_metrics_address(false);
+        assert!(
+            default.starts_with("localhost"),
+            "host runtime should bind to localhost, got {default}"
+        );
+
+        let known = known_metrics_addresses(false);
+        for addr in &known {
+            assert!(
+                addr.ip().is_loopback(),
+                "host known address should use 127.0.0.1, got {addr}"
             );
         }
     }

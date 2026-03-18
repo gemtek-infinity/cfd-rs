@@ -1,3 +1,4 @@
+mod autoupdate;
 mod bridges;
 mod drain;
 mod watcher;

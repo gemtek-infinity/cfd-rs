@@ -125,10 +125,12 @@ const CMD_TUNNEL_USAGE: &str = concat!(
 const CMD_PROXY_DNS_USAGE: &str = "dns-proxy feature is no longer supported";
 const CMD_ACCESS_USAGE: &str = "access <subcommand>";
 const CMD_TAIL_USAGE: &str = "Stream logs from a remote cloudflared";
-#[allow(dead_code)] // Used when per-command help is implemented.
 const CMD_MANAGEMENT_USAGE: &str = "Monitor cloudflared tunnels via management API";
 const CMD_SERVICE_USAGE: &str = "Manages the cloudflared system service";
 const CMD_HELP_USAGE: &str = "Shows a list of commands or help for one command";
+const CMD_MANAGEMENT_TOKEN_USAGE: &str = "Get management access jwt for a specific resource";
+const MANAGEMENT_TOKEN_DESCRIPTION: &str =
+    "Get management access jwt for a tunnel with specified resource permissions (logs, admin, host_details)";
 
 // --- Error message templates ---
 
@@ -952,6 +954,65 @@ pub fn render_access_help_text(program_name: &str) -> String {
     text
 }
 
+pub fn render_management_help_text(program_name: &str) -> String {
+    let mut text = String::with_capacity(256);
+
+    text.push_str("NAME:\n");
+    text.push_str(&format!(
+        "   {program_name} management - {CMD_MANAGEMENT_USAGE}\n\n"
+    ));
+
+    text.push_str("USAGE:\n");
+    text.push_str(&format!(
+        "   {program_name} management command [command options] [arguments...]\n\n"
+    ));
+
+    text.push_str("COMMANDS:\n");
+    text.push_str("   help, h  Shows a list of commands or help for one command\n\n");
+
+    text.push_str("OPTIONS:\n");
+    text.push_str("   --help, -h  show help (default: false)\n\n");
+
+    text
+}
+
+pub fn render_management_token_help_text(program_name: &str) -> String {
+    let mut text = String::with_capacity(512);
+
+    text.push_str("NAME:\n");
+    text.push_str(&format!(
+        "   {program_name} management token - {CMD_MANAGEMENT_TOKEN_USAGE}\n\n"
+    ));
+
+    text.push_str("USAGE:\n");
+    text.push_str(&format!(
+        "   {program_name} management token --resource <resource> TUNNEL_ID\n\n"
+    ));
+
+    text.push_str("DESCRIPTION:\n");
+    text.push_str(&format!("   {MANAGEMENT_TOKEN_DESCRIPTION}\n\n"));
+
+    text.push_str("OPTIONS:\n");
+    text.push_str(
+        "   --resource value    Resource type for token permissions: logs, admin, or host_details\n",
+    );
+    text.push_str(
+        "   --origincert value  Path to the certificate generated for your origin when you run cloudflared \
+         login. [$TUNNEL_ORIGIN_CERT]\n",
+    );
+    text.push_str(
+        "   --loglevel value    Application logging level {debug, info, warn, error, fatal} (default: \
+         \"info\") [$TUNNEL_LOGLEVEL]\n",
+    );
+    text.push_str(
+        "   --output value      Output format for the logs (default, json) (default: \"default\") \
+         [$TUNNEL_MANAGEMENT_OUTPUT, $TUNNEL_LOG_OUTPUT]\n",
+    );
+    text.push_str("   --help, -h          show help (default: false)\n\n");
+
+    text
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1578,5 +1639,23 @@ COMMANDS:\n\
             7,
             "expected 7 access subcommands (6 + help)"
         );
+    }
+
+    #[test]
+    fn management_help_matches_hidden_command_capture() {
+        let help = render_management_help_text(PROGRAM_NAME);
+        assert!(help.contains("cloudflared management - Monitor cloudflared tunnels via management API"));
+        assert!(help.contains("COMMANDS:\n   help, h"));
+        assert!(help.contains("OPTIONS:\n   --help, -h  show help"));
+    }
+
+    #[test]
+    fn management_token_help_lists_required_flags() {
+        let help = render_management_token_help_text(PROGRAM_NAME);
+        assert!(help.contains("cloudflared management token --resource <resource> TUNNEL_ID"));
+        assert!(help.contains("--resource value"));
+        assert!(help.contains("--origincert value"));
+        assert!(help.contains("--loglevel value"));
+        assert!(help.contains("--output value"));
     }
 }

@@ -66,6 +66,8 @@ impl ApplicationRuntime {
     ) -> Option<RuntimeExit> {
         if state == ProtocolBridgeState::RegistrationObserved {
             self.status.record_timing_protocol_registration();
+        } else {
+            self.status.clear_active_tunnel_connections();
         }
         self.status.record_protocol_state(state, detail);
         self.status
@@ -89,9 +91,30 @@ impl ApplicationRuntime {
         None
     }
 
+    pub(super) fn handle_tunnel_connection_observed(
+        &mut self,
+        index: u8,
+        protocol: String,
+        edge_address: String,
+    ) -> Option<RuntimeExit> {
+        self.status
+            .record_tunnel_connection_observed(index, protocol, edge_address);
+        self.sync_metrics_snapshot();
+        None
+    }
+
     pub(super) fn handle_shutdown_requested(&mut self, reason: ShutdownReason) -> Option<RuntimeExit> {
         self.status.record_shutdown_reason(&reason);
         Some(RuntimeExit::Clean)
+    }
+
+    pub(super) fn handle_auto_update_applied(&mut self, version: String) -> Option<RuntimeExit> {
+        self.status.record_service_status(
+            "auto-updater",
+            format!("updated connector binary to {version}; runtime restart requested"),
+        );
+        self.status.record_shutdown_reason(&ShutdownReason::AutoUpdate);
+        Some(RuntimeExit::Updated { version })
     }
 
     pub(super) fn handle_control_plane_failure(&mut self, detail: String) -> Option<RuntimeExit> {

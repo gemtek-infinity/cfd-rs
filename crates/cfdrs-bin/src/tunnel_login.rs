@@ -10,6 +10,51 @@ use std::time::Duration;
 use tracing::{error, info};
 use uuid::Uuid;
 
+// ---------------------------------------------------------------------------
+// Browser launcher abstraction
+// ---------------------------------------------------------------------------
+
+/// Abstraction over the system browser launch mechanism.
+///
+/// Production code uses [`XdgOpenLauncher`]; tests and CI can inject
+/// [`NoOpLauncher`] to prevent `xdg-open` side effects.
+pub trait BrowserLauncher {
+    /// Attempt to open `url` in the user's default browser.
+    /// Returns `true` if the launch appeared to succeed.
+    fn open(&self, url: &str) -> bool;
+}
+
+/// Production launcher — delegates to `xdg-open` on Linux.
+///
+/// Respects `CFDRS_NO_BROWSER=1` so integration tests that spawn the
+/// binary as a subprocess can suppress the browser without trait injection.
+pub struct XdgOpenLauncher;
+
+impl BrowserLauncher for XdgOpenLauncher {
+    fn open(&self, url: &str) -> bool {
+        if std::env::var("CFDRS_NO_BROWSER").as_deref() == Ok("1") {
+            return false;
+        }
+        std::process::Command::new("xdg-open")
+            .arg(url)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .is_ok()
+    }
+}
+
+/// No-op launcher for unit tests — never opens a browser.
+#[allow(dead_code)] // Public API for test injection; used by downstream callers.
+pub struct NoOpLauncher;
+
+impl BrowserLauncher for NoOpLauncher {
+    fn open(&self, _url: &str) -> bool {
+        false
+    }
+}
+
 use cfdrs_cli::CliOutput;
 use cfdrs_shared::config::discovery::default_nix_search_directories;
 use cfdrs_shared::{DEFAULT_ORIGIN_CERT_FILE, FED_ENDPOINT, OriginCertToken};
@@ -51,7 +96,12 @@ const LOGIN_SUCCESS_MSG: &str = "You have successfully logged in.\nIf you wish t
 /// Execute `tunnel login` — interactive browser-based auth flow.
 ///
 /// Go baseline: `login()` in `cmd/cloudflared/tunnel/login.go`.
-pub fn execute_tunnel_login(fedramp: bool, login_url: Option<&str>, callback_url: Option<&str>) -> CliOutput {
+pub fn execute_tunnel_login(
+    fedramp: bool,
+    login_url: Option<&str>,
+    callback_url: Option<&str>,
+    browser: &dyn BrowserLauncher,
+) -> CliOutput {
     // 1. Check for existing cert (Go: checkForExistingCert).
     let cert_path = match check_for_existing_cert() {
         Ok((path, true)) => {
@@ -80,7 +130,7 @@ pub fn execute_tunnel_login(fedramp: bool, login_url: Option<&str>, callback_url
     };
 
     // 3. Run the transfer dance (Go: token.RunTransfer).
-    let resource_data = match run_login_transfer(base_login, callback_store) {
+    let resource_data = match run_login_transfer(base_login, callback_store, browser) {
         Ok(data) => data,
         Err(e) => {
             error!(
@@ -182,7 +232,11 @@ fn write_cert_file(path: &Path, data: &[u8]) -> Result<(), String> {
 ///
 /// Go baseline: `token.RunTransfer()` in `token/transfer.go` with
 /// `shouldEncrypt=false`.
-fn run_login_transfer(login_url: &str, callback_store_url: &str) -> Result<Vec<u8>, String> {
+fn run_login_transfer(
+    login_url: &str,
+    callback_store_url: &str,
+    browser: &dyn BrowserLauncher,
+) -> Result<Vec<u8>, String> {
     // Generate a unique key for the polling endpoint.
     // Go uses a NaCl public key, but since shouldEncrypt=false the key is
     // only used as an opaque path identifier. UUID v4 provides equivalent
@@ -193,7 +247,7 @@ fn run_login_transfer(login_url: &str, callback_store_url: &str) -> Result<Vec<u
     let request_url = build_login_request_url(login_url, &unique_key, callback_store_url)?;
 
     // Attempt to open the browser (Go: OpenBrowser via xdg-open on Linux).
-    let browser_opened = open_browser(&request_url);
+    let browser_opened = browser.open(&request_url);
 
     if browser_opened {
         eprintln!("{}", BROWSER_OPENED_MSG.replace("{url}", &request_url));
@@ -227,19 +281,6 @@ fn build_login_request_url(
     parsed.query_pairs_mut().append_pair("aud", "");
 
     Ok(parsed.to_string())
-}
-
-/// Open the default browser via `xdg-open` (Linux).
-///
-/// Go baseline: `getBrowserCmd(url)` in `launch_browser_unix.go`.
-fn open_browser(url: &str) -> bool {
-    std::process::Command::new("xdg-open")
-        .arg(url)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-        .is_ok()
 }
 
 /// Poll the callback store for the cert data.

@@ -160,6 +160,34 @@ fn top_level_commands() {
 }
 
 #[test]
+fn update_help_routes_to_update_target() {
+    let cli = parse(&[surface_contract::UPDATE_COMMAND, "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::Update));
+}
+
+#[test]
+fn update_version_flag_is_command_scoped() {
+    let cli = parse(&[surface_contract::UPDATE_COMMAND, "--version", "2026.2.0"]);
+    assert_eq!(cli.command, Command::Update);
+    assert_eq!(cli.flags.update_version, Some("2026.2.0".to_owned()));
+}
+
+#[test]
+fn update_version_equals_syntax_is_command_scoped() {
+    let cli = parse(&[surface_contract::UPDATE_COMMAND, "--version=2026.2.0"]);
+    assert_eq!(cli.command, Command::Update);
+    assert_eq!(cli.flags.update_version, Some("2026.2.0".to_owned()));
+}
+
+#[test]
+fn update_beta_and_staging_flags_parse() {
+    let cli = parse(&[surface_contract::UPDATE_COMMAND, "--beta", "--staging"]);
+    assert_eq!(cli.command, Command::Update);
+    assert!(cli.flags.update_beta);
+    assert!(cli.flags.update_staging);
+}
+
+#[test]
 fn service_install() {
     let cli = parse(&[
         surface_contract::SERVICE_COMMAND,
@@ -967,4 +995,16 @@ fn tunnel_bare_help_routes_to_tunnel() {
     // `tunnel --help` without a subcommand routes to tunnel-level help.
     let cli = parse(&["tunnel", "--help"]);
     assert_eq!(cli.command, Command::Help(HelpTarget::Tunnel));
+}
+
+#[test]
+fn management_help_routes_correctly() {
+    let cli = parse(&["management", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::Management));
+}
+
+#[test]
+fn management_token_help_routes_correctly() {
+    let cli = parse(&["management", "token", "--help"]);
+    assert_eq!(cli.command, Command::Help(HelpTarget::ManagementToken));
 }

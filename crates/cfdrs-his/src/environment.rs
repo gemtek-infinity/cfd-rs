@@ -102,6 +102,55 @@ pub fn is_package_managed() -> bool {
 pub const PACKAGE_INSTALL_BIN: &str = "/usr/local/bin/cloudflared";
 pub const PACKAGE_INSTALL_CONFIG_DIR: &str = "/usr/local/etc/cloudflared/";
 
+// --- HIS-031: container runtime detection ---
+//
+// Runtime detection strategy (steps 2 and 3) adapted from the isdocker crate
+// by Shahnoor Mujawar (MIT license):
+// https://github.com/shahnoormujawar/isdocker
+
+/// Whether the current process is running inside a container runtime.
+///
+/// Go baseline: the Makefile checks `ifdef CONTAINER_BUILD` and passes
+/// `-X "metrics.Runtime=virtual"` at link time. The Dockerfile sets
+/// `CONTAINER_BUILD=1`. This is a **compile-time** signal.
+///
+/// The Rust equivalent combines:
+/// 1. Compile-time: `option_env!("CONTAINER_BUILD")` — exact Go parity.
+/// 2. Runtime: `/.dockerenv` existence — Docker creates this in every
+///    container.
+/// 3. Runtime: `/proc/self/cgroup` containing `docker`, `kubepods`, or
+///    `containerd` — catches containerd and Kubernetes pods.
+///
+/// When true, the metrics server binds to `0.0.0.0` instead of `localhost`.
+pub fn is_container_runtime() -> bool {
+    is_container_build() || dockerenv_exists() || cgroup_indicates_container()
+}
+
+/// Compile-time container build flag, matching Go `CONTAINER_BUILD`.
+///
+/// The Go Makefile sets `-X "metrics.Runtime=virtual"` when the
+/// `CONTAINER_BUILD` env var is defined at build time.
+fn is_container_build() -> bool {
+    option_env!("CONTAINER_BUILD").is_some()
+}
+
+/// Docker creates `/.dockerenv` inside every container.
+fn dockerenv_exists() -> bool {
+    std::path::Path::new("/.dockerenv").exists()
+}
+
+/// Scan `/proc/self/cgroup` for known container runtime markers.
+fn cgroup_indicates_container() -> bool {
+    std::fs::read_to_string("/proc/self/cgroup")
+        .map(|contents| contains_container_marker(&contents))
+        .unwrap_or(false)
+}
+
+/// Check cgroup contents for Docker, Kubernetes, or containerd markers.
+fn contains_container_marker(contents: &str) -> bool {
+    contents.contains("docker") || contents.contains("kubepods") || contents.contains("containerd")
+}
+
 // --- HIS-055: dynamic linker paths ---
 
 /// Known dynamic linker paths for x86_64-linux-gnu.
@@ -190,6 +239,38 @@ mod tests {
         // Go postinst.sh installs to /usr/local/bin/cloudflared
         assert_eq!(PACKAGE_INSTALL_BIN, "/usr/local/bin/cloudflared");
         assert_eq!(PACKAGE_INSTALL_CONFIG_DIR, "/usr/local/etc/cloudflared/");
+    }
+
+    // --- HIS-031: container runtime detection ---
+
+    #[test]
+    fn is_container_runtime_does_not_panic() {
+        // Smoke test: must return a bool without panicking.
+        let _ = is_container_runtime();
+    }
+
+    #[test]
+    fn is_container_build_false_in_normal_tests() {
+        // In normal test builds, CONTAINER_BUILD is not set.
+        assert!(
+            !is_container_build(),
+            "default test build should not have CONTAINER_BUILD"
+        );
+    }
+
+    #[test]
+    fn container_marker_detection_positive() {
+        assert!(contains_container_marker("12:blkio:/docker/abc123"));
+        assert!(contains_container_marker("11:cpu:/kubepods/besteffort/pod123"));
+        assert!(contains_container_marker("10:memory:/containerd/tasks/abc"));
+    }
+
+    #[test]
+    fn container_marker_detection_negative() {
+        assert!(!contains_container_marker(
+            "11:cpu:/user.slice/user-1000.slice/session-1.scope"
+        ));
+        assert!(!contains_container_marker(""));
     }
 
     // --- HIS-055: linker paths ---

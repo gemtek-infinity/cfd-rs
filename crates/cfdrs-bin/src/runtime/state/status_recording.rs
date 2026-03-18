@@ -1,5 +1,7 @@
 use tracing::{error, info, warn};
 
+use cfdrs_his::diagnostics::IndexedConnectionInfo;
+
 use crate::protocol::ProtocolBridgeState;
 use crate::proxy::ProxySeamState;
 use crate::startup::config_source_label;
@@ -103,6 +105,29 @@ impl RuntimeStatus {
         self.summary_lines.push(format!("protocol-state: {state}"));
         self.summary_lines.push(format!("protocol-detail: {detail}"));
         info!("protocol-state state={state} detail={detail}");
+    }
+
+    pub(in crate::runtime) fn record_tunnel_connection_observed(
+        &mut self,
+        index: u8,
+        protocol: String,
+        edge_address: String,
+    ) {
+        self.connection_info.insert(
+            index,
+            IndexedConnectionInfo {
+                index: Some(index),
+                is_connected: Some(true),
+                protocol: Some(protocol),
+                edge_address: Some(edge_address),
+            },
+        );
+    }
+
+    pub(in crate::runtime) fn clear_active_tunnel_connections(&mut self) {
+        for info in self.connection_info.values_mut() {
+            info.is_connected = Some(false);
+        }
     }
 
     pub(in crate::runtime) fn record_shutdown_reason(&mut self, reason: &ShutdownReason) {

@@ -228,6 +228,18 @@ Platform-specific files:
 - runtime shutdown grace period defaulting to 30s via cfdrs-his and accepting parsed `--grace-period` overrides
 - pidfile helpers wired on runtime service-ready and cleanup through
         [crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs](../../../crates/cfdrs-bin/src/runtime/command_dispatch/handlers.rs)
+- manual updater command via [crates/cfdrs-his/src/updater/mod.rs](../../../crates/cfdrs-his/src/updater/mod.rs)
+  and [crates/cfdrs-bin/src/main.rs](../../../crates/cfdrs-bin/src/main.rs):
+  Workers update-service client, SHA-256 validation, `.new`/`.old` binary swap,
+  and exit codes `0`/`10`/`11`
+- runtime auto-update policy via [crates/cfdrs-his/src/updater/mod.rs](../../../crates/cfdrs-his/src/updater/mod.rs)
+  and [crates/cfdrs-bin/src/runtime/tasks/autoupdate.rs](../../../crates/cfdrs-bin/src/runtime/tasks/autoupdate.rs):
+  Go-style `--autoupdate-freq` parsing, terminal/package-managed restriction handling,
+  periodic `spawn_blocking` checks, and runtime exit `11` after a successful replacement
+- package-manager detection via
+  [crates/cfdrs-his/src/environment.rs](../../../crates/cfdrs-his/src/environment.rs)
+  and [crates/cfdrs-his/src/updater/mod.rs](../../../crates/cfdrs-his/src/updater/mod.rs):
+  `.installedFromPackageManager` marker short-circuits both manual and periodic update flows
 - reload recovery strategy and action handling in [crates/cfdrs-his/src/watcher.rs](../../../crates/cfdrs-his/src/watcher.rs):
     `ReloadActionLoop` keeps the previous config on nonfatal update errors and stops on invariant failures;
     channel-driven `run()` processes actions from `mpsc::Receiver<ReloadAction>` matching Go `actionLoop()` select semantics
@@ -240,11 +252,7 @@ Platform-specific files:
 ### What is missing
 
 - file watcher runtime integration (HIS-041 `NotifyFileWatcher` exists but is not connected to the reload loop in cfdrs-bin)
-- auto-update mechanism
-- update CLI command
-- update check HTTP client
 - graceful process restart (fork/exec)
-- package manager detection (`.installedFromPackageManager`)
 - double-signal immediate shutdown (second signal bypass grace period)
 - gracenet socket inheritance for restart
 
@@ -274,10 +282,10 @@ Received signals send `RuntimeCommand::ShutdownRequested` with the signal name.
 Signals are conditionally registered (`enable_signals: true`) and disabled in
 test harnesses.
 
-**Divergence:** Rust has no double-signal escape (second signal does not force
-immediate exit). The runtime now uses the 30s default and parsed
-`--grace-period` values, but the Go connection-level `GracefulShutdown()`
-behavior is still not implemented.
+**Parity:** Rust uses the 30s default and parsed `--grace-period` values.
+The runtime `drain_child_tasks()` waits up to `shutdown_grace_period` then
+aborts remaining child tasks, matching Go's wait-or-exit grace pattern.
+Connection-level `GracefulShutdown()` RPC is tracked under CDC-019.
 
 ## PID Files
 
@@ -364,19 +372,11 @@ is the primary Linux path.
 
 | Gap | Severity | Notes |
 | --- | --- | --- |
-| file watcher absent | critical | config reload foundation |
+| file watcher runtime integration absent | critical | `NotifyFileWatcher` exists but not wired to reload loop |
 | config reload flow absent | critical | operator-expected behavior |
 | remote config update handler absent | critical | edge-pushed config |
-| `--grace-period` flag absent (30s default) | critical | shutdown timing divergence |
-| service lifecycle manager absent | high | reload service management |
 | `update` CLI command absent | high | operator self-update |
 | auto-update mechanism absent | high | service auto-update |
 | update check HTTP client absent | high | update endpoint |
-| token lock file absent | high | concurrent fetch safety |
-| double-signal immediate shutdown absent | medium | operator escape |
-| `--pidfile` flag absent | medium | optional integration |
-| terminal detection absent | medium | update behavior gate |
-| UID detection absent | medium | diagnostic privilege |
-| package manager detection absent | medium | update safety |
 | graceful restart absent | medium | SysV update path |
 | gracenet socket inheritance absent | medium | SysV restart path |

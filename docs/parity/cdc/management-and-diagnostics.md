@@ -196,25 +196,24 @@ Other Go pprof endpoints are not registered.
 
 ## Current Rust Management Surface
 
-Status: entirely absent.
+Status: parity-backed for the admitted management surface.
 
-No management service, management routes, WebSocket log streaming, or
-management authentication exist in the current Rust implementation.
+- `cfdrs-bin` now mounts an axum management router with `/ping`, `/logs`,
+  and `/host_details`.
+- query-token authentication is enforced on every management route via
+  `auth_middleware()`, which parses `?access_token=<JWT>` and stores the
+  decoded claims in request extensions.
+- Go-compatible CORS headers are applied to management responses, and
+  unauthenticated `OPTIONS` preflight requests are short-circuited before
+  auth.
+- `/logs` upgrades to WebSocket and uses the admitted CDC event/session
+  contract, including start/stop streaming, filtering, idle timeout,
+  keepalive, and close codes.
+- `/metrics` and `/debug/pprof/{profile}` are only mounted when
+  `enableDiagServices=true`.
 
 ## Gap Summary
 
 | Gap | Severity | Detail |
 | --- | --- | --- |
-| management service absent | critical | no management HTTP server |
-| management auth middleware absent | critical | no JWT token validation |
-| `/ping` route absent | high | heartbeat not available |
-| `/logs` WebSocket endpoint absent | critical | log streaming not available |
-| `/host_details` route absent | high | connector identity not available |
-| `/metrics` management route absent | medium | remote metrics not available (local metrics are HIS-owned) |
-| `/debug/pprof` routes absent | medium | remote profiling not available |
-| CORS configuration absent | medium | no cross-origin access |
-| WebSocket event protocol absent | critical | start/stop streaming and log delivery not implemented |
-| session management absent | high | no per-session state, buffering, sampling, or filtering |
-| WebSocket close code contract absent | medium | custom close codes not defined |
-| management token resource types absent | medium | no token resource scoping |
-| diagnostics conditional exposure absent | medium | no `enableDiagServices` gating |
+| management pprof payloads remain deferred | low | route exists when diagnostics are enabled, but profiling body parity is still HIS-owned |

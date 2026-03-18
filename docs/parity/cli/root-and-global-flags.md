@@ -37,9 +37,11 @@ CLI-005 tracks this gap.
 | `management` | Management | yes | `management/cmd.go` |
 | `service` | Service | no | `linux_service.go` (Linux only) |
 
-Rust coverage: `help`, `version`, `validate` (transitional), `run` (alpha).
-Missing: `update`, `tunnel`, `login`, `proxy-dns`, `access`/`forward`, `tail`,
-`management`, `service`.
+Rust coverage: `help`, `version`, `validate` (transitional), `update`,
+`tunnel`, `login`, `proxy-dns`, `access`/`forward`, `tail`, `management`,
+`service`.
+Remaining behavioral gaps on this root surface are tracked in later HIS rows
+(`HIS-047`, `HIS-073`, `HIS-074`) rather than missing command dispatch.
 
 ## Global flag inventory
 
@@ -212,10 +214,10 @@ subcommand.
 
 | Flag | Type | Default | Hidden | Rust |
 | --- | --- | --- | --- | --- |
-| `--beta` | bool | false | no | absent |
-| `--force` | bool | false | yes | absent |
-| `--staging` | bool | false | yes | absent |
-| `--version` | string | | no | absent |
+| `--beta` | bool | false | no | present |
+| `--force` | bool | false | yes | present |
+| `--staging` | bool | false | yes | present |
+| `--version` | string | | no | present |
 
 ## Service command flags (Linux only)
 
@@ -232,5 +234,5 @@ No flags.
 ## Coverage summary
 
 - Total global/tunnel-level flags: approximately 80
-- Total with Rust coverage: 1 (`--config`)
-- Coverage percentage: approximately 1%
+- Update-command coverage now includes `--beta`, hidden `--force`, hidden `--staging`, and command-scoped `--version`
+- Use [implementation-checklist.md](implementation-checklist.md) as the authoritative per-row status ledger

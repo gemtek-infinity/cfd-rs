@@ -121,8 +121,8 @@ That means:
 
 The current manifests admit only the dependencies needed by the binary runtime
 baseline, the active shared config/credentials/ingress implementation, the
-active QUIC tunnel core, the admitted Pingora and observability seams, and the
-existing workspace tool surface:
+active QUIC tunnel core, the admitted Pingora and observability seams, the
+ICMP proxy socket layer, and the existing workspace tool surface:
 
 - `mimalloc`, `tokio`, `tokio-util`, `quiche`, `pingora-http`, `tracing`, and
   `tracing-subscriber` in `cfdrs-bin`
@@ -220,6 +220,33 @@ Rules:
 
 - admission must be tied to exact wire and schema preservation work
 - do not add protocol libraries speculatively because the crate name exists
+
+### ICMP Proxy (admitted)
+
+Slice is active. `nix` is in `[workspace.dependencies]`:
+
+- `nix` (features: `net`, `user`)
+
+Owner crate: `cfdrs-his`
+
+Admission justification:
+
+- HIS-069 requires non-privileged ICMP socket creation via
+  `socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP)` on Linux
+- the standard library provides no raw or ICMP socket API
+- `nix` provides safe Rust wrappers over POSIX socket calls with
+  feature-gated modules (`net` for sockets, `user` for `getegid()`)
+- `nix::unistd::getegid()` replaces the `/proc/self/status` GID parsing hack
+  needed for `checkInPingGroup()` permission verification
+- `nix::sys::socket::SockProtocol::Icmp` and `IcmpV6` are available without
+  platform-specific cfg gates
+- it does not pull in async runtimes, allocators, or unrelated subsystems
+
+Ongoing rules:
+
+- `nix` must remain confined to `cfdrs-his` ICMP proxy code
+- do not use `nix` as a general-purpose system crate across the
+  workspace; standard library APIs suffice elsewhere
 
 ### Logging And Observability (admitted)
 

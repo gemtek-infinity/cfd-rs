@@ -7,8 +7,10 @@ use axum::extract::State;
 use axum::http::{StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
+use cfdrs_his::diagnostics::{TunnelState, collect_system_information};
 use cfdrs_his::metrics_server::{
-    self, BuildInfo, ConfigResponse, HEALTHCHECK_RESPONSE, PPROF_DEFERRED, ReadinessResponse,
+    self, BuildInfo, ConfigResponse, HEALTHCHECK_RESPONSE, PPROF_DEFERRED, QuickTunnelResponse,
+    ReadinessResponse,
 };
 use prometheus_client::encoding::text::encode;
 use prometheus_client::metrics::gauge::Gauge;
@@ -23,10 +25,14 @@ use super::state::RuntimeStatus;
 
 #[derive(Debug)]
 struct MetricsSnapshot {
+    tunnel_id: Option<String>,
     connector_id: uuid::Uuid,
     ready_connections: u32,
+    tunnel_connections: Vec<cfdrs_his::diagnostics::IndexedConnectionInfo>,
+    icmp_sources: Vec<String>,
     config_response: ConfigResponse,
     diagnostic_configuration: BTreeMap<String, String>,
+    quick_tunnel_hostname: String,
 }
 
 struct AppState {
@@ -75,10 +81,14 @@ impl RuntimeMetricsHandle {
 
         let state = Arc::new(AppState {
             snapshot: RwLock::new(MetricsSnapshot {
+                tunnel_id: config.tunnel_id().map(|id| id.to_string()),
                 connector_id: config.connector_id(),
                 ready_connections: 0,
+                tunnel_connections: Vec::new(),
+                icmp_sources: config.icmp_sources().to_vec(),
                 config_response: runtime_config_response(config),
                 diagnostic_configuration: config.diagnostic_configuration().clone(),
+                quick_tunnel_hostname: config.quick_tunnel_hostname().unwrap_or_default(),
             }),
             registry: RwLock::new(registry),
             ready_connections_gauge,
@@ -116,6 +126,7 @@ impl RuntimeMetricsHandle {
 
         if let Ok(mut snapshot) = self.state.snapshot.try_write() {
             snapshot.ready_connections = ready_connections;
+            snapshot.tunnel_connections = status.active_tunnel_connections();
             self.state
                 .ready_connections_gauge
                 .set(i64::from(ready_connections));
@@ -136,8 +147,11 @@ fn build_router(state: Arc<AppState>) -> Router {
         .route("/ready", get(handle_ready))
         .route("/healthcheck", get(handle_healthcheck))
         .route("/metrics", get(handle_metrics))
+        .route("/quicktunnel", get(handle_quicktunnel))
         .route("/config", get(handle_config))
         .route("/diag/configuration", get(handle_diag_configuration))
+        .route("/diag/system", get(handle_diag_system))
+        .route("/diag/tunnel", get(handle_diag_tunnel))
         .route("/debug/pprof/{*rest}", get(handle_pprof))
         .fallback(handle_not_found)
         .with_state(state)
@@ -186,6 +200,18 @@ async fn handle_metrics(State(state): State<Arc<AppState>>) -> Response {
         .into_response()
 }
 
+async fn handle_quicktunnel(State(state): State<Arc<AppState>>) -> Response {
+    let snapshot = state.snapshot.read().await;
+    let response = QuickTunnelResponse {
+        hostname: snapshot.quick_tunnel_hostname.clone(),
+    };
+
+    match serde_json::to_string(&response) {
+        Ok(body) => (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], body).into_response(),
+        Err(_) => internal_error("quicktunnel response serialization failed"),
+    }
+}
+
 async fn handle_config(State(state): State<Arc<AppState>>) -> Response {
     let snapshot = state.snapshot.read().await;
 
@@ -201,6 +227,41 @@ async fn handle_diag_configuration(State(state): State<Arc<AppState>>) -> Respon
     match serde_json::to_string(&snapshot.diagnostic_configuration) {
         Ok(body) => (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], body).into_response(),
         Err(_) => internal_error("diagnostic configuration serialization failed"),
+    }
+}
+
+async fn handle_diag_system() -> Response {
+    let response = match tokio::task::spawn_blocking(collect_system_information).await {
+        Ok(response) => response,
+        Err(_) => return internal_error("diagnostic system collection failed"),
+    };
+
+    match serde_json::to_string(&response) {
+        Ok(body) => (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], body).into_response(),
+        Err(_) => internal_error("diagnostic system response serialization failed"),
+    }
+}
+
+async fn handle_diag_tunnel(State(state): State<Arc<AppState>>) -> Response {
+    let snapshot = state.snapshot.read().await;
+    let response = TunnelState {
+        tunnel_id: snapshot.tunnel_id.clone(),
+        connector_id: Some(snapshot.connector_id.to_string()),
+        connections: if snapshot.tunnel_connections.is_empty() {
+            None
+        } else {
+            Some(snapshot.tunnel_connections.clone())
+        },
+        icmp_sources: if snapshot.icmp_sources.is_empty() {
+            None
+        } else {
+            Some(snapshot.icmp_sources.clone())
+        },
+    };
+
+    match serde_json::to_string(&response) {
+        Ok(body) => (StatusCode::OK, [(header::CONTENT_TYPE, "application/json")], body).into_response(),
+        Err(_) => internal_error("diagnostic tunnel response serialization failed"),
     }
 }
 
@@ -281,9 +342,13 @@ fn runtime_build_info() -> BuildInfo {
     }
 }
 
+/// Build the initial `/config` response from startup config.
+///
+/// Go: `Orchestrator.currentVersion` starts at `-1`; version `0` is the
+/// first remote config push. Static startup state uses version `-1`.
 fn runtime_config_response(config: &RuntimeConfig) -> ConfigResponse {
     ConfigResponse {
-        version: 1,
+        version: -1,
         config: json!({
             "ingress": config.normalized().ingress,
             "warp-routing": config.normalized().warp_routing,
@@ -303,6 +368,20 @@ mod tests {
     fn test_state() -> Arc<AppState> {
         let ready_connections_gauge = Gauge::<i64, _>::default();
         let mut registry = Registry::default();
+
+        // Register build_info matching the real start() path.
+        let build_family =
+            prometheus_client::metrics::family::Family::<Vec<(String, String)>, Gauge>::default();
+        build_family
+            .get_or_create(&vec![
+                ("goversion".to_owned(), "rust".to_owned()),
+                ("type".to_owned(), "debug".to_owned()),
+                ("revision".to_owned(), "test".to_owned()),
+                ("version".to_owned(), "0.0.0".to_owned()),
+            ])
+            .set(1);
+        registry.register("build_info", "Build information", build_family);
+
         registry.register(
             "cfdrs_ready_connections",
             "Ready tunnel connections",
@@ -311,13 +390,17 @@ mod tests {
 
         Arc::new(AppState {
             snapshot: RwLock::new(MetricsSnapshot {
+                tunnel_id: None,
                 connector_id: uuid::Uuid::nil(),
                 ready_connections: 0,
+                tunnel_connections: Vec::new(),
+                icmp_sources: Vec::new(),
                 config_response: ConfigResponse {
                     version: 1,
                     config: json!({}),
                 },
                 diagnostic_configuration: BTreeMap::new(),
+                quick_tunnel_hostname: String::new(),
             }),
             registry: RwLock::new(registry),
             ready_connections_gauge,
@@ -411,7 +494,7 @@ mod tests {
             let mut snapshot = state.snapshot.write().await;
             snapshot.diagnostic_configuration = BTreeMap::from([
                 ("uid".to_owned(), "1000".to_owned()),
-                ("log_directory".to_owned(), "/var/log/cloudflared".to_owned()),
+                ("log-directory".to_owned(), "/var/log/cloudflared".to_owned()),
             ]);
         }
 
@@ -431,7 +514,58 @@ mod tests {
             .expect("body");
         let text = String::from_utf8_lossy(&body);
         assert!(text.contains("\"uid\":\"1000\""));
-        assert!(text.contains("\"log_directory\":\"/var/log/cloudflared\""));
+        assert!(text.contains("\"log-directory\":\"/var/log/cloudflared\""));
+    }
+
+    #[tokio::test]
+    async fn diag_tunnel_endpoint_serializes_runtime_state() {
+        let state = test_state();
+        {
+            let mut snapshot = state.snapshot.write().await;
+            snapshot.tunnel_id = Some("00000000-0000-0000-0000-000000000000".to_owned());
+            snapshot.tunnel_connections = vec![cfdrs_his::diagnostics::IndexedConnectionInfo {
+                index: Some(0),
+                is_connected: Some(true),
+                protocol: Some("quic".to_owned()),
+                edge_address: Some("198.41.200.1".to_owned()),
+            }];
+            snapshot.icmp_sources = vec!["192.0.2.1".to_owned()];
+        }
+
+        let app = build_router(state);
+        let response = app
+            .oneshot(Request::get("/diag/tunnel").body(Body::empty()).expect("request"))
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .expect("body");
+        let text = String::from_utf8_lossy(&body);
+        assert!(text.contains("\"tunnelID\":\"00000000-0000-0000-0000-000000000000\""));
+        assert!(text.contains("\"connectorID\":\"00000000-0000-0000-0000-000000000000\""));
+        assert!(text.contains("\"edgeAddress\":\"198.41.200.1\""));
+        assert!(text.contains("\"icmp_sources\":[\"192.0.2.1\"]"));
+    }
+
+    #[tokio::test]
+    async fn diag_system_endpoint_returns_wrapper_shape() {
+        let state = test_state();
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(Request::get("/diag/system").body(Body::empty()).expect("request"))
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 8192)
+            .await
+            .expect("body");
+        let text = String::from_utf8_lossy(&body);
+        assert!(text.contains("\"info\":"));
+        assert!(text.contains("\"errors\":"));
     }
 
     #[tokio::test]
@@ -454,6 +588,102 @@ mod tests {
             .await
             .expect("body");
         assert_eq!(&body[..], b"OK\n");
+    }
+
+    #[tokio::test]
+    async fn quicktunnel_endpoint_returns_hostname() {
+        let state = test_state();
+        {
+            let mut snapshot = state.snapshot.write().await;
+            snapshot.quick_tunnel_hostname = "example.trycloudflare.com".to_owned();
+        }
+
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(Request::get("/quicktunnel").body(Body::empty()).expect("request"))
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response
+                .headers()
+                .get(header::CONTENT_TYPE)
+                .and_then(|value| value.to_str().ok()),
+            Some("application/json"),
+        );
+
+        let body = axum::body::to_bytes(response.into_body(), 4096)
+            .await
+            .expect("body");
+        assert_eq!(&body[..], b"{\"hostname\":\"example.trycloudflare.com\"}");
+    }
+
+    #[tokio::test]
+    async fn metrics_endpoint_includes_build_info_with_go_compatible_labels() {
+        let state = test_state();
+        let app = build_router(state);
+
+        let response = app
+            .oneshot(Request::get("/metrics").body(Body::empty()).expect("request"))
+            .await
+            .expect("response");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 8192)
+            .await
+            .expect("body");
+        let text = String::from_utf8_lossy(&body);
+
+        // build_info must appear as a metric family with the Go-compatible
+        // label keys: goversion, type, revision, version.  The metric name
+        // is intentionally un-namespaced (no "cloudflared_" prefix) to match
+        // Cloudflare cross-service convention.
+        assert!(
+            text.contains("build_info"),
+            "build_info metric missing from /metrics output"
+        );
+        assert!(text.contains("goversion="), "build_info missing goversion label");
+        assert!(text.contains("revision="), "build_info missing revision label");
+    }
+
+    #[test]
+    fn build_info_label_keys_match_go_baseline() {
+        // Go baseline registers build_info with exactly these four label
+        // names (metrics/metrics.go RegisterBuildInfo).  Rust must use the
+        // same keys so Prometheus dashboards and alerts remain compatible.
+        let expected_labels = ["goversion", "type", "revision", "version"];
+        let build_info = runtime_build_info();
+
+        // Verify the label set produced by runtime_build_info() covers all
+        // expected keys.  The labels are passed as Vec<(String, String)> to
+        // the Family.get_or_create() call.
+        let label_vec = [
+            ("goversion".to_owned(), build_info.goversion.to_owned()),
+            ("type".to_owned(), build_info.build_type.to_owned()),
+            ("revision".to_owned(), build_info.revision.to_owned()),
+            ("version".to_owned(), build_info.version.to_owned()),
+        ];
+        let actual_keys: Vec<&str> = label_vec.iter().map(|(k, _)| k.as_str()).collect();
+
+        for expected in &expected_labels {
+            assert!(
+                actual_keys.contains(expected),
+                "build_info missing expected label key: {expected}"
+            );
+        }
+        assert_eq!(actual_keys.len(), expected_labels.len());
+    }
+
+    #[test]
+    fn build_info_metric_name_matches_baseline_constant() {
+        // The registered metric name must match the baseline_metrics constant
+        // so metric-name inventory tests remain grounded.
+        assert_eq!(
+            cfdrs_his::metrics_server::baseline_metrics::BUILD_INFO,
+            "build_info"
+        );
     }
 
     #[tokio::test]

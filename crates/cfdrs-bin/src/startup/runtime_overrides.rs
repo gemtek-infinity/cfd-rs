@@ -3,13 +3,14 @@ use std::path::Path;
 
 use cfdrs_cli::GlobalFlags;
 use cfdrs_his::credentials::search_credential_by_id;
-use cfdrs_his::environment::current_uid;
+use cfdrs_his::environment::{current_uid, is_container_runtime};
 use cfdrs_his::metrics_server::parse_metrics_address;
 use cfdrs_his::signal::parse_grace_period;
+use cfdrs_his::updater::{parse_auto_update_freq, resolve_auto_update_settings};
 use cfdrs_shared::{ConfigError, OriginCertLocator};
 use cfdrs_shared::{LogConfig, LogLevel, build_log_config};
 
-use crate::runtime::RuntimeConfig;
+use crate::runtime::{RuntimeAutoUpdate, RuntimeConfig};
 
 use super::StartupSurface;
 
@@ -30,11 +31,22 @@ pub(crate) fn prepare_runtime_startup(
     let grace_period = parse_grace_period(flags.grace_period.as_deref())?;
     let log_config = resolve_log_config(&startup, flags)?;
     let transport_log_level = flags.transport_loglevel.as_deref().map(str::parse).transpose()?;
+    let icmp_sources = resolve_icmp_sources(flags);
     let diagnostic_configuration = resolve_diagnostic_configuration(&log_config);
+    let auto_update_settings = resolve_auto_update_settings(
+        flags.no_autoupdate,
+        Some(parse_auto_update_freq(flags.autoupdate_freq.as_deref())?),
+        cfdrs_his::updater::should_skip_update(),
+        cfdrs_his::environment::is_terminal(),
+        cfdrs_his::environment::TARGET_OS,
+    );
 
     let mut runtime_config = RuntimeConfig::new(startup.discovery.clone(), startup.normalized.clone())
         .with_shutdown_grace_period(grace_period)
-        .with_diagnostic_configuration(diagnostic_configuration);
+        .with_container_runtime(is_container_runtime())
+        .with_icmp_sources(icmp_sources)
+        .with_diagnostic_configuration(diagnostic_configuration)
+        .with_auto_update(RuntimeAutoUpdate::new(auto_update_settings));
 
     if let Some(pidfile_path) = flags.pidfile.clone() {
         runtime_config = runtime_config.with_pidfile_path(pidfile_path);
@@ -141,14 +153,22 @@ fn resolve_diagnostic_configuration(log_config: &LogConfig) -> BTreeMap<String, 
     let mut diagnostic_configuration = BTreeMap::from([("uid".to_owned(), current_uid().to_string())]);
 
     if let Some(file) = log_config.file.as_ref() {
-        diagnostic_configuration.insert("log_file".to_owned(), file.full_path().display().to_string());
+        diagnostic_configuration.insert("logfile".to_owned(), file.full_path().display().to_string());
     }
 
     if let Some(rolling) = log_config.rolling.as_ref() {
-        diagnostic_configuration.insert("log_directory".to_owned(), rolling.dirname.display().to_string());
+        diagnostic_configuration.insert("log-directory".to_owned(), rolling.dirname.display().to_string());
     }
 
     diagnostic_configuration
+}
+
+fn resolve_icmp_sources(flags: &GlobalFlags) -> Vec<String> {
+    [flags.icmpv4_src.as_ref(), flags.icmpv6_src.as_ref()]
+        .into_iter()
+        .flatten()
+        .cloned()
+        .collect()
 }
 
 fn path_str(path: &Path) -> Result<&str, ConfigError> {
@@ -258,7 +278,7 @@ mod tests {
             prepared
                 .runtime_config
                 .diagnostic_configuration()
-                .get("log_directory")
+                .get("log-directory")
                 .map(String::as_str),
             Some("/var/log/cloudflared")
         );
@@ -325,5 +345,88 @@ mod tests {
             Some(existing),
             "credentials_file should not be overridden when already set"
         );
+    }
+
+    // --- HIS-031: container/runtime-class detection ---
+
+    #[test]
+    fn container_runtime_setter_enables_virtual_binding() {
+        let startup = startup_surface(None);
+        let config = RuntimeConfig::new(startup.discovery.clone(), startup.normalized.clone())
+            .with_container_runtime(true);
+
+        assert!(
+            config.is_container_runtime(),
+            "with_container_runtime(true) should enable container mode"
+        );
+    }
+
+    #[test]
+    fn container_runtime_defaults_to_host_mode() {
+        let startup = startup_surface(None);
+        let config = RuntimeConfig::new(startup.discovery.clone(), startup.normalized.clone());
+
+        assert!(
+            !config.is_container_runtime(),
+            "default RuntimeConfig should be host mode"
+        );
+    }
+
+    #[test]
+    fn prepare_runtime_startup_wires_container_detection() {
+        // In normal test builds (no CONTAINER_BUILD env, no /.dockerenv),
+        // the runtime config should report host mode.
+        let root = temp_dir("container-detect");
+        let origin_cert = root.join("cert.pem");
+        let credentials_path = root.join(format!("{}.json", uuid::Uuid::nil()));
+
+        fs::write(&origin_cert, b"pem").expect("origin cert should be written");
+        fs::write(
+            &credentials_path,
+            r#"{"AccountTag":"acct","TunnelSecret":"AQID","TunnelID":"00000000-0000-0000-0000-000000000000"}"#,
+        )
+        .expect("credentials should be written");
+
+        let prepared = prepare_runtime_startup(startup_surface(Some(origin_cert)), &GlobalFlags::default())
+            .expect("runtime startup should prepare");
+
+        assert_eq!(
+            prepared.runtime_config.is_container_runtime(),
+            is_container_runtime(),
+            "runtime config container flag should match host detection"
+        );
+
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
+    fn prepare_runtime_startup_wires_auto_update_configuration() {
+        let prepared = prepare_runtime_startup(startup_surface(None), &GlobalFlags::default())
+            .expect("runtime startup should prepare");
+
+        let auto_update = prepared
+            .runtime_config
+            .auto_update()
+            .expect("auto-update settings should be present");
+        assert_eq!(
+            auto_update.settings().frequency(),
+            cfdrs_his::updater::DEFAULT_AUTOUPDATE_FREQ
+        );
+    }
+
+    #[test]
+    fn prepare_runtime_startup_honors_no_autoupdate_flag() {
+        let flags = GlobalFlags {
+            no_autoupdate: true,
+            ..GlobalFlags::default()
+        };
+        let prepared =
+            prepare_runtime_startup(startup_surface(None), &flags).expect("runtime startup should prepare");
+
+        let auto_update = prepared
+            .runtime_config
+            .auto_update()
+            .expect("auto-update settings should be present");
+        assert!(!auto_update.settings().enabled());
     }
 }

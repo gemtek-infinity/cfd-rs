@@ -279,7 +279,48 @@ Exit evidence:
 - deferred and non-lane rows remain explicit and bounded
 - production-alpha is not claimed yet; this is the pre-optimization baseline
 
-### 7. Performance Architecture Overhaul
+### 7. Parity Revalidation
+
+Goal:
+
+- systematically re-audit all 150 parity rows against the frozen baseline after
+  functional and proof closure
+- fix stale evidence, tighten partial claims, and verify intentional divergences
+  are properly documented with deferred boundaries
+- produce a clean, auditable parity surface before the performance milestone
+
+Exact rows:
+
+- all 150 rows across CLI, CDC, and HIS; no new rows are introduced
+- HIS-069 (ICMP raw-socket proxy) is fully implemented;
+  `nix` 0.31 is admitted for ICMP socket creation in `cfdrs-his`
+- HIS-073 and HIS-074 (gracenet restart) remain intentional divergences with
+  trait seams preserved for post-alpha implementation
+
+Owner crates:
+
+- all five workspace crates as needed
+
+Prerequisites:
+
+- `Proof Closure`
+
+Required tests:
+
+- full parity reruns for all closed surfaces
+- command/output snapshot suite
+- contract tests across CLI, CDC, and HIS
+- logging compatibility reruns across local and upstream surfaces
+- architecture dependency validator
+
+Exit evidence:
+
+- every closed row has current, source-grounded evidence in its domain ledger
+- every intentional divergence has an explicit deferred boundary and rationale
+- no stale or historical-only parity claims remain
+- the parity surface is clean enough to withstand a cold re-audit
+
+### 8. Performance Architecture Overhaul
 
 Goal:
 
@@ -304,7 +345,7 @@ Owner crates:
 
 Prerequisites:
 
-- `Proof Closure`
+- `Parity Revalidation`
 
 Required tests:
 

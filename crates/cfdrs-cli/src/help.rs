@@ -14,6 +14,14 @@ pub fn render_access_help(program_name: &str) -> String {
     surface_contract::render_access_help_text(program_name)
 }
 
+pub fn render_management_help(program_name: &str) -> String {
+    surface_contract::render_management_help_text(program_name)
+}
+
+pub fn render_management_token_help(program_name: &str) -> String {
+    surface_contract::render_management_token_help_text(program_name)
+}
+
 pub fn render_subcommand_help(target: &HelpTarget) -> String {
     subcommand_help::render_subcommand_help_text(target)
 }

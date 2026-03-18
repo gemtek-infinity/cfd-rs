@@ -415,6 +415,21 @@ const INGRESS_SPEC: SubcommandHelpSpec = SubcommandHelpSpec {
     flags: &[],
 };
 
+const UPDATE_FLAGS: &[SubcommandFlagEntry] = &[
+    SubcommandFlagEntry {
+        names: "--beta",
+        usage: "specify if you wish to update to the latest beta version (default: false)",
+    },
+    SubcommandFlagEntry {
+        names: "--version value",
+        usage: "specify a version you wish to upgrade or downgrade to",
+    },
+    SubcommandFlagEntry {
+        names: "--help, -h",
+        usage: "show help (default: false)",
+    },
+];
+
 // --- Rendering ---
 
 fn spec_for_target(target: &HelpTarget) -> &'static SubcommandHelpSpec {
@@ -460,6 +475,27 @@ fn render_flag_section(text: &mut String, heading: &str, flags: &[SubcommandFlag
     text.push('\n');
 }
 
+fn render_update_help_text() -> String {
+    let mut text = String::with_capacity(768);
+
+    text.push_str("NAME:\n");
+    text.push_str("   cloudflared update - Update the agent if a new version exists\n\n");
+
+    text.push_str("USAGE:\n");
+    text.push_str("   cloudflared update [command options] [arguments...]\n\n");
+
+    text.push_str("DESCRIPTION:\n");
+    text.push_str("   Looks for a new version on the official download server.\n");
+    text.push_str("   If a new version exists, updates the agent binary and quits.\n");
+    text.push_str("   Otherwise, does nothing.\n");
+    text.push_str("   \n");
+    text.push_str("   To determine if an update happened in a script, check for error code 11.\n\n");
+
+    render_flag_section(&mut text, "OPTIONS:", UPDATE_FLAGS);
+
+    text
+}
+
 /// Render per-subcommand help text matching Go baseline
 /// `commandHelpTemplate()`.
 ///
@@ -481,6 +517,10 @@ fn render_flag_section(text: &mut String, heading: &str, flags: &[SubcommandFlag
 ///    <per-subcommand flags>
 /// ```
 pub fn render_subcommand_help_text(target: &HelpTarget) -> String {
+    if matches!(target, HelpTarget::Update) {
+        return render_update_help_text();
+    }
+
     let spec = spec_for_target(target);
     let mut text = String::with_capacity(2048);
 
@@ -693,6 +733,28 @@ mod tests {
 
         assert!(text.contains("validate"));
         assert!(text.contains("rule"));
+    }
+
+    #[test]
+    fn update_help_matches_baseline_sections() {
+        let text = render_subcommand_help_text(&HelpTarget::Update);
+
+        assert!(text.contains("NAME:"));
+        assert!(text.contains("cloudflared update - Update the agent if a new version exists"));
+        assert!(text.contains("USAGE:"));
+        assert!(text.contains("cloudflared update [command options] [arguments...]"));
+        assert!(text.contains("DESCRIPTION:"));
+        assert!(text.contains("OPTIONS:"));
+    }
+
+    #[test]
+    fn update_help_shows_only_visible_flags() {
+        let text = render_subcommand_help_text(&HelpTarget::Update);
+
+        assert!(text.contains("--beta"));
+        assert!(text.contains("--version value"));
+        assert!(!text.contains("--force"));
+        assert!(!text.contains("--staging"));
     }
 
     // --- Column alignment tests ---

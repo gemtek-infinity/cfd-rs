@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use axum::Router;
 use cfdrs_his::signal::remove_pidfile;
 
 use crate::protocol::{self, ProtocolReceiver, StreamResponseSender};
@@ -13,6 +14,7 @@ use tokio_util::sync::CancellationToken;
 mod command_dispatch;
 mod deployment;
 mod logging;
+mod management;
 mod metrics;
 mod state;
 mod tasks;
@@ -25,8 +27,8 @@ pub(crate) use self::logging::install_runtime_logging;
 use self::state::{LifecycleState, ReadinessState, RuntimeStatus};
 use self::types::RuntimePolicy;
 pub(crate) use self::types::{
-    ChildTask, HarnessBuilder, RuntimeCommand, RuntimeConfig, RuntimeExecution, RuntimeExit, RuntimeHarness,
-    ServiceExit, ShutdownReason,
+    ChildTask, HarnessBuilder, RuntimeAutoUpdate, RuntimeCommand, RuntimeConfig, RuntimeExecution,
+    RuntimeExit, RuntimeHarness, ServiceExit, ShutdownReason,
 };
 
 const PRIMARY_SERVICE_NAME: &str = "quic-tunnel-core";
@@ -54,6 +56,7 @@ struct ApplicationRuntime {
     protocol_receiver: Option<ProtocolReceiver>,
     stream_response_tx: Option<StreamResponseSender>,
     metrics: Option<metrics::RuntimeMetricsHandle>,
+    management_router: Option<Router>,
     /// Guards pidfile write so it fires exactly once, matching Go
     /// `connectedSignal` + `sync.Once` pattern in `writePidFile`.
     pidfile_written: bool,
@@ -76,6 +79,16 @@ impl ApplicationRuntime {
         if let Some(metrics) = self.metrics.as_ref() {
             metrics.sync_from_status(&self.status);
         }
+    }
+
+    fn build_management_service(&mut self) {
+        let router = management::build_management_router(
+            self.config.connector_id(),
+            String::new(),
+            String::new(),
+            false,
+        );
+        self.management_router = Some(router);
     }
 
     fn new(
@@ -105,6 +118,7 @@ impl ApplicationRuntime {
             protocol_receiver,
             stream_response_tx,
             metrics: None,
+            management_router: None,
             pidfile_written: false,
         }
     }
@@ -113,6 +127,8 @@ impl ApplicationRuntime {
         if let Err(detail) = self.start_metrics_server().await {
             return self.finish(RuntimeExit::Failed { detail }).await;
         }
+
+        self.build_management_service();
 
         self.status.record_runtime_owner();
         self.status.record_runtime_config(self.config.as_ref());
@@ -141,6 +157,7 @@ impl ApplicationRuntime {
         self.spawn_signal_bridge();
         self.spawn_harness_shutdown();
         self.spawn_config_watcher();
+        self.spawn_auto_updater();
         self.spawn_proxy_seam();
         self.spawn_primary_service(0);
 
@@ -162,6 +179,7 @@ impl ApplicationRuntime {
     async fn finish(mut self, exit: RuntimeExit) -> RuntimeExecution {
         let stopping_reason = match &exit {
             RuntimeExit::Clean => "graceful shutdown requested".to_owned(),
+            RuntimeExit::Updated { version } => format!("auto-update applied: version {version}"),
             RuntimeExit::Deferred { detail, .. } => {
                 format!("deferred service boundary reached: {detail}")
             }
@@ -194,6 +212,16 @@ impl ApplicationRuntime {
                     .record_state(LifecycleState::Stopped, "runtime stopped cleanly");
                 self.status
                     .record_readiness(ReadinessState::Stopping, "runtime stopped after clean shutdown");
+            }
+            RuntimeExit::Updated { .. } => {
+                self.status.record_state(
+                    LifecycleState::Stopped,
+                    "runtime stopped after applying auto-update",
+                );
+                self.status.record_readiness(
+                    ReadinessState::Stopping,
+                    "runtime stopped after applying auto-update",
+                );
             }
             RuntimeExit::Deferred { .. } | RuntimeExit::Failed { .. } => {
                 self.status.record_state(
