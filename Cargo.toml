@@ -29,8 +29,8 @@ capnp = "0.25.2"
 capnp-futures = "0.25.0"
 capnp-rpc = "0.25.0"
 capnpc = "0.25.0"
-futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 flate2 = "1.1.5"
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 hickory-resolver = { version = "0.25.2", default-features = false, features = [
   "system-config",
   "tls-ring",
@@ -43,6 +43,7 @@ mimalloc = { version = "0.1.48", default-features = false, features = [
   "no_thp",
   "override",
 ] }
+nix = { version = "0.31", default-features = false, features = ["net", "user"] }
 notify = { version = "7", default-features = false, features = ["macos_fsevent"] }
 openssl = { version = "0.10.76", features = ["vendored"] }
 pem = "3.0.6"
@@ -54,7 +55,6 @@ reqwest = { version = "0.13.2", default-features = false, features = [
   "json",
   "rustls",
 ] }
-nix = { version = "0.31", default-features = false, features = ["net", "user"] }
 sd-notify = "0.4"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.149", default-features = false, features = ["std"] }
