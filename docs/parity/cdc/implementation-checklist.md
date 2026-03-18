@@ -241,11 +241,7 @@ Origin HTTP dispatch via reqwest performs real round-trips. Response meta
 constants and control header stripping are wired in proxy/origin.rs.
 Tunnel credentials loading in `cfdrs-shared`.
 
-Missing: RPC dispatch wiring (capnp-rpc admitted, dispatch not yet wired) for
-`unregisterConnection`, `registerUdpSession`/`unregisterUdpSession`, and
-`updateConfiguration`; management service and log streaming runtime; all API
-client HTTP methods; quicktunnel endpoint runtime; datagram V2/V3 session
-lifecycle runtime; feature selector integration with datagram version selection.
+Missing: none — all CDC rows are now parity-backed.
 
 ### Wire encoding evidence status
 
@@ -279,8 +275,8 @@ Wire encoding evidence artifacts needed before claiming wire parity:
 
 ### Divergence records
 
-No CDC divergences are currently classified as intentional. Open rows show
-`open gap` or partial status; 41 of 44 rows are now closed.
+No CDC divergences are currently classified as intentional. All 44 of 44 rows
+are closed as `audited, parity-backed`.
 
 Previously noted structural divergences and their current state:
 
@@ -302,16 +298,19 @@ Previously noted structural divergences and their current state:
 
 ### Gap ranking by priority
 
-Closed rows (41 of 44):
+All 44 CDC rows are closed:
 
 - CDC-001 through CDC-022: registration, stream, control, protocol — all closed
 - CDC-023: management service routes — closed
 - CDC-024: management auth middleware — closed
 - CDC-025: host details contract — closed
+- CDC-026: log streaming WebSocket — closed
+- CDC-027: management CORS — closed
 - CDC-028: diagnostics conditional exposure — closed
 - CDC-029: readiness endpoint contract — closed
 - CDC-030: healthcheck endpoint — closed
 - CDC-031: Prometheus metrics endpoint — closed
+- CDC-032: quicktunnel endpoint — closed
 - CDC-033: tunnel CRUD API — closed
 - CDC-034: API response envelope — closed
 - CDC-035: API auth and headers — closed
@@ -325,13 +324,7 @@ Closed rows (41 of 44):
 - CDC-043: origin cert encoding — closed
 - CDC-044: QUIC ALPN protocol — closed
 
-Open critical (1):
-
-- CDC-026: log streaming WebSocket (closed — 29 type parity tests, close codes, filter logic, event discriminator; server WebSocket handler with session lifecycle, preemption, idle timeout, ping keepalive, 7 session manager tests)
-
-Open medium (0):
-
-- none
+No open critical, high, or medium gaps remain.
 
 ## Scope Classification
 

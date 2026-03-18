@@ -5,8 +5,8 @@
 - lane: Linux only, `x86_64-unknown-linux-gnu`, quiche + BoringSSL,
   0-RTT required
 - workspace version: `2026.2.0-alpha.202603`
-- active milestone: `Proof Closure`
-- next milestone: `Parity Revalidation`
+- active milestone: `Parity Revalidation`
+- next milestone: `Performance Architecture Overhaul`
 - highest-risk blockers: none (all 150 rows closed)
 - production-alpha logging blocker set: cleared
 - behavior truth: [`baseline-2026.2.0/`](baseline-2026.2.0/)
@@ -22,7 +22,10 @@ This repository is a real but partial Rust rewrite of `cloudflared`.
 What exists now:
 
 - `Program Reset`, `CDC Contract Foundation`, `Host and Runtime Foundation`,
-  `CLI Foundation`, and `Command Family Closure` are complete
+  `CLI Foundation`, `Command Family Closure`, and `Proof Closure` are complete
+- all 150 parity rows are closed with current evidence in domain ledgers
+- roadmap index fully reconciled: 143 `already_proven`, 5 `intentional_divergence`,
+  2 `non_lane`
 - live parity ledgers and source routing under [`docs/parity/`](docs/parity/)
 - debtmap-enabled MCP server surface for bounded repo truth and routing
 - repo-wide task entry through [`Justfile`](Justfile)
@@ -35,23 +38,25 @@ What does not exist yet:
 
 ## Active Milestone
 
-### Proof Closure
+### Parity Revalidation
 
 - objective:
-  rerun admitted parity and contract evidence after functional closure;
-  record remaining deferments, non-lane items, and intentional divergences
-  explicitly; rerun the full logging contract after CLI, CDC, and HIS closure
+  systematically re-audit all 150 parity rows against the frozen baseline;
+  fix stale evidence, tighten partial claims, verify intentional divergences
+  are properly documented; produce a clean auditable parity surface before
+  the performance milestone
 - current front edge:
-  all rows closed; milestone exit evidence pending
+  milestone entry; no rows have been re-audited yet
 - exit still requires:
-  final evidence refresh and validation reruns for rows mapped to
-  `Proof Closure` in the roadmap index
+  full re-audit pass across all 150 rows with current source-grounded evidence;
+  HIS-069 ICMP proxy runtime validation; every intentional divergence has
+  an explicit deferred boundary and rationale
 
-Previous milestone (`Command Family Closure`) is complete.
+Previous milestone (`Proof Closure`) is complete.
 
-Next milestone after Proof Closure:
+Next milestone after Parity Revalidation:
 
-- `Parity Revalidation`
+- `Performance Architecture Overhaul`
 
 ## Priority Rows
 

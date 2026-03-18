@@ -168,8 +168,6 @@ Go `SubcommandHelpTemplate` format.
 Parsed flags: `--config`, `--help`/`-h`, `--version`/`-V`, `--short`/`-s`,
 40+ tunnel/access/service/management flags stored into `GlobalFlags`
 
-Missing from baseline: top-level `update` behavior (depends on HIS updater)
-
 ### Divergence records
 
 **Root invocation (CLI-001):** Resolved. Rust dispatches empty

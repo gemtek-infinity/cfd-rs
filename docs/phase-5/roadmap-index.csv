@@ -1,88 +1,88 @@
 row_id,domain,milestone,owner_crate,status_bucket,blocked_by,evidence_ref
-CLI-001,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-001
-CLI-002,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-002
-CLI-003,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-003
-CLI-004,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-004
-CLI-005,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-005
-CLI-006,CLI,Proof Closure,cfdrs-cli,deferred,Command Family Closure,docs/parity/cli/implementation-checklist.md#cli-006
-CLI-007,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-007
-CLI-008,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-008
-CLI-009,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-009
-CLI-010,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-010
-CLI-011,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-011
-CLI-012,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-012
-CLI-013,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-013
-CLI-014,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-014
-CLI-015,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-015
-CLI-016,CLI,Proof Closure,cfdrs-cli,deferred,Command Family Closure,docs/parity/cli/implementation-checklist.md#cli-016
-CLI-017,CLI,Proof Closure,cfdrs-cli,deferred,Command Family Closure,docs/parity/cli/implementation-checklist.md#cli-017
-CLI-018,CLI,Proof Closure,cfdrs-cli,deferred,Command Family Closure,docs/parity/cli/implementation-checklist.md#cli-018
-CLI-019,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-019
-CLI-020,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-020
-CLI-021,CLI,Proof Closure,cfdrs-cli,deferred,Command Family Closure,docs/parity/cli/implementation-checklist.md#cli-021
-CLI-022,CLI,Command Family Closure,cfdrs-cli,lane_required,CLI Foundation,docs/parity/cli/implementation-checklist.md#cli-022
-CLI-023,CLI,Command Family Closure,cfdrs-cli,lane_required,CLI Foundation,docs/parity/cli/implementation-checklist.md#cli-023
-CLI-024,CLI,Proof Closure,cfdrs-cli,deferred,Command Family Closure,docs/parity/cli/implementation-checklist.md#cli-024
-CLI-025,CLI,Proof Closure,cfdrs-cli,compatibility_only,Command Family Closure,docs/parity/cli/implementation-checklist.md#cli-025
-CLI-026,CLI,Proof Closure,cfdrs-cli,compatibility_only,Command Family Closure,docs/parity/cli/implementation-checklist.md#cli-026
-CLI-027,CLI,Proof Closure,cfdrs-cli,compatibility_only,Command Family Closure,docs/parity/cli/implementation-checklist.md#cli-027
-CLI-028,CLI,Command Family Closure,cfdrs-cli,lane_required,CLI Foundation,docs/parity/cli/implementation-checklist.md#cli-028
-CLI-029,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-029
-CLI-030,CLI,CLI Foundation,cfdrs-cli,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-030
+CLI-001,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-001
+CLI-002,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-002
+CLI-003,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-003
+CLI-004,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-004
+CLI-005,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-005
+CLI-006,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-006
+CLI-007,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-007
+CLI-008,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-008
+CLI-009,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-009
+CLI-010,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-010
+CLI-011,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-011
+CLI-012,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-012
+CLI-013,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-013
+CLI-014,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-014
+CLI-015,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-015
+CLI-016,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-016
+CLI-017,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-017
+CLI-018,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-018
+CLI-019,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-019
+CLI-020,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-020
+CLI-021,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-021
+CLI-022,CLI,Command Family Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-022
+CLI-023,CLI,Command Family Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-023
+CLI-024,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-024
+CLI-025,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-025
+CLI-026,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-026
+CLI-027,CLI,Proof Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-027
+CLI-028,CLI,Command Family Closure,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-028
+CLI-029,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-029
+CLI-030,CLI,CLI Foundation,cfdrs-cli,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-030
 CLI-031,CLI,Program Reset,cfdrs-cli,intentional_divergence,none,docs/parity/cli/implementation-checklist.md#cli-031
-CLI-032,CLI,CLI Foundation,cfdrs-bin,lane_required,Program Reset,docs/parity/cli/implementation-checklist.md#cli-032
-CDC-001,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-001
-CDC-002,CDC,CDC Contract Foundation,cfdrs-bin,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-002
-CDC-003,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-003
-CDC-004,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-004
-CDC-005,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-005
-CDC-006,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-006
-CDC-007,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-007
-CDC-008,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-008
-CDC-009,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-009
-CDC-010,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-010
-CDC-011,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-011
-CDC-012,CDC,CDC Contract Foundation,cfdrs-bin,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-012
-CDC-013,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-013
-CDC-014,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-014
-CDC-015,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-015
-CDC-016,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-016
-CDC-017,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-017
-CDC-018,CDC,CDC Contract Foundation,cfdrs-bin,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-018
-CDC-019,CDC,CDC Contract Foundation,cfdrs-bin,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-019
-CDC-020,CDC,CDC Contract Foundation,cfdrs-bin,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-020
-CDC-021,CDC,CDC Contract Foundation,cfdrs-bin,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-021
-CDC-022,CDC,CDC Contract Foundation,cfdrs-bin,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-022
-CDC-023,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-023
-CDC-024,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-024
-CDC-025,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-025
-CDC-026,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-026
-CDC-027,CDC,Proof Closure,cfdrs-cdc,deferred,Command Family Closure,docs/parity/cdc/implementation-checklist.md#cdc-027
-CDC-028,CDC,Proof Closure,cfdrs-cdc,deferred,Command Family Closure,docs/parity/cdc/implementation-checklist.md#cdc-028
-CDC-029,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-029
-CDC-030,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-030
-CDC-031,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-031
-CDC-032,CDC,Proof Closure,cfdrs-cdc,deferred,Command Family Closure,docs/parity/cdc/implementation-checklist.md#cdc-032
-CDC-033,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-033
-CDC-034,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-034
-CDC-035,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-035
-CDC-036,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-036
-CDC-037,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-037
-CDC-038,CDC,Command Family Closure,cfdrs-cdc,lane_required,CDC Contract Foundation,docs/parity/cdc/implementation-checklist.md#cdc-038
-CDC-039,CDC,Proof Closure,cfdrs-cdc,deferred,Command Family Closure,docs/parity/cdc/implementation-checklist.md#cdc-039
-CDC-040,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-040
-CDC-041,CDC,CDC Contract Foundation,cfdrs-cdc,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-041
-CDC-042,CDC,CDC Contract Foundation,cfdrs-shared,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-042
-CDC-043,CDC,CDC Contract Foundation,cfdrs-shared,lane_required,Program Reset,docs/parity/cdc/implementation-checklist.md#cdc-043
+CLI-032,CLI,CLI Foundation,cfdrs-bin,already_proven,none,docs/parity/cli/implementation-checklist.md#cli-032
+CDC-001,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-001
+CDC-002,CDC,CDC Contract Foundation,cfdrs-bin,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-002
+CDC-003,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-003
+CDC-004,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-004
+CDC-005,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-005
+CDC-006,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-006
+CDC-007,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-007
+CDC-008,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-008
+CDC-009,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-009
+CDC-010,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-010
+CDC-011,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-011
+CDC-012,CDC,CDC Contract Foundation,cfdrs-bin,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-012
+CDC-013,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-013
+CDC-014,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-014
+CDC-015,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-015
+CDC-016,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-016
+CDC-017,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-017
+CDC-018,CDC,CDC Contract Foundation,cfdrs-bin,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-018
+CDC-019,CDC,CDC Contract Foundation,cfdrs-bin,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-019
+CDC-020,CDC,CDC Contract Foundation,cfdrs-bin,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-020
+CDC-021,CDC,CDC Contract Foundation,cfdrs-bin,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-021
+CDC-022,CDC,CDC Contract Foundation,cfdrs-bin,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-022
+CDC-023,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-023
+CDC-024,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-024
+CDC-025,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-025
+CDC-026,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-026
+CDC-027,CDC,Proof Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-027
+CDC-028,CDC,Proof Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-028
+CDC-029,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-029
+CDC-030,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-030
+CDC-031,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-031
+CDC-032,CDC,Proof Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-032
+CDC-033,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-033
+CDC-034,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-034
+CDC-035,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-035
+CDC-036,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-036
+CDC-037,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-037
+CDC-038,CDC,Command Family Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-038
+CDC-039,CDC,Proof Closure,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-039
+CDC-040,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-040
+CDC-041,CDC,CDC Contract Foundation,cfdrs-cdc,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-041
+CDC-042,CDC,CDC Contract Foundation,cfdrs-shared,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-042
+CDC-043,CDC,CDC Contract Foundation,cfdrs-shared,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-043
 CDC-044,CDC,Program Reset,cfdrs-bin,already_proven,none,docs/parity/cdc/implementation-checklist.md#cdc-044
 HIS-001,HIS,Program Reset,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-001
 HIS-002,HIS,Program Reset,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-002
-HIS-003,HIS,Host and Runtime Foundation,cfdrs-shared,lane_required,Program Reset,docs/parity/his/implementation-checklist.md#his-003
+HIS-003,HIS,Host and Runtime Foundation,cfdrs-shared,already_proven,none,docs/parity/his/implementation-checklist.md#his-003
 HIS-004,HIS,Program Reset,cfdrs-shared,already_proven,none,docs/parity/his/implementation-checklist.md#his-004
 HIS-005,HIS,Program Reset,cfdrs-shared,already_proven,none,docs/parity/his/implementation-checklist.md#his-005
 HIS-006,HIS,Program Reset,cfdrs-shared,already_proven,none,docs/parity/his/implementation-checklist.md#his-006
 HIS-007,HIS,Program Reset,cfdrs-shared,already_proven,none,docs/parity/his/implementation-checklist.md#his-007
-HIS-008,HIS,Host and Runtime Foundation,cfdrs-his,lane_required,Program Reset,docs/parity/his/implementation-checklist.md#his-008
+HIS-008,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-008
 HIS-009,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-009
 HIS-010,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-010
 HIS-011,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-011
@@ -90,62 +90,62 @@ HIS-012,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parit
 HIS-013,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-013
 HIS-014,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-014
 HIS-015,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-015
-HIS-016,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-016
+HIS-016,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-016
 HIS-017,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-017
 HIS-018,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-018
 HIS-019,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-019
 HIS-020,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-020
 HIS-021,HIS,Host and Runtime Foundation,cfdrs-bin,already_proven,none,docs/parity/his/implementation-checklist.md#his-021
 HIS-022,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-022
-HIS-023,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-023
-HIS-024,HIS,Host and Runtime Foundation,cfdrs-his,lane_required,Program Reset,docs/parity/his/implementation-checklist.md#his-024
-HIS-025,HIS,Host and Runtime Foundation,cfdrs-bin,lane_required,Program Reset,docs/parity/his/implementation-checklist.md#his-025
-HIS-026,HIS,Host and Runtime Foundation,cfdrs-his,lane_required,Program Reset,docs/parity/his/implementation-checklist.md#his-026
-HIS-027,HIS,Host and Runtime Foundation,cfdrs-his,lane_required,Program Reset,docs/parity/his/implementation-checklist.md#his-027
-HIS-028,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-028
-HIS-029,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-029
-HIS-030,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-030
-HIS-031,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-031
-HIS-032,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-032
-HIS-033,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-033
-HIS-034,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-034
-HIS-035,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-035
-HIS-036,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-036
-HIS-037,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-037
-HIS-038,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-038
-HIS-039,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-039
-HIS-040,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-040
-HIS-041,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-041
-HIS-042,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-042
-HIS-043,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-043
-HIS-044,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-044
-HIS-045,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-045
-HIS-046,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-046
-HIS-047,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-047
-HIS-048,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-048
-HIS-049,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-049
+HIS-023,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-023
+HIS-024,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-024
+HIS-025,HIS,Host and Runtime Foundation,cfdrs-bin,already_proven,none,docs/parity/his/implementation-checklist.md#his-025
+HIS-026,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-026
+HIS-027,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-027
+HIS-028,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-028
+HIS-029,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-029
+HIS-030,HIS,Proof Closure,cfdrs-his,intentional_divergence,none,docs/parity/his/implementation-checklist.md#his-030
+HIS-031,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-031
+HIS-032,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-032
+HIS-033,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-033
+HIS-034,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-034
+HIS-035,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-035
+HIS-036,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-036
+HIS-037,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-037
+HIS-038,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-038
+HIS-039,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-039
+HIS-040,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-040
+HIS-041,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-041
+HIS-042,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-042
+HIS-043,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-043
+HIS-044,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-044
+HIS-045,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-045
+HIS-046,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-046
+HIS-047,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-047
+HIS-048,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-048
+HIS-049,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-049
 HIS-050,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-050
 HIS-051,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-051
 HIS-052,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-052
 HIS-053,HIS,Program Reset,cfdrs-bin,intentional_divergence,none,docs/parity/his/implementation-checklist.md#his-053
 HIS-054,HIS,Program Reset,cfdrs-bin,already_proven,none,docs/parity/his/implementation-checklist.md#his-054
 HIS-055,HIS,Program Reset,cfdrs-bin,already_proven,none,docs/parity/his/implementation-checklist.md#his-055
-HIS-056,HIS,Proof Closure,cfdrs-his,non_lane,Command Family Closure,docs/parity/his/implementation-checklist.md#his-056
-HIS-057,HIS,Proof Closure,cfdrs-his,non_lane,Command Family Closure,docs/parity/his/implementation-checklist.md#his-057
+HIS-056,HIS,Proof Closure,cfdrs-his,non_lane,none,docs/parity/his/implementation-checklist.md#his-056
+HIS-057,HIS,Proof Closure,cfdrs-his,non_lane,none,docs/parity/his/implementation-checklist.md#his-057
 HIS-058,HIS,Program Reset,cfdrs-bin,already_proven,none,docs/parity/his/implementation-checklist.md#his-058
-HIS-059,HIS,Command Family Closure,cfdrs-bin,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-059
-HIS-060,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-060
+HIS-059,HIS,Command Family Closure,cfdrs-bin,already_proven,none,docs/parity/his/implementation-checklist.md#his-059
+HIS-060,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-060
 HIS-061,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-061
 HIS-062,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-062
-HIS-063,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-063
-HIS-064,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-064
-HIS-065,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-065
-HIS-066,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-066
-HIS-067,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-067
-HIS-068,HIS,Command Family Closure,cfdrs-his,lane_required,Host and Runtime Foundation,docs/parity/his/implementation-checklist.md#his-068
+HIS-063,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-063
+HIS-064,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-064
+HIS-065,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-065
+HIS-066,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-066
+HIS-067,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-067
+HIS-068,HIS,Command Family Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-068
 HIS-069,HIS,Parity Revalidation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-069
 HIS-070,HIS,Host and Runtime Foundation,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-070
-HIS-071,HIS,Proof Closure,cfdrs-his,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-071
-HIS-072,HIS,Proof Closure,cfdrs-shared,deferred,Command Family Closure,docs/parity/his/implementation-checklist.md#his-072
-HIS-073,HIS,Parity Revalidation,cfdrs-his,intentional_divergence,Command Family Closure,docs/parity/his/implementation-checklist.md#his-073
-HIS-074,HIS,Parity Revalidation,cfdrs-his,intentional_divergence,Command Family Closure,docs/parity/his/implementation-checklist.md#his-074
+HIS-071,HIS,Proof Closure,cfdrs-his,already_proven,none,docs/parity/his/implementation-checklist.md#his-071
+HIS-072,HIS,Proof Closure,cfdrs-shared,already_proven,none,docs/parity/his/implementation-checklist.md#his-072
+HIS-073,HIS,Parity Revalidation,cfdrs-his,intentional_divergence,none,docs/parity/his/implementation-checklist.md#his-073
+HIS-074,HIS,Parity Revalidation,cfdrs-his,intentional_divergence,none,docs/parity/his/implementation-checklist.md#his-074

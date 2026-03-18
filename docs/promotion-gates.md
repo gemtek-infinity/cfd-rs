@@ -53,23 +53,24 @@ Promotion rule:
 
 Current milestone:
 
-- `Proof Closure`
+- `Parity Revalidation`
 
 Next milestone:
 
-- `Parity Revalidation`
+- `Performance Architecture Overhaul`
 
 Current gate requires:
 
-- closure and evidence refresh for the remaining rows mapped to
-  `Proof Closure` in the roadmap index
-- the cross-domain logging blocker set stays explicit and cannot be treated as a post-alpha cleanup item
+- full re-audit pass across all 150 rows with current source-grounded evidence
+- HIS-069 ICMP proxy runtime validation
+- every intentional divergence has an explicit deferred boundary and rationale
+- no stale or historical-only parity claims remain
 
-Previous milestone (`Command Family Closure`) is complete.
+Previous milestone (`Proof Closure`) is complete.
 
 ## Production-Alpha Gate
 
-Production-alpha is not claimed at `Proof Closure`.
+Production-alpha is not claimed at `Parity Revalidation`.
 
 Production-alpha readiness requires all of the following after `Parity Revalidation` and `Performance Architecture Overhaul`:
 

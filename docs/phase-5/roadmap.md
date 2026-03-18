@@ -293,7 +293,7 @@ Exact rows:
 
 - all 150 rows across CLI, CDC, and HIS; no new rows are introduced
 - HIS-069 (ICMP raw-socket proxy) is the primary implementation target;
-  `socket2` is admitted for ICMP socket creation in `cfdrs-his`
+  `nix` is admitted for ICMP socket creation in `cfdrs-his`
 - HIS-073 and HIS-074 (gracenet restart) remain intentional divergences with
   trait seams preserved for post-alpha implementation
 
@@ -308,7 +308,7 @@ Prerequisites:
 Required tests:
 
 - full parity reruns for all closed surfaces
-- ICMP proxy runtime tests (HIS-069) with `socket2`
+- ICMP proxy runtime tests (HIS-069) with `nix`
 - command/output snapshot suite
 - contract tests across CLI, CDC, and HIS
 - logging compatibility reruns across local and upstream surfaces
