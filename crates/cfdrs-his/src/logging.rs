@@ -201,14 +201,21 @@ fn copy_files_from_directory(path: &Path) -> Result<PathBuf, HostLogError> {
     let mut output = std::fs::File::create(&output_path)
         .map_err(|error| HostLogError::Io(format!("creating file {}: {error}", output_path.display())))?;
 
+    let mut paths: Vec<PathBuf> = Vec::new();
+
     for entry in entries {
         let entry =
             entry.map_err(|error| HostLogError::Io(format!("error reading directory entry: {error}")))?;
         let entry_path = entry.path();
-        if !entry_path.is_file() {
-            continue;
+        if entry_path.is_file() {
+            paths.push(entry_path);
         }
-        copy_file_into(&entry_path, &mut output)?;
+    }
+
+    paths.sort();
+
+    for entry_path in &paths {
+        copy_file_into(entry_path, &mut output)?;
     }
 
     let duplicated_current = path.join("cloudflared.log");
