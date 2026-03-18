@@ -49,8 +49,7 @@ What does not exist yet:
   milestone entry; no rows have been re-audited yet
 - exit still requires:
   full re-audit pass across all 150 rows with current source-grounded evidence;
-  HIS-069 ICMP proxy runtime validation; every intentional divergence has
-  an explicit deferred boundary and rationale
+  every intentional divergence has an explicit deferred boundary and rationale
 
 Previous milestone (`Proof Closure`) is complete.
 
@@ -79,8 +78,9 @@ Closed breakdown:
   (`CLI-031`)
 - CDC: 44 `audited, parity-backed`
 - HIS: 68 `audited, parity-backed` +
-  6 `audited, intentional divergence` (`HIS-030`, `HIS-053`, `HIS-056`,
-  `HIS-057`, `HIS-073`, `HIS-074`)
+  4 `audited, intentional divergence` (`HIS-030`, `HIS-053`,
+  `HIS-073`, `HIS-074`) +
+  2 `non_lane` (`HIS-056`, `HIS-057`)
 
 ## Test Snapshot
 

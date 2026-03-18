@@ -62,7 +62,6 @@ Next milestone:
 Current gate requires:
 
 - full re-audit pass across all 150 rows with current source-grounded evidence
-- HIS-069 ICMP proxy runtime validation
 - every intentional divergence has an explicit deferred boundary and rationale
 - no stale or historical-only parity claims remain
 
